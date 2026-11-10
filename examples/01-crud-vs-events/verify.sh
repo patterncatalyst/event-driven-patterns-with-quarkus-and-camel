@@ -15,12 +15,11 @@ cleanup() { [[ "${KEEP:-0}" == 1 ]] || docker compose down -v >/dev/null 2>&1; }
 trap cleanup EXIT
 
 docker compose up -d --build --wait || { echo "compose up failed"; exit 1; }
-for _ in $(seq 60); do curl -sf "$BASE/q/health/ready" >/dev/null && break; sleep 1; done
 
 ID="C-$(date +%s)"
 status() { curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "{\"to\":\"$2\"}" "$BASE/consignments/$1/status"; }
 count_events() { "${PSQL[@]}" -c "SELECT count(*) FROM consignment_event WHERE stream_id='$ID'"; }
-json() { python3 -c "import json,sys; d=json.load(sys.stdin); print($1)"; }
+statuses() { grep -o '"status":"[A-Z_]*"' | cut -d'"' -f4 | paste -sd, -; }
 
 curl -sf -H 'Content-Type: application/json' \
     -d "{\"id\":\"$ID\",\"origin\":\"NLRTM\",\"destination\":\"SGSIN\",\"weightKg\":1250.5,\"carrier\":\"FASTLINE\"}" \
@@ -33,9 +32,9 @@ check "four events (booked plus three changes) for the stream" test "$(count_eve
 check "replayed document equals the row document" \
     test "$(curl -s "$BASE/consignments/$ID")" = "$(curl -s "$BASE/consignments/$ID/replayed")"
 check "row shows only the latest status" \
-    test "$(curl -s "$BASE/consignments/$ID" | json "d['status']")" = CLEARED
+    test "$(curl -s "$BASE/consignments/$ID" | statuses)" = CLEARED
 check "history lists BOOKED, LOADED, IN_TRANSIT, CLEARED" \
-    test "$(curl -s "$BASE/consignments/$ID/history" | json "','.join(e['status'] for e in d['entries'])")" = BOOKED,LOADED,IN_TRANSIT,CLEARED
+    test "$(curl -s "$BASE/consignments/$ID/history" | statuses)" = BOOKED,LOADED,IN_TRANSIT,CLEARED
 check "illegal transition returns 409" test "$(status "$ID" LOADED)" = 409
 check "illegal transition appended nothing" test "$(count_events)" = 4
 check "UPDATE on consignment_event is refused" \

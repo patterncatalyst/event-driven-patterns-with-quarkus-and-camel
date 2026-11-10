@@ -21,27 +21,27 @@ Other parts of the system need to know that a Consignment was loaded. If the boo
 
 **An Event Message announces that something happened, named in the past tense, and the sender neither knows nor cares who reads it.**
 
-Hohpe and Woolf define the pattern in *Enterprise Integration Patterns*: the sender reports a change, and receivers decide what to do about it. Fowler's "What do you mean by 'Event-Driven'?" separates the uses of an event: a bare notification, a message that carries enough state to avoid a callback, and a record of every change used as the source of truth. This chapter covers the last use. The first two are the subject of chapter 02.
+Hohpe and Woolf's Event Message is a message for reliable, asynchronous event notification between applications. Fowler's "What do you mean by 'Event-Driven'?" separates four patterns that share the name: event notification, event-carried state transfer, event sourcing and CQRS. Chapters 02 and 03 cover the first two; the storage decision below is the third.
 
-### How Quarkus and Camel model it
+### How Quarkus models it
 
-`ConsignmentBooked` and `ConsignmentStatusChanged` are the events. Each is one immutable row in `consignment_event`, with the stream (`stream_id`, the Consignment id), its position in that stream (`version`), a `type`, a `jsonb` payload and `occurred_at`. Hibernate ORM with Panache maps the table as an immutable entity, so the persistence layer cannot issue an update for it even by accident. Camel carries the same events over Kafka from chapter 02 on.
+`ConsignmentBooked` and `ConsignmentStatusChanged` are the events. Each is one immutable row in `consignment_event`, with the stream (`stream_id`, the Consignment id), its position in that stream (`version`), a `type`, a `jsonb` payload and `occurred_at`. The payload is a record per event type, `ConsignmentBooked` or `ConsignmentStatusChanged`, so replay reads typed fields. Hibernate ORM with Panache maps the table as an `@Immutable` entity: Hibernate never writes changes to a loaded event back to the table.
 
 ## Pattern: Command Message
 
 ### The problem
 
-Someone must be able to ask for a change and be told no. LOADED is only valid for a BOOKED Consignment, and the requester needs an answer, not an announcement.
+Someone must be able to ask for a change and be told no. LOADED is only valid for a BOOKED Consignment, and the requester needs a yes or a no.
 
 ### The solution
 
 **A Command Message tells one receiver to perform a named action, in the imperative, and the receiver may refuse it.**
 
-Hohpe and Woolf describe a command as an ordinary message whose content is an instruction. The receiver validates it against its own state. Only after it accepts does anything become a fact.
+Hohpe and Woolf describe a Command Message as a way to invoke a procedure in another application through messaging. The receiver owns the state, so it validates the command against it. Only after it accepts does anything become a fact.
 
-### How Quarkus and Camel model it
+### How Quarkus models it
 
-`ChangeConsignmentStatus` is a Java record with the Consignment id, the target `ConsignmentStatus` and an optional expected version. A REST endpoint builds it from the request and hands it to one CDI bean, which checks the move against the lifecycle: BOOKED, LOADED, IN_TRANSIT, CLEARED, DELIVERED, one step forward at a time. A refused command produces HTTP 409 and no event. In a Camel route the same record is the body of a message sent to a single endpoint.
+`ChangeConsignmentStatus` is a Java record with the Consignment id, the target `ConsignmentStatus` and an optional expected version. A REST endpoint builds it from the request and hands it to one CDI bean, which checks the move against the lifecycle: BOOKED, LOADED, IN_TRANSIT, CLEARED, DELIVERED, one step forward at a time. A refused command produces HTTP 409 and no event.
 
 ## Pattern: Document Message
 
@@ -53,9 +53,9 @@ A reader wants to know where a Consignment stands now. It does not want an instr
 
 **A Document Message carries a complete piece of data and prescribes nothing about what the receiver does with it.**
 
-Hohpe and Woolf use it for transferring data between systems. The sender does not care whether the receiver stores it, displays it or ignores it.
+Hohpe and Woolf use it to transfer a data structure between applications; the receiver decides what, if anything, to do with the data.
 
-### How Quarkus and Camel model it
+### How Quarkus models it
 
 `ConsignmentDocument` pairs the shared `Consignment` record with its `ConsignmentStatus`. Quarkus REST serialises it as JSON from `GET /consignments/{id}`, and a second endpoint returns the same document rebuilt from events. Both return identical JSON, which is what makes the two storage models interchangeable for readers.
 
@@ -69,7 +69,7 @@ The event model appends. The handler loads the stream, replays it to find the cu
 
 {% include excalidraw.html file="01-replay-rebuilds-state" alt="A command is checked against the state found by replaying the stream, then a new version is appended; a reader folds the same stream into a ConsignmentDocument equal to the row" caption="Figure 1.2: Check against the replayed state, append, fold to read" %}
 
-Replay is a left fold. Start with nothing, apply `ConsignmentBooked` to get the Consignment and its first status, then apply each `ConsignmentStatusChanged` to move the status. The result is the same `ConsignmentDocument` the row produces. The history endpoint returns a `TrackingHistory`-shaped list: the Consignment id and every status with its version and timestamp. Only the stream can produce it.
+Replay is a left fold. Start with nothing, apply `ConsignmentBooked` to get the Consignment and its first status, then apply each `ConsignmentStatusChanged` to move the status. The result is the same `ConsignmentDocument` the row produces. The history endpoint returns a `StatusHistory`: the Consignment id and every status with its version and timestamp. Only the stream can produce it.
 
 | Question | A row is enough | The history is the requirement |
 |---|---|---|
@@ -81,30 +81,31 @@ Replay is a left fold. Start with nothing, apply `ConsignmentBooked` to get the 
 | Reads dominate and nothing asks about the past | Preferred | Adds replay cost for no benefit |
 | New readers need to derive new views later | Not possible from past states | Replay the stream into the new view |
 
-Use a row when the current state is the only question. Use events when the past is part of the requirement: audit, dispute, reconstruction or a view you have not designed yet. Many systems need both, and the example keeps both so each can be checked against the other.
+Use a row when the current state is the only question. Use events when the past is part of the requirement: audit, dispute, reconstruction or a view you have not designed yet. Many systems need both, and keeping both lets each be checked against the other.
 
 ## Build, run, observe
 
 ```bash
+(cd examples/domain-model && mvn -B -q install)
 cd examples/01-crud-vs-events
 mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs six tests against PostgreSQL started by Dev Services, with `consignment` and `consignment_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, books a Consignment, drives three status changes and prints `10/10 checks passed`. It checks that the row holds the latest status, the stream holds four events and the replayed document equals the row. It also checks that the history lists every status, an illegal move returns 409 and appends nothing, `UPDATE` on `consignment_event` fails in `psql`, and Tempo holds a trace for `crud-vs-events`. Open Grafana at `http://localhost:3000` with `KEEP=1 ./verify.sh` to see the request traces.
+The Maven build runs seven tests against PostgreSQL started by Dev Services, with `consignment` and `consignment_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, drives a Consignment from BOOKED to CLEARED and prints `10/10 checks passed`: the row, the stream, the replayed document and the history agree, an illegal move and an `UPDATE` on the stream are both refused, and Tempo holds a trace for the service. Open Grafana at `http://localhost:3000` with `KEEP=1 ./verify.sh` to see the request traces.
 
 Change one thing and watch a guard fail:
 
 - Make `Lifecycle.allows` return true. The illegal move returns 204 instead of 409 and the event count grows.
 - Delete the trigger from the Flyway migration. The `UPDATE` on `consignment_event` succeeds and history can be rewritten.
 - Send two commands with `expectedVersion` 1 for the same Consignment. The second gets 409, because version 2 already exists, and neither the row nor the stream changes.
-- Remove the `append` call in `ConsignmentService.change`. The row advances while the stream stops, so the replayed document and the history fall behind the row.
+- Remove the `appendEvent` call in `ConsignmentService.change`. The row advances while the stream stops, so the replayed document and the history fall behind the row.
 
 ## When not to use it
 
-Event sourcing costs more than a row. Every reader of the current state either replays a stream or maintains a second, derived copy that can lag. Streams grow, so long-lived Consignments need snapshots. Events are permanent contracts: a payload shape written today must still be readable after the code changes, which is a problem chapter 18 addresses. Corrections are new events, never edits, so a wrong fact needs a compensating one. And the unique constraint settles only concurrent writers on one stream; it does not make a status change in another system atomic with this one.
+Event sourcing costs more than a row. Every reader of the current state either replays a stream or maintains a second, derived copy that can lag. Long streams need snapshots. Events are permanent contracts: a payload shape written today must still be readable after the code changes, which is a problem chapter 18 addresses. Corrections are new events, never edits, so a wrong fact needs a compensating one. And the unique constraint settles only concurrent writers on one stream; it does not make a status change in another system atomic with this one.
 
-Keep the row when nobody asks about the past, when the data is reference data, or when an audit table beside the row answers the questions that actually get asked.
+Prefer a document over an event when the receiver needs the whole current state, not the change. Keep the row when nobody asks about the past, when the data is reference data, or when an audit table beside the row answers the questions that get asked.
 
 > **🤖 Explore with your agent**
 > "In examples/01-crud-vs-events, apply ChangeConsignmentStatus to a new Consignment through both models, then answer three questions: what was its ConsignmentStatus before the last change, can you answer it from the consignment row, and can you answer it from consignment_event? State the rule that says when a row is enough and when the history is the requirement, and name one Consignment question from the shipping domain that falls on each side."
@@ -112,7 +113,7 @@ Keep the row when nobody asks about the past, when the data is reference data, o
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Event Message, Command Message and Document Message](https://www.enterpriseintegrationpatterns.com/)
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Event Message](https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventMessage.html), [Command Message](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CommandMessage.html) and [Document Message](https://www.enterpriseintegrationpatterns.com/patterns/messaging/DocumentMessage.html)
 - Martin Fowler, [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)
 - Martin Fowler, [What do you mean by "Event-Driven"?](https://martinfowler.com/articles/201701-event-driven.html)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026: Chapter 2, Anatomy of Message-Driven Systems, and Chapter 6, Event Sourcing

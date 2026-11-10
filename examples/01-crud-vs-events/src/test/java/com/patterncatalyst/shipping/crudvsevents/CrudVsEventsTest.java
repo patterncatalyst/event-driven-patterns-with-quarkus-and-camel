@@ -113,4 +113,18 @@ class CrudVsEventsTest {
         assertEquals(2, events(id));
         given().get("/consignments/" + id).then().body("status", equalTo("LOADED"));
     }
+
+    @Test
+    void loadedEventChangesAreNeverWrittenBack() {
+        String id = book();
+        QuarkusTransaction.requiringNew().run(() -> {
+            ConsignmentEvent event = ConsignmentEvent.find("streamId", id).firstResult();
+            event.type = "Altered";
+            event.version = 99;
+        });
+        ConsignmentEvent reloaded = QuarkusTransaction.requiringNew()
+                .call(() -> ConsignmentEvent.find("streamId", id).firstResult());
+        assertEquals("ConsignmentBooked", reloaded.type);
+        assertEquals(1, reloaded.version);
+    }
 }

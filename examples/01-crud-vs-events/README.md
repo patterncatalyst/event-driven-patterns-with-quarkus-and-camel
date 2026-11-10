@@ -19,7 +19,8 @@ The lifecycle is BOOKED, LOADED, IN_TRANSIT, CLEARED, DELIVERED, one step forwar
 ## Run
 
 ```bash
-mvn -B verify      # six tests, PostgreSQL from Dev Services
+(cd ../domain-model && mvn -B -q install)
+mvn -B verify      # seven tests, PostgreSQL from Dev Services
 ./verify.sh        # compose stack plus the observable checks
 KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
@@ -38,4 +39,4 @@ docker compose down -v
 | `Containerfile` | UBI 10 multi-stage build; context is `examples/` |
 | `compose.yaml` | Includes the shared PostgreSQL and LGTM files and adds the app on port 8080 |
 
-Traces and logs go to `http://lgtm:4318` over OTLP http/protobuf with `service.name` `crud-vs-events`.
+Compose sets the datasource and OTLP endpoint through `QUARKUS_*` variables. Traces and logs go to `http://lgtm:4318` over OTLP http/protobuf with `service.name` `crud-vs-events`.

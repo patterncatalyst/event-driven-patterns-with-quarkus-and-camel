@@ -2,9 +2,7 @@ package com.patterncatalyst.shipping.crudvsevents;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.hibernate.exception.ConstraintViolationException;
 
@@ -18,9 +16,6 @@ import jakarta.transaction.Transactional;
 @ApplicationScoped
 public class ConsignmentService {
 
-    static final String BOOKED = "ConsignmentBooked";
-    static final String STATUS_CHANGED = "ConsignmentStatusChanged";
-
     @Transactional
     public void book(Consignment consignment) {
         ConsignmentRow row = new ConsignmentRow();
@@ -32,13 +27,9 @@ public class ConsignmentService {
         row.status = ConsignmentStatus.BOOKED;
         row.persist();
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("id", consignment.id());
-        payload.put("origin", consignment.origin());
-        payload.put("destination", consignment.destination());
-        payload.put("weightKg", consignment.weightKg().toPlainString());
-        payload.put("carrier", consignment.carrier());
-        append(consignment.id(), 0, BOOKED, payload);
+        ConsignmentEventPayload payload = new ConsignmentEventPayload.ConsignmentBooked(consignment.id(),
+                consignment.origin(), consignment.destination(), consignment.weightKg(), consignment.carrier());
+        append(consignment.id(), 0, payload);
     }
 
     /** Applies the command to both models in one transaction. */
@@ -67,16 +58,16 @@ public class ConsignmentService {
         }
         requireAllowed(current.status(), command.to());
         int expected = command.expectedVersion() != null ? command.expectedVersion() : stream.size();
-        append(command.consignmentId(), expected, STATUS_CHANGED,
-                Map.of("from", current.status().name(), "to", command.to().name()));
+        append(command.consignmentId(), expected,
+                new ConsignmentEventPayload.ConsignmentStatusChanged(current.status(), command.to()));
     }
 
     /** Inserts version expectedVersion + 1; the unique (stream_id, version) constraint rejects a stale writer. */
-    void append(String streamId, int expectedVersion, String type, Map<String, Object> payload) {
+    void append(String streamId, int expectedVersion, ConsignmentEventPayload payload) {
         ConsignmentEvent event = new ConsignmentEvent();
         event.streamId = streamId;
         event.version = expectedVersion + 1;
-        event.type = type;
+        event.type = payload.getClass().getSimpleName();
         event.payload = payload;
         event.occurredAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         try {
@@ -115,9 +106,10 @@ public class ConsignmentService {
     }
 
     private static ConsignmentStatus statusOf(ConsignmentEvent event) {
-        return BOOKED.equals(event.type)
-                ? ConsignmentStatus.BOOKED
-                : ConsignmentStatus.valueOf((String) event.payload.get("to"));
+        return switch (event.payload) {
+            case ConsignmentEventPayload.ConsignmentBooked booked -> ConsignmentStatus.BOOKED;
+            case ConsignmentEventPayload.ConsignmentStatusChanged changed -> changed.to();
+        };
     }
 
     private static List<ConsignmentEvent> stream(String id) {

@@ -8,7 +8,6 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
 import com.patterncatalyst.shipping.Consignment;
 
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -38,7 +37,6 @@ public class ConsignmentResource {
     /** The Consignment as the row holds it. */
     @GET
     @Path("{id}")
-    @Transactional
     public ConsignmentDocument fromRow(@RestPath String id) {
         return service.fromRow(id);
     }
@@ -46,14 +44,12 @@ public class ConsignmentResource {
     /** The same document rebuilt by replaying the event stream. */
     @GET
     @Path("{id}/replayed")
-    @Transactional
     public ConsignmentDocument fromEvents(@RestPath String id) {
         return service.fromEvents(id);
     }
 
     @GET
     @Path("{id}/history")
-    @Transactional
     public StatusHistory history(@RestPath String id) {
         return service.history(id);
     }

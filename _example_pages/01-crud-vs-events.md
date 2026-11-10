@@ -10,6 +10,7 @@ description: "One ChangeConsignmentStatus command applied as a row update and as
 It uses Quarkus REST, Hibernate ORM with Panache, Flyway, PostgreSQL and OpenTelemetry to the LGTM stack. There is no Camel and no Kafka.
 
 ```bash
+(cd examples/domain-model && mvn -B -q install)
 cd examples/01-crud-vs-events
 mvn -B verify
 ./verify.sh

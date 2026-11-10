@@ -1,7 +1,6 @@
 package com.patterncatalyst.shipping.crudvsevents;
 
 import java.time.Instant;
-import java.util.Map;
 
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -29,7 +28,7 @@ public class ConsignmentEvent extends PanacheEntityBase {
     public int version;
     public String type;
     @JdbcTypeCode(SqlTypes.JSON)
-    public Map<String, Object> payload;
+    public ConsignmentEventPayload payload;
     @Column(name = "occurred_at")
     public Instant occurredAt;
 }
