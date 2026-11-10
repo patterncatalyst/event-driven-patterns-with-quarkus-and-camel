@@ -45,3 +45,17 @@ Clean Docker state (`scripts/setup-stack.sh --clean`), each example alone, one a
 - Fresh-clone run by the re-validator (domain-model not preinstalled): 00 17/17, 01 10/10 before round 2.
 - Gates: validate.py ok (self-test 5/5), voice 0 ban-tier, idiomatic 0, host_ids 0 hits, site builds.
 - After the runs: no edp- containers or volumes remain.
+
+### r02 G1 (2026-11-10) · chapters 00 and 01 in the order-to-delivery domain
+
+Orchestrator serial run from a clean Docker state, each step alone, one after the other.
+
+- `examples/domain-model` 2.0.0 install: **79 tests** pass.
+- `examples/00-stack-check`: `mvn -B verify` **4/4**; `./verify.sh` **17/17 checks passed**.
+- `examples/01-crud-vs-events`: `mvn -B verify` **11/11**; `./verify.sh` **19/19 checks passed**.
+- Static gates: `validate.py` ok, `host_ids.py check` 0 hits, voice scan 0 ban-tier, site build ok, grep for the freight names (Consignment, HandlingEvent, weight, real carriers) 0 hits in chapters and examples (the `FEDEX` literal in `DomainModelTest` is the negative witness for an unknown carrier).
+- Experiments recorded:
+  - ch00: removing `onException` gives **16/17** (check 16 fails); renaming the producer topic gives **15/17** (checks 8 and 15 fail).
+  - ch01: `Lifecycle.allows` always true gives **16/19** (checks 11, 12, 15); removing the UPDATE/DELETE trigger gives **17/19** (checks 14, 16); removing V2 gives **17/19** (checks 17, 18); dropping `appendEvent` gives **14/19** (checks 6, 8, 10, 12, 15); removing the unique constraint fails the stale-version test (**10/11** mvn).
+- Sources fetched while rewriting the claims table: PostgreSQL SQL key words appendix (ORDER reserved), CREATE TRIGGER (TRUNCATE only FOR EACH STATEMENT), ALTER TABLE (DISABLE TRIGGER), Docker Engine install and post-install pages.
+- `claims.md` rewritten against the current prose: Consignment rows replaced by Order rows, new rows for the running-example section; domain facts only realised in later chapters are marked design.

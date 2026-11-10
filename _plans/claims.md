@@ -12,93 +12,137 @@ Statuses:
 
 - pending: written, evidence not yet run or fetched
 - verified: the test, recorded run (see `verification-log.md`) or fetched source confirms it
-- cut: removed from the chapter because it could not be verified
+- cut: removed from the chapter because it could not be verified, or because the prose no longer exists (r02 domain switch)
+- design (plan), realised in later chapters: a domain fact stated in the plan (`_plans/domain-model.md`) that no code or test yet shows; it is checked when the chapter that builds it ships
+- UNBACKED: no evidence found; must be fixed or cut before release
 
-Evidence is a test, a run or a source. Ref is the test class, log entry or bibliography entry.
+Evidence is a test, a run or a source. Ref is the chapter file and line of the claim, then the test class, log entry or bibliography entry. Rewritten at r02 G1 (2026-11-10) for the order-to-delivery domain.
 
 | id | chapter | claim | evidence (test, run or source) | ref | status |
 |---|---|---|---|---|---|
-| 00-01 | 00 | One local stack: Kafka, PostgreSQL, registry, Connect with Debezium, LGTM | verify.sh 00 checks 1 to 6 | _infra/compose.yaml; log 2026-11-10 | verified |
-| 00-02 | 00 | SDKMAN installs under `$HOME/.sdkman` by default | https://sdkman.io/install | fetched 2026-11-10 | verified |
-| 00-03 | 00 | SDKMAN lists bash, zip, unzip and curl as its basic toolset | https://sdkman.io/install | fetched 2026-11-10 | verified |
-| 00-04 | 00 | Versions are exact, newest stable that works, no licence | _plans/versions.md | survey 2026-11-10 | verified |
-| 00-05 | 00 | Temurin 25.0.5 LTS | api.adoptium.net | versions.md | verified |
-| 00-06 | 00 | Maven 3.10 released; Quarkus has an open issue against it | quarkusio/quarkus #57216 | versions.md | verified |
-| 00-07 | 00 | Quarkus 3.40.1.2 LTS with Camel Quarkus 3.40.0 and Camel 4.22.1 | code.quarkus.io streams; quarkus-camel-bom pom | versions.md | verified |
-| 00-08 | 00 | Kafka 4.3.2 is the newest the latest Strimzi supports | Strimzi 1.3.1 kafka-versions.yaml | versions.md | verified |
-| 00-09 | 00 | PostgreSQL 18.6: CNPG operand on compose, same minor for Dev Services | compose-postgres.yaml; mvn log postgres:18.6 | log 2026-11-10 | verified |
-| 00-10 | 00 | Debezium Connect 3.7.1.Final has PostgresConnector and EventRouter | verify.sh 00 checks 11, 12 | log 2026-11-10 | verified |
-| 00-11 | 00 | otel-lgtm: Loki, Grafana, Tempo, Prometheus behind one OTLP endpoint | verify.sh 00 checks 13 to 15 | log 2026-11-10 | verified |
-| 00-12 | 00 | UBI 10 OpenJDK 1.24-19 for build and runtime | Containerfiles | versions.md | verified |
-| 00-13 | 00 | Docker 29.9.3, Compose 5.7.0 on the reference host | docker version | versions.md | verified |
-| 00-14 | 00 | One compose file per service, included on network `edp` | _infra/*.yaml; example compose files | repo | verified |
-| 00-15 | 00 | Kafka host 9092, containers kafka:9094 | compose-kafka.yaml | repo | verified |
-| 00-16 | 00 | PostgreSQL wal_level=logical on 5432 | verify.sh 00 check 9 | log 2026-11-10 | verified |
-| 00-17 | 00 | Apicurio 8081 in memory, health 19000 | compose-apicurio.yaml; verify.sh 00 check 10 | log 2026-11-10 | verified |
-| 00-18 | 00 | LGTM ports 3000, 4317, 4318, 19090, 3200, 3100 | compose-lgtm.yaml; infra run | log 2026-11-10 | verified |
-| 00-19 | 00 | Cockpit, often enabled on Fedora and RHEL, listens on 9090 | https://cockpit-project.org/running.html ("log into port 9090") | fetched 2026-11-10 | verified |
-| 00-20 | 00 | Memory limits and health checks; about 7 GB total | _infra mem_limit values + app | repo | verified |
-| 00-21 | 00 | A second stack fails to bind the fixed ports | compose port mappings | repo | verified |
-| 00-22 | 00 | stack-guard refuses another compose project or minikube node, stops nothing | scripts/stack-guard.sh; executor test with foreign container | step 5 | verified |
-| 00-23 | 00 | service.name stack-check, OTLP http/protobuf to lgtm:4318 | application.properties; compose.yaml | repo | verified |
-| 00-24 | 00 | Grafana needs no login | compose-lgtm.yaml GF_AUTH_ANONYMOUS_* | repo | verified |
-| 00-25 | 00 | Prometheus `target_info{service_name="stack-check"}` | verify.sh 00 check 14 | log 2026-11-10 | verified |
-| 00-26 | 00 | Loki `{service_name="stack-check"}`; consumer logs each record | verify.sh 00 check 15 | log 2026-11-10 | verified |
-| 00-27 | 00 | UBI 10 multi-stage build, context examples/ | Containerfile | repo | verified |
-| 00-28 | 00 | domain-model installed first for mvn, built in-image for verify.sh | run blocks; Containerfile | repo | verified |
-| 00-29 | 00 | `mvn -B verify` needs no compose stack (Dev Services) | mvn log apache/kafka:4.3.2 | log 2026-11-10 | verified |
-| 00-30 | 00 | verify.sh prints PASS/FAIL, N/N, non-zero on failure; KEEP=1 | verify.sh | repo | verified |
-| 00-31 | 00 | Each verify.sh has a negative witness | 00 checks 16, 17; 01 checks 6 to 9 | log 2026-11-10 | verified |
-| 00-32 | 00 | POST /consignments: invalid 400, valid published keyed by id, consumer logs | ConsignmentIntakeTest; verify.sh 00 checks 7, 8, 15, 16 | log 2026-11-10 | verified |
-| 00-33 | 00 | Negative weight or blank origin fails in the constructor | ConsignmentIntakeTest (weight -5; blankOriginIsRejectedWith400) | repair round 1 | verified |
-| 00-34 | 00 | onException turns it into 400 before Kafka | ConsignmentIntakeTest; verify.sh 00 check 17 | log 2026-11-10 | verified |
-| 00-35 | 00 | camel-quarkus-opentelemetry2 creates a span per route and processor | Tempo trace of POST /consignments: SERVER span per route consumer, INTERNAL per processor, Kafka PRODUCER parent of consumer span | validator run 2026-11-10 | verified |
-| 00-36 | 00 | camel-quarkus-opentelemetry is deprecated | camel-quarkus-opentelemetry 3.40.0 quarkus-extension.yaml status: deprecated | validator | verified |
-| 00-37 | 00 | quarkus-micrometer-opentelemetry exports meters over OTLP; no scrape | pom.xml; verify.sh 00 check 14 | repo | verified |
-| 00-38 | 00 | quarkus-micrometer-opentelemetry exports logs by default; SmallRye Health on /q/health | application.properties; health test | repo | verified |
-| 00-39 | 00 | Tests pass on Dev Services Kafka with the pinned image | mvn log apache/kafka:4.3.2 | log 2026-11-10 | verified |
-| 00-40 | 00 | verify.sh 17/17 | verify.sh 00 | log 2026-11-10 | verified |
-| 00-41 | 00 | Removing onException: invalid gets 500, check 16 fails, 17 passes | experiment run (16/17; mvn "expected 400 but was 500") | repair round 1 | verified |
-| 00-42 | 00 | Renaming the producer topic fails checks 8 and 15 | experiment run (15/17) | repair round 1 | verified |
-| 00-43 | 00 | Part 6 runs on minikube with Strimzi, CloudNativePG, same LGTM | roadmap statement (plan, not a behaviour claim); the setup itself is verified at r11 | iteration-plan r11 | verified (roadmap) |
-| 00-44 | 00 | Camel Kafka brokers via `camel.component.kafka.brokers` in compose | container failed to start without it; verify.sh 17/17 with CAMEL_COMPONENT_KAFKA_BROKERS | repair round 1 | verified |
-| 01-01 | 01 | Event named in past tense; sender neither knows nor cares who reads it | book's own definition | n/a | verified |
-| 01-02 | 01 | Hohpe and Woolf: Event Message for reliable, asynchronous event notification | enterpriseintegrationpatterns.com EventMessage | fetched 2026-11-10 | verified |
-| 01-03 | 01 | Fowler separates four patterns: notification, ECST, event sourcing, CQRS | martinfowler.com/articles/201701-event-driven.html | fetched 2026-11-10 | verified |
-| 01-04 | 01 | Part 1 covers the first two (notification, ECST) | iteration-plan / PRD §5 (02 notification, 03 ECST) | plan | verified |
-| 01-05 | 01 | consignment_event columns stream_id, version, type, jsonb payload, occurred_at | V1 migration; ConsignmentEvent | repo | verified |
-| 01-06 | 01 | Hibernate never writes changes to a loaded event back to the table | loadedEventChangesAreNeverWrittenBack; fails without @Immutable | repair round 1 | verified |
-| 01-07 | 01 | (cut) Camel carries the same events over Kafka from chapter 02 | n/a | n/a | cut |
-| 01-08 | 01 | Command Message invokes a procedure in another application through messaging | enterpriseintegrationpatterns.com CommandMessage | fetched 2026-11-10 | verified |
-| 01-09 | 01 | ChangeConsignmentStatus: id, target status, optional expected version | ChangeConsignmentStatus.java | repo | verified |
-| 01-10 | 01 | One CDI bean handles the command; lifecycle one step forward | ConsignmentService; Lifecycle.allows | repo | verified |
-| 01-11 | 01 | Refused command: 409, no event | illegalTransitionIsRefusedAndAppendsNothing; verify.sh 01 checks 6, 7 | log 2026-11-10 | verified |
-| 01-12 | 01 | (cut) In a Camel route the record is the body sent to one endpoint | n/a | n/a | cut |
-| 01-13 | 01 | Document Message transfers a data structure; receiver decides what, if anything, to do | enterpriseintegrationpatterns.com DocumentMessage | fetched 2026-11-10 | verified |
-| 01-14 | 01 | Event payload is a record per event type; replay reads typed fields | ConsignmentEventPayload; replayEqualsRow | repair round 1 | verified |
-| 01-15 | 01 | ConsignmentDocument from GET /consignments/{id} | ConsignmentResource | repo | verified |
-| 01-16 | 01 | Rebuilt-from-events document is identical JSON | replayEqualsRow; verify.sh 01 check 3 | log 2026-11-10 | verified |
-| 01-17 | 01 | Row model overwrites; previous status gone | verify.sh 01 check 4 | log 2026-11-10 | verified |
-| 01-18 | 01 | Handler loads, replays, checks, inserts next version | ConsignmentService.appendEvent | repo | verified |
-| 01-19 | 01 | Racing writers collide on UNIQUE(stream_id, version) | stale-expected-version test (simulated race) | repo | verified |
-| 01-20 | 01 | Triggers refuse UPDATE, DELETE and TRUNCATE; only DDL gets past them | appendOnlyTriggersRefuseUpdateDeleteAndTruncate; verify.sh 01 checks 8 to 11; V2-drop witness (checks 10, 11 fail) | repair round 2 | verified |
-| 01-21 | 01 | Replay is a left fold giving the row's document | ConsignmentDocument.replay; replayEqualsRow | repo | verified |
-| 01-22 | 01 | History endpoint returns StatusHistory: id, each status with version and timestamp | priorStatusesComeFromEventsOnly; verify.sh 01 check 5 | log 2026-11-10 | verified |
-| 01-23 | 01 | Only the stream can produce the history | ConsignmentService.history | repo | verified |
-| 01-24 | 01 | Temporal query and new views by replay | Fowler, Event Sourcing | bibliography | verified |
-| 01-25 | 01 | Row writers use an optimistic lock | ConsignmentRow @Version | repo | verified |
-| 01-26 | 01 | Nine tests against Dev Services PostgreSQL; Flyway creates the tables and triggers | mvn log Tests run: 9 | repair round 2 | verified |
-| 01-27 | 01 | verify.sh 12/12 | verify.sh 01 | repair round 2 | verified |
-| 01-28 | 01 | Lifecycle.allows true: checks 6, 7, 9 fail | witness run 9/12 | repair round 2 | verified |
-| 01-29 | 01 | Dropping the UPDATE/DELETE trigger: check 8 fails | witness run 11/12 | repair round 2 | verified |
-| 01-30 | 01 | LOADED then IN_TRANSIT, both expectedVersion 1: second 409 because version 2 exists | stale-expected-version test | repair round 2 | verified |
-| 01-31 | 01 | Remove the appendEvent call: checks 2, 3, 5, 7, 9 fail | witness run 7/12 | repair round 2 | verified |
-| 01-32 | 01 | Long streams need snapshots; payloads are permanent contracts; corrections are new events | Fowler 2005, 2017 | bibliography | verified |
-| 01-33 | 01 | Unique constraint does not make another system's change atomic | by construction | n/a | verified |
-| 01-34 | 01 | Prefer a document when the receiver needs whole current state | design judgement (book's own guidance) | n/a | verified (own guidance) |
-| 01-35 | 01 | Lawrence ch 2 and ch 6 titles | InformIT table of contents | sources.md | verified |
-| 00-45 | 00 | quarkus-micrometer-opentelemetry enables OTel tracing, metrics and logs by default | https://quarkus.io/guides/telemetry-micrometer-to-opentelemetry; verify.sh 00 check 14 passes without quarkus.otel.metrics.enabled | repair round 2 | verified |
-| 00-46 | 00 | References: Kafka, Apicurio, Debezium, otel-lgtm, Quarkus, Camel Quarkus, CloudNativePG, SDKMAN docs | each URL returned 200 | fetched 2026-11-10 | verified |
-| 01-36 | 01 | Booking 1.2345 stores 1.235 and replay equals the row | weight rounding test | repair round 2 | verified |
-| 01-37 | 01 | A duplicate booking gets 409 and leaves one row and one event | duplicate booking test | repair round 2 | verified |
-| 01-38 | 01 | Dropping V2 (no TRUNCATE trigger): checks 10, 11 fail | witness run 10/12 | repair round 2 | verified |
+| 00-01 | 00 | One local stack: Kafka, PostgreSQL, registry, Connect with Debezium, LGTM | verify.sh 00 checks 1 to 6 (six containers healthy) | _docs/00-prerequisites-and-stacks.md:10; _infra/compose.yaml; log r02 G1 2026-11-10 | verified |
+| 00-02 | 00 | SDKMAN installs under `$HOME/.sdkman` by default | https://sdkman.io/install | _docs/00-prerequisites-and-stacks.md:18; fetched 2026-11-10 | verified |
+| 00-03 | 00 | SDKMAN lists bash, zip, unzip and curl as its basic toolset | https://sdkman.io/install | _docs/00-prerequisites-and-stacks.md:32; fetched 2026-11-10 | verified |
+| 00-04 | 00 | Versions are exact, newest stable that works, no licence | _plans/versions.md | _docs/00-prerequisites-and-stacks.md:36; survey 2026-11-10 | verified |
+| 00-05 | 00 | Temurin 25.0.5 LTS | api.adoptium.net | _docs/00-prerequisites-and-stacks.md:40; versions.md | verified |
+| 00-06 | 00 | Maven 3.10 released; Quarkus has an open issue against it | quarkusio/quarkus #57216 | _docs/00-prerequisites-and-stacks.md:41; versions.md | verified |
+| 00-07 | 00 | Quarkus 3.40.1.2 LTS with Camel Quarkus 3.40.0 and Camel 4.22.1 | code.quarkus.io streams; quarkus-camel-bom pom | _docs/00-prerequisites-and-stacks.md:42; versions.md | verified |
+| 00-08 | 00 | Kafka 4.3.2 is the newest the latest Strimzi supports | Strimzi 1.3.1 kafka-versions.yaml; examples/_infra/compose-kafka.yaml image 4.3.2 | _docs/00-prerequisites-and-stacks.md:43; versions.md | verified |
+| 00-09 | 00 | PostgreSQL 18.6: CNPG operand on compose, same minor for Dev Services | compose-postgres.yaml image 18.6; mvn log postgres:18.6 | _docs/00-prerequisites-and-stacks.md:44; log r02 G1 2026-11-10 | verified |
+| 00-10 | 00 | Debezium Connect 3.7.1.Final has PostgresConnector and EventRouter | compose-connect.yaml image 3.7.1.Final; verify.sh 00 checks 11, 12 | _docs/00-prerequisites-and-stacks.md:46; log r02 G1 2026-11-10 | verified |
+| 00-11 | 00 | otel-lgtm: Loki, Grafana, Tempo, Prometheus behind one OTLP endpoint | compose-lgtm.yaml image 0.40.0; verify.sh 00 checks 13 to 15 | _docs/00-prerequisites-and-stacks.md:47; log r02 G1 2026-11-10 | verified |
+| 00-12 | 00 | UBI 10 OpenJDK 1.24-19 for build and runtime | Containerfiles; versions.md | _docs/00-prerequisites-and-stacks.md:48; versions.md | verified |
+| 00-13 | 00 | Docker 29.9.3, Compose 5.7.0 on the reference host | docker version | _docs/00-prerequisites-and-stacks.md:49; versions.md | verified |
+| 00-14 | 00 | One compose file per service, included on network `edp` | _infra/*.yaml; example compose files | _docs/00-prerequisites-and-stacks.md:55; repo | verified |
+| 00-15 | 00 | Kafka host 9092, containers kafka:9094 | compose-kafka.yaml | _docs/00-prerequisites-and-stacks.md:59; repo | verified |
+| 00-16 | 00 | PostgreSQL wal_level=logical on 5432; holds state, outbox tables, event store | verify.sh 00 check 9; examples/01 event store (V1 migration) | _docs/00-prerequisites-and-stacks.md:60; log r02 G1 2026-11-10 | verified |
+| 00-17 | 00 | Apicurio 8081 in memory, health 19000 | compose-apicurio.yaml; verify.sh 00 check 10 | _docs/00-prerequisites-and-stacks.md:61; log r02 G1 2026-11-10 | verified |
+| 00-18 | 00 | LGTM ports 3000, 4317, 4318, 19090, 3200, 3100 | compose-lgtm.yaml; infra run | _docs/00-prerequisites-and-stacks.md:63; log r02 G1 2026-11-10 | verified |
+| 00-19 | 00 | Cockpit, often enabled on Fedora and RHEL, listens on 9090 | https://cockpit-project.org/running.html ("log into port 9090") | _docs/00-prerequisites-and-stacks.md:65; fetched 2026-11-10 | verified |
+| 00-20 | 00 | Memory limits and health checks; about 7 GB total | _infra mem_limit values + app | _docs/00-prerequisites-and-stacks.md:65; repo | verified |
+| 00-21 | 00 | A second stack fails to bind the fixed ports | compose port mappings | _docs/00-prerequisites-and-stacks.md:69; repo | verified |
+| 00-22 | 00 | stack-guard refuses another compose project or minikube node, stops nothing; every verify.sh begins with it | scripts/stack-guard.sh; both verify.sh source it at line 7; executor test with foreign container | _docs/00-prerequisites-and-stacks.md:69; step 5 | verified |
+| 00-23 | 00 | service.name stack-check, OTLP http/protobuf to lgtm:4318 | application.properties quarkus.application.name=stack-check, otlp.protocol=http/protobuf; compose.yaml QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318 | _docs/00-prerequisites-and-stacks.md:121; repo | verified |
+| 00-24 | 00 | Grafana needs no login | compose-lgtm.yaml GF_AUTH_ANONYMOUS_* | _docs/00-prerequisites-and-stacks.md:125; repo | verified |
+| 00-25 | 00 | Prometheus `target_info{service_name="stack-check"}` | verify.sh 00 check 14 | _docs/00-prerequisites-and-stacks.md:130; log r02 G1 2026-11-10 | verified |
+| 00-26 | 00 | Loki `{service_name="stack-check"}`; consumer logs each record | verify.sh 00 check 15; OrderLogRoute | _docs/00-prerequisites-and-stacks.md:131; log r02 G1 2026-11-10 | verified |
+| 00-27 | 00 | UBI 10 multi-stage build, context examples/ | Containerfile | _docs/00-prerequisites-and-stacks.md:139; repo | verified |
+| 00-28 | 00 | domain-model installed first for mvn, built in-image for verify.sh | run blocks; Containerfile | _docs/00-prerequisites-and-stacks.md:144; repo | verified |
+| 00-29 | 00 | `mvn -B verify` needs no compose stack (Dev Services) | mvn log apache/kafka:4.3.2 (no compose stack running) | _docs/00-prerequisites-and-stacks.md:146; log r02 G1 2026-11-10 | verified |
+| 00-30 | 00 | verify.sh prints PASS/FAIL, N/N, non-zero on failure; KEEP=1 | verify.sh (check function, final test) | _docs/00-prerequisites-and-stacks.md:147; repo | verified |
+| 00-31 | 00 | Each verify.sh has a negative witness | verify.sh 00 checks 16, 17; verify.sh 01 checks 11, 12, 14 to 18 | _docs/00-prerequisites-and-stacks.md:149; log r02 G1 2026-11-10 | verified |
+| 00-32 | 00 | POST /orders: invalid 400, valid 202 published to edp.orders.placed keyed by id; second route consumes and logs | OrderIntakeTest validOrderIsAcceptedAndPublishedKeyedById, invalidOrderIsRejectedAndNothingIsPublished; verify.sh 00 checks 7, 8, 15, 16 | _docs/00-prerequisites-and-stacks.md:153; log r02 G1 2026-11-10 | verified |
+| 00-33 | 00 | Zero quantity, negative amount or blank customer fails in the constructor, so 400 and nothing published | OrderIntakeTest invalidOrderIsRejectedAndNothingIsPublished (quantity 0, amount -5, malformed JSON), blankCustomerIsRejectedWith400; OrderTest rejectsZeroQuantity, rejectsBlankCustomer | _docs/00-prerequisites-and-stacks.md:166; log r02 G1 2026-11-10 | verified |
+| 00-34 | 00 | onException turns the failure into 400 before Kafka | OrderIntakeRoute onException; OrderIntakeTest; verify.sh 00 check 17 | _docs/00-prerequisites-and-stacks.md:166; log r02 G1 2026-11-10 | verified |
+| 00-35 | 00 | camel-quarkus-opentelemetry2 creates a span per route and processor | Tempo trace of POST: SERVER span per route consumer, INTERNAL per processor, Kafka PRODUCER parent of consumer span | _docs/00-prerequisites-and-stacks.md:168; validator run 2026-11-10 | verified |
+| 00-36 | 00 | camel-quarkus-opentelemetry is deprecated | camel-quarkus-opentelemetry 3.40.0 quarkus-extension.yaml status: deprecated | _docs/00-prerequisites-and-stacks.md:168; validator | verified |
+| 00-37 | 00 | quarkus-micrometer-opentelemetry exports meters over OTLP; no scrape | pom.xml; verify.sh 00 check 14 | _docs/00-prerequisites-and-stacks.md:168; repo | verified |
+| 00-38 | 00 | quarkus-micrometer-opentelemetry exports logs by default; SmallRye Health on /q/health | application.properties; OrderIntakeTest healthReportsUp; verify.sh 00 check 15 | _docs/00-prerequisites-and-stacks.md:168; repo | verified |
+| 00-39 | 00 | Tests pass on Dev Services Kafka with the pinned image | mvn log apache/kafka:4.3.2; 4 tests (OrderIntakeTest) | _docs/00-prerequisites-and-stacks.md:179; log r02 G1 2026-11-10 | verified |
+| 00-40 | 00 | verify.sh prints 17/17; sample lines (PASS 7, 8, 9, 13 to 17 wording) | verify.sh 00 run 17/17; line 73 and 86 to 89 wording | _docs/00-prerequisites-and-stacks.md:193; log r02 G1 2026-11-10 | verified |
+| 00-41 | 00 | Removing onException: invalid gets 500, check 16 fails, check 17 still passes | experiment r02 G1: 16/17 (check 16 fails) | _docs/00-prerequisites-and-stacks.md:198; log r02 G1 2026-11-10 | verified |
+| 00-42 | 00 | Changing the producer topic fails check 8 (no record) and check 15 (consumer has nothing to log) | experiment r02 G1: 15/17 (checks 8 and 15 fail) | _docs/00-prerequisites-and-stacks.md:199; log r02 G1 2026-11-10 | verified |
+| 00-43 | 00 | Part 6 runs on minikube with Strimzi, CloudNativePG, same LGTM; Parts 1 to 5 need no cluster | roadmap statement (plan, not a behaviour claim); the setup is verified at r11 | _docs/00-prerequisites-and-stacks.md:203; iteration-plan r11 | verified (roadmap) |
+| 00-44 | 00 | Camel Kafka brokers via `camel.component.kafka.brokers` in compose | container failed to start without it; verify.sh 17/17 with CAMEL_COMPONENT_KAFKA_BROKERS | n/a; repair round 1 | verified |
+| 00-45 | 00 | quarkus-micrometer-opentelemetry enables OTel tracing, metrics and logs by default | https://quarkus.io/guides/telemetry-micrometer-to-opentelemetry; verify.sh 00 check 14 passes without quarkus.otel.metrics.enabled | _docs/00-prerequisites-and-stacks.md:168; repair round 2 | verified |
+| 00-46 | 00 | References: Kafka, Apicurio, Debezium, otel-lgtm, Quarkus, Camel Quarkus, CloudNativePG, SDKMAN, opentelemetry2, Quarkus OTel guide | each URL returned 200 | _docs/00-prerequisites-and-stacks.md:207; fetched 2026-11-10 | verified |
+| 00-47 | 00 | An example is a small Quarkus service, usually with Camel routes, plus a script that starts the stack, exercises the service and checks the result | examples/00-stack-check and 01-crud-vs-events layout (src/, compose.yaml, verify.sh) | _docs/00-prerequisites-and-stacks.md:10; repo | verified |
+| 00-48 | 00 | Parts 1 to 5 need only Docker Engine with compose, JDK 25, Maven, git and curl | roadmap statement; each example so far runs on exactly these (mvn verify on Dev Services, verify.sh on compose) | _docs/00-prerequisites-and-stacks.md:16; iteration plan | design (plan), realised in later chapters |
+| 00-49 | 00 | Docker Engine installs from Docker's repository; add the user to the docker group | https://docs.docker.com/engine/install/ (200) and linux-postinstall "Manage Docker as a non-root user" (fetched) | _docs/00-prerequisites-and-stacks.md:16; fetched 2026-11-10 | verified |
+| 00-50 | 00 | `sdk install java 25.0.5-tem` and `sdk install maven 3.9.16` are the SDKMAN identifiers | _plans/versions.md (SDKMAN id 25.0.5-tem; Maven 3.9.16) | _docs/00-prerequisites-and-stacks.md:26; versions.md | verified |
+| 00-51 | 00 | Apicurio Registry 3.3.4 | examples/_infra/compose-apicurio.yaml image 3.3.4; versions.md | _docs/00-prerequisites-and-stacks.md:45; versions.md | verified |
+| 00-52 | 00 | Each service image is pinned by tag in examples/_infra | grep image: examples/_infra/compose-*.yaml (five exact tags, none floating) | _docs/00-prerequisites-and-stacks.md:51; repo | verified |
+| 00-53 | 00 | Kafka Connect publishes 8083 | compose-connect.yaml ports 8083:8083; verify.sh 00 checks 11, 12 | _docs/00-prerequisites-and-stacks.md:62; log r02 G1 2026-11-10 | verified |
+| 00-54 | 00 | docker compose down -v stops the stack; verify.sh does it unless KEEP=1 | verify.sh 00 and 01 cleanup trap (down -v --remove-orphans; KEEP=1 message) | _docs/00-prerequisites-and-stacks.md:69; repo | verified |
+| 00-55 | 00 | Every example is a piece of one business: an online shop; customer orders, shop records, reserves stock, takes payment, books a carrier, delivers, tells the customer | _plans/domain-model.md (domain intro); _plans/r02-plan.md Domain section | _docs/00-prerequisites-and-stacks.md:73; plan | design (plan), realised in later chapters |
+| 00-56 | 00 | Five services each own one step; they share no tables and call no one else's API, reacting to events on Kafka, with one fetch-back exception | _plans/domain-model.md services table and intro (event notification fetch-back); no service exists in code yet | _docs/00-prerequisites-and-stacks.md:73; plan | design (plan), realised in later chapters |
+| 00-57 | 00 | Service table: order owns Order and lifecycle, inventory owns InventoryItem stock, payment owns Payment, shipping owns Shipment and carrier choice, notification owns Notification (the record types exist) | Order, InventoryItem, Payment, Shipment, Notification records in domain-model 2.0.0; DomainModelTest nested OrderTest, InventoryItemTest, PaymentTest, ShipmentTest, NotificationTest (79 tests, install run) | _docs/00-prerequisites-and-stacks.md:79; log r02 G1 2026-11-10 | verified |
+| 00-58 | 00 | Service table: which events each service reacts to and emits (order reacts to InventoryInsufficient, PaymentProcessed, PaymentFailed, ShipmentScheduled, ShipmentDelivered; notification reacts to every event; and so on) | _plans/domain-model.md services table; services built in later chapters | _docs/00-prerequisites-and-stacks.md:79; plan | design (plan), realised in later chapters |
+| 00-59 | 00 | Happy path: OrderPlaced, InventoryReserved, PaymentProcessed, ShipmentScheduled, ShipmentInTransit, ShipmentDelivered; order advances on payment and shipment events; notification reads every topic; nobody calls anybody | _plans/domain-model.md happy path and event table; realised from ch 02 onwards (only OrderPlaced is published in code so far: examples/00-stack-check) | _docs/00-prerequisites-and-stacks.md:85; plan | design (plan), realised in later chapters |
+| 00-60 | 00 | Each service keeps its tables in its own schema of the edp database: orders, inventory, payments, shipping, notifications | _plans/domain-model.md Persistence; no multi-service example yet (examples 00 and 01 use public schema) | _docs/00-prerequisites-and-stacks.md:87; plan | design (plan), realised in later chapters |
+| 00-61 | 00 | The order table is named `orders` because `order` is a reserved word | PostgreSQL SQL key words appendix (ORDER reserved); V1__order_and_events.sql creates orders; verify.sh 01 check 5 selects from orders | _docs/00-prerequisites-and-stacks.md:87; fetched 2026-11-10; repo | verified |
+| 00-62 | 00 | Nine events carry the flow; topic name is edp.<domain>.<event>, dots and hyphens only | Topics.ALL; TopicsTest catalogHasNineDistinctPrefixedTopics (nine, distinct, edp. prefix, no underscore) | _docs/00-prerequisites-and-stacks.md:89; examples/domain-model DomainModelTest | verified |
+| 00-63 | 00 | Event table: topic names (edp.orders.placed, edp.orders.cancelled, edp.inventory.reserved, edp.inventory.insufficient, edp.payments.processed, edp.payments.failed, edp.shipping.scheduled, edp.shipping.in-transit, edp.shipping.delivered) | Topics.java constants (grep); TopicsTest | _docs/00-prerequisites-and-stacks.md:93; examples/domain-model DomainModelTest | verified |
+| 00-64 | 00 | Event table: producer and consumer columns | _plans/domain-model.md event table; consumers built in later chapters | _docs/00-prerequisites-and-stacks.md:93; plan | design (plan), realised in later chapters |
+| 00-65 | 00 | domain-model holds Order, InventoryItem, Payment, Shipment, Notification, status enums and a Topics class; each record validates itself in its constructor | DomainModelTest nested tests (OrderTest rejectsBlankId, rejectsZeroQuantity, rejectsNegativeAmount and the same per record); TopicsTest | _docs/00-prerequisites-and-stacks.md:103; examples/domain-model DomainModelTest | verified |
+| 00-66 | 00 | The payload of an event is a separate record inside each example | examples/01-crud-vs-events OrderEventPayload (sealed interface, five records); domain-model has no event payload types | _docs/00-prerequisites-and-stacks.md:103; repo | verified |
+| 00-67 | 00 | Order moves PLACED, PAID, SHIPPED, DELIVERED one step at a time; CANCELLED only from PLACED or PAID; DELIVERED and CANCELLED final | OrderStatusTest transitionTable (parameterised, every pair) and tableCoversEveryPair | _docs/00-prerequisites-and-stacks.md:107; examples/domain-model DomainModelTest | verified |
+| 00-68 | 00 | A shipment moves PENDING, SCHEDULED, IN_TRANSIT, DELIVERED | ShipmentStatusTest transitionTable | _docs/00-prerequisites-and-stacks.md:107; examples/domain-model DomainModelTest | verified |
+| 00-69 | 00 | Order ids are text such as O-1001; amounts carry two decimals | OrderIntakeTest validOrderIsAcceptedAndPublishedKeyedById (O-1001); OrderTest roundsAmountToTwoDecimalsHalfUp; verify.sh 01 check 7 | _docs/00-prerequisites-and-stacks.md:107; examples/domain-model DomainModelTest | verified |
+| 00-70 | 00 | Two fictional carriers: FASTLINE by road and AIRCO by air | CarrierTest knownCarriers; unknownCarrierFails (FEDEX rejected); road/air from _plans/domain-model.md | _docs/00-prerequisites-and-stacks.md:109; examples/domain-model DomainModelTest | verified |
+| 00-71 | 00 | No real carrier appears anywhere in the book | grep for FedEx, UPS, DHL over _docs and examples: 0 hits except the FEDEX negative witness in CarrierTest | _docs/00-prerequisites-and-stacks.md:109; static gate r02 G1 | verified |
+| 00-72 | 00 | Failure paths: out of stock cancels the order and notifies; payment declined releases stock, cancels, notifies | _plans/domain-model.md failure paths; realised from the saga and compensation chapters | _docs/00-prerequisites-and-stacks.md:111; plan | design (plan), realised in later chapters |
+| 00-73 | 00 | Failure paths: late delivery needs an alert; duplicate event delivery must not apply twice; a service down leaves its events waiting in Kafka | _plans/domain-model.md failure paths; Kafka retention (design); realised in later chapters | _docs/00-prerequisites-and-stacks.md:115; plan | design (plan), realised in later chapters |
+| 00-74 | 00 | Tempo search by service.name stack-check finds the trace | verify.sh 00 check 13 | _docs/00-prerequisites-and-stacks.md:129; log r02 G1 2026-11-10 | verified |
+| 00-75 | 00 | Example layout: pom.xml, src/, compose.yaml, Containerfile, verify.sh, README.md | ls examples/00-stack-check and 01-crud-vs-events | _docs/00-prerequisites-and-stacks.md:136; repo | verified |
+| 00-76 | 00 | Route snippet: platform-http:/orders, routeId order-intake, key = body.id, to kafka:Topics.ORDERS_PLACED, 202 | examples/00-stack-check OrderIntakeRoute.java (snippet is the route verbatim) | _docs/00-prerequisites-and-stacks.md:156; repo | verified |
+| 00-77 | 00 | Old: POST /consignments, weight, origin | superseded by 00-32, 00-33 | n/a | cut (r02 domain switch) |
+| 01-01 | 01 | Event named in past tense; sender neither knows nor cares who reads it | book's own definition | _docs/01-events-commands-documents.md:22; n/a | verified (own definition) |
+| 01-02 | 01 | Hohpe and Woolf: Event Message for reliable, asynchronous event notification | enterpriseintegrationpatterns.com EventMessage | _docs/01-events-commands-documents.md:24; fetched 2026-11-10 | verified |
+| 01-03 | 01 | Fowler separates four patterns: notification, ECST, event sourcing, CQRS | martinfowler.com/articles/201701-event-driven.html | _docs/01-events-commands-documents.md:24; fetched 2026-11-10 | verified |
+| 01-04 | 01 | Part 1 covers the first two (notification, ECST) | iteration-plan / PRD section 5 (02 notification, 03 ECST) | _docs/01-events-commands-documents.md:24; plan | verified |
+| 01-05 | 01 | Events: OrderPlaced, OrderPaid, OrderShipped, OrderDelivered, OrderCancelled; each is one immutable row in order_event with stream_id, version, type, jsonb payload, occurred_at | V1__order_and_events.sql; OrderEventPayload JsonSubTypes (five names); OrderEvent; verify.sh 01 checks 6, 10 | _docs/01-events-commands-documents.md:28; repo | verified |
+| 01-06 | 01 | Panache maps order_event as @Immutable; Hibernate never writes changes to a loaded event back | loadedEventChangesAreNeverWrittenBack; OrderEvent @Immutable | _docs/01-events-commands-documents.md:28; repair round 1 | verified |
+| 01-07 | 01 | Camel carries the same events over Kafka (cut r01) | n/a | n/a | cut (r02 domain switch) |
+| 01-08 | 01 | Command Message invokes a procedure in another application through messaging | enterpriseintegrationpatterns.com CommandMessage | _docs/01-events-commands-documents.md:40; fetched 2026-11-10 | verified |
+| 01-09 | 01 | ChangeOrderStatus: order id, target OrderStatus, optional expected version and, for cancellation, a reason | ChangeOrderStatus.java (orderId, to, expectedVersion, reason) | _docs/01-events-commands-documents.md:44; repo | verified |
+| 01-10 | 01 | A REST endpoint builds the command and hands it to one CDI bean that asks OrderStatus.canMoveTo; one step forward, CANCELLED only from PLACED or PAID | OrderResource POST {id}/status; OrderService; Lifecycle.allows delegates to OrderStatus.canMoveTo; OrderStatusTest; cancelAfterShippedIsRefusedAndAppendsNothing | _docs/01-events-commands-documents.md:44; repo | verified |
+| 01-11 | 01 | Refused command: 409, no event | illegalTransitionIsRefusedAndAppendsNothing; cancelAfterShippedIsRefusedAndAppendsNothing; verify.sh 01 checks 11, 12 | _docs/01-events-commands-documents.md:44; log r02 G1 2026-11-10 | verified |
+| 01-12 | 01 | In a Camel route the record is the body (cut r01) | n/a | n/a | cut (r02 domain switch) |
+| 01-13 | 01 | Document Message transfers a data structure; receiver decides what, if anything, to do | enterpriseintegrationpatterns.com DocumentMessage | _docs/01-events-commands-documents.md:56; fetched 2026-11-10 | verified |
+| 01-14 | 01 | Payload is one record per event type under sealed OrderEventPayload; OrderPlaced carries the order, OrderCancelled a reason; replay reads typed fields | OrderEventPayload; replayEqualsRow; cancelFromPaidIsAllowedAndRecordsTheReason (mvn 11/11) | _docs/01-events-commands-documents.md:28; log r02 G1 2026-11-10 | verified |
+| 01-15 | 01 | OrderDocument pairs the Order record with its OrderStatus; GET /orders/{id} returns JSON; a second endpoint returns the same document rebuilt from events | OrderDocument.java; OrderResource GET {id}, GET {id}/replayed; replayEqualsRow | _docs/01-events-commands-documents.md:60; repo | verified |
+| 01-16 | 01 | Both endpoints return identical JSON | replayEqualsRow; verify.sh 01 check 8 | _docs/01-events-commands-documents.md:60; log r02 G1 2026-11-10 | verified |
+| 01-17 | 01 | Row model overwrites; previous status is gone; current state is one primary-key lookup | verify.sh 01 check 9 (row shows DELIVERED only); OrderRow id is the primary key (V1) | _docs/01-events-commands-documents.md:66; log r02 G1 2026-11-10 | verified |
+| 01-18 | 01 | Handler loads the stream, replays it for the current status, checks the transition, inserts the next event with the next version | OrderService.appendEvent lines 55 to 65; oneRowAndOneEventPerChange | _docs/01-events-commands-documents.md:68; repo | verified |
+| 01-19 | 01 | Writers that raced on one stream collide on UNIQUE (stream_id, version); the database settles the race | V1 order_event_stream_version; staleExpectedVersionIsRejectedByTheUniqueConstraint; experiment: remove constraint, mvn 10/11 | _docs/01-events-commands-documents.md:68; log r02 G1 2026-11-10 | verified |
+| 01-20 | 01 | Triggers on order_event refuse UPDATE, DELETE and TRUNCATE: a row trigger for the first two, a statement trigger for TRUNCATE because a row trigger never fires for it | appendOnlyTriggersRefuseUpdateDeleteAndTruncate; V1 order_event_no_update_delete, V2 order_event_no_truncate; verify.sh 01 checks 14 to 18; experiments remove trigger (14, 16) and remove V2 (17, 18); PostgreSQL CREATE TRIGGER doc (TRUNCATE only FOR EACH STATEMENT) | _docs/01-events-commands-documents.md:68; log r02 G1 2026-11-10 | verified |
+| 01-21 | 01 | Replay is a left fold from nothing: OrderPlaced gives order and first status, later events move the status; result equals the row document | OrderDocument.replay; replayEqualsRow; verify.sh 01 check 8 | _docs/01-events-commands-documents.md:72; log r02 G1 2026-11-10 | verified |
+| 01-22 | 01 | History endpoint returns StatusHistory: order id and every status with version and timestamp; only the stream can produce it | priorStatusesComeFromEventsOnly; verify.sh 01 check 10; OrderService.history reads the stream only | _docs/01-events-commands-documents.md:72; log r02 G1 2026-11-10 | verified |
+| 01-24 | 01 | Temporal query and new views by replay | Fowler, Event Sourcing | _docs/01-events-commands-documents.md:82; bibliography | verified |
+| 01-25 | 01 | Row writers use an optimistic lock | OrderRow @Version | _docs/01-events-commands-documents.md:80; repo | verified |
+| 01-26 | 01 | Maven build runs eleven tests against Dev Services PostgreSQL; Flyway creates orders and order_event | mvn -B verify 11/11 (CrudVsEventsTest, 11 @Test methods) | _docs/01-events-commands-documents.md:95; log r02 G1 2026-11-10 | verified |
+| 01-27 | 01 | verify.sh starts PostgreSQL, LGTM and the app, places an order, moves it PLACED to DELIVERED, prints 19/19; row, stream, replay and history agree; illegal move, duplicate order, UPDATE, DELETE, TRUNCATE refused; Tempo trace exists | verify.sh 01 run 19/19: checks 1 to 4 (place, pay, ship, deliver), 5 to 10, 11 to 13, 14 to 18, 19 | _docs/01-events-commands-documents.md:95; log r02 G1 2026-11-10 | verified |
+| 01-28 | 01 | Lifecycle.allows always true: illegal move returns 204, event count grows; checks 11, 12, 15 fail | experiment r02 G1: 16/19 (checks 11, 12, 15) | _docs/01-events-commands-documents.md:99; log r02 G1 2026-11-10 | verified |
+| 01-29 | 01 | Deleting the UPDATE/DELETE trigger from V1: UPDATE and DELETE succeed; checks 14 and 16 fail | experiment r02 G1: 17/19 (checks 14, 16) | _docs/01-events-commands-documents.md:100; log r02 G1 2026-11-10 | verified |
+| 01-30 | 01 | PAID then SHIPPED both with expectedVersion 1: second gets 409 because version 2 exists, neither row nor stream changes; removing the unique constraint lets the second get 204 with two events at version 2 | staleExpectedVersionIsRejectedByTheUniqueConstraint (409, events 2); experiment r02 G1: remove unique constraint, mvn 10/11 | _docs/01-events-commands-documents.md:103; log r02 G1 2026-11-10 | verified |
+| 01-31 | 01 | Removing the appendEvent call: row advances, stream stops; checks 6, 8, 10, 12, 15 fail | experiment r02 G1: 14/19 (checks 6, 8, 10, 12, 15); OrderService.change calls appendEvent at line 42 | _docs/01-events-commands-documents.md:102; log r02 G1 2026-11-10 | verified |
+| 01-32 | 01 | Long streams need snapshots; payloads are permanent contracts; corrections are new events | Fowler 2005, 2017 | _docs/01-events-commands-documents.md:107; bibliography | verified |
+| 01-33 | 01 | The unique constraint settles only concurrent writers on one stream; it does not make another system's change atomic | by construction | _docs/01-events-commands-documents.md:107; n/a | verified |
+| 01-34 | 01 | Prefer a document when the receiver needs whole current state; keep the row when nobody asks about the past | design judgement (book's own guidance) | _docs/01-events-commands-documents.md:109; n/a | verified (own guidance) |
+| 01-35 | 01 | Lawrence ch 2 and ch 6 titles; Hohpe and Woolf, Fowler URLs | InformIT table of contents; EIP and Fowler pages | _docs/01-events-commands-documents.md:120; sources.md | verified |
+| 01-36 | 01 | Amount 19.999 is rounded once to 20.00 by the Order record, so row, event and replay agree | amountIsNormalisedOnceSoRowEventAndReplayAgree; verify.sh 01 check 7; DomainModelTest OrderTest roundsAmountToTwoDecimalsHalfUp | _docs/01-events-commands-documents.md:72; log r02 G1 2026-11-10 | verified |
+| 01-37 | 01 | Placing the same id twice gets 409 and leaves one row and one event | placingTheSameIdTwiceIsRefusedWith409; verify.sh 01 check 13 | _docs/01-events-commands-documents.md:95; log r02 G1 2026-11-10 | verified |
+| 01-38 | 01 | Deleting V2: TRUNCATE empties every stream; checks 17 and 18 fail | experiment r02 G1: 17/19 (checks 17, 18) | _docs/01-events-commands-documents.md:101; log r02 G1 2026-11-10 | verified |
+| 01-39 | 01 | An order PLACED to PAID is one message and one table change; the message type decides responsibility, storage decides whether the previous status survives | design framing; made observable by verify.sh 01 checks 9, 10 (row shows only latest, history shows both) | _docs/01-events-commands-documents.md:10; log r02 G1 2026-11-10 | verified |
+| 01-40 | 01 | Other parts need to know an order was paid; calling each makes the sender know them and wait; the fact cannot be refused | problem statement (design judgement) | _docs/01-events-commands-documents.md:18; n/a | verified (own guidance) |
+| 01-41 | 01 | Someone must be able to ask for a change and be refused: PAID is valid only for a PLACED order | OrderStatusTest transitionTable (PLACED to PAID legal, others not); illegalTransitionIsRefusedAndAppendsNothing | _docs/01-events-commands-documents.md:34; examples/domain-model DomainModelTest | verified |
+| 01-42 | 01 | The receiver owns the state, so it validates the command; only after it accepts does anything become a fact | OrderService.change checks the transition then appends; illegalTransitionIsRefusedAndAppendsNothing | _docs/01-events-commands-documents.md:40; repo | verified |
+| 01-43 | 01 | A reader wants to know where an order stands now; not an instruction, not a replay | problem statement (design judgement) | _docs/01-events-commands-documents.md:50; n/a | verified (own guidance) |
+| 01-44 | 01 | Only DDL (dropping the table, or dropping or disabling a trigger) gets past the triggers | experiments drop the trigger and V2 and the guard fails; ALTER TABLE ... DISABLE TRIGGER in PostgreSQL ALTER TABLE doc (fetched); DDL bypass by construction | _docs/01-events-commands-documents.md:68; fetched 2026-11-10; experiments r02 G1 | verified |
+| 01-45 | 01 | Comparison table: audit table beside a row is trusted by convention; optimistic lock on the row; unique stream version; reads dominate; new views by replay; status last Tuesday needs replay | design judgement; priorStatusesComeFromEventsOnly (history from events, row cannot answer); OrderRow @Version; V1 unique constraint; Fowler, Event Sourcing (temporal query, new views) | _docs/01-events-commands-documents.md:77; bibliography | verified (own guidance) |
+| 01-46 | 01 | Use a row when only current state matters; events when past is part of the requirement; many systems need both | design judgement (book's own guidance) | _docs/01-events-commands-documents.md:84; n/a | verified (own guidance) |
+| 01-47 | 01 | KEEP=1 ./verify.sh leaves the stack up; Grafana at localhost:3000 shows request traces | verify.sh KEEP=1 branch; verify.sh 01 check 19; compose-lgtm.yaml port 3000 | _docs/01-events-commands-documents.md:95; repo | verified |
+| 01-48 | 01 | Cancel from PAID is allowed and records the reason; cancel after SHIPPED is refused with nothing appended | cancelFromPaidIsAllowedAndRecordsTheReason; cancelAfterShippedIsRefusedAndAppendsNothing | _docs/01-events-commands-documents.md:44; log r02 G1 2026-11-10 | verified |
+| 01-49 | 01 | AI callout: apply ChangeOrderStatus through both models; row answers only the current status, order_event every earlier status with timestamp | OrderRow vs OrderEvent; verify.sh 01 checks 9, 10 | _docs/01-events-commands-documents.md:112; log r02 G1 2026-11-10 | verified |
+| 01-50 | 01 | Old: ConsignmentEvent columns, ChangeConsignmentStatus, weight rounding 1.2345 to 1.235, duplicate booking, nine tests, 12/12, old experiment check numbers | superseded by 01-05, 01-09, 01-36, 01-37, 01-26, 01-27, 01-28 to 01-31 | n/a | cut (r02 domain switch) |
