@@ -1,5 +1,7 @@
 package com.patterncatalyst.shipping.crudvsevents;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -16,19 +18,26 @@ import jakarta.transaction.Transactional;
 @ApplicationScoped
 public class ConsignmentService {
 
+    /** weight_kg is numeric(12, 3): normalise once so the row and the event carry the same value. */
+    private static final int WEIGHT_SCALE = 3;
+
     @Transactional
     public void book(Consignment consignment) {
+        if (ConsignmentRow.findById(consignment.id()) != null) {
+            throw new DuplicateConsignmentException(consignment.id());
+        }
+        BigDecimal weightKg = consignment.weightKg().setScale(WEIGHT_SCALE, RoundingMode.HALF_UP);
         ConsignmentRow row = new ConsignmentRow();
         row.id = consignment.id();
         row.origin = consignment.origin();
         row.destination = consignment.destination();
-        row.weightKg = consignment.weightKg();
+        row.weightKg = weightKg;
         row.carrier = consignment.carrier();
         row.status = ConsignmentStatus.BOOKED;
         row.persist();
 
         ConsignmentEventPayload payload = new ConsignmentEventPayload.ConsignmentBooked(consignment.id(),
-                consignment.origin(), consignment.destination(), consignment.weightKg(), consignment.carrier());
+                consignment.origin(), consignment.destination(), weightKg, consignment.carrier());
         append(consignment.id(), 0, payload);
     }
 

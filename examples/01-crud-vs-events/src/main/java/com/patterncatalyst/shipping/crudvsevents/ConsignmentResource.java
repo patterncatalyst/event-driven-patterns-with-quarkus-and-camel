@@ -65,6 +65,11 @@ public class ConsignmentResource {
     }
 
     @ServerExceptionMapper
+    RestResponse<String> duplicate(DuplicateConsignmentException e) {
+        return RestResponse.status(RestResponse.Status.CONFLICT, e.getMessage());
+    }
+
+    @ServerExceptionMapper
     RestResponse<String> missing(ConsignmentNotFoundException e) {
         return RestResponse.status(RestResponse.Status.NOT_FOUND, e.getMessage());
     }

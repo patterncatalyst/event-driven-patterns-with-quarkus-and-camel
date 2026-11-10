@@ -31,3 +31,7 @@ services:
       start_period: 15s
     networks:
       - edp
+
+networks:
+  edp:
+    name: edp

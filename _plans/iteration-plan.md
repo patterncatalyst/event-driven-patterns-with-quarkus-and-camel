@@ -44,5 +44,5 @@ Approved 2026-11-10 (see `r01-plan.md`). Decision 1: published `quay.io/debezium
 | 9 | Chapter 00 + `examples/00-stack-check`; figure 00-compose-stack | exec H | done |
 | 10 | Chapter 01 + `examples/01-crud-vs-events`; figure 01-row-update-vs-event-append | exec I | done |
 | 11 | Live verification, serial, clean docker: 00 then 01; log; claims verified; stop all | orchestrator | done |
-| 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | done; repair round 1 in progress |
+| 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | done; repair rounds 1 and 2 done |
 | 13 | Ship: PR, CI green, ruleset, squash-merge on owner OK, tag r01.0, notes-only release, delete branch | orchestrator | pending |

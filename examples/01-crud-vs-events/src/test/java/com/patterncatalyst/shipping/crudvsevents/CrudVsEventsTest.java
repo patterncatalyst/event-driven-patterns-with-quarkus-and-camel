@@ -92,14 +92,38 @@ class CrudVsEventsTest {
     }
 
     @Test
-    void appendOnlyTriggerRefusesUpdateAndDelete() throws SQLException {
+    void appendOnlyTriggersRefuseUpdateDeleteAndTruncate() throws SQLException {
         String id = book();
         try (Connection c = dataSource.getConnection(); Statement s = c.createStatement()) {
             assertThrows(SQLException.class,
                     () -> s.executeUpdate("UPDATE consignment_event SET type = 'X' WHERE stream_id = '" + id + "'"));
             assertThrows(SQLException.class,
                     () -> s.executeUpdate("DELETE FROM consignment_event WHERE stream_id = '" + id + "'"));
+            assertThrows(SQLException.class, () -> s.execute("TRUNCATE consignment_event"));
         }
+        assertEquals(1, events(id));
+    }
+
+    @Test
+    void weightIsNormalisedOnceSoRowEventAndReplayAgree() {
+        String id = "C-" + UUID.randomUUID();
+        given().contentType(ContentType.JSON)
+                .body(Map.of("id", id, "origin", "NLRTM", "destination", "SGSIN",
+                        "weightKg", 1.2345, "carrier", "FASTLINE"))
+                .post("/consignments").then().statusCode(201);
+        String row = given().get("/consignments/" + id).then()
+                .body("consignment.weightKg", equalTo(1.235f)).extract().asString();
+        assertEquals(row, given().get("/consignments/" + id + "/replayed").asString());
+    }
+
+    @Test
+    void bookingTheSameIdTwiceIsRefusedWith409() {
+        String id = book();
+        given().contentType(ContentType.JSON)
+                .body(Map.of("id", id, "origin", "NLRTM", "destination", "SGSIN",
+                        "weightKg", 10, "carrier", "AIRCO"))
+                .post("/consignments").then().statusCode(409);
+        assertEquals(1, rows(id));
         assertEquals(1, events(id));
     }
 

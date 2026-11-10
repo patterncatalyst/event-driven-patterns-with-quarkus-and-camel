@@ -6,12 +6,9 @@ import com.patterncatalyst.shipping.ConsignmentStatus;
 /** The Document Message a reader receives: the Consignment and where it stands now. */
 public record ConsignmentDocument(Consignment consignment, ConsignmentStatus status) {
 
-    /** weight_kg is numeric(12, 3). */
-    private static final int WEIGHT_SCALE = 3;
-
     static ConsignmentDocument of(ConsignmentRow row) {
         return new ConsignmentDocument(
-                new Consignment(row.id, row.origin, row.destination, row.weightKg.setScale(WEIGHT_SCALE), row.carrier), row.status);
+                new Consignment(row.id, row.origin, row.destination, row.weightKg, row.carrier), row.status);
     }
 
     /** Rebuilds the document by folding a stream from the first event to the last. */
@@ -22,7 +19,7 @@ public record ConsignmentDocument(Consignment consignment, ConsignmentStatus sta
             switch (event.payload) {
                 case ConsignmentEventPayload.ConsignmentBooked booked -> {
                     consignment = new Consignment(booked.id(), booked.origin(), booked.destination(),
-                            booked.weightKg().setScale(WEIGHT_SCALE), booked.carrier());
+                            booked.weightKg(), booked.carrier());
                     status = ConsignmentStatus.BOOKED;
                 }
                 case ConsignmentEventPayload.ConsignmentStatusChanged changed -> status = changed.to();

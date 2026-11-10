@@ -34,3 +34,14 @@ Clean Docker state, nothing else running. `docker compose -f examples/_infra/com
 - `examples/01-crud-vs-events/verify.sh`: **10/10 checks passed** (1 row vs 4 events; replay equals row; row shows latest only; history BOOKED, LOADED, IN_TRANSIT, CLEARED; illegal transition 409 appends nothing; UPDATE on consignment_event refused and events unchanged; Tempo trace for crud-vs-events). `mvn -B verify`: 6/6. Negative witnesses (executor run): lifecycle check removed fails the illegal-transition test; trigger removed fails the append-only test; event append removed fails 5 of 6.
 - Defect found and fixed during step 10: `_infra/postgres/start.sh` lacked a `host all all all scram-sha-256` pg_hba line, so containers on the `edp` network could not connect (chapter 00 never connects as an app, so it passed). Fixed before this run.
 - After both runs: no edp- containers or volumes remain.
+
+### 2026-11-10 · final run after repair rounds 1 and 2
+
+Clean Docker state (`scripts/setup-stack.sh --clean`), each example alone, one after the other.
+
+- `examples/00-stack-check/verify.sh`: **17/17 checks passed**. `mvn -B verify`: 4/4.
+- `examples/01-crud-vs-events/verify.sh`: **12/12 checks passed** (adds TRUNCATE refused and events unchanged). `mvn -B verify`: 9/9.
+- Experiments recorded: ch00 removing `onException` gives 16/17 (check 16 fails; mvn: expected 400 but was 500); renaming the topic gives 15/17 (checks 8, 15). ch01 `Lifecycle.allows` true gives 9/12 (checks 6, 7, 9); dropping the UPDATE/DELETE trigger gives 11/12 (check 8); dropping V2 gives 10/12 (checks 10, 11); removing `appendEvent` gives 7/12 (checks 2, 3, 5, 7, 9).
+- Fresh-clone run by the re-validator (domain-model not preinstalled): 00 17/17, 01 10/10 before round 2.
+- Gates: validate.py ok (self-test 5/5), voice 0 ban-tier, idiomatic 0, host_ids 0 hits, site builds.
+- After the runs: no edp- containers or volumes remain.

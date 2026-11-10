@@ -24,7 +24,7 @@ mvn -B verify
 2. **The stream keeps every status.** `GET /consignments/{id}/history` lists each status with its version and timestamp.
 3. **Replay equals the row.** `GET /consignments/{id}/replayed` returns the same JSON as the row.
 4. **An illegal move is refused.** Sending BOOKED to a LOADED Consignment returns 409 and `consignment_event` gains no row.
-5. **The history is append-only.** `UPDATE consignment_event` fails in `psql` with an append-only error.
+5. **The history is append-only.** `UPDATE`, `DELETE` and `TRUNCATE` on `consignment_event` fail in `psql` with an append-only error.
 6. **Telemetry arrives.** Grafana at `http://localhost:3000` shows traces for `crud-vs-events`.
 
 ## Infrastructure

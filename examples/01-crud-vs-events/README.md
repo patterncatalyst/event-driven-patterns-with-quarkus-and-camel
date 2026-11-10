@@ -2,7 +2,7 @@
 
 One command, `ChangeConsignmentStatus`, applied two ways to the same Consignment: the `consignment` row is updated in place, and a `ConsignmentStatusChanged` event is appended to `consignment_event`. The service answers the same questions from both and shows which ones only the events can answer.
 
-Quarkus REST, Hibernate ORM with Panache, Flyway, PostgreSQL, SmallRye Health and OpenTelemetry to the LGTM stack. No Camel and no Kafka: they arrive in chapter 02. The shared records come from `examples/domain-model`.
+Quarkus REST, Hibernate ORM with Panache, Flyway, PostgreSQL, SmallRye Health and OpenTelemetry to the LGTM stack. Camel and Kafka are not used here. The shared records come from `examples/domain-model`.
 
 ## Endpoints
 
@@ -20,7 +20,7 @@ The lifecycle is BOOKED, LOADED, IN_TRANSIT, CLEARED, DELIVERED, one step forwar
 
 ```bash
 (cd ../domain-model && mvn -B -q install)
-mvn -B verify      # seven tests, PostgreSQL from Dev Services
+mvn -B verify      # nine tests, PostgreSQL from Dev Services
 ./verify.sh        # compose stack plus the observable checks
 KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
@@ -32,7 +32,8 @@ docker compose down -v
 
 | Path | Purpose |
 |---|---|
-| `src/main/resources/db/migration/V1__consignment_and_events.sql` | Both tables, the unique `(stream_id, version)` and the append-only trigger |
+| `src/main/resources/db/migration/V1__consignment_and_events.sql` | Both tables, the unique `(stream_id, version)` and the UPDATE and DELETE trigger |
+| `src/main/resources/db/migration/V2__append_only_truncate.sql` | The statement trigger that refuses TRUNCATE |
 | `ConsignmentService` | The two paths: `updateRow` and `appendEvent` |
 | `ConsignmentDocument` | Row to document, and replay of a stream to the same document |
 | `ConsignmentResource` | REST endpoints and 409 mapping |

@@ -81,21 +81,24 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 01-17 | 01 | Row model overwrites; previous status gone | verify.sh 01 check 4 | log 2026-11-10 | verified |
 | 01-18 | 01 | Handler loads, replays, checks, inserts next version | ConsignmentService.appendEvent | repo | verified |
 | 01-19 | 01 | Racing writers collide on UNIQUE(stream_id, version) | stale-expected-version test (simulated race) | repo | verified |
-| 01-20 | 01 | Trigger raises on UPDATE or DELETE | appendOnlyTriggerRefusesUpdateAndDelete; verify.sh 01 checks 8, 9; trigger witness | log 2026-11-10 | verified |
+| 01-20 | 01 | Triggers refuse UPDATE, DELETE and TRUNCATE; a row trigger never fires for TRUNCATE | appendOnlyTriggersRefuseUpdateDeleteAndTruncate; verify.sh 01 checks 8 to 11; V2-drop witness (checks 10, 11 fail) | repair round 2 | verified |
 | 01-21 | 01 | Replay is a left fold giving the row's document | ConsignmentDocument.replay; replayEqualsRow | repo | verified |
 | 01-22 | 01 | History endpoint returns StatusHistory: id, each status with version and timestamp | priorStatusesComeFromEventsOnly; verify.sh 01 check 5 | log 2026-11-10 | verified |
 | 01-23 | 01 | Only the stream can produce the history | ConsignmentService.history | repo | verified |
 | 01-24 | 01 | Temporal query and new views by replay | Fowler, Event Sourcing | bibliography | verified |
 | 01-25 | 01 | Row writers use an optimistic lock | ConsignmentRow @Version | repo | verified |
-| 01-26 | 01 | Seven tests against Dev Services PostgreSQL; Flyway creates both tables | mvn log Tests run: 7 | repair round 1 | verified |
-| 01-27 | 01 | verify.sh 10/10 | verify.sh 01 | log 2026-11-10 | verified |
-| 01-28 | 01 | Lifecycle.allows true: 204 and event count grows | lifecycle witness ("expected 409 but was 204") | repair round 1 | verified |
-| 01-29 | 01 | Deleting the trigger lets the UPDATE succeed | trigger witness | repair round 1 | verified |
-| 01-30 | 01 | Two commands with expectedVersion 1: second 409 | stale-expected-version test | repo | verified |
-| 01-31 | 01 | Remove the appendEvent call: row advances, stream stops | append witness (5 of 6 tests fail) | step 10 | verified |
+| 01-26 | 01 | Nine tests against Dev Services PostgreSQL; Flyway creates the tables and triggers | mvn log Tests run: 9 | repair round 2 | verified |
+| 01-27 | 01 | verify.sh 12/12 | verify.sh 01 | repair round 2 | verified |
+| 01-28 | 01 | Lifecycle.allows true: checks 6, 7, 9 fail | witness run 9/12 | repair round 2 | verified |
+| 01-29 | 01 | Dropping the UPDATE/DELETE trigger: check 8 fails | witness run 11/12 | repair round 2 | verified |
+| 01-30 | 01 | LOADED then IN_TRANSIT, both expectedVersion 1: second 409 because version 2 exists | stale-expected-version test | repair round 2 | verified |
+| 01-31 | 01 | Remove the appendEvent call: checks 2, 3, 5, 7, 9 fail | witness run 7/12 | repair round 2 | verified |
 | 01-32 | 01 | Long streams need snapshots; payloads are permanent contracts; corrections are new events | Fowler 2005, 2017 | bibliography | verified |
 | 01-33 | 01 | Unique constraint does not make another system's change atomic | by construction | n/a | verified |
 | 01-34 | 01 | Prefer a document when the receiver needs whole current state | design judgement (book's own guidance) | n/a | verified (own guidance) |
 | 01-35 | 01 | Lawrence ch 2 and ch 6 titles | InformIT table of contents | sources.md | verified |
 | 00-45 | 00 | quarkus-micrometer-opentelemetry enables OTel tracing, metrics and logs by default | https://quarkus.io/guides/telemetry-micrometer-to-opentelemetry; verify.sh 00 check 14 passes without quarkus.otel.metrics.enabled | repair round 2 | verified |
 | 00-46 | 00 | References: Kafka, Apicurio, Debezium, otel-lgtm, Quarkus, Camel Quarkus, CloudNativePG, SDKMAN docs | each URL returned 200 | fetched 2026-11-10 | verified |
+| 01-36 | 01 | Booking 1.2345 stores 1.235 and replay equals the row | weight rounding test | repair round 2 | verified |
+| 01-37 | 01 | A duplicate booking gets 409 and leaves one row and one event | duplicate booking test | repair round 2 | verified |
+| 01-38 | 01 | Dropping V2 (no TRUNCATE trigger): checks 10, 11 fail | witness run 10/12 | repair round 2 | verified |

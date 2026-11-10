@@ -1,4 +1,5 @@
-# Build context is examples/: docker build -f 01-crud-vs-events/Containerfile .
+# Build context is examples/ so the shared domain model can be installed first.
+#   docker build -f 01-crud-vs-events/Containerfile -t crud-vs-events examples
 FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
 USER 185
 WORKDIR /build
@@ -9,8 +10,8 @@ RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
  && mvn -B -ntp -q -f 01-crud-vs-events/pom.xml package -DskipTests
 
 FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager" \
-    JAVA_APP_JAR=/deployments/quarkus-run.jar
+ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
+    JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/lib/ /deployments/lib/
 COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/*.jar /deployments/
 COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/app/ /deployments/app/
