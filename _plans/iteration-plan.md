@@ -10,7 +10,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 
 | Iter | Scope | Chapters | Run | Status |
 |---|---|---|---|---|
-| r01 | Repo, Jekyll site, CLAUDE.md, _plans, domain-model mirror, compose _infra, domain-model module, CI, validate.py, version re-survey, source and Strimzi-post confirmation | 00 to 01 | C | in progress |
+| r01 | Repo, Jekyll site, CLAUDE.md, _plans, domain-model mirror, compose _infra, domain-model module, CI, validate.py, version re-survey, source and Strimzi-post confirmation | 00 to 01 | C | done (r01.0, 2026-11-10) |
 | r02 | Events between services | 02 to 04 (event notification, event-carried state transfer, ordering and partitioning) | C | planned |
 | r03 | Publishers, subscribers, queues | 05 to 07 | C | planned |
 | r04 | Outbox, Debezium in depth, connector offsets on compose | 08 to 10 | C | planned |
@@ -45,4 +45,4 @@ Approved 2026-11-10 (see `r01-plan.md`). Decision 1: published `quay.io/debezium
 | 10 | Chapter 01 + `examples/01-crud-vs-events`; figure 01-row-update-vs-event-append | exec I | done |
 | 11 | Live verification, serial, clean docker: 00 then 01; log; claims verified; stop all | orchestrator | done |
 | 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | done; repair rounds 1 and 2 done |
-| 13 | Ship: PR, CI green, ruleset, squash-merge on owner OK, tag r01.0, notes-only release, delete branch | orchestrator | pending |
+| 13 | Ship: PR, CI green, ruleset, squash-merge on owner OK, tag r01.0, notes-only release, delete branch | orchestrator | done |
