@@ -401,8 +401,40 @@ def check_no_forwarding(rep: Report):
                     "(compose ports, minikube start --ports, NodePorts) instead")
 
 
+BANNED_DOMAIN = re.compile(
+    r"\b(?:Consignment\w*|consignment\w*|HandlingEvent|TrackingHistory|Tariff|RateQuote|Invoice|Settlement|"
+    r"CustomsDeclaration|Vessel|Sailing|PortCall|SlotId|Manifest|BOOKED|LOADED|CLEARED|NLRTM|SGSIN|"
+    r"weightKg|weight_kg|freight|FedEx|UPS|DHL)\b")
+DOMAIN_SUFFIXES = {".java", ".kt", ".xml", ".yaml", ".yml", ".sh", ".md", ".sql", ".properties", ".json",
+                   ".html", ".py", ".txt", ".svg", ".excalidraw", ".toml", ".adoc"}
+
+
+def check_domain_names(rep: Report):
+    """The r02 shipping domain is order-to-delivery: the old freight identifiers must not come back."""
+    roots = ["_docs/*", "_parts/*", "_example_pages/*", "index.html", "chapters.html", "README.md",
+             "bibliography.md", "CLAUDE.md", "_plans/domain-model.md", "examples/**/*",
+             "diagrams/specs/*.py", "diagrams/*.svg", "diagrams/*.excalidraw"]
+    seen: set[Path] = set()
+    for p in files(rep.root, *roots):
+        if p in seen:
+            continue
+        seen.add(p)
+        if p.suffix not in DOMAIN_SUFFIXES:
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for i, ln in enumerate(text.split("\n"), 1):
+            if "freight model" in ln:
+                continue
+            m = BANNED_DOMAIN.search(ln)
+            if m:
+                rep.err(p, i, f"banned freight-domain name '{m.group(0)}' (use the order-to-delivery domain)")
+
+
 CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters,
-          check_examples, check_camel_schemes, check_podman, check_no_forwarding]
+          check_examples, check_camel_schemes, check_podman, check_no_forwarding, check_domain_names]
 
 
 def run(root: Path) -> Report:
@@ -455,6 +487,16 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
         e = run(r).errors
         results.append(("port-forward caught", any("forwarding" in x for x in e), e))
+
+        r = build("domain")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nA Consignment is booked.\n")
+        e = run(r).errors
+        results.append(("freight name caught", any("freight-domain" in x for x in e), e))
+
+        r = build("k8s")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nApply the Kubernetes manifests.\n")
+        e = run(r).errors
+        results.append(("lowercase manifests allowed", not any("freight-domain" in x for x in e), e))
 
         r = build("callout")
         (r / "_docs/01-demo.md").write_text(

@@ -11,7 +11,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | Iter | Scope | Chapters | Run | Status |
 |---|---|---|---|---|
 | r01 | Repo, Jekyll site, CLAUDE.md, _plans, domain-model mirror, compose _infra, domain-model module, CI, validate.py, version re-survey, source and Strimzi-post confirmation | 00 to 01 | C | done (r01.0, 2026-11-10) |
-| r02 | Events between services | 02 to 04 (event notification, event-carried state transfer, ordering and partitioning) | C | planned |
+| r02 | Order-to-delivery domain rework of 00 and 01; events between services | 02 to 04 (event notification, event-carried state transfer with claim check, ordering and partitioning with resequencer) | C | in progress |
 | r03 | Publishers, subscribers, queues | 05 to 07 | C | planned |
 | r04 | Outbox, Debezium in depth, connector offsets on compose | 08 to 10 | C | planned |
 | r05 | Idempotency, exactly-once, retry and dead letter | 11 to 13 | C | planned |
@@ -46,3 +46,19 @@ Approved 2026-11-10 (see `r01-plan.md`). Decision 1: published `quay.io/debezium
 | 11 | Live verification, serial, clean docker: 00 then 01; log; claims verified; stop all | orchestrator | done |
 | 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | done; repair rounds 1 and 2 done |
 | 13 | Ship: PR, CI green, ruleset, squash-merge on owner OK, tag r01.0, notes-only release, delete branch | orchestrator | done |
+
+## r02 in detail
+
+Approved 2026-11-10 (see `r02-plan.md`), with the owner's Claim Check (ch 03) and Resequencer (ch 04) additions.
+
+| Step | Work | Owner | Status |
+|---|---|---|---|
+| 0 | Preflight: branch release/r02, Docker clean, r01 marked done, Maven HOLD re-check | orchestrator | done |
+| 1 | Group 1: docs (1A), `examples/domain-model` 2.0.0 (1B), validate.py domain check (1C), sources (1D) | execs 1A to 1D | pending |
+| G0 | Gate: install domain-model 2.0.0 | orchestrator | pending |
+| 2 | Group 2: chapters 00 and 01 reworked onto the order-to-delivery domain | execs 2E, 2F | pending |
+| G1 | Gate: serial verify from clean, every static gate, claims and log merged | orchestrator | pending |
+| 3 | Group 3: chapter 02 (3H), chapter 03 with Claim Check (3I), chapter 04 with Resequencer (3J) | execs 3H to 3J | pending |
+| 4 | Final serial verify from clean, claims and log, per-chapter commits | orchestrator | pending |
+| 5 | Validation (Opus): static gates, claims audit, fresh-clone run, originality check, repair rounds | validator | pending |
+| 6 | Ship: PR, CI green, squash-merge on owner OK, tag r02.0, notes-only release, delete branch, PRD update | orchestrator | pending |

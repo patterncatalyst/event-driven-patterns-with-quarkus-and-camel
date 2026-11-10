@@ -1,7 +1,7 @@
 package com.patterncatalyst.shipping;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 /** Validation helpers shared by the records in this package. */
@@ -18,24 +18,26 @@ final class Checks {
         return value;
     }
 
-    static BigDecimal nonNegative(BigDecimal value, String name) {
-        Objects.requireNonNull(value, name);
-        if (value.signum() < 0) {
-            throw new IllegalArgumentException(name + " must not be negative");
-        }
-        return value;
-    }
-
-    static BigDecimal positive(BigDecimal value, String name) {
+    /** Requires a positive amount and normalises it to two decimals, HALF_UP. */
+    static BigDecimal money(BigDecimal value, String name) {
         Objects.requireNonNull(value, name);
         if (value.signum() <= 0) {
+            throw new IllegalArgumentException(name + " must be positive");
+        }
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    static int positive(int value, String name) {
+        if (value <= 0) {
             throw new IllegalArgumentException(name + " must be positive");
         }
         return value;
     }
 
-    static <T> List<T> list(List<T> value, String name) {
-        Objects.requireNonNull(value, name);
-        return List.copyOf(value);
+    static int nonNegative(int value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must not be negative");
+        }
+        return value;
     }
 }
