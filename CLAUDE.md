@@ -38,8 +38,8 @@ The repo is public, so no tracked file may name the development machine, its own
 
 - Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix E). Fedora/RHEL hosts.
 - One stack or cluster at a time. Stop it when idle. `scripts/stack-guard.sh` refuses a second stack.
-- Publish ports; never tunnel or port-forward (tunnels disconnect). Minikube NodePorts are published with `minikube start --ports`.
-- Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081, Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100.
+- **No forwarding of any kind**: no `kubectl port-forward`, `minikube tunnel`, SSH tunnels (`ssh -L/-R/-D`), `socat` relays, IP forwarding (`net.ipv4.ip_forward`), iptables/nft/firewalld rules or NAT. Publish ports instead: compose `ports:`, and on minikube NodePorts published with `minikube start --ports`. Tunnels and forwards disconnect and change the host. `scripts/validate.py` fails the build on any of these in reader-facing content, examples, scripts or workflows.
+- Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081 (management and health 19000), Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100.
 - Parts 1 to 5 run on compose (`lgtm-docker-stack`): Kafka KRaft, PostgreSQL on the CloudNativePG operand image, Apicurio, Debezium Connect (published `quay.io/debezium/connect` image first; our own UBI 10 image only on a real need), `grafana/otel-lgtm`.
 - Part 6 runs on minikube with the docker driver and containerd (`lgtm-minikube-stack`): Strimzi KRaft, CloudNativePG, LGTM.
 - OpenShift Local (CRC) appears only in Appendix E, through `lgtm-crc`, running the chapter 08 outbox.
@@ -87,7 +87,10 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - Traces, metrics and logs reach LGTM through OpenTelemetry from chapter 00 on.
 - Runs alone from a clean stack, with no other example running.
 - Quarkus tests use Dev Services and run before compose. Dev Services uses `docker.io/library/postgres` at the same 18.x minor as the CloudNativePG operand image used by compose; Kafka Dev Services uses the pinned `apache/kafka` image.
-- Shared domain records come from `examples/domain-model`; no per-example copies.
+- Shared domain records come from `examples/domain-model`; no per-example copies. `mvn -B verify` in an example requires `examples/domain-model` installed first (`mvn -B -q install` there).
+- Camel Kafka brokers come from the Quarkus `kafka.bootstrap.servers` property (env `KAFKA_BOOTSTRAP_SERVERS`). Datasource and OpenTelemetry settings use Quarkus env mapping (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT`), with no custom placeholder indirection.
+- Every app service in compose has a healthcheck on `/q/health/ready`, so `up --wait` covers it.
+- Containerfiles follow the Quarkus `Dockerfile.jvm` convention: the build stage runs as user 185 with `mvn -B -ntp`; the runtime stage copies the four fast-jar layers (`lib/`, `*.jar`, `app/`, `quarkus/`) with `--chown=185` and uses the image's `run-java` default entrypoint with `JAVA_APP_JAR=/deployments/quarkus-run.jar`.
 
 ## Validate before commit
 

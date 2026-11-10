@@ -50,6 +50,7 @@ DASH_RE = re.compile("[—–]")
 VERSION_RE = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")
 URL_RE = re.compile(r"https?://\S+")
 TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]\w+")
+SELFREF_RE = re.compile(r"\b(this|the) (chapter|section)\b|\bthe example shows\b|\bwe will\b", re.I)
 IMG_RE = re.compile(r"^\s*image:\s*(\S+)", re.M)
 
 
@@ -250,6 +251,10 @@ def check_chapters(rep: Report):
         if len(callouts) == 1:
             check_callout_shape(rep, p, body.split("\n"), callouts[0], off)
         for i, t in plines:
+            if not t.lstrip().startswith(">"):
+                sr = SELFREF_RE.search(t)
+                if sr:
+                    rep.err(p, i + off, f"self-reference '{sr.group(0)}' in prose")
             m = TESTNAME_RE.search(t)
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
@@ -376,8 +381,28 @@ def check_podman(rep: Report):
             break
 
 
+FORWARDING = re.compile(
+    r"port-forward|minikube\s+tunnel|\bssh\s+(?:\S+\s+)*-[LRD]\b|ip_forward|\biptables\b|\bnft\b|"
+    r"firewall-cmd|sysctl\s+-w|\bsocat\b", re.I)
+
+
+def check_no_forwarding(rep: Report):
+    """No tunnels, port forwarding, IP forwarding or host network changes: publish ports instead."""
+    roots = ["_docs/*", "_parts/*", "_example_pages/*", "_includes/*", "_layouts/*", "index.html", "chapters.html",
+             "README.md", "bibliography.md", "examples/**/*", ".github/**/*", "scripts/*.sh"]
+    for p in files(rep.root, *roots):
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for m in FORWARDING.finditer(text):
+            rep.err(p, line_of(text, m.start()),
+                    f"forwarding or host network change '{m.group(0)}' is banned: publish ports "
+                    "(compose ports, minikube start --ports, NodePorts) instead")
+
+
 CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters,
-          check_examples, check_camel_schemes, check_podman]
+          check_examples, check_camel_schemes, check_podman, check_no_forwarding]
 
 
 def run(root: Path) -> Report:
@@ -420,6 +445,16 @@ def self_test() -> int:
         (r / "diagrams/specs/lonely.py").write_text("")
         e = run(r).errors
         results.append(("orphan spec caught", any("orphan spec" in x for x in e), e))
+
+        r = build("selfref")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nIn this chapter we cover it.\n")
+        e = run(r).errors
+        results.append(("self-reference caught", any("self-reference" in x for x in e), e))
+
+        r = build("forward")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
+        e = run(r).errors
+        results.append(("port-forward caught", any("forwarding" in x for x in e), e))
 
         r = build("callout")
         (r / "_docs/01-demo.md").write_text(

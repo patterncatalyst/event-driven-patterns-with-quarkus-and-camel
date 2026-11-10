@@ -34,15 +34,15 @@ Approved 2026-11-10 (see `r01-plan.md`). Decision 1: published `quay.io/debezium
 |---|---|---|---|
 | 0 | Preflight: gh auth, docker compose, java, mvn, skopeo; no stack or cluster running | orchestrator | done |
 | 1 | Bootstrap: repo, initial commit, licences, host_ids, public GitHub repo, Pages workflow, push release/r01 | orchestrator | done |
-| 2 | Version survey -> `_plans/versions.md` | exec A | in progress |
-| 3 | Sources -> `bibliography.md`, `_plans/sources.md` | exec B | in progress |
-| 4 | Site scaffold: config, layouts, includes, css/js, index pages, README, part cards | exec C | in progress |
-| 5 | Tooling and CI: validate.py, scans, diagram scripts, site-build.sh, stack-guard.sh, workflows | exec D | in progress |
-| 6 | CLAUDE.md and _plans (this step) | exec E | in progress |
-| 7 | Compose `_infra`: per-service files, aggregate, Debezium Connect, ports, healthchecks | exec F | pending |
-| 8 | `examples/domain-model`: records for the 15 entities, JUnit with negative witnesses | exec G | pending |
-| 9 | Chapter 00 + `examples/00-stack-check`; figure 00-compose-stack | exec H | pending |
-| 10 | Chapter 01 + `examples/01-crud-vs-events`; figure 01-row-update-vs-event-append | exec I | pending |
-| 11 | Live verification, serial, clean docker: 00 then 01; log; claims verified; stop all | orchestrator | pending |
-| 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | pending |
+| 2 | Version survey -> `_plans/versions.md` | exec A | done |
+| 3 | Sources -> `bibliography.md`, `_plans/sources.md` | exec B | done |
+| 4 | Site scaffold: config, layouts, includes, css/js, index pages, README, part cards | exec C | done |
+| 5 | Tooling and CI: validate.py, scans, diagram scripts, site-build.sh, stack-guard.sh, workflows | exec D | done |
+| 6 | CLAUDE.md and _plans (this step) | exec E | done |
+| 7 | Compose `_infra`: per-service files, aggregate, Debezium Connect, ports, healthchecks | exec F | done |
+| 8 | `examples/domain-model`: records for the 15 entities, JUnit with negative witnesses | exec G | done |
+| 9 | Chapter 00 + `examples/00-stack-check`; figure 00-compose-stack | exec H | done |
+| 10 | Chapter 01 + `examples/01-crud-vs-events`; figure 01-row-update-vs-event-append | exec I | done |
+| 11 | Live verification, serial, clean docker: 00 then 01; log; claims verified; stop all | orchestrator | done |
+| 12 | Validation (Opus): validate, voice, idiomatic, host_ids, site build, claims audit | validator | done; repair round 1 in progress |
 | 13 | Ship: PR, CI green, ruleset, squash-merge on owner OK, tag r01.0, notes-only release, delete branch | orchestrator | pending |

@@ -36,10 +36,18 @@ include:
 
 services:
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: 01-example/Containerfile
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9094
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     networks: [edp]
 ```
 

@@ -35,7 +35,7 @@ Seven areas, 15 entities. Message names used in examples (for example `Consignme
 | Ch | Topic | Entities used |
 |---|---|---|
 | 00 | Prerequisites and the two stacks | `Consignment` (smoke test, invalid rejected) |
-| 01 | Events, commands, documents; CRUD vs event sourcing | `Consignment`, `ConsignmentStatus`, `TrackingHistory` |
+| 01 | Events, commands, documents; CRUD vs event sourcing | `Consignment`, `ConsignmentStatus` (history served as a `StatusHistory` read view, not `TrackingHistory`, which is built from `HandlingEvent`s) |
 | 02 | Event notification | `Consignment`, `Invoice` (Billing fetches the `Consignment`) |
 | 03 | Event-carried state transfer | `Tariff`, `RateQuote` |
 | 04 | Ordering and partitioning | `HandlingEvent`, `Consignment`, `PortCall`, `TrackingHistory` |

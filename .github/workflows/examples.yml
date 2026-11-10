@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       # Maven projects: examples/domain-model and every examples/NN-* directory with a pom.xml.
-      # A change under examples/_infra or to the Maven parent selects all of them.
+      # A change under examples/_infra, examples/domain-model or to the Maven parent selects all of them.
       - id: pick
         env:
           EVENT: ${{ github.event_name }}
@@ -38,7 +38,7 @@ jobs:
             changed=$(git diff --name-only "$ref" HEAD -- examples)
           fi
           selected=()
-          if grep -qE '^examples/(_infra/|pom\.xml)' <<<"$changed"; then
+          if grep -qE '^examples/(_infra/|pom\.xml|domain-model/)' <<<"$changed"; then
             selected=("${all[@]}")
           else
             for d in "${all[@]}"; do
@@ -78,6 +78,8 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
+      - name: Install the shared domain model
+        run: mvn -B -ntp -f examples/domain-model/pom.xml install -DskipTests
       - name: mvn verify
         working-directory: ${{ matrix.dir }}
         run: mvn -B verify

@@ -18,7 +18,7 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
 |---|---|---|---|---|
 | [*Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*](https://www.informit.com/store/message-and-event-driven-systems-with-cqrs-and-event-9780137998616) | Alex Lawrence | Addison-Wesley (Vernon Signature Series) | 2026 | Message anatomy, CQRS, event sourcing, long-running processes, evolution of messages |
 | [*Building Event-Driven Microservices*, 2nd edition](https://learning.oreilly.com/library/view/-/9798341622180/) | Adam Bellemare | O'Reilly Media | 2025 | Event streams, data contracts, change data capture and the outbox, stream processing, reprocessing |
-| [*Enterprise Integration Patterns: Designing, Building, and Deploying Messaging Solutions*](https://www.enterpriseintegrationpatterns.com/) | Gregor Hohpe, Bobby Woolf | Addison-Wesley | 2003 | Idempotent Receiver, Content Enricher, Aggregator, Dead Letter Channel, Process Manager |
+| [*Enterprise Integration Patterns: Designing, Building, and Deploying Messaging Solutions*](https://www.enterpriseintegrationpatterns.com/) | Gregor Hohpe, Bobby Woolf | Addison-Wesley | 2003 | Idempotent Receiver, Content Enricher, Aggregator, Dead Letter Channel, Process Manager, Event Message, Command Message, Document Message |
 
 ## Articles and pattern references
 
