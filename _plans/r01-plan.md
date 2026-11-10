@@ -1,10 +1,10 @@
-# r01 plan: event-driven-patterns-with-quarkus-and-camel (Opus planner, 2026-11-10)
-
 ---
 layout: plan
 title: r01 plan
 render_with_liquid: false
 ---
+
+# r01 plan: event-driven-patterns-with-quarkus-and-camel (Opus planner, 2026-11-10)
 
 Status: approved by owner 2026-11-10 with all recommendations, except decision 1: use the published quay.io/debezium/connect image first; build our own UBI 10 Connect image only if a real need appears. More than one figure per chapter wherever a figure explains better than text. Orchestrator correction applied: Connect-image JDK fallback is ubi9/openjdk-25 (same runtime), never openjdk-21.
 
