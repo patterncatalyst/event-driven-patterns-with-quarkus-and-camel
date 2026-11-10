@@ -1,0 +1,28 @@
+services:
+  lgtm:
+    image: docker.io/grafana/otel-lgtm:0.40.0
+    container_name: edp-lgtm
+    ports:
+      - "3000:3000"     # Grafana
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+      - "19090:9090"    # Prometheus (host 9090 is taken by cockpit on Fedora and RHEL)
+      - "3200:3200"     # Tempo API
+      - "3100:3100"     # Loki API
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 40s
+    networks:
+      - edp
+
+networks:
+  edp:
+    name: edp
