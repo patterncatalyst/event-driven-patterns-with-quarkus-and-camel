@@ -13,7 +13,7 @@ PASSED=0
 
 cleanup() {
     if [[ "${KEEP:-0}" == "1" ]]; then
-        echo "KEEP=1: stack left running (docker compose -f $PWD/compose.yaml down -v to remove it)"
+        echo "KEEP=1: stack left running; run \`docker compose down -v\` in this directory to remove it"
     else
         "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
     fi
@@ -86,7 +86,7 @@ BEFORE=$(topic_offsets)
 check "negative witness: invalid Consignment gets 400" http400 "$(consignment C-INVALID -5)"
 sleep 3
 AFTER=$(topic_offsets)
-check "negative witness: the topic did not grow ($BEFORE records before and after)" test "$BEFORE" = "$AFTER"
+check "negative witness: record count unchanged ($BEFORE)" test "$BEFORE" = "$AFTER"
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]

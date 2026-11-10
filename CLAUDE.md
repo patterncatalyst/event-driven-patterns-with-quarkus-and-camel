@@ -88,7 +88,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - Runs alone from a clean stack, with no other example running.
 - Quarkus tests use Dev Services and run before compose. Dev Services uses `docker.io/library/postgres` at the same 18.x minor as the CloudNativePG operand image used by compose; Kafka Dev Services uses the pinned `apache/kafka` image.
 - Shared domain records come from `examples/domain-model`; no per-example copies. `mvn -B verify` in an example requires `examples/domain-model` installed first (`mvn -B -q install` there).
-- Camel Kafka brokers come from the Quarkus `kafka.bootstrap.servers` property (env `KAFKA_BOOTSTRAP_SERVERS`). Datasource and OpenTelemetry settings use Quarkus env mapping (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT`), with no custom placeholder indirection.
+- The Camel Kafka component reads `camel.component.kafka.brokers`, not the Quarkus `kafka.bootstrap.servers` (Dev Services fills it only in dev and test). In compose set env `CAMEL_COMPONENT_KAFKA_BROKERS=kafka:9094`; SmallRye Reactive Messaging and Kafka Streams apps use `KAFKA_BOOTSTRAP_SERVERS`. Datasource and OpenTelemetry settings use Quarkus env mapping (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT`), with no custom placeholder indirection.
 - Every app service in compose has a healthcheck on `/q/health/ready`, so `up --wait` covers it.
 - Containerfiles follow the Quarkus `Dockerfile.jvm` convention: the build stage runs as user 185 with `mvn -B -ntp`; the runtime stage copies the four fast-jar layers (`lib/`, `*.jar`, `app/`, `quarkus/`) with `--chown=185` and uses the image's `run-java` default entrypoint with `JAVA_APP_JAR=/deployments/quarkus-run.jar`.
 

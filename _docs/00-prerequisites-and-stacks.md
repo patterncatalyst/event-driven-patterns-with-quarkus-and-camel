@@ -7,7 +7,7 @@ description: "The tools, versions and local stack every example runs on, and a f
 duration: "30 minutes"
 ---
 
-Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL database, a schema registry, Kafka Connect with Debezium, and a Grafana LGTM container that receives traces, metrics and logs. An example is a small Quarkus and Camel service plus a script that starts the stack, exercises the service and checks what happened. This chapter installs the tools, describes the stack and runs the first example.
+Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL database, a schema registry, Kafka Connect with Debezium, and a Grafana LGTM container that receives traces, metrics and logs. An example is a small Quarkus and Camel service plus a script that starts the stack, exercises the service and checks what happened.
 
 {% include excalidraw.html file="00-compose-stack" alt="The compose stack: curl posts to the stack-check service, which publishes to and consumes from Kafka; Connect links Kafka and PostgreSQL; the service sends telemetry to LGTM" caption="Figure 0.1: The stack every example runs on" %}
 
@@ -15,7 +15,7 @@ Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL 
 
 A Fedora or RHEL host with Docker Engine and the `docker compose` plugin, JDK 25, Maven, git and curl. Parts 1 to 5 never need more than that. Install Docker Engine from [Docker's repository for your distribution](https://docs.docker.com/engine/install/) and add your user to the `docker` group so no command needs `sudo`.
 
-Install JDK and Maven with [SDKMAN](https://sdkman.io/), which keeps both under your home directory and changes nothing system-wide:
+Install JDK and Maven with [SDKMAN](https://sdkman.io/), which installs under `$HOME/.sdkman` by default:
 
 ```bash
 for t in git curl zip unzip docker; do command -v "$t" >/dev/null || echo "missing: $t"; done
@@ -29,7 +29,7 @@ sdk install maven 3.9.16
 java -version && mvn -version
 ```
 
-If the first line prints `missing:`, install that tool with your package manager before continuing. SDKMAN needs `zip` and `unzip` to install.
+If the first line prints `missing:`, install that tool with your package manager before continuing. SDKMAN lists bash, zip, unzip and curl as its basic toolset.
 
 ## Versions
 
@@ -48,7 +48,7 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 | UBI 10 OpenJDK | 1.24-19 | Build and runtime images for every service we package |
 | Docker Engine, Compose plugin | 29.9.3, 5.7.0 | Recorded from the reference host |
 
-Each service image is pinned by tag in `examples/_infra`. The version table lives here and in the appendices; other chapters name no versions.
+Each service image is pinned by tag in `examples/_infra`.
 
 ## The stack
 
@@ -58,11 +58,11 @@ Each service image is pinned by tag in `examples/_infra`. The version table live
 |---------|-----------|------|
 | Kafka (KRaft, one node) | 9092 | The log every pattern publishes to and reads from. Containers use `kafka:9094` |
 | PostgreSQL, `wal_level=logical` | 5432 | State, outbox tables and the event store. Logical decoding lets Debezium read changes |
-| Apicurio Registry | 8081 | Schemas for the schema-evolution chapters. In memory, empty after a restart |
+| Apicurio Registry | 8081, health 19000 | Schemas for the schema-evolution chapters. In memory, empty after a restart |
 | Kafka Connect with Debezium | 8083 | Log tailing and the outbox router |
 | Grafana LGTM | 3000, 4317, 4318, 19090, 3200, 3100 | Grafana, OTLP gRPC and HTTP, Prometheus, Tempo, Loki |
 
-Prometheus is on 19090 because Cockpit already holds 9090 on Fedora and RHEL. Every service has a memory limit and a health check; the limits add up to about 7 GB if every container fills its allowance.
+Cockpit, often enabled on Fedora and RHEL, listens on 9090, so Prometheus is published on 19090. Every service has a memory limit and a health check; the limits add up to about 7 GB if every container fills its allowance.
 
 ### One stack at a time
 
@@ -122,6 +122,7 @@ Telemetry comes from the framework. `camel-quarkus-opentelemetry2` creates a spa
 Run it:
 
 ```bash
+(cd examples/domain-model && mvn -B -q install)
 cd examples/00-stack-check
 mvn -B verify
 ./verify.sh
@@ -140,14 +141,14 @@ PASS 13: Tempo has a trace for service stack-check
 PASS 14: Prometheus has a metric from stack-check
 PASS 15: Loki has a log line from stack-check
 PASS 16: negative witness: invalid Consignment gets 400
-PASS 17: negative witness: the topic did not grow (1 records before and after)
+PASS 17: negative witness: record count unchanged (1)
 17/17 checks passed
 ```
 
 Try each of these and rerun `./verify.sh`:
 
-- Remove the `onException` clause. An invalid Consignment no longer gets 400, and the negative witness fails on the status code.
-- Change `kafka:consignments` in the intake route to another topic name. The check for the record on `consignments` fails.
+- Remove the `onException` clause. An invalid Consignment gets 500 instead of 400, so check 16 fails; check 17 still passes because nothing reached the topic.
+- Change `kafka:consignments` in the intake route to `kafka:consignments-v2`. Check 8 fails because no record arrives on `consignments`, and check 15 fails because the consumer route has nothing to log.
 
 ## Part 6 runs on Kubernetes
 

@@ -40,7 +40,8 @@ services:
       context: ..
       dockerfile: 01-example/Containerfile
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094   # SmallRye Reactive Messaging and Kafka Streams
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094   # Camel Kafka component (Camel apps)
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
       QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
     healthcheck:

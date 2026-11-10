@@ -27,6 +27,7 @@ cd examples/00-stack-check
 ## Run the tests alone
 
 ```bash
+(cd examples/domain-model && mvn -B -q install)
 cd examples/00-stack-check
 mvn -B verify
 ```

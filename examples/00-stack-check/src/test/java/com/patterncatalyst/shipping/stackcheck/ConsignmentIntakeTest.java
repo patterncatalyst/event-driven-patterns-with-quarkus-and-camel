@@ -67,6 +67,15 @@ class ConsignmentIntakeTest {
     }
 
     @Test
+    void blankOriginIsRejectedWith400() {
+        given().contentType("application/json")
+                .body("""
+                        {"id":"C-BLANK","origin":" ","destination":"Singapore","weightKg":10,"carrier":"FASTLINE"}
+                        """)
+                .post("/consignments").then().statusCode(400);
+    }
+
+    @Test
     void healthReportsUp() {
         given().get("/q/health/ready").then().statusCode(200);
     }

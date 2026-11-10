@@ -4,7 +4,7 @@ A Quarkus and Camel service that proves the whole local stack works. `POST /cons
 
 ## Run
 
-Needs Docker Engine with the compose plugin, JDK 25 and Maven (the shared domain model is built inside the image).
+`./verify.sh` needs only Docker Engine with the compose plugin; it builds the service and the shared domain model inside the image. `mvn -B verify` needs JDK 25 and Maven.
 
 ```bash
 ./verify.sh
@@ -12,9 +12,10 @@ Needs Docker Engine with the compose plugin, JDK 25 and Maven (the shared domain
 
 `verify.sh` starts Kafka, PostgreSQL, Apicurio Registry, Kafka Connect and LGTM plus the service, runs the checks below and removes everything with `down -v`. Set `KEEP=1` to leave the stack running for inspection.
 
-Run the unit and integration tests alone (Dev Services starts a Kafka container; no compose stack needed):
+Run the tests alone (Quarkus Dev Services starts a Kafka container; no compose stack needed). Install the shared domain model first:
 
 ```bash
+(cd ../domain-model && mvn -B -q install)
 mvn -B verify
 ```
 
@@ -23,11 +24,11 @@ mvn -B verify
 ```
 PASS 1: edp-kafka is healthy
 ...
-PASS 17: negative witness: the topic did not grow (1 records before and after)
+PASS 17: negative witness: record count unchanged (1)
 17/17 checks passed
 ```
 
-The checks cover: six healthy containers; a valid consignment accepted and its record on the topic; PostgreSQL `wal_level` is `logical`; Apicurio ready; Connect lists `PostgresConnector` and the outbox `EventRouter`; a trace in Tempo, a metric in Prometheus and a log line in Loki for `stack-check`; and the negative witness: an invalid consignment gets 400 and the topic does not grow.
+The checks cover: six healthy containers; a valid consignment accepted and its record on the topic; PostgreSQL `wal_level` is `logical`; Apicurio ready; Connect lists `PostgresConnector` and the outbox `EventRouter`; a trace in Tempo, a metric in Prometheus and a log line in Loki for `stack-check`; and the negative witness: an invalid consignment gets 400 and the topic record count is unchanged.
 
 ## Layout
 
