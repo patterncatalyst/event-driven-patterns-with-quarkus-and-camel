@@ -59,7 +59,10 @@ and its title and date checked before any chapter cites it.
 | Apicurio Registry | [apicur.io/registry](https://www.apicur.io/registry/docs/) | Schema registry and compatibility rules |
 | Quarkus | [quarkus.io/guides](https://quarkus.io/guides/) | The Quarkus runtime, Dev Services, messaging and Kafka Streams |
 | Apache Camel | [camel.apache.org/docs](https://camel.apache.org/docs/) | The route DSL, components and the Saga EIP |
-| Camel Quarkus | [camel.apache.org/camel-quarkus](https://camel.apache.org/camel-quarkus/) | The Quarkus runtime for Camel |
+| Camel Quarkus | [camel.apache.org/camel-quarkus](https://camel.apache.org/camel-quarkus/latest/) | The Quarkus runtime for Camel |
+| Grafana LGTM | [github.com/grafana/docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) | The all-in-one Loki, Grafana, Tempo and Mimir image the examples send telemetry to |
+| CloudNativePG | [cloudnative-pg.io/documentation](https://cloudnative-pg.io/documentation/) | The PostgreSQL operator and operand image |
+| SDKMAN | [sdkman.io](https://sdkman.io/) | Installing JDK and Maven |
 
 ## Related projects
 

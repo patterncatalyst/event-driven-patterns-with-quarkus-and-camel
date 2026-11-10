@@ -16,8 +16,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - CAMEL_COMPONENT_KAFKA_BROKERS=kafka:9094
-      - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
     depends_on:
       kafka:
         condition: service_healthy
@@ -30,8 +30,7 @@ services:
       timeout: 3s
       retries: 12
       start_period: 15s
-    networks:
-      - edp
+    networks: [edp]
 
 networks:
   edp:

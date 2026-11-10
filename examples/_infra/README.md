@@ -10,7 +10,7 @@ Composable services for the runnable examples. Each example includes the pieces 
 | `compose-postgres.yaml` | PostgreSQL with `wal_level=logical` | 5432 | `postgres:5432` | Database, user and password are all `edp`. |
 | `compose-apicurio.yaml` | Apicurio Registry (in-memory) | 8081 (API), 19000 (health) | `apicurio:8080` | API under `/apis/registry/v3`. Empty after a restart. |
 | `compose-connect.yaml` | Kafka Connect with Debezium | 8083 | `connect:8083` | Includes the PostgreSQL connector and the outbox `EventRouter`. |
-| `compose-lgtm.yaml` | Grafana LGTM (otel-lgtm) | 3000 Grafana, 4317 and 4318 OTLP, 19090 Prometheus, 3200 Tempo, 3100 Loki | `lgtm:4318` | Prometheus is on 19090 because host port 9090 belongs to cockpit on Fedora and RHEL. |
+| `compose-lgtm.yaml` | Grafana LGTM (otel-lgtm) | 3000 Grafana, 4317 and 4318 OTLP, 19090 Prometheus, 3200 Tempo, 3100 Loki | `lgtm:4318` | Prometheus is on 19090 because host port 9090 belongs to Cockpit on Fedora and RHEL. |
 
 Image tags are pinned in each file. Every service sets a memory limit and a health check.
 
@@ -45,10 +45,11 @@ services:
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
       QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8080/q/health/ready"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 12
+      start_period: 15s
     networks: [edp]
 ```
 

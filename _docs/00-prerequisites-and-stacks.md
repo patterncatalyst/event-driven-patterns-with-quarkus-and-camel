@@ -7,7 +7,7 @@ description: "The tools, versions and local stack every example runs on, and a f
 duration: "30 minutes"
 ---
 
-Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL database, a schema registry, Kafka Connect with Debezium, and a Grafana LGTM container that receives traces, metrics and logs. An example is a small Quarkus and Camel service plus a script that starts the stack, exercises the service and checks what happened.
+Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL database, a schema registry, Kafka Connect with Debezium, and a Grafana LGTM container that receives traces, metrics and logs. An example is a small Quarkus service, usually with Camel routes, plus a script that starts the stack, exercises the service and checks what happened.
 
 {% include excalidraw.html file="00-compose-stack" alt="The compose stack: curl posts to the stack-check service, which publishes to and consumes from Kafka; Connect links Kafka and PostgreSQL; the service sends telemetry to LGTM" caption="Figure 0.1: The stack every example runs on" %}
 
@@ -38,7 +38,7 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 | Component | Version | Why this one |
 |-----------|---------|--------------|
 | JDK | Temurin 25.0.5 | Long-term-support line, the minimum for every example |
-| Maven | 3.9.16 | Maven 3.10 is released, but Quarkus has open issues against it |
+| Maven | 3.9.16 | Maven 3.10 is released, but Quarkus has an open issue against it |
 | Quarkus platform | 3.40.1.2 | Long-term-support stream; includes Camel Quarkus 3.40.0 and Camel 4.22.1 |
 | Apache Kafka | 4.3.2 | Newest version the latest Strimzi supports, so compose and Kubernetes match |
 | PostgreSQL | 18.6 | CloudNativePG operand image on compose, same minor for Dev Services |
@@ -152,10 +152,17 @@ Try each of these and rerun `./verify.sh`:
 
 ## Part 6 runs on Kubernetes
 
-Parts 1 to 5 use this compose stack. Part 6 moves the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image. It has its own setup at the start of Part 6, with its tool versions and commands; nothing on this page installs a cluster. Stop the compose stack before you start one.
+Parts 1 to 5 use this compose stack. Part 6 moves the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image. It has its own setup at the start of Part 6, with its tool versions and commands; No cluster is needed for Parts 1 to 5. Stop the compose stack before you start one.
 
 ## References
 
-- Kafka, Apicurio, Debezium, Grafana LGTM, Quarkus and Camel Quarkus documentation, linked from the service files in `examples/_infra` and the example's `pom.xml`.
+- [Apache Kafka documentation](https://kafka.apache.org/documentation/)
+- [Apicurio Registry documentation](https://www.apicur.io/registry/docs/)
+- [Debezium documentation](https://debezium.io/documentation/)
+- [grafana/docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm)
+- [Quarkus guides](https://quarkus.io/guides/)
+- [Camel Quarkus documentation](https://camel.apache.org/camel-quarkus/latest/)
+- [CloudNativePG documentation](https://cloudnative-pg.io/documentation/)
+- [SDKMAN](https://sdkman.io/)
 - [Camel Quarkus OpenTelemetry2 extension](https://camel.apache.org/camel-quarkus/latest/reference/extensions/opentelemetry2.html)
 - [Quarkus OpenTelemetry guides](https://quarkus.io/guides/opentelemetry)

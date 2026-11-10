@@ -36,7 +36,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 00-16 | 00 | PostgreSQL wal_level=logical on 5432 | verify.sh 00 check 9 | log 2026-11-10 | verified |
 | 00-17 | 00 | Apicurio 8081 in memory, health 19000 | compose-apicurio.yaml; verify.sh 00 check 10 | log 2026-11-10 | verified |
 | 00-18 | 00 | LGTM ports 3000, 4317, 4318, 19090, 3200, 3100 | compose-lgtm.yaml; infra run | log 2026-11-10 | verified |
-| 00-19 | 00 | Cockpit, often enabled on Fedora and RHEL, listens on 9090 | Cockpit project default port (reworded to "often enabled") | general; no fetch | verified (reworded) |
+| 00-19 | 00 | Cockpit, often enabled on Fedora and RHEL, listens on 9090 | https://cockpit-project.org/running.html ("log into port 9090") | fetched 2026-11-10 | verified |
 | 00-20 | 00 | Memory limits and health checks; about 7 GB total | _infra mem_limit values + app | repo | verified |
 | 00-21 | 00 | A second stack fails to bind the fixed ports | compose port mappings | repo | verified |
 | 00-22 | 00 | stack-guard refuses another compose project or minikube node, stops nothing | scripts/stack-guard.sh; executor test with foreign container | step 5 | verified |
@@ -60,7 +60,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 00-40 | 00 | verify.sh 17/17 | verify.sh 00 | log 2026-11-10 | verified |
 | 00-41 | 00 | Removing onException: invalid gets 500, check 16 fails, 17 passes | experiment run (16/17; mvn "expected 400 but was 500") | repair round 1 | verified |
 | 00-42 | 00 | Renaming the producer topic fails checks 8 and 15 | experiment run (15/17) | repair round 1 | verified |
-| 00-43 | 00 | Part 6 runs on minikube with Strimzi, CloudNativePG, same LGTM | roadmap statement; verified at r11 | iteration-plan r11 | pending (r11) |
+| 00-43 | 00 | Part 6 runs on minikube with Strimzi, CloudNativePG, same LGTM | roadmap statement (plan, not a behaviour claim); the setup itself is verified at r11 | iteration-plan r11 | verified (roadmap) |
 | 00-44 | 00 | Camel Kafka brokers via `camel.component.kafka.brokers` in compose | container failed to start without it; verify.sh 17/17 with CAMEL_COMPONENT_KAFKA_BROKERS | repair round 1 | verified |
 | 01-01 | 01 | Event named in past tense; sender neither knows nor cares who reads it | book's own definition | n/a | verified |
 | 01-02 | 01 | Hohpe and Woolf: Event Message for reliable, asynchronous event notification | enterpriseintegrationpatterns.com EventMessage | fetched 2026-11-10 | verified |
@@ -97,3 +97,5 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 01-33 | 01 | Unique constraint does not make another system's change atomic | by construction | n/a | verified |
 | 01-34 | 01 | Prefer a document when the receiver needs whole current state | design judgement (book's own guidance) | n/a | verified (own guidance) |
 | 01-35 | 01 | Lawrence ch 2 and ch 6 titles | InformIT table of contents | sources.md | verified |
+| 00-45 | 00 | quarkus-micrometer-opentelemetry enables OTel tracing, metrics and logs by default | https://quarkus.io/guides/telemetry-micrometer-to-opentelemetry; verify.sh 00 check 14 passes without quarkus.otel.metrics.enabled | repair round 2 | verified |
+| 00-46 | 00 | References: Kafka, Apicurio, Debezium, otel-lgtm, Quarkus, Camel Quarkus, CloudNativePG, SDKMAN docs | each URL returned 200 | fetched 2026-11-10 | verified |

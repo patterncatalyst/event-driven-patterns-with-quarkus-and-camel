@@ -19,7 +19,7 @@ Site: https://patterncatalyst.github.io/event-driven-patterns-with-quarkus-and-c
 
 ## Run targets
 
-- **Docker Compose** for Parts 0 to 5. One shared infrastructure stack (Kafka, PostgreSQL, Apicurio Registry, Debezium Connect, Grafana LGTM) started with `scripts/setup-stack.sh up`. Requirements: Docker Engine with the `docker compose` plugin, JDK 25 and Maven. The examples need no Python; Python 3 is only for the repository tooling in `scripts/validate.py`. Run one stack at a time.
+- **Docker Compose** for Parts 0 to 5. One shared infrastructure stack (Kafka, PostgreSQL, Apicurio Registry, Debezium Connect, Grafana LGTM) started with `scripts/setup-stack.sh up`. Requirements: Docker Engine with the `docker compose` plugin, JDK 25 and Maven. The examples need no Python; Python 3 is only for the repository tooling (`scripts/validate.py`, `scripts/host_ids.py`, `scripts/generate_diagram.py`). Run one stack at a time.
 - **minikube with Strimzi** for Part 6. The same services deployed to a local Kubernetes cluster, with Kafka managed by the Strimzi operator.
 - **OpenShift Local** appendix. The outbox example deployed to OpenShift Local as a demonstration of the same vendor-neutral code.
 
@@ -36,7 +36,7 @@ diagrams/              figures as .svg and .excalidraw
 diagrams/specs/        one Python spec per figure
 examples/              one runnable project per pattern chapter
 examples/_infra/       shared compose stack
-lgtm-presentation/     slide decks
+lgtm-presentation/     the deck (from r15)
 scripts/               stack, site, diagram and validation scripts
 bibliography.md        references
 ```

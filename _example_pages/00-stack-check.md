@@ -1,10 +1,11 @@
 ---
 title: "Stack check"
 order: 0
+permalink: /examples/00-stack-check/
 description: "A Quarkus and Camel service that publishes a Consignment to Kafka and sends traces, metrics and logs to LGTM, with a script that checks every service in the stack."
 ---
 
-Source: [`examples/00-stack-check`](https://github.com/{{ site.github_username }}/{{ site.github_repo }}/tree/main/examples/00-stack-check)
+Source: [`examples/00-stack-check`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/00-stack-check)
 
 ## What it contains
 

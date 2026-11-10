@@ -14,5 +14,5 @@ mvn -B verify
 
 Examples depend on `com.patterncatalyst.shipping:domain-model:1.0.0`. Two ways to get it onto the build path:
 
-- Install it into the local Maven repository: run `mvn -q install` in this directory, then build the example.
-- Build it inside the example's Containerfile, with `examples/` as the build context: copy `domain-model/` and the example, run `mvn -q install` on the model first, then package the example.
+- Install it into the local Maven repository: run `mvn -B -q install` in this directory, then build the example.
+- Build it inside the example's Containerfile, with `examples/` as the build context: copy `domain-model/` and the example, run `mvn -B -q install` on the model first, then package the example.
