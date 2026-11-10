@@ -14,11 +14,11 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
 
 ## Books
 
-| Title | Author(s) | Publisher | Year | Focus |
-|---|---|---|---|---|
-| [*Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*](https://www.informit.com/store/message-and-event-driven-systems-with-cqrs-and-event-9780137998616) | Alex Lawrence | Addison-Wesley (Vernon Signature Series) | 2026 | Message anatomy, CQRS, event sourcing, long-running processes, evolution of messages |
-| [*Building Event-Driven Microservices*, 2nd edition](https://learning.oreilly.com/library/view/-/9798341622180/) | Adam Bellemare | O'Reilly Media | 2025 | Event streams, data contracts, change data capture and the outbox, stream processing, reprocessing |
-| [*Enterprise Integration Patterns: Designing, Building, and Deploying Messaging Solutions*](https://www.enterpriseintegrationpatterns.com/) | Gregor Hohpe, Bobby Woolf | Addison-Wesley | 2003 | Idempotent Receiver, Content Enricher, Aggregator, Dead Letter Channel, Process Manager, Event Message, Command Message, Document Message |
+| Title | Author(s) | Publisher | Year | ISBN | Focus |
+|---|---|---|---|---|---|
+| [*Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*](https://www.informit.com/store/message-and-event-driven-systems-with-cqrs-and-event-9780137998616) | Alex Lawrence | Addison-Wesley | 2026 | 978-0-13-799861-6 | Message anatomy, CQRS, event sourcing, long-running processes, evolution of messages |
+| [*Building Event-Driven Microservices, Second Edition*](https://www.oreilly.com/library/view/building-event-driven-microservices/9798341622180/) | Adam Bellemare | O'Reilly | 2025 | 979-8-3416-2218-0 | Event streams, data contracts, change data capture and the outbox, stream processing, reprocessing |
+| [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/) | Gregor Hohpe & Bobby Woolf | Addison-Wesley | 2003 | 978-0-321-20068-6 | Idempotent Receiver, Content Enricher, Aggregator, Dead Letter Channel, Process Manager, Resequencer, Claim Check, Event Message, Command Message, Document Message |
 
 ## Articles and pattern references
 
@@ -27,6 +27,8 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
 | Event Sourcing | Martin Fowler | [martinfowler.com/eaaDev/EventSourcing.html](https://martinfowler.com/eaaDev/EventSourcing.html) | The foundations of event sourcing |
 | What do you mean by "Event-Driven"? | Martin Fowler | [martinfowler.com/articles/201701-event-driven.html](https://martinfowler.com/articles/201701-event-driven.html) | Names for event notification, event-carried state transfer and event sourcing |
 | Event Sourcing pattern | Microsoft Azure Architecture Center | [learn.microsoft.com/azure/architecture/patterns/event-sourcing](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing) | Structural guidance on event sourcing, as a pattern reference only |
+| Claim Check | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html) | Passing a reference instead of a large payload |
+| Resequencer | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html) | Restoring order to out-of-sequence messages |
 
 ## The Strimzi blog
 

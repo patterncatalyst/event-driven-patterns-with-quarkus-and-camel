@@ -12,7 +12,7 @@ Status values: confirmed (opened and checked), owner to verify (could not be che
 
 ### Lawrence
 
-Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*, Addison-Wesley Professional (Vernon Signature Series), 2026.
+Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*, Addison-Wesley, 2026 (hub books.yml: publisher Addison-Wesley, isbn 9780137998616).
 
 - Print ISBN-13 (InformIT publisher page): 978-0-13-799861-6 (ISBN-10 0-13-799861-9). Owner decision: this is the ISBN cited.
 - O'Reilly listing ISBN (record only): 9780137998654.
@@ -34,11 +34,13 @@ Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing: 
 
 ### Bellemare
 
-Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly Media, 2025-09-16, 484 pages.
+Adam Bellemare, *Building Event-Driven Microservices, Second Edition*, O'Reilly, 2025 (O'Reilly listing date 2025-09-16, 484 pages).
 
-- ISBN: 979-8-3416-2218-0 (O'Reilly listing id 9798341622180, matches the PRD).
+- ISBN: hub books.yml has `isbn: null`; the ISBN implied by its URL is 979-8-3416-2218-0 (O'Reilly listing id 9798341622180, matches the PRD).
+- URL (books.yml): https://www.oreilly.com/library/view/building-event-driven-microservices/9798341622180/
 - O'Reilly MCP search confirms the title, author, date and ISBN. Its results carry no chapter list.
 - oreilly.com returned HTTP 403 to scripted fetch, and ebooks.com also 403. The 2nd edition chapter list could not be obtained.
+- r02 re-check: two further O'Reilly MCP searches (keywords: events, event notification, state, data contracts, partitioning, ordering, claim check, large events) returned only catalog records for the book, with no chapter or section titles. Every topic below stays **owner to verify**.
 - Status for every Bellemare chapter reference: **owner to verify** in the owner's O'Reilly account. The PRD gives topics only, and no chapter numbers are asserted here.
 
 ## PRD section 5 mapping, Lawrence
@@ -54,6 +56,15 @@ All chapter numbers below exist in the confirmed table of contents; the fit is b
 | 7 | Long-Running Processes | 22, 23 | confirmed |
 | 8 | Evolution of Messages and Message Streams | 18 | confirmed |
 | 9 | Composing Data from Different Sources | 03, 09, 19, 20, 21 | confirmed |
+
+## r02 topics, Bellemare (cited by topic only, no chapter numbers)
+
+| Topic | Status |
+|---|---|
+| (a) events, event notification vs state | owner to verify (search returned no section titles) |
+| (b) data contracts, event-carried state | owner to verify (search returned no section titles) |
+| (c) partitioning and ordering | owner to verify (search returned no section titles) |
+| (d) large events, claim check | owner to verify (search returned no section titles) |
 
 ## PRD section 5 mapping, Bellemare (topic as given in the PRD)
 
@@ -116,7 +127,14 @@ The blog has no Debezium or CDC post; chapter 09 rests on the Debezium docs.
 | Fowler | Event Sourcing | 2005-12-12 (page notes an unrevised mid-2000s draft) | https://martinfowler.com/eaaDev/EventSourcing.html | confirmed |
 | Fowler | What do you mean by "Event-Driven"? | 2017-02-07 (updated 2017-02-08) | https://martinfowler.com/articles/201701-event-driven.html | confirmed (PRD "2017" correct) |
 | Microsoft | Event Sourcing Pattern - Azure Architecture Center (page ms.date 2026-03-27) | 2026-03-27 | https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing | confirmed |
-| Hohpe and Woolf | Enterprise Integration Patterns, Addison-Wesley, 2003 | 2003 | https://www.enterpriseintegrationpatterns.com/ | confirmed (reached via EIP Camel bibliography; not re-fetched) |
+| Hohpe and Woolf | Enterprise Integration Patterns, Addison-Wesley, 2003, ISBN 9780321200686 (hub books.yml) | 2003 | https://www.enterpriseintegrationpatterns.com/ | confirmed (reached via EIP Camel bibliography; not re-fetched) |
+| Hohpe and Woolf | Claim Check (page title "Claim Check - Enterprise Integration Patterns"; "Store message data in a persistent store and pass a Claim Check to subsequent components.") | n/a | https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html | confirmed (fetched 2026-11-10) |
+| Hohpe and Woolf | Resequencer (page title "Resequencer - Enterprise Integration Patterns"; stateful filter that buffers out-of-sequence messages and publishes them in order) | n/a | https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html | confirmed (fetched 2026-11-10) |
+| Apache Kafka | Introduction, section "Main Concepts and Terminology" (kafka.apache.org/documentation redirects to versioned pages; read at /43/getting-started/introduction/): "Kafka guarantees that any consumer of a given topic-partition will always read that partition's events in exactly the same order as they were written", with events of the same key written to the same partition. The page states order per partition; it has no cross-partition order claim | n/a | https://kafka.apache.org/documentation/ | confirmed (4.3 docs; the same page exists under /44/) |
+| Apache Kafka | Broker configuration `message.max.bytes`: "The largest record batch size allowed by Kafka (after compression if compression is enabled)"; default 1048588; per-topic override `max.message.bytes` | n/a | https://kafka.apache.org/43/configuration/broker-configs/ | confirmed (default seen: 1048588) |
+| Apache Kafka | Producer configuration `max.request.size`: "The maximum size of a request in bytes"; also effectively a cap on the maximum uncompressed record batch size; default 1048576 | n/a | https://kafka.apache.org/43/configuration/producer-configs/ | confirmed (default seen: 1048576) |
+| Apache Camel | Resequence EIP (title "Resequence"): batch mode (default) collects, sorts and sends, up to 100 messages per batch or timeout every second (`size()`, `timeout()`); stream mode sends messages as soon as the next expected sequence number arrives, needs integer sequence numbers 1..N, backlog capacity default 1000; on timeout the resequencer "disregards the current expected sequence number" and moves on | n/a | https://camel.apache.org/components/latest/eips/resequence-eip.html | confirmed (fetched 2026-11-10) |
+| Apache Camel | Claim Check EIP (title "Claim Check"): "stores the message content temporarily in an internal memory store"; the page does not say storage is per exchange, so that is not claimed | n/a | https://camel.apache.org/components/latest/eips/claimCheck-eip.html | confirmed for in-memory store; per-exchange scope not stated on the page |
 | KIP-932 | KIP-932: Queues for Kafka | n/a | https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka | confirmed (HTTP 200, title matches) |
 | KIP-875 | KIP-875: First-class offsets support in Kafka Connect | n/a | https://cwiki.apache.org/confluence/display/KAFKA/KIP-875%3A+First-class+offsets+support+in+Kafka+Connect | confirmed (HTTP 200, title matches) |
 
