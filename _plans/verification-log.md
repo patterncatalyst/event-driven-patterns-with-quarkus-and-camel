@@ -26,4 +26,11 @@ Clean Docker state, nothing else running. `docker compose -f examples/_infra/com
 | OOMKilled | false for all |
 | `scripts/setup-stack.sh --clean` | no edp- containers, volumes or network remain |
 
-Chapter 00 and 01 runs follow in step 11.
+### 2026-11-10 · step 11 · chapters 00 and 01 from a clean Docker state
+
+`scripts/setup-stack.sh --clean`, no edp- containers or volumes, then each example alone, one after the other.
+
+- `examples/00-stack-check/verify.sh`: **17/17 checks passed** (all six containers healthy; valid Consignment accepted and keyed on `consignments`; wal_level logical; Apicurio ready; Connect lists PostgresConnector and EventRouter; Tempo trace, Prometheus metric and Loki log for service stack-check; negative witness: invalid Consignment gets 400 and the topic does not grow). `mvn -B verify`: 3/3.
+- `examples/01-crud-vs-events/verify.sh`: **10/10 checks passed** (1 row vs 4 events; replay equals row; row shows latest only; history BOOKED, LOADED, IN_TRANSIT, CLEARED; illegal transition 409 appends nothing; UPDATE on consignment_event refused and events unchanged; Tempo trace for crud-vs-events). `mvn -B verify`: 6/6. Negative witnesses (executor run): lifecycle check removed fails the illegal-transition test; trigger removed fails the append-only test; event append removed fails 5 of 6.
+- Defect found and fixed during step 10: `_infra/postgres/start.sh` lacked a `host all all all scram-sha-256` pg_hba line, so containers on the `edp` network could not connect (chapter 00 never connects as an app, so it passed). Fixed before this run.
+- After both runs: no edp- containers or volumes remain.

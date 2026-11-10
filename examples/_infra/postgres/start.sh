@@ -20,6 +20,7 @@ if [[ ! -s "$PGDATA/PG_VERSION" ]]; then
         --auth-local=scram-sha-256 --auth-host=scram-sha-256 \
         --encoding=UTF8 --locale=C.utf8
     echo "host replication all all scram-sha-256" >> "$PGDATA/pg_hba.conf"
+    echo "host all all all scram-sha-256" >> "$PGDATA/pg_hba.conf"
 
     # Temporary server on the local socket only, for database creation and init scripts.
     sockdir="$(mktemp -d)"

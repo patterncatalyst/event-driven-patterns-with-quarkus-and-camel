@@ -1,0 +1,21 @@
+# Build context is examples/: docker build -f 01-crud-vs-events/Containerfile .
+FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
+USER root
+WORKDIR /build
+COPY domain-model/pom.xml domain-model/pom.xml
+COPY domain-model/src domain-model/src
+RUN mvn -B -q -f domain-model/pom.xml install -DskipTests
+COPY 01-crud-vs-events/pom.xml 01-crud-vs-events/pom.xml
+COPY 01-crud-vs-events/src 01-crud-vs-events/src
+RUN mvn -B -q -f 01-crud-vs-events/pom.xml package -DskipTests
+
+FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
+COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=185 /build/01-crud-vs-events/target/quarkus-app/quarkus/ /deployments/quarkus/
+EXPOSE 8080
+USER 185
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+ENTRYPOINT ["/opt/jboss/container/java/run/run-java.sh"]
