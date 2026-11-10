@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 910 440" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="15" y="56" width="880" height="330" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="27" y="76" font-size="12" font-weight="700" fill="#888">Docker network edp</text>
+<rect x="25" y="100" width="130" height="64" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="90.0" y="130.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">curl</text>
+<text x="90.0" y="147.0" font-size="11.5" fill="#555555" text-anchor="middle">verify.sh</text>
+<rect x="215" y="100" width="180" height="64" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="305.0" y="122.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">stack-check</text>
+<text x="305.0" y="139.5" font-size="11.5" fill="#555555" text-anchor="middle">Quarkus + Camel</text>
+<text x="305.0" y="154.5" font-size="11.5" fill="#555555" text-anchor="middle">8080</text>
+<rect x="540" y="100" width="170" height="64" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="625.0" y="130.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Kafka (KRaft)</text>
+<text x="625.0" y="147.0" font-size="11.5" fill="#555555" text-anchor="middle">9092 host, kafka:9094</text>
+<rect x="25" y="220" width="130" height="64" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5"/>
+<text x="90.0" y="250.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Apicurio Registry</text>
+<text x="90.0" y="267.0" font-size="11.5" fill="#555555" text-anchor="middle">8081, health 19000</text>
+<rect x="540" y="220" width="170" height="64" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="625.0" y="250.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Kafka Connect</text>
+<text x="625.0" y="267.0" font-size="11.5" fill="#555555" text-anchor="middle">Debezium, 8083</text>
+<rect x="750" y="220" width="130" height="64" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="815.0" y="250.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">PostgreSQL</text>
+<text x="815.0" y="267.0" font-size="11.5" fill="#555555" text-anchor="middle">5432, logical WAL</text>
+<rect x="25" y="312" width="855" height="62" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="452.5" y="341.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Grafana LGTM (otel-lgtm)</text>
+<text x="452.5" y="358.0" font-size="11.5" fill="#555555" text-anchor="middle">OTLP 4318 and 4317, Grafana 3000, Tempo 3200, Prometheus 19090, Loki 3100</text>
+<path d="M155,132 L215,132" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="191.0" y="122.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">POST</text>
+<text x="191.0" y="122.0" font-size="11" fill="#555" text-anchor="middle">POST</text>
+<path d="M395,132 L540,132" fill="none" stroke="#b8650a" stroke-width="2" marker-start="url(#am)" marker-end="url(#am)"/>
+<text x="473.5" y="122.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">consignments</text>
+<text x="473.5" y="122.0" font-size="11" fill="#b8650a" text-anchor="middle">consignments</text>
+<path d="M625,220 L625,164" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M750,252 L710,252" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M305,164 L305,312" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="405.0" y="238.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">traces, metrics, logs (OTLP)</text>
+<text x="405.0" y="238.0" font-size="11" fill="#b8650a" text-anchor="middle">traces, metrics, logs (OTLP)</text>
+<text x="455" y="26" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">One compose project runs every service the book needs</text>
+<text x="455" y="412" font-size="11" fill="#555555" text-anchor="middle">The app publishes to Kafka and consumes the same topic; everything it emits lands in LGTM.</text>
+</svg>
