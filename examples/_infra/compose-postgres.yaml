@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: ghcr.io/cloudnative-pg/postgresql:18.6-202611090812-standard-trixie
+    container_name: edp-postgres
+    # The operand image has no entrypoint and runs as UID 26; start.sh does initdb and exec postgres.
+    user: "26"
+    entrypoint: []
+    command: ["bash", "/opt/edp/start.sh"]
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=edp
+      - POSTGRES_USER=edp
+      - POSTGRES_PASSWORD=edp
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      # The named volume inherits the image's ownership of /var/lib/postgresql (UID 26): no host chown.
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/start.sh:/opt/edp/start.sh:ro,Z
+      - ./postgres/init:/opt/edp/init:ro,Z
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U edp -d edp"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks:
+      - edp
+
+volumes:
+  postgres-data:
+    name: edp-postgres-data
+
+networks:
+  edp:
+    name: edp

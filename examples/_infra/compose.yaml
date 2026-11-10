@@ -1,0 +1,8 @@
+name: edp-infra
+
+include:
+  - path: compose-kafka.yaml
+  - path: compose-postgres.yaml
+  - path: compose-apicurio.yaml
+  - path: compose-connect.yaml
+  - path: compose-lgtm.yaml

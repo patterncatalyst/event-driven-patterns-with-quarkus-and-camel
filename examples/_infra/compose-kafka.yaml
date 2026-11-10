@@ -1,0 +1,50 @@
+services:
+  kafka:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-kafka
+    ports:
+      - "9092:9092"   # host clients (localhost:9092)
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      # EXTERNAL for host clients, INTERNAL (kafka:9094) for containers on the edp network
+      - KAFKA_LISTENERS=EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:9094
+      - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9092,INTERNAL://kafka:9094
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_NUM_PARTITIONS=3
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_MIN_INSYNC_REPLICAS=1
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      # Share groups (KIP-932): the share protocol must be listed on the group coordinator.
+      - KAFKA_GROUP_COORDINATOR_REBALANCE_PROTOCOLS=classic,consumer,streams,share
+      # The share coordinator state topic defaults to replication factor 3, min ISR 2,
+      # which a single broker cannot satisfy.
+      - KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR=1
+      - CLUSTER_ID=RURQRXZlbnREcml2ZW5Qa3Q
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks:
+      - edp
+
+volumes:
+  kafka-data:
+    name: edp-kafka-data
+
+networks:
+  edp:
+    name: edp

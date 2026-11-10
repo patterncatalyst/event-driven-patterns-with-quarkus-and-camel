@@ -1,0 +1,47 @@
+---
+layout: default
+title: Examples
+description: "Runnable Quarkus and Camel examples, one per pattern chapter, built on the shipping domain."
+permalink: /examples/
+---
+
+<section class="section">
+  <div class="container container-prose">
+    <span class="hero__eyebrow">Examples</span>
+    <h1>One runnable project per pattern.</h1>
+    <p class="hero__lead">
+      Every example is a Quarkus application with Camel routes, its own compose
+      file, a Containerfile on UBI 10 and a <code>verify.sh</code> that proves the
+      behaviour against the real stack. Start the stack from the repository root and
+      run an example from its directory.
+    </p>
+    <pre><code>./scripts/setup-stack.sh up
+cd examples/00-stack-check
+./verify.sh</code></pre>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container container-prose">
+    {%- assign pages = site.example_pages | sort: "order" -%}
+    {%- if pages.size > 0 -%}
+    <ol class="toc-list">
+      {%- for p in pages -%}
+      <li>
+        <a href="{{ p.url | relative_url }}">
+          <span class="toc-list__num">{{ p.order }}</span>
+          <span>{{ p.title }}</span>
+        </a>
+        {%- if p.description -%}<small>{{ p.description }}</small>{%- endif -%}
+      </li>
+      {%- endfor -%}
+    </ol>
+    {%- else -%}
+    <p class="section-sub"><em>Example pages arrive with their chapters.</em></p>
+    {%- endif -%}
+    <p>
+      Source for every example:
+      <a href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}/tree/main/examples" rel="noopener">examples/ on GitHub ↗</a>
+    </p>
+  </div>
+</section>

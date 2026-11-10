@@ -1,0 +1,37 @@
+name: edp-00
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-apicurio.yaml
+  - path: ../_infra/compose-connect.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: 00-stack-check/Containerfile
+    container_name: edp-stack-check
+    ports:
+      - "8080:8080"
+    environment:
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    depends_on:
+      kafka:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp

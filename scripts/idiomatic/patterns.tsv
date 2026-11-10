@@ -1,0 +1,94 @@
+# lgtm-idiomatic-review scan patterns.
+#
+# Columns (TAB-separated): tier  case  label  regex  [only  [if]]
+#   tier   ban   = clear anti-pattern; fix by default
+#          watch = review each hit by hand; many are legitimate in context
+#   case   i = case-insensitive, c = case-sensitive
+#   only   optional: comma-separated extensions the pattern applies to
+#          (e.g. py, java, yaml) or exact file names (an entry with a dot, e.g.
+#          CMakeLists.txt). Omit, or write - when an `if` column follows, to
+#          scan every file type.
+#   if     optional: an ERE the same file must also match for its hits to count
+#          (e.g. a framework import, so a Spring-only rule skips Quarkus files).
+#   regex  GNU grep -E (ERE). No backreferences: scan.sh wraps each regex in
+#          an extra group when excerpting long lines, which shifts numbering.
+#
+# CONSERVATIVE BY DESIGN. Only high-signal, low-false-positive anti-patterns
+# live here. Everything nuanced (missing response_model, wrong probe choice,
+# missing resources:, field injection) is NOT grepped — it lives in the
+# per-stack checklists in ../references/ for the reviewer to read.
+#
+# Idioms and rewrites for every pattern: ../references/<stack>-idioms.md
+# Project-specific anti-patterns go in a separate file passed with --patterns.
+
+# --- Python / FastAPI (authority: lgtm-python, ../references/python-fastapi-idioms.md)
+ban	i	deprecated @app.on_event (use lifespan)	@app\.on_event\(	py
+ban	i	bare except: (catch a specific exception)	\bexcept\s*:	py
+ban	i	print() in code (use logging)	^[^#]*\bprint\(	py
+watch	i	requirements.txt (project uses uv + pyproject)	requirements\.txt
+watch	i	Pydantic v1 API in a v2 project	\.(dict|parse_obj|parse_raw)\(|\bclass Config\b|@validator\b	py
+
+# --- Core Python, framework-independent (authority: lgtm-python, ../references/python-fastapi-idioms.md)
+ban	c	== None / != None (use is / is not None)	[!=]=\s*None\b	py
+watch	c	type(x) == ... (use isinstance())	\btype\([^)]*\)\s*==	py
+watch	c	subprocess with shell=True (prefer an argv list)	subprocess\.[A-Za-z_]+\([^)]*shell\s*=\s*True	py
+watch	c	datetime.utcnow() (deprecated 3.12; use datetime.now(timezone.utc))	\bdatetime\.utcnow\(	py
+watch	c	mutable default argument (=[] or ={})	def\s+\w+\([^)]*=\s*(\[\]|\{\})	py
+watch	c	typing.List/Dict/Optional (use builtin generics / X | None)	\bfrom typing import\b[^#\n]*\b(List|Dict|Tuple|Optional|Set)\b	py
+watch	c	os.path.* (prefer pathlib.Path)	\bos\.path\.(join|exists|dirname|basename|isfile|isdir)\(	py
+
+# --- Quarkus / Java (authority: lgtm-quarkus, ../references/quarkus-idioms.md)
+ban	c	System.out / System.err (use the logger)	System\.(out|err)\.print	java
+ban	c	printStackTrace() (log the exception)	\.printStackTrace\(	java
+watch	c	raw JAX-RS param (prefer @RestHeader/@RestQuery/@RestPath)	@(HeaderParam|QueryParam|PathParam)\b	java
+watch	c	Class.forName / reflective lookup (prefer build-time wiring)	\bClass\.forName\(	java
+
+
+# --- Apache Camel (authority: lgtm-camel, ../references/camel-idioms.md). Gated by a
+#     Camel import so they skip non-Camel Java.
+watch	c	Thread.sleep in a route (use delay()/throttle())	\bThread\.sleep\(	java	org\.apache\.camel
+watch	c	endpoint URI built by string concatenation (use toD + allowedSchemes)	\.to[D]?\([^)]*[\"'][^\"']*[\"']\s*\+	java	org\.apache\.camel
+watch	c	hardcoded broker/host in endpoint URI (use {{property}})	[?&](brokers|host|hostname)=(localhost|[0-9]{1,3}(\.[0-9]{1,3}){3})	java	org\.apache\.camel
+watch	c	new ObjectMapper in Camel code (use a data format: marshal().json())	\bnew (ObjectMapper|JsonMapper)\(	java	org\.apache\.camel
+
+# --- Kubernetes / Helm (authority: lgtm-minikube-stack / lgtm-crc, ../references/kubernetes-helm-idioms.md)
+ban	i	image pinned to :latest	\bimage:\s*["']?[^"'[:space:]]+:latest\b	yaml,yml,tpl
+watch	i	image with no tag (resolves to :latest)	\bimage:\s*["']?[a-z0-9./_-]+(/[a-z0-9._-]+)+["']?\s*$	yaml,yml,tpl
+watch	i	kind: Pod (prefer a Deployment for long-running workloads)	\bkind:\s*Pod\b	yaml,yml,tpl
+watch	i	secret in a plain env value:	\b(password|passwd|secret|token|api[_-]?key):\s*["'][^"']	yaml,yml,tpl
+
+# --- Spring Boot 4 / Java (authority: lgtm-spring-boot, ../references/spring-boot-idioms.md)
+ban	c	sun.misc.Signal handler (use graceful shutdown + lifecycle hooks)	\bsun\.misc\.Signal\b	java
+ban	c	javax.* Jakarta EE import (Jakarta EE 11 uses jakarta.*)	^import javax\.(persistence|servlet|validation|ws\.rs|inject|transaction|annotation\.(PostConstruct|PreDestroy))\b	java
+ban	c	Jackson 2 databind/core import in Spring code (Boot 4 uses tools.jackson)	^import (static )?com\.fasterxml\.jackson\.(databind|core|datatype|dataformat)\b	java	org\.springframework\.
+ban	c	WebSecurityConfigurerAdapter (removed; declare a SecurityFilterChain bean)	\bWebSecurityConfigurerAdapter\b	java
+ban	c	RestTemplate (deprecated in Framework 7; use RestClient)	\bnew RestTemplate\(|\bRestTemplateBuilder\b	java
+watch	c	hand-written health endpoint in Spring (use Actuator probes)	@(Get|Request)Mapping\(\s*(value\s*=\s*|path\s*=\s*)?"/(healthz|readyz|livez|health|ready|live)"	java
+watch	c	JdbcTemplate (prefer a Spring Data repository, or JdbcClient for SQL-shaped work)	\bJdbcTemplate\b	java	org\.springframework\.
+watch	c	System.getenv / System.getProperty (use typed config)	\bSystem\.get(env|Property)\(	java
+watch	c	hand-built ObjectMapper (inject the framework-configured mapper)	\bnew (ObjectMapper|JsonMapper)\(	java
+
+# --- .NET / ASP.NET Core (authority: ../references/dotnet-idioms.md)
+ban	c	Console.Write in service code (use ILogger)	\bConsole\.(Write|WriteLine|Error\.Write)	cs
+watch	c	Newtonsoft.Json (System.Text.Json is the default)	\bNewtonsoft\.Json\b	cs,csproj
+watch	c	sync-over-async (.Result / .Wait() / GetResult())	\)\.Result\b|\.Wait\(\)|\.GetAwaiter\(\)\.GetResult\(\)	cs
+watch	c	async void (only for event handlers)	\basync void\b	cs
+watch	c	new HttpClient( (use IHttpClientFactory / typed clients)	\bnew HttpClient\(	cs
+watch	c	PosixSignalRegistration (host lifetime handles SIGTERM)	\bPosixSignalRegistration\b	cs
+watch	c	hand-written health endpoint in ASP.NET Core (use MapHealthChecks)	\.Map(Get|Methods)\(\s*"/(healthz|readyz|livez|health|ready|live)"	cs
+watch	c	hand-built Npgsql data source/connection (EF Core, or AddNpgsqlDataSource)	\bnew Npgsql(DataSourceBuilder|Connection)\(	cs
+
+# --- Go (authority: lgtm-docker-stack instrumentation-go, ../references/go-idioms.md)
+ban	c	io/ioutil (deprecated since Go 1.16; use io / os)	"io/ioutil"	go
+ban	c	rand.Seed (deprecated; use math/rand/v2)	\brand\.Seed\(	go
+ban	c	ReverseProxy.Director (deprecated in Go 1.26; use Rewrite)	\.Director\s*=[^=]|^\s*Director:	go
+watch	c	interface{} (spell it any)	\binterface\{\}	go
+watch	c	package-level http.ListenAndServe (no timeouts, no Shutdown)	\bhttp\.ListenAndServe(TLS)?\(	go
+watch	c	fmt.Print* (log/slog in services; fine as a CLI's stdout)	\bfmt\.Print(f|ln)?\(	go
+
+# --- C++ (authority: lgtm-systems-programming, ../references/cpp-idioms.md)
+watch	c	naked new / delete (prefer RAII and smart pointers)	^[^/"]*\bnew\s+[A-Za-z_][A-Za-z0-9_:<>]*\s*[({;[]|^[^/"]*\bdelete(\[\])?\s+[A-Za-z_*(]	cpp,cc,cxx,hpp,hh,hxx,h
+watch	c	using namespace std in a header	^\s*using\s+namespace\s+std\s*;	hpp,hh,hxx,h
+watch	c	iostream / printf logging in service code (use spdlog)	\bstd::(cout|cerr|clog)\b|^[^/"]*\b(printf|fprintf|puts)\(	cpp,cc,cxx,hpp,hh,hxx,h
+ban	c	unbounded C string function (strcpy/strcat/sprintf/gets)	\b(strcpy|strcat|sprintf|vsprintf|gets)\(	cpp,cc,cxx,hpp,hh,hxx,h
+watch	c	directory-scoped CMake command (use target_* commands)	^\s*(include_directories|link_libraries|link_directories|add_definitions)\(	CMakeLists.txt,cmake

@@ -1,0 +1,69 @@
+---
+layout: default
+title: Home
+---
+
+<section class="hero">
+  <div class="container">
+    <span class="hero__eyebrow">Quarkus · Apache Camel · Kafka · Debezium · Strimzi</span>
+    <h1 class="hero__title">{{ site.title }}</h1>
+    <p class="hero__lead">
+      Build a shipping platform whose services talk through events. You publish
+      consignment events from Quarkus, move them with Camel routes over Kafka, write
+      them out atomically with the transactional outbox and Debezium, store state as
+      events, process streams, trace every hop in Grafana, and deploy the lot to
+      Kubernetes with Strimzi.
+    </p>
+    <div class="hero__cta">
+      <a class="btn btn--primary"
+         href="{{ '/docs/00-index/' | relative_url }}">Start with the chapters →</a>
+      <a class="btn btn--secondary"
+         href="https://github.com/{{ site.github_username }}/{{ site.github_repo }}"
+         rel="noopener">View on GitHub ↗</a>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><span class="stat__value">{{ site.parts.size }}</span><span class="stat__label">Parts, from a first event to Kafka on Kubernetes</span></div>
+      <div class="stat"><span class="stat__value">{{ site.docs.size }}</span><span class="stat__label">Chapters and appendices published so far</span></div>
+      <div class="stat"><span class="stat__value">2</span><span class="stat__label">Run targets: Docker Compose, and minikube with Strimzi</span></div>
+      <div class="stat"><span class="stat__value">1</span><span class="stat__label">Domain throughout: consignments, handling events and settlements</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-heading">The parts</h2>
+    <p class="section-sub">
+      Each pattern chapter states the problem, shows the Quarkus and Camel code
+      that solves it, and ends with a runnable example on Docker Engine. Parts 0 to 5 run
+      on Docker Compose; Part 6 moves the same services to minikube with Strimzi.
+    </p>
+
+    <div class="cards">
+      {% assign parts_sorted = site.parts | sort: "order" %}
+      {% for part in parts_sorted %}
+      {% assign part_docs = site.docs | where: "part", part.part_name %}
+      <a class="card" href="{{ part.url | relative_url }}">
+        <div class="card__eyebrow">{{ part.label | default: part.title }}</div>
+        <h3 class="card__title">{{ part.title }}</h3>
+        {% if part.blurb %}
+        <p class="card__desc">{{ part.blurb }}</p>
+        {% endif %}
+        <div class="card__meta">
+          {% if part_docs.size > 0 %}
+            <span>{{ part_docs.size }} chapter{% if part_docs.size != 1 %}s{% endif %}</span>
+          {% else %}
+            <span>Coming soon</span>
+          {% endif %}
+          <span>Explore →</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>

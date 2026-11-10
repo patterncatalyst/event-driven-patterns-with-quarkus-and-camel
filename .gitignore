@@ -51,3 +51,6 @@ __pycache__/
 .camel-jbang/
 .citrus-jbang/
 .bundle/
+
+# Editor backups
+*.bak
