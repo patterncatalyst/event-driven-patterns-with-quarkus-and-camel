@@ -1,0 +1,78 @@
+title: "Event-Driven Patterns with Quarkus and Camel"
+description: "Event-driven patterns built with Quarkus, Apache Camel and Kafka: events between services, the transactional outbox, event sourcing, stream processing, observability and Kafka on Kubernetes with Strimzi. Every pattern has a runnable shipping-domain example."
+brand_emoji: "📨"
+
+github_username: "patterncatalyst"
+github_repo: "event-driven-patterns-with-quarkus-and-camel"
+
+url: "https://patterncatalyst.github.io"
+baseurl: "/event-driven-patterns-with-quarkus-and-camel"
+
+license: "Apache 2.0 (code), CC BY 4.0 (prose)"
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+permalink: pretty
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+collections:
+  docs:
+    output: true
+    permalink: /docs/:name/
+  plans:
+    output: false
+  example_pages:
+    output: true
+    permalink: /examples/:name/
+  parts:
+    output: true
+    permalink: /parts/:name/
+
+defaults:
+  - scope:
+      path: ""
+      type: docs
+    values:
+      layout: tutorial
+      sectionid: docs
+  - scope:
+      path: ""
+      type: plans
+    values:
+      layout: plan
+  - scope:
+      path: ""
+      type: example_pages
+    values:
+      layout: tutorial
+      sectionid: examples
+  - scope:
+      path: ""
+      type: parts
+    values:
+      layout: part_index
+      sectionid: docs
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - node_modules/
+  - examples/
+  - scripts/
+  - diagrams/specs/
+  - lgtm-presentation/
+  - CLAUDE.md
+  - "*.py"
+  - README.md
+  - LICENSE
+  - LICENSE-docs.md
+  - CONTRIBUTING.md
+  - .bundle/

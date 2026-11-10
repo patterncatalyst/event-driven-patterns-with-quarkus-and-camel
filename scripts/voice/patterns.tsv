@@ -1,0 +1,124 @@
+# lgtm-professional-voice scan patterns.
+#
+# Columns (TAB-separated): tier  case  label  regex  [only]
+#   tier   ban   = rewrite by default; keep only with a stated reason
+#          watch = triage each hit; many are legitimate in context
+#          terse = terse pattern register (SKILL.md); opt-in, reported only
+#                  with --tier terse and never counted by --fail
+#   case   i = case-insensitive, c = case-sensitive
+#   only   optional: comma-separated extensions the pattern applies to
+#          (e.g. md,markdown). Omit to scan every file type.
+#   regex  GNU grep -E (ERE). No backreferences: scan.sh wraps each regex in
+#          an extra group when excerpting long lines, which shifts numbering.
+#
+# Rewrites for every pattern: ../references/phrase-list.md
+# Project-specific jargon goes in a separate file passed with --patterns.
+
+# --- Confessional register (the work or the reader framed as honest/dishonest)
+ban	i	honest / honestly / honesty	\bhonest(ly|y)?\b
+ban	i	frankly / candid(ly) / admittedly	\b(frankly|candid(ly)?|admittedly)\b
+ban	i	plainly / stated plainly	\bplainly\b
+ban	i	let's be clear / to be clear	\b(let['’]?s be|to be) (clear|honest|frank|precise|explicit|fair)\b
+ban	i	the truth is / truth be told	\b(the (truth|reality) is|truth be told|in all honesty)\b
+ban	i	not hidden / nothing hidden	\b(not|nothing) (is )?hidden\b
+ban	i	on purpose / for free	\b(on purpose|for free)\b
+watch	i	lie / lies / lying (person vs machine)	\b(lie|lies|lying|liar|liars)\b
+
+# --- Defensive contrast (arguing against a doubt the reader never raised)
+ban	i	genuine / genuinely	\bgenuine(ly)?\b
+ban	i	deliberately / intentionally	\b(deliberately|intentionally)\b
+watch	i	deliberate (adjective)	\bdeliberate\b
+ban	i	not a toy / not a stub	\bnot (just |merely |simply )?(a |an )?(toy|mock|mockup|stub|sketch|slideware|hello[- ]world|snippet)\b
+ban	i	real, running / for real	\breal(,| and) (running|working|live)\b|\b(genuinely|actually|truly) real\b|\bfor real\b
+ban	i	the code/example is real	\b(the )?(code|example|examples|snippet|snippets|files?|sample|samples|listing|output|demo)\b[^.;:]{0,40}\b(is|are|are all|is all|here is|here are) real\b
+watch	c	ALL-CAPS emphasis	\b(NOT|IS|ARE|NEVER|ALWAYS|ONLY|SAME|AFTER|BEFORE|EVERY|DOES|BOTH|ALL|AND|ANY|ALSO|DO|EXACTLY|FIRST|FREE|IMMEDIATELY|INSIDE|MUST|NO|ONE|PER|SINGLE|THIS|THAT|WHEN|WHERE|WHO|WITH|WITHOUT|WRONG)\b
+watch	i	isn't X — it's Y	n['’]?t (just |merely |only |simply )?[^.;:]{1,40} [—–]+ ?(it|they|this|that)(['’]s|['’]re| is| are)\b
+
+# --- Meta-narration (the text describing itself instead of the subject)
+ban	i	worth noticing / worth stating	\bworth (notic|noting|stat|spell|tak|hold|call|paus|seeing|emphasi|repeat|flag|dwell|point|mention|underlin|highlight|nam|copy|do|adopt|steal|borrow|imitat)[a-z]*\b
+ban	i	the thing to land / the takeaway	\bthe (thing|point|idea|takeaway|key point|key thing|lesson) (to|you should|worth) (land|notice|take away|remember|hold onto|internali[sz]e)\b
+ban	i	the rest of this deck/book	\b(the )?rest of (this|the) (deck|book|tutorial|chapter|appendix|section|guide|course|site|workshop|talk|presentation)\b
+ban	i	uses ... by name	\b(uses|use|used|refers to|cites|catalogued|catalogs|names) [a-z ]{0,25}by name\b
+watch	i	this section/slide covers	\b(this|the next|the previous) (section|slide|chapter|part|deck|module) (is about|covers|walks|will|shows|explains|goes|turns|takes|looks)\b
+watch	i	note that / keep in mind	\b(note that|notice (that|how)|keep in mind|remember that|it['’]?s (important|worth) (to )?(note|noting|remember|mention)|as (we|you) (saw|will see|can see))\b
+watch	i	let's dive / let's walk	\blet['’]?s (dive|unpack|walk|take|look|explore|start|begin|see|break|zoom)\b
+
+# --- School / condescending framing
+ban	i	capstone / homework / students	\b(capstone|homework|pop quiz|lesson plan|students?|classroom)\b([^-./_]|$)
+watch	i	simply / obviously / easy	\b(simply|obviously|of course|trivially|easy|easily|don['’]?t worry|no worries|painless(ly)?|magical(ly)?|like magic|as if by magic)\b
+
+# --- AI-generated tells and hype
+ban	i	load-bearing	\bload[- ]bearing\b
+ban	i	earns its place / keep	\bearns? its (place|keep|complexity)\b
+ban	i	hype vocabulary	\b(delve[sd]?|delving|tapestry|game[- ]chang[a-z]*|supercharg[a-z]*|revolutioni[sz][a-z]*|cutting[- ]edge|best[- ]in[- ]class|world[- ]class|blazing(ly)?)\b
+watch	i	soft hype	\b(seamless(ly)?|unlock(s|ing)?|elevate[sd]?|empower[a-z]*|robust|powerful|leverag(e|es|ed|ing)|journey|landscape|in the realm of)\b
+watch	i	summary marker	\b(in short|in summary|to summari[sz]e|the key point)\b
+watch	i	quietly / silently	\b(quietly|silently)\b
+watch	i	actually	\bactually\b
+watch	i	intensifiers	\b(very|really|truly|incredibly|extremely|crucially|notably|importantly)\b
+watch	i	em-dash pileup (3+ per line)	—[^—]*—[^—]*—
+watch	i	exclamation in prose	[a-z)]!( |"|'|$)
+
+# --- Wordiness and hedging
+ban	i	in order to / the fact that	\b(in order to|the fact that|at the end of the day|it should be noted|due to the fact|for all intents and purposes)\b
+watch	i	hedging	\b(arguably|perhaps|somewhat|fairly|essentially|basically|in a sense|sort of|kind of)\b
+
+# --- Editorial padding / rhetorical flourish (rule 9: emphasis without fact)
+ban	i	not one inch/bit more	\bnot (one|a) (inch|bit|ounce|step|word|line|iota|jot) (more|further|less|beyond)\b
+ban	i	full stop / plain and simple	\b(full stop|plain and simple|end of story|make no mistake|no more,? no less|nothing more,? nothing less|pure and simple)\b
+watch	i	here is the part that	\b(here|this|that) (is|was) the (part|bit|thing|point|sentence|clause|detail|kicker|catch|twist|rub|surprise) (that|where|worth|you|which)\b
+watch	i	throat-clearing lead-in	\b(notice what|here is what|what['’]?s (interesting|worth|notable)|one (more|last) (thing|discipline|point|note|habit|practice))\b
+watch	i	pinned-ref restated in prose	\bpinned (to|at|against) (the )?[a-z0-9._/-]{0,20} ?(tag|ref|branch|commit|sha|revision|release)\b
+ban	i	rhetorical "not from X" kicker	\bnot (from|by|out of|through|on) (hope|luck|magic|faith|wishful thinking|guesswork|guessing|thin air|nowhere|vibes|optimism|accident|chance|coincidence|hand-?waving|a prayer|prayer)\b
+ban	i	vague "comes from somewhere" setup	\b(come|comes|came|coming) from somewhere\b
+ban	i	no X standing in the way (flourish)	\b(no|nothing|nobody) [a-z][a-z ]{1,30}(standing in (the|your) way|in sight|to be found|getting in (the|your) way)\b
+watch	i	trailing ", not a Y" dismissal kicker	,[ ]+not (a |an |just |merely |simply |only |the )
+watch	i	trailing adverbial flourish (", in one pass")	,[ ]+(in one (pass|go|shot|sweep|sitting)|all at once|all in one place|and nothing more|start to finish|end to end|once and for all)\b
+
+# --- Philosophy-teacher register and self-validation (rule 9)
+watch	i	narrates understanding ("it's recognizing that")	\b(it|that|this)['’]?s (recogni[sz]ing|noticing|reali[sz]ing|understanding|seeing|knowing) that\b
+watch	i	the fix/skill is recognizing/noticing	\bthe (fix|answer|trick|skill|art|point|lesson|key|insight|move) (is|lies in) (recogni[sz]ing|noticing|reali[sz]ing|seeing|knowing)\b
+watch	i	self-validation ("that's the right call")	\b(that|this|which)['’]?s (exactly right|the right (call|choice|move|question|answer|approach|tool))\b
+watch	i	take it on faith / on faith	\bon faith\b
+watch	i	in every sense that matters	\bin every sense that matters\b
+
+# --- Importance-assertion flourish (metaphor/emphasis standing in for a fact) — rule 9
+ban	i	has teeth / grows teeth	\b(has|have|had|gives?|give|gave|giving|grow(s|n)?|with) (it |them |that |real |some )?teeth\b
+ban	i	where the rubber meets the road	\bwhere the rubber meets the road\b
+ban	i	the real magic / beauty	\bthe (real )?(magic|beauty) (is|here|of|lies|comes|happens)\b
+watch	i	the X that makes Y work (importance setup)	\bthe (reframe|insight|idea|trick|key|crux|move|thing|reason|catch|lesson|principle|observation|realization|secret|magic) that makes [a-z][a-z ]{0,30} (work|click|possible|tick|hang together|go|sing)\b
+watch	i	changes everything / can't be overstated	\b(changes everything|makes all the difference|a game[- ]?changer|is a big deal|cannot be overstated|can['’]?t be overstated|night and day)\b
+watch	i	where it gets interesting / real	\b(this|that|here|now) (is )?where (it|things) (gets?|really gets?|starts? to get) (interesting|real|fun|good|hairy|tricky|serious)\b
+watch	i	that is what matters / the point	\b(that|this|which|here)( is|['’]s) (what|the (part|thing|bit) that|why (it|this|that)) (matters|counts|makes (it|this|the) (work|difference)|is the point)\b
+
+# --- Titles and environment leakage
+watch	i	filename as title	\b(title|eyebrow|sub|subtitle|heading)[ ]*:[ ]*["'`][^"'`]*\b[a-z0-9_.-]+\.(sh|py|js|ts|java|ya?ml|json|xml)\b
+watch	i	filename as heading	^#{1,4} [a-z0-9_-]+\.(sh|py|java|ya?ml)\b	md,markdown
+watch	i	parallel-number title	\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]+) [a-z][a-z-]{2,}, (two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]+) [a-z][a-z-]{2,}\b
+watch	i	environment-specific noun	\b(minikube|k3d|k3s|microk8s|laptop|my machine)\b
+ban	c	work-item / tracking code / plan path	\b(DRA|DRQ|DEF|DEC|CAP|FND|ADR|REQ|RISK|TASK|STEP|DRU|DRG)-[0-9]{1,4}\b|\bPhase [A-H]\b|_plans/|\bbuild-plan\b|\bdecisions\.md\b|\bthe (roadmap|PRD)\b
+ban	c	chapter-code shorthand in figure/prose (Ch12)	\bCh[0-9]+\b
+watch	i	chapter cross-reference (Chapter 7 / ch.5 / ch 8)	\b(chapters?|ch)\.? ?[0-9]+\b
+
+# --- Issue-tracker framing in tutorial text (rule 13) and site chrome (rule 14)
+watch	i	defect framing	\b(bug|buggy|workaround|work around|limitation|quirk|gotcha|footgun|broken|does not work|doesn['’]t work|fails at run ?time|never (reads|calls|reaches))\b
+watch	i	upstream issue reference	\b(reported upstream|upstream (issue|bug|report|fix)|worth reporting|issue #?[0-9]{3,6}|[a-z0-9-]+/[a-z0-9-]+#[0-9]{2,6})\b
+watch	i	spec-violation framing	\b(violat(es|ed|ing|ion)|deviat(es|ed|ing|ion)|breaks the (spec|draft|rule|contract))\b
+watch	i	security-finding framing	\b(bypass(es|ed)?|loophole|oracle|exploit(able)?|vulnerab(le|ility)|security (issue|hole|flaw))\b
+ban	i	plan link in site chrome	/plans/|iteration[- ]plan|coverage[- ]matrix|\broadmap\b	html
+
+# --- Em dash (rule 12: zero tolerance) and manufactured cadence (rule 15)
+ban	i	em dash (recast with other punctuation)	—
+ban	c	ascii em-dash substitute ( -- )	[[:space:]]--[[:space:]]
+watch	i	stacked intensifiers	\b(absolutely|totally|completely|utterly|entirely|wholly)\b[ ,]+(absolutely|totally|completely|utterly|entirely|wholly)\b
+watch	i	made concrete / the whole X in one	\b(made (it )?concrete|that['’]?s the whole [a-z]+,? (made|in one|right here))\b
+
+# --- Terse pattern register (opt-in: --tier terse). Rules T2 to T11 in SKILL.md.
+terse	i	abstract subject ("the force is")	\bthe (force|decision|design|choice|question|point) (is|remains|stays)\b
+terse	i	nominalised verb ("what remains")	\bwhat (remains|stays|survives|dissolves)\b|\bis what (goes|remains|stays)\b|\bstays design\b
+terse	i	nominalised decision ("X is a decision")	\b(is|are) (a|the) (decision|choice)s?\b
+terse	i	stacked qualifier (whose ... whose ... whose)	\bwhose\b[^.]{1,60}\bwhose\b[^.]{1,60}\bwhose\b
+terse	i	provenance in the body (move to the end)	Gamma, Helm|Johnson and Vlissides|\(1994\)
+terse	i	figure walk-through (move to the description)	^(Read|Follow|Trace) the (figure|diagram|ladder)\b
+terse	i	meta-claim about the pattern ("the force behind")	\bthe force (behind|that remains)\b|\bsorts it\b
+terse	i	thesis framing ("Read that way")	\b(Read that way|In that setting|Seen this way|Seen that way)\b|\b1994 (form|mechanism|assum[a-z]*)\b
