@@ -23,7 +23,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 00-03 | 00 | SDKMAN lists bash, zip, unzip and curl as its basic toolset | https://sdkman.io/install | fetched 2026-11-10 | verified |
 | 00-04 | 00 | Versions are exact, newest stable that works, no licence | _plans/versions.md | survey 2026-11-10 | verified |
 | 00-05 | 00 | Temurin 25.0.5 LTS | api.adoptium.net | versions.md | verified |
-| 00-06 | 00 | Maven 3.10 released; Quarkus has open issues against it | quarkusio/quarkus #57216 | versions.md | verified |
+| 00-06 | 00 | Maven 3.10 released; Quarkus has an open issue against it | quarkusio/quarkus #57216 | versions.md | verified |
 | 00-07 | 00 | Quarkus 3.40.1.2 LTS with Camel Quarkus 3.40.0 and Camel 4.22.1 | code.quarkus.io streams; quarkus-camel-bom pom | versions.md | verified |
 | 00-08 | 00 | Kafka 4.3.2 is the newest the latest Strimzi supports | Strimzi 1.3.1 kafka-versions.yaml | versions.md | verified |
 | 00-09 | 00 | PostgreSQL 18.6: CNPG operand on compose, same minor for Dev Services | compose-postgres.yaml; mvn log postgres:18.6 | log 2026-11-10 | verified |
@@ -55,7 +55,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 00-35 | 00 | camel-quarkus-opentelemetry2 creates a span per route and processor | Tempo trace of POST /consignments: SERVER span per route consumer, INTERNAL per processor, Kafka PRODUCER parent of consumer span | validator run 2026-11-10 | verified |
 | 00-36 | 00 | camel-quarkus-opentelemetry is deprecated | camel-quarkus-opentelemetry 3.40.0 quarkus-extension.yaml status: deprecated | validator | verified |
 | 00-37 | 00 | quarkus-micrometer-opentelemetry exports meters over OTLP; no scrape | pom.xml; verify.sh 00 check 14 | repo | verified |
-| 00-38 | 00 | quarkus.otel.logs.enabled sends logs; SmallRye Health on /q/health | application.properties; health test | repo | verified |
+| 00-38 | 00 | quarkus-micrometer-opentelemetry exports logs by default; SmallRye Health on /q/health | application.properties; health test | repo | verified |
 | 00-39 | 00 | Tests pass on Dev Services Kafka with the pinned image | mvn log apache/kafka:4.3.2 | log 2026-11-10 | verified |
 | 00-40 | 00 | verify.sh 17/17 | verify.sh 00 | log 2026-11-10 | verified |
 | 00-41 | 00 | Removing onException: invalid gets 500, check 16 fails, 17 passes | experiment run (16/17; mvn "expected 400 but was 500") | repair round 1 | verified |
@@ -65,7 +65,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 01-01 | 01 | Event named in past tense; sender neither knows nor cares who reads it | book's own definition | n/a | verified |
 | 01-02 | 01 | Hohpe and Woolf: Event Message for reliable, asynchronous event notification | enterpriseintegrationpatterns.com EventMessage | fetched 2026-11-10 | verified |
 | 01-03 | 01 | Fowler separates four patterns: notification, ECST, event sourcing, CQRS | martinfowler.com/articles/201701-event-driven.html | fetched 2026-11-10 | verified |
-| 01-04 | 01 | Chapters 02 and 03 cover the first two | iteration-plan / PRD §5 (02 notification, 03 ECST) | plan | verified |
+| 01-04 | 01 | Part 1 covers the first two (notification, ECST) | iteration-plan / PRD §5 (02 notification, 03 ECST) | plan | verified |
 | 01-05 | 01 | consignment_event columns stream_id, version, type, jsonb payload, occurred_at | V1 migration; ConsignmentEvent | repo | verified |
 | 01-06 | 01 | Hibernate never writes changes to a loaded event back to the table | loadedEventChangesAreNeverWrittenBack; fails without @Immutable | repair round 1 | verified |
 | 01-07 | 01 | (cut) Camel carries the same events over Kafka from chapter 02 | n/a | n/a | cut |
@@ -81,7 +81,7 @@ Evidence is a test, a run or a source. Ref is the test class, log entry or bibli
 | 01-17 | 01 | Row model overwrites; previous status gone | verify.sh 01 check 4 | log 2026-11-10 | verified |
 | 01-18 | 01 | Handler loads, replays, checks, inserts next version | ConsignmentService.appendEvent | repo | verified |
 | 01-19 | 01 | Racing writers collide on UNIQUE(stream_id, version) | stale-expected-version test (simulated race) | repo | verified |
-| 01-20 | 01 | Triggers refuse UPDATE, DELETE and TRUNCATE; a row trigger never fires for TRUNCATE | appendOnlyTriggersRefuseUpdateDeleteAndTruncate; verify.sh 01 checks 8 to 11; V2-drop witness (checks 10, 11 fail) | repair round 2 | verified |
+| 01-20 | 01 | Triggers refuse UPDATE, DELETE and TRUNCATE; only DDL gets past them | appendOnlyTriggersRefuseUpdateDeleteAndTruncate; verify.sh 01 checks 8 to 11; V2-drop witness (checks 10, 11 fail) | repair round 2 | verified |
 | 01-21 | 01 | Replay is a left fold giving the row's document | ConsignmentDocument.replay; replayEqualsRow | repo | verified |
 | 01-22 | 01 | History endpoint returns StatusHistory: id, each status with version and timestamp | priorStatusesComeFromEventsOnly; verify.sh 01 check 5 | log 2026-11-10 | verified |
 | 01-23 | 01 | Only the stream can produce the history | ConsignmentService.history | repo | verified |

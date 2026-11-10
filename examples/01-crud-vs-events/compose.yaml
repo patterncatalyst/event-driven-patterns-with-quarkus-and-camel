@@ -29,8 +29,7 @@ services:
       timeout: 3s
       retries: 12
       start_period: 15s
-    networks:
-      - edp
+    networks: [edp]
 
 networks:
   edp:

@@ -117,7 +117,7 @@ from("platform-http:/consignments?httpMethodRestrict=POST")
 
 The `Consignment` record validates itself in its constructor, so a negative weight or a blank origin fails during unmarshalling. An `onException` clause turns that failure into a 400 before the route reaches Kafka.
 
-Telemetry comes from the framework. `camel-quarkus-opentelemetry2` creates a span per route and processor; the older `camel-quarkus-opentelemetry` extension is deprecated. `quarkus-micrometer-opentelemetry` exports the Micrometer meters over OTLP, so metrics take the same path as traces and no Prometheus scrape is configured. `quarkus.otel.logs.enabled=true` sends the log records. SmallRye Health serves `/q/health`.
+Telemetry comes from the framework. `camel-quarkus-opentelemetry2` creates a span per route and processor; the older `camel-quarkus-opentelemetry` extension is deprecated. `quarkus-micrometer-opentelemetry` exports the Micrometer meters over OTLP, so metrics take the same path as traces and no Prometheus scrape is configured. The same extension turns on OpenTelemetry tracing, metrics and logs by default, so the log records reach Loki with no extra setting. SmallRye Health serves `/q/health`.
 
 Run it:
 
@@ -152,7 +152,7 @@ Try each of these and rerun `./verify.sh`:
 
 ## Part 6 runs on Kubernetes
 
-Parts 1 to 5 use this compose stack. Part 6 moves the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image. It has its own setup at the start of Part 6, with its tool versions and commands; No cluster is needed for Parts 1 to 5. Stop the compose stack before you start one.
+Parts 1 to 5 use this compose stack. Part 6 moves the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image. It has its own setup at the start of Part 6, with its tool versions and commands. No cluster is needed for Parts 1 to 5. Stop the compose stack before you start one.
 
 ## References
 

@@ -36,7 +36,7 @@ diagrams/              figures as .svg and .excalidraw
 diagrams/specs/        one Python spec per figure
 examples/              one runnable project per pattern chapter
 examples/_infra/       shared compose stack
-lgtm-presentation/     the deck (from r15)
+lgtm-presentation/     the slide deck
 scripts/               stack, site, diagram and validation scripts
 bibliography.md        references
 ```
