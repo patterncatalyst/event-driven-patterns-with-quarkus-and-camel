@@ -28,8 +28,8 @@
 <text x="258.5" y="122.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">POST to host port 8080</text>
 <text x="258.5" y="122.0" font-size="11" fill="#555" text-anchor="middle">POST to host port 8080</text>
 <path d="M540,132 L685,132" fill="none" stroke="#b8650a" stroke-width="2" marker-start="url(#am)" marker-end="url(#am)"/>
-<text x="618.5" y="122.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">consignments</text>
-<text x="618.5" y="122.0" font-size="11" fill="#b8650a" text-anchor="middle">consignments</text>
+<text x="618.5" y="122.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">orders.placed</text>
+<text x="618.5" y="122.0" font-size="11" fill="#b8650a" text-anchor="middle">orders.placed</text>
 <path d="M770,220 L770,164" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M895,252 L855,252" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M450,164 L450,312" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>

@@ -14,11 +14,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** One immutable fact in a Consignment's stream. */
+/** One immutable fact in an Order's stream. */
 @Entity
 @Immutable
-@Table(name = "consignment_event")
-public class ConsignmentEvent extends PanacheEntityBase {
+@Table(name = "order_event")
+public class OrderEvent extends PanacheEntityBase {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,7 +28,7 @@ public class ConsignmentEvent extends PanacheEntityBase {
     public int version;
     public String type;
     @JdbcTypeCode(SqlTypes.JSON)
-    public ConsignmentEventPayload payload;
+    public OrderEventPayload payload;
     @Column(name = "occurred_at")
     public Instant occurredAt;
 }

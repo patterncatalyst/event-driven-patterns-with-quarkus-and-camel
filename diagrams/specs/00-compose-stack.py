@@ -24,7 +24,7 @@ emit(
     edges=[
         {"x1": 145, "y1": 132, "x2": 360, "y2": 132, "label": "POST to host port 8080", "ly": -10},
         {"x1": 540, "y1": 132, "x2": 685, "y2": 132, "bidir": True, "amber": True,
-         "label": "consignments", "ly": -10},
+         "label": "orders.placed", "ly": -10},
         {"x1": 770, "y1": 220, "x2": 770, "y2": 164},
         {"x1": 895, "y1": 252, "x2": 855, "y2": 252},
         {"x1": 450, "y1": 164, "x2": 450, "y2": 312, "amber": True, "label": "traces, metrics, logs (OTLP)",

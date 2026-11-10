@@ -6,45 +6,45 @@ import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
-import com.patterncatalyst.shipping.Consignment;
+import com.patterncatalyst.shipping.Order;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 
-@Path("/consignments")
-public class ConsignmentResource {
+@Path("/orders")
+public class OrderResource {
 
-    private final ConsignmentService service;
+    private final OrderService service;
 
-    ConsignmentResource(ConsignmentService service) {
+    OrderResource(OrderService service) {
         this.service = service;
     }
 
     @POST
-    public RestResponse<Void> book(Consignment consignment) {
-        service.book(consignment);
-        return RestResponse.created(URI.create("/consignments/" + consignment.id()));
+    public RestResponse<Void> place(Order order) {
+        service.place(order);
+        return RestResponse.created(URI.create("/orders/" + order.id()));
     }
 
     @POST
     @Path("{id}/status")
     public RestResponse<Void> changeStatus(@RestPath String id, StatusRequest request) {
-        service.change(new ChangeConsignmentStatus(id, request.to(), request.expectedVersion()));
+        service.change(new ChangeOrderStatus(id, request.to(), request.expectedVersion(), request.reason()));
         return RestResponse.noContent();
     }
 
-    /** The Consignment as the row holds it. */
+    /** The Order as the row holds it. */
     @GET
     @Path("{id}")
-    public ConsignmentDocument fromRow(@RestPath String id) {
+    public OrderDocument fromRow(@RestPath String id) {
         return service.fromRow(id);
     }
 
     /** The same document rebuilt by replaying the event stream. */
     @GET
     @Path("{id}/replayed")
-    public ConsignmentDocument fromEvents(@RestPath String id) {
+    public OrderDocument fromEvents(@RestPath String id) {
         return service.fromEvents(id);
     }
 
@@ -65,12 +65,12 @@ public class ConsignmentResource {
     }
 
     @ServerExceptionMapper
-    RestResponse<String> duplicate(DuplicateConsignmentException e) {
+    RestResponse<String> duplicate(DuplicateOrderException e) {
         return RestResponse.status(RestResponse.Status.CONFLICT, e.getMessage());
     }
 
     @ServerExceptionMapper
-    RestResponse<String> missing(ConsignmentNotFoundException e) {
+    RestResponse<String> missing(OrderNotFoundException e) {
         return RestResponse.status(RestResponse.Status.NOT_FOUND, e.getMessage());
     }
 }

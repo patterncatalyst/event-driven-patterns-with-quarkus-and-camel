@@ -1,26 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 510" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
 <defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
 <rect x="20" y="170" width="450" height="285" rx="12" fill="#fafafa" stroke="#ddd"/>
-<text x="32" y="190" font-size="12" font-weight="700" fill="#888">Row model: consignment</text>
+<text x="32" y="190" font-size="12" font-weight="700" fill="#888">Row model: orders</text>
 <rect x="490" y="170" width="450" height="285" rx="12" fill="#fafafa" stroke="#ddd"/>
-<text x="502" y="190" font-size="12" font-weight="700" fill="#888">Event model: consignment_event</text>
+<text x="502" y="190" font-size="12" font-weight="700" fill="#888">Event model: order_event</text>
 <rect x="280" y="40" width="400" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-<text x="480.0" y="73.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">ChangeConsignmentStatus</text>
-<text x="480.0" y="90.0" font-size="11.5" fill="#555555" text-anchor="middle">consignmentId C-1001, to IN_TRANSIT</text>
+<text x="480.0" y="73.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">ChangeOrderStatus</text>
+<text x="480.0" y="90.0" font-size="11.5" fill="#555555" text-anchor="middle">orderId O-1001, to SHIPPED</text>
 <rect x="50" y="205" width="390" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="245.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Before: status LOADED</text>
-<text x="245.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">one row, id C-1001</text>
+<text x="245.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Before: status PAID</text>
+<text x="245.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">one row, id O-1001</text>
 <rect x="50" y="295" width="390" height="60" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
-<text x="245.0" y="323.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">UPDATE consignment SET status = IN_TRANSIT</text>
+<text x="245.0" y="323.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">UPDATE orders SET status = SHIPPED</text>
 <text x="245.0" y="340.0" font-size="11.5" fill="#555555" text-anchor="middle">in place</text>
 <rect x="50" y="385" width="390" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="245.0" y="413.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">After: status IN_TRANSIT</text>
-<text x="245.0" y="430.0" font-size="11.5" fill="#555555" text-anchor="middle">LOADED is gone</text>
+<text x="245.0" y="413.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">After: status SHIPPED</text>
+<text x="245.0" y="430.0" font-size="11.5" fill="#555555" text-anchor="middle">PAID is gone</text>
 <rect x="520" y="205" width="390" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="715.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Before: v1 ConsignmentBooked, v2 LOADED</text>
-<text x="715.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">two facts in stream C-1001</text>
+<text x="715.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Before: v1 OrderPlaced, v2 OrderPaid</text>
+<text x="715.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">two facts in stream O-1001</text>
 <rect x="520" y="295" width="390" height="60" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
-<text x="715.0" y="323.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">INSERT version 3 ConsignmentStatusChanged</text>
+<text x="715.0" y="323.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">INSERT version 3 OrderShipped</text>
 <text x="715.0" y="340.0" font-size="11.5" fill="#555555" text-anchor="middle">unique (stream_id, version)</text>
 <rect x="520" y="385" width="390" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
 <text x="715.0" y="413.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">After: v1, v2, v3</text>
@@ -32,5 +32,5 @@
 <path d="M715,265 L715,295" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M715,355 L715,385" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">One command, two storage outcomes</text>
-<text x="480" y="485" font-size="11" fill="#555555" text-anchor="middle">The row forgets LOADED; the stream keeps every status that came before.</text>
+<text x="480" y="485" font-size="11" fill="#555555" text-anchor="middle">The row forgets PAID; the stream keeps every status that came before.</text>
 </svg>
