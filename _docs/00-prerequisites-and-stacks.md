@@ -62,7 +62,7 @@ Each service image is pinned by tag in `examples/_infra`. The version table live
 | Kafka Connect with Debezium | 8083 | Log tailing and the outbox router |
 | Grafana LGTM | 3000, 4317, 4318, 19090, 3200, 3100 | Grafana, OTLP gRPC and HTTP, Prometheus, Tempo, Loki |
 
-Prometheus is on 19090 because Cockpit already holds 9090 on Fedora and RHEL. Every service has a memory limit and a health check; the limits add up to about 7 GB if every container fills its allowance, so a host with 16 GB runs the stack comfortably.
+Prometheus is on 19090 because Cockpit already holds 9090 on Fedora and RHEL. Every service has a memory limit and a health check; the limits add up to about 7 GB if every container fills its allowance.
 
 ### One stack at a time
 
@@ -146,7 +146,7 @@ PASS 17: negative witness: the topic did not grow (1 records before and after)
 
 Try each of these and rerun `./verify.sh`:
 
-- Remove the `onException` clause. An invalid Consignment now gets 500 instead of 400, and the negative witness fails on the status code.
+- Remove the `onException` clause. An invalid Consignment no longer gets 400, and the negative witness fails on the status code.
 - Change `kafka:consignments` in the intake route to another topic name. The check for the record on `consignments` fails.
 
 ## Part 6 runs on Kubernetes
