@@ -59,3 +59,21 @@ Orchestrator serial run from a clean Docker state, each step alone, one after th
   - ch01: `Lifecycle.allows` always true gives **16/19** (checks 11, 12, 15); removing the UPDATE/DELETE trigger gives **17/19** (checks 14, 16); removing V2 gives **17/19** (checks 17, 18); dropping `appendEvent` gives **14/19** (checks 6, 8, 10, 12, 15); removing the unique constraint fails the stale-version test (**10/11** mvn).
 - Sources fetched while rewriting the claims table: PostgreSQL SQL key words appendix (ORDER reserved), CREATE TRIGGER (TRUNCATE only FOR EACH STATEMENT), ALTER TABLE (DISABLE TRIGGER), Docker Engine install and post-install pages.
 - `claims.md` rewritten against the current prose: Consignment rows replaced by Order rows, new rows for the running-example section; domain facts only realised in later chapters are marked design.
+
+### r02 final serial run (2026-11-10)
+
+Orchestrator, clean Docker, under the stack lock, one at a time.
+
+- `examples/domain-model`: **79 tests** pass.
+- `examples/00-stack-check`: mvn **4/4**; `verify.sh` **17/17**.
+- `examples/01-crud-vs-events`: mvn **11/11**; `verify.sh` **19/19**.
+- `examples/02-event-notification`: mvn **6+4**; `verify.sh` **19/19**.
+- `examples/03-claim-check`: mvn **8+7**; `verify.sh` **30/30**.
+- `examples/04-event-ordering`: mvn **4+6**; `verify.sh` **27/27**.
+- All BUILD SUCCESS.
+- Experiments recorded by the executors on 2026-11-10:
+  - ch02: removing `breakOnFirstError` gives **17/19** (checks 12, 14 fail); dropping the key header makes 3 of the 6 order-service tests fail.
+  - ch03: `ORDER_EVENTS_CARRY_STATE=false` gives **14/30**; `ORDER_EVENTS_ATTACHMENT=inline` gives **22/30**; inline with max-request-size 1048576 gives **20/30**; removing the status guard makes one `OrderCopyTest` fail.
+  - ch04: `SHIPPING_PARTITION_KEY=event-type` for run 1 gives **25/27** (checks 3, 5 fail; 6, 7, 9 are run-dependent); `RESEQUENCE=true` on all runs gives **24/27** (checks 14, 15, 16 fail).
+- Opus validation round 1: fresh-clone build with an empty Maven repository of domain-model plus 02, 03 and 04 `package`: BUILD SUCCESS.
+- Repair round 1 re-runs follow.

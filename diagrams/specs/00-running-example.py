@@ -27,7 +27,7 @@ emit(
     ],
     notes=[
         {"x": 545, "y": 28, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-         "text": "Five services, one step each, joined only by Kafka topics"},
+         "text": "Five services, one step each, joined by Kafka topics"},
         {"x": 545, "y": 385, "anchor": "middle", "size": 11, "color": "#555555",
          "text": "Topics carry the edp. prefix. Shipping also emits shipping.scheduled, in-transit and delivered; order also emits orders.cancelled."},
     ],

@@ -70,9 +70,9 @@ Run one stack. The services publish fixed host ports, so a second copy fails to 
 
 ## The running example
 
-Every example in the book is a piece of one business: an online shop that sells and ships physical goods. A customer orders an item. The shop records the order, reserves stock, takes payment, books a carrier and delivers the parcel, and tells the customer after each step. Five services each own one of those steps. They share no tables and call no one else's API; they react to events on Kafka. The single exception is a consumer that fetches current state back from the order service, which the event notification chapter examines.
+Every example in the book is a piece of one business: an online shop that sells and ships physical goods. A customer orders an item. The shop records the order, reserves stock, takes payment, books a carrier and delivers the parcel, and tells the customer after each step. Five services each own one of those steps. They share no tables and call no one else's API; they react to events on Kafka. Two patterns call the order service by design: event notification fetches the current order back, and a claim check fetches a stored attachment.
 
-{% include excalidraw.html file="00-running-example" alt="Five services: order, inventory, payment and shipping in a row joined by topics, with notification below receiving from all of them" caption="Figure 0.2: Five services joined only by topics" %}
+{% include excalidraw.html file="00-running-example" alt="Five services: order, inventory, payment and shipping in a row joined by topics, with notification below receiving from all of them" caption="Figure 0.2: Five services joined by topics" %}
 
 | Service | Owns | Reacts to | Emits |
 |---------|------|-----------|-------|
@@ -82,7 +82,7 @@ Every example in the book is a piece of one business: an online shop that sells 
 | shipping-service | `Shipment`, carrier choice | PaymentProcessed | ShipmentScheduled, ShipmentInTransit, ShipmentDelivered |
 | notification-service | `Notification` | every event | nothing |
 
-On the happy path the flow reads left to right in Figure 0.2. The order service publishes OrderPlaced. Inventory reserves stock and publishes InventoryReserved. Payment takes the money and publishes PaymentProcessed. Shipping books FASTLINE or AIRCO, then publishes ShipmentScheduled, ShipmentInTransit and ShipmentDelivered as the parcel moves. Order reacts to payment and shipment events to advance its status, and notification reads every topic to tell the customer. Nobody calls anybody: each service knows only the topics it reads and the topics it writes.
+On the happy path the flow reads left to right in Figure 0.2. The order service publishes OrderPlaced. Inventory reserves stock and publishes InventoryReserved. Payment takes the money and publishes PaymentProcessed. Shipping books FASTLINE or AIRCO, then publishes ShipmentScheduled, ShipmentInTransit and ShipmentDelivered as the parcel moves. Order reacts to payment and shipment events to advance its status, and notification reads every topic to tell the customer. Apart from those fetches, no service calls another: each knows only the topics it reads and the topics it writes.
 
 Each service keeps its tables in its own schema of the `edp` database: `orders`, `inventory`, `payments`, `shipping` and `notifications`. The order table is named `orders` because `order` is a reserved word.
 
@@ -146,7 +146,7 @@ examples/NN-slug/
 - `mvn -B verify` runs the tests. Quarkus Dev Services starts the containers a test needs, so no compose stack is required.
 - `./verify.sh` builds the image, starts the compose stack and checks the behaviour end to end. It prints one `PASS` or `FAIL` line per check, ends with `N/N checks passed` and exits non-zero on any failure. `KEEP=1 ./verify.sh` leaves the stack running afterwards so you can inspect it.
 
-Each `verify.sh` includes a negative witness: a check that fails when the pattern's guard is removed. A script that only proved the happy path would pass for the wrong reasons.
+Each `verify.sh` includes a negative witness: a check that fails when the pattern's guard is removed. Without it, a script could still pass after the guard it checks has been removed.
 
 ## Build, run, observe: the stack check
 

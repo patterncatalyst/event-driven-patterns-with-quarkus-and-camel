@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # Order-to-delivery domain model
 
-Switched 2026-11-10 from the freight model to EIP Camel's order-to-delivery domain. The model is the running example of Enterprise Integration Patterns with Camel; this file states the facts this book uses, in its own words.
+Switched 2026-11-10 from the r01 domain to EIP Camel's order-to-delivery domain. The model is the running example of Enterprise Integration Patterns with Camel; this file states the facts this book uses, in its own words.
 
 ## Rules
 

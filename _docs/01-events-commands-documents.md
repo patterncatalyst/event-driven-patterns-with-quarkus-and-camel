@@ -7,7 +7,7 @@ description: "Three message types and one storage decision: update an order row 
 duration: "35 minutes"
 ---
 
-An order from the running example moves from PLACED to PAID. One message says so, and one table has to change. The message type decides who is responsible for what, and the storage decision decides whether the previous status survives the change.
+An order from the running example moves from PLACED to PAID. One message says so, and one table has to change. The message type says who decides whether the change happens. The storage choice decides whether the old status is still there afterwards.
 
 {% include excalidraw.html file="01-row-update-vs-event-append" alt="The same ChangeOrderStatus command applied to an orders row, which overwrites the status, and to the order_event table, which gains a new version" caption="Figure 1.1: One command, two storage outcomes" %}
 
@@ -15,7 +15,7 @@ An order from the running example moves from PLACED to PAID. One message says so
 
 ### The problem
 
-Other parts of the system need to know that an order was paid. If the order service calls each of them, it must know who they are and wait for each answer. The fact is already true when anyone learns it; nothing about it can be refused.
+Other parts of the system need to know that an order was paid. If the order service calls each of them, it must know who they are and wait for each answer. By the time anyone hears that the order was paid, the payment has happened, so no receiver can refuse it.
 
 ### The solution
 
@@ -61,7 +61,7 @@ Hohpe and Woolf use it to transfer a data structure between applications; the re
 
 ## Row or events for the same change
 
-The command is identical in both models. What differs is what survives it.
+Both models receive the same command. They differ in what is kept after it runs.
 
 The row model overwrites. `UPDATE orders SET status = 'SHIPPED'` is cheap, the current state is one primary key lookup, and the previous status is gone.
 
