@@ -126,3 +126,10 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - `SHARE_ACQUIRE_MODE=record_limit` (26-check version): 26/26.
 - mvn 10 tests, BUILD SUCCESS, after the last code change (07-r2-mvn-final.log).
 - Orchestrator, after round 3: `SHARE_ACQUIRE_MODE=record_limit` on the 27-check verify.sh: 27/27.
+
+## r04 chapter 10 window (2026-11-11)
+
+- Run 1 (10-w1): 36/39. Check 4 read the offset before Connect stored it; 19 and 22 failed from the empty value. Fix: check 4 polls (30 s) and a precondition stops the run if no lsn is stored.
+- Run 2 (10-w2): 37/39. Checks 20 and 21: the backward alter repeated the last change before the stop (SKU-1 qty 7777, same lsn) once. Run 3 (KEEP=1, rows dumped) showed the same; run 4 with a precondition that the offset equals confirmed_flush_lsn before the stop still repeated it. Behaviour asserted: 2 new changes plus one repeat, nothing older.
+- Run 5 (10-w5): 39/39 from clean; no edp-* left.
+- Experiments (10-exp.log): E1 OFFSET_FLUSH_INTERVAL_MS=60000: check 4 fails, run stops at its precondition. E2 docker kill edp-connect between flushes: 21 changes written, 21 delivered again after restart. E3 no_data config, 3 updates while stopped, DELETE offsets, resume: 0 r rows, 4 u rows (the 3 plus a repeat of the last change before the stop). PATCH while running: check 7. Incremental snapshot instead of reset: check 38.
