@@ -17,7 +17,7 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
 | Title | Author(s) | Publisher | Year | ISBN | Focus |
 |---|---|---|---|---|---|
 | [*Message- and Event-Driven Systems with CQRS and Event Sourcing: Web and Cloud Architecture*](https://www.informit.com/store/message-and-event-driven-systems-with-cqrs-and-event-9780137998616) | Alex Lawrence | Addison-Wesley | 2026 | 978-0-13-799861-6 | Message anatomy, CQRS, event sourcing, long-running processes, evolution of messages; Vernon Signature Series |
-| [*Building Event-Driven Microservices, Second Edition*](https://www.oreilly.com/library/view/building-event-driven-microservices/9798341622180/) | Adam Bellemare | O'Reilly | 2025 | 979-8-3416-2218-0 | Event streams, data contracts, change data capture and the outbox, stream processing, reprocessing |
+| [*Building Event-Driven Microservices, Second Edition*](https://www.oreilly.com/library/view/building-event-driven-microservices/9798341622180/) | Adam Bellemare | O'Reilly | 2025 | 979-8-3416-2218-0 | Events and event streams, event design, schemas and data contracts, integrating existing systems, denormalization, stateful and deterministic stream processing, workflows, producer and consumer microservices, eventual consistency, bad data, testing, deployment |
 | [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/) | Gregor Hohpe & Bobby Woolf | Addison-Wesley | 2003 | 978-0-321-20068-6 | Idempotent Receiver, Content Enricher, Aggregator, Dead Letter Channel, Process Manager, Resequencer, Claim Check, Event Message, Command Message, Document Message |
 
 ## Articles and pattern references
@@ -29,6 +29,8 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
 | Event Sourcing pattern | Microsoft Azure Architecture Center | [learn.microsoft.com/azure/architecture/patterns/event-sourcing](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing) | Structural guidance on event sourcing, as a pattern reference only |
 | Claim Check | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html) | Passing a reference instead of a large payload |
 | Resequencer | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html) | Restoring order to out-of-sequence messages |
+| Competing Consumers | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html) | Several consumers sharing one channel, as in a share group |
+| Polling Consumer | Gregor Hohpe, Bobby Woolf | [enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html](https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html) | A consumer that fetches when it is ready, as the Kafka poll loop does |
 
 ## The Strimzi blog
 
@@ -38,7 +40,7 @@ and its title and date checked before any chapter cites it.
 | Topic | Post |
 |---|---|
 | Exactly-once | [Exactly-once semantics with Kafka transactions](https://strimzi.io/blog/2023/05/03/kafka-transactions/) |
-| Producers and consumers | [Developing Kafka client applications: A simple producer](https://strimzi.io/blog/2023/10/03/kafka-producer-client-essentials/), [Developing Kafka client applications: A simple consumer](https://strimzi.io/blog/2023/11/09/kafka-consumer-client-essentials/), [Optimizing Kafka broker configuration](https://strimzi.io/blog/2021/06/08/broker-tuning/) |
+| Producers and consumers | [Optimizing Kafka producers](https://strimzi.io/blog/2020/10/15/producer-tuning/), [Optimizing Kafka consumers](https://strimzi.io/blog/2021/01/07/consumer-tuning/), [Developing Kafka client applications: A simple producer](https://strimzi.io/blog/2023/10/03/kafka-producer-client-essentials/), [Developing Kafka client applications: A simple consumer](https://strimzi.io/blog/2023/11/09/kafka-consumer-client-essentials/), [Optimizing Kafka broker configuration](https://strimzi.io/blog/2021/06/08/broker-tuning/) |
 | Queues | [Using Queues for Apache Kafka with Strimzi](https://strimzi.io/blog/2025/08/20/queues-for-kafka/) |
 | Connector offsets | [Managing Connector Offsets](https://strimzi.io/blog/2024/11/04/managing-connector-offsets/), [Auto-restarting connectors in Apache Kafka Connect and Mirror Maker 2](https://strimzi.io/blog/2023/01/25/auto-restarting-connectors/) |
 | KRaft and node pools | [Kafka Node Pools: Introduction](https://strimzi.io/blog/2023/08/14/kafka-node-pools-introduction/), [Kafka Node Pools: Supporting KRaft](https://strimzi.io/blog/2023/09/11/kafka-node-pools-supporting-kraft/), [Kafka Node Pools: Storage & Scheduling](https://strimzi.io/blog/2023/08/28/kafka-node-pools-storage-and-scheduling/), [From ZooKeeper to KRaft: How the Kafka migration works](https://strimzi.io/blog/2024/03/21/kraft-migration/) |
@@ -54,6 +56,8 @@ and its title and date checked before any chapter cites it.
 | Source | Link | Used for |
 |---|---|---|
 | Apache Kafka | [kafka.apache.org/documentation](https://kafka.apache.org/documentation/) | The broker, clients, Kafka Streams and transactions |
+| KIP-848: The Next Generation of the Consumer Rebalance Protocol | [cwiki.apache.org](https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol) | The consumer group protocol |
+| KIP-1030: Change constraints and default values for various configurations | [cwiki.apache.org](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1030%3A+Change+constraints+and+default+values+for+various+configurations) | Producer defaults such as linger.ms |
 | KIP-932: Queues for Kafka | [cwiki.apache.org](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) | Share groups |
 | KIP-875: First-class offsets support in Kafka Connect | [cwiki.apache.org](https://cwiki.apache.org/confluence/display/KAFKA/KIP-875%3A+First-class+offsets+support+in+Kafka+Connect) | Connector offsets |
 | Strimzi | [strimzi.io/docs](https://strimzi.io/documentation/) | Kafka on Kubernetes: KRaft, topics, Connect, Cruise Control, MirrorMaker 2 |

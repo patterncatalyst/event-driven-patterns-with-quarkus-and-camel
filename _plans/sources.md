@@ -138,6 +138,8 @@ The PRD says 21 posts; its list contains 22 entries (listed below). All 22 were 
 | 20 | Moving data between JBOD disks using Cruise Control | 2025-02-13 | https://strimzi.io/blog/2025/02/13/moving-data-between-JBOD-disks-using-cruise-control/ | confirmed |
 | 21 | Video: Make your Kafka cluster production-ready - Cluster Balancing | 2023-01-19 | https://strimzi.io/blog/2023/01/19/make-your-kafka-cluster-production-ready-cluster-balancing/ | confirmed |
 | 22 | Migrating Kafka clusters with MirrorMaker2 and Strimzi | 2021-11-22 | https://strimzi.io/blog/2021/11/22/migrating-kafka-with-mirror-maker2/ | confirmed |
+| 23 | Optimizing Kafka producers | 2020-10-15 | https://strimzi.io/blog/2020/10/15/producer-tuning/ | confirmed (r03, fetched 2026-11-10) |
+| 24 | Optimizing Kafka consumers | 2021-01-07 | https://strimzi.io/blog/2021/01/07/consumer-tuning/ | confirmed (r03, fetched 2026-11-10) |
 
 The blog has no Debezium or CDC post; chapter 09 rests on the Debezium docs.
 
@@ -174,3 +176,55 @@ Reference entries for Strimzi, Debezium, Apicurio, Quarkus, Camel, Camel Quarkus
 | quarkus-observability | https://github.com/patterncatalyst/quarkus-observability | confirmed |
 | otel-observability-tutorial | https://github.com/patterncatalyst/otel-observability-tutorial | confirmed |
 | domain-driven-design-observability-workshop | https://github.com/patterncatalyst/domain-driven-design-observability-workshop | confirmed |
+
+## r03 sources (step 1A, fetched 2026-11-10)
+
+All rows fetched 2026-11-10 (date fetched). Status confirmed unless noted. Quotes are short phrases from the page.
+
+### Kafka 4.3 configuration pages
+
+| Source | URL | Facts recorded | Backs |
+|---|---|---|---|
+| Kafka 4.3 producer configs | https://kafka.apache.org/43/configuration/producer-configs/ | `linger.ms` default 5 ("the upper bound on the delay for batching"); `batch.size` 16384 bytes; `acks` default all; `enable.idempotence` default true; `compression.type` default none; `max.in.flight.requests.per.connection` 5. Idempotence requires `acks` all, `retries` greater than 0 (default 2147483647) and in-flight 5 or lower; conflicting values without explicit idempotence disable it, an explicit `enable.idempotence=true` with conflicts throws `ConfigException` | 05 defaults, tuned route, acks=1 recreate |
+| Kafka 4.3 consumer configs | https://kafka.apache.org/43/configuration/consumer-configs/ | `max.poll.records` 500; `fetch.min.bytes` 1; `fetch.max.wait.ms` 500; `max.poll.interval.ms` 300000; `max.partition.fetch.bytes` 1048576; `group.protocol` default classic, values classic or consumer; `group.remote.assignor` null, applies only with consumer | 06 knobs, protocol comparison |
+| Kafka 4.3 group configs | https://kafka.apache.org/43/configuration/group-configs/ | `share.record.lock.duration.ms` 30000; `share.delivery.count.limit` 5; `share.auto.offset.reset` latest ("the share-partition start offset"); `share.session.timeout.ms` 45000; also `share.isolation.level` read_uncommitted, `share.heartbeat.interval.ms` 5000 | 07 share group settings |
+| Kafka 4.3 design page, section "The Share Consumer" | https://kafka.apache.org/43/design/design/ | Page exists under Design (no separate share-group docs page: /43/design/share-groups and /queues-for-kafka are 404). "partitions may be assigned to multiple consumers"; "can exceed the number of partitions"; "Delivery attempts ... are counted"; ack types accept, release, reject, renew, or do nothing (lock releases on expiry); lock default 30 seconds via `share.record.lock.duration.ms`; broker cap `group.share.partition.max.record.locks`; consumer-group partitions are "consumed by exactly one consumer within each subscribing consumer group". It states no ordering guarantee for share groups, no numeric delivery limit, and does not mention KIP-848 | 07 definition of share groups |
+
+### KIPs
+
+| Source | URL | Facts recorded | Backs |
+|---|---|---|---|
+| KIP-848: The Next Generation of the Consumer Rebalance Protocol (Accepted) | https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol | Classic protocol "relies on a group-wide synchronization barrier"; new protocol "truly incremental and cooperative", no global barrier; coordinator computes assignment with a server-side assignor (range, uniform); opt in via `group.protocol`; GA in Kafka 4.0. First 100000 of 163678 characters read | 06 rebalance protocol |
+| KIP-1030: Change constraints and default values for various configurations | https://cwiki.apache.org/confluence/display/KAFKA/KIP-1030%3A+Change+constraints+and+default+values+for+various+configurations | `linger.ms` default 0 to 5, targeted 4.0; at 0 "Kafka effectively sends one message per batch"; 5 ms "a reasonable compromise" between latency and batching | 05 default linger is 5 ms |
+| KIP-932: Queues for Kafka (Accepted) | https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka | Share groups; more consumers than partitions; individual acknowledgement; accept, release, reject; lock default 30 s; delivery count limit 5, then archived; at-least-once, count approximate; "no guarantees about the ordering of offsets between different batches"; `KafkaShareConsumer`, `share.acknowledgement.mode` implicit or explicit. First 100000 of 225772 characters read | 07 |
+
+### Strimzi blog
+
+| Source | URL | Date | Facts recorded | Backs |
+|---|---|---|---|---|
+| Optimizing Kafka producers (Paul Mellor) | https://strimzi.io/blog/2020/10/15/producer-tuning/ (HTTP 200; not on the blog front page) | 2020-10-15 | `batch.size` "(default 16384)"; `linger.ms` "(default 0 or no delay)" (true in 2020, superseded by KIP-1030, so never cite it for the default); `acks=all` raises latency; compression "improves throughput and reduces the load on storage" at a CPU cost, "may not suit low-latency"; idempotence "can (and should)" be enabled; `buffer.memory` at least batch size; in-flight default 5, set 1 for order without idempotence | 05 knob explanations |
+| Optimizing Kafka consumers (Paul Mellor) | https://strimzi.io/blog/2021/01/07/consumer-tuning/ (HTTP 200) | 2021-01-07 | `fetch.min.bytes` "a minimum threshold for size-based batching"; "first of either threshold is reached" with `fetch.max.wait.ms`; `max.poll.records` caps records per poll; missed `max.poll.interval.ms` means "considered to be failed, causing a rebalance"; session timeout and heartbeat (about a third); static membership `group.instance.id` cuts rebalances; "Adding more consumers than partitions will not increase throughput", extras "partition-free and idle" | 06 |
+| Developing Kafka client applications: A simple producer (re-read) | https://strimzi.io/blog/2023/10/03/kafka-producer-client-essentials/ | 2023-10-03 | `send` "buffers messages for batching"; `linger.ms` and `batch.size` batch more; `acks=all` (default) for durability; `retries`; `compression.type` reduces network use. Does NOT mention idempotence or the partitioner | 05 (do not cite for idempotence) |
+| Developing Kafka client applications: A simple consumer (re-read) | https://strimzi.io/blog/2023/11/09/kafka-consumer-client-essentials/ | 2023-11-09 | poll loop; `max.poll.records` "limits the number of records returned"; `max.poll.interval.ms` "more critical than heartbeat.interval.ms and session.timeout.ms"; slow work to a worker pool; no messages consumed during assignment; `group.instance.id`; cooperative sticky. Does NOT cover fetch settings or the new group protocol | 06 (do not cite for fetch settings or KIP-848) |
+| Using Queues for Apache Kafka with Strimzi (re-read) | https://strimzi.io/blog/2025/08/20/queues-for-kafka/ | 2025-08-20 | Share groups can exceed partition count, a third regular consumer sat idle while three share consumers read; locks "applied per record even within a fetched batch"; no ordering guarantee; ACCEPT, RELEASE, REJECT with explicit mode; `group.share.delivery.count.limit` default 5, record archived after five attempts; written against Kafka 4.0 early access (Strimzi 0.46), "not recommended for production" at 4.0.0. Does not use the term head-of-line blocking, so do not attribute it | 07 |
+
+Strimzi blog additions: the two tuning posts are approved (owner review 2026-11-10) and added to the table above as #23 (producers) and #24 (consumers).
+
+### Hohpe and Woolf
+
+| Page | URL | Facts | Backs |
+|---|---|---|---|
+| Competing Consumers ("Competing Consumers - Enterprise Integration Patterns") | https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html | Problem: "How can a messaging client process multiple messages concurrently?" Solution: "Create multiple Competing Consumers on a single channel so that the consumers can process multiple messages concurrently." | 07 |
+| Polling Consumer ("Polling Consumer - Enterprise Integration Patterns") | https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html | Problem: "wants to control when it consumes each message." Solution: "one that explicitly makes a call when it wants to receive a message." | 06 |
+
+### SmallRye, Quarkus and Camel
+
+| Source | URL | Facts recorded | Backs |
+|---|---|---|---|
+| SmallRye Reactive Messaging, "Receiving Kafka Records Using Kafka Queues (Share Groups)" | https://smallrye.io/smallrye-reactive-messaging/latest/kafka/receiving-kafka-records/ | Marked Experimental. The latest page documents 5.0.0-RC1 (Javadoc links), not the pinned 4.37.0. It uses `share-group.enabled` (default false), says `share-group` is deprecated in its favour; `share-group.failure-acknowledgement-type` default release; `share-group.failure-deserialization-acknowledgement-type` default reject; `share-group.unprocessed-record-max-age.ms` default 60000, 0 disables. Ack maps to ACCEPT, nack to RELEASE, `ack.reject()` is permanent; RENEW managed by the connector. No delivery count metadata is mentioned on the page. Cross-check: the pinned 4.37.0 jar's `KafkaConnector` contains both `share-group` and `share-group.enabled` and the failure and max-age attributes, so both names work on the pin | 07 share side |
+| Quarkus Kafka guide section 4.7 "Share Groups (Kafka Queues)" (Quarkus 3.40 labeled latest) | https://quarkus.io/guides/kafka | "require Apache Kafka 4.2+ brokers and are an early access feature in Kafka"; `mp.messaging.incoming.queue.share-group=true`; accept, release, reject; lock renewal via `share-group.unprocessed-record-max-age.ms`; `batch=true` allowed; `pattern`, `assign-seek`, `partitions`, `commit-strategy`, `failure-strategy`, `consumer-rebalance-listener.name` ignored with share groups. Note this guide uses the `share-group` name while SmallRye latest prefers `share-group.enabled`; pick one that works on the pin and say nothing about the other. First 100000 of 222865 characters read | 07 |
+| Camel Kafka component page | https://camel.apache.org/components/latest/kafka-component.html | `groupProtocol` default classic, values classic or consumer; consumer "enables the new KIP-848 consumer rebalance protocol", classic-only `heartbeatIntervalMs`, `sessionTimeoutMs`, `partitionAssignor` excluded automatically; `groupRemoteAssignor` no default, broker default assignor applies; `consumersCount` default 1, each consumer "is run on a separate thread", same `groupId` across processes forms one group; `maxPollRecords` default 500; `lingerMs` table default 5 but the description says "This setting defaults to 0 (i.e., no delay)" (stale text; Kafka 4.3 and KIP-1030 say 5, follow Kafka, EIP appendix 33 also says 0); no mention of share groups. The page names no Camel version. First 100000 of 147066 characters read | 05, 06, 07 (no share option claim backed by the catalog) |
+
+### Bellemare chapters cited by the back-fill (r03)
+
+02 cites chapters 2, 5, 17; 03 cites 4, 5, 7; 04 cites 2 (plus Lawrence chapter 2). Evidence for all: the owner-confirmed table of contents above, fit by title.

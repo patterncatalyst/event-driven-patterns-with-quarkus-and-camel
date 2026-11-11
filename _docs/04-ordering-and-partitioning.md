@@ -122,4 +122,6 @@ Keying by entity id does not order events across entities, and it leaves the par
 ## References
 
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Resequencer](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html)
+- Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026: Chapter 2, Anatomy of Message-Driven Systems
+- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 2, Fundamentals of Events and Event Streams
 - Apache Kafka documentation, Introduction, "Main Concepts and Terminology": [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
