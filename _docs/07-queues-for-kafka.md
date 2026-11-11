@@ -9,7 +9,7 @@ duration: "40 minutes"
 
 The notification service sends an email for every order placed. The email provider is usually quick, but one customer's mailbox takes eight seconds to answer. Thirty orders arrive on `edp.orders.placed`, which has three partitions, and the slow one is the first record of its partition. Twelve more jobs sit behind it in that partition, and nothing about them is slow.
 
-{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 holds the slow job and worker-2, worker-3 and worker-4 take the later jobs from the same partition" caption="Figure 7.1: Who waits behind one slow job" %}
+{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 acquires only the slow job and another worker takes the later jobs of the same partition one at a time" caption="Figure 7.1: Who waits behind one slow job" %}
 
 ## Pattern: Competing Consumers
 
@@ -33,7 +33,7 @@ If the consumer gives no answer before the lock duration ends (30 seconds by def
 
 {% include excalidraw.html file="07-share-acquire-ack" alt="A record is available, then acquired and locked with its delivery count increased, then accepted, released, rejected or released by lock expiry" caption="Figure 7.2: The life of one record in a share group" %}
 
-Delivery is at-least-once. A worker that is stalled for longer than the lock duration loses its lock, another worker receives the job, and when the first worker recovers both finish it. The second delivery is a duplicate, so a job that must not run twice needs an idempotent receiver.
+Delivery is at-least-once. A worker that is stalled for longer than the lock duration loses its lock, and the job becomes available again: any worker, including the same one, may receive it. If the first attempt then completes as well, the job has run twice, so a job that must not run twice needs an idempotent receiver. A worker that is only slow keeps its lock: the Quarkus connector renews the lock of a job still in progress.
 
 ### How Quarkus and Camel model it
 
@@ -53,6 +53,8 @@ mp.messaging.incoming.delivery-jobs.group.id=notification-share
 mp.messaging.incoming.delivery-jobs.share.acquire.mode=batch_optimized
 mp.messaging.incoming.delivery-jobs.max.poll.records=1
 mp.messaging.incoming.delivery-jobs.max.partition.fetch.bytes=1
+mp.messaging.incoming.delivery-jobs.retry-max-wait=1
+mp.messaging.incoming.delivery-jobs.poll-timeout=100
 ```
 
 `ShareDeliveryWorker` is a `@Blocking` method with `@Incoming("delivery-jobs")`. It reads the delivery count from the record, makes the attempt and answers per record:
@@ -69,7 +71,9 @@ return switch (outcome) {
 
 An `ack` always accepts. Release and reject travel only on a `nack`, and a bare `nack` uses the channel default, which is release.
 
-A share consumer acquires the records of the batch it fetches, and the broker locks them for that consumer. `share.acquire.mode` chooses how many: the default `batch_optimized` acquires the whole fetched batch, and `record_limit` acquires at most `max.poll.records`. Jobs published one at a time are one-record batches, so a worker acquires little beyond the job it is about to run. A burst of jobs written as one producer batch is acquired by one worker as a whole, and the jobs behind a slow one wait for it. `max.poll.records=1` and a small `max.partition.fetch.bytes` keep each fetch short.
+A share consumer acquires the records of the batch it fetches, and the broker locks them for that consumer. `share.acquire.mode` chooses how many: the default `batch_optimized` acquires the whole fetched record batch, and `record_limit` acquires at most `max.poll.records`. A job published as its own record batch is acquired alone. A burst of jobs written as one producer batch is acquired by one worker as a whole, and the jobs behind a slow one wait for it on that worker. `max.poll.records=1` and a small `max.partition.fetch.bytes` keep each fetch short.
+
+The consumer runs in explicit acknowledgement mode, so it refuses to poll again while a job it handed out is unanswered. The connector retries the refused poll with a back-off that grows up to `retry-max-wait` seconds, 30 by default. With the connector's defaults (a 30-second cap and a 1-second poll timeout) the waits grow to tens of seconds: in a recorded run the slow job's partition took 98 seconds to finish, and only 2 of its 12 later jobs finished before the slow one. A one-second cap and a 100 ms poll timeout bring a worker back within about a second of its last acknowledgement.
 
 The share group's own settings live on the group, not on the consumer. A share group starts at the end of the topic, so `share.auto.offset.reset=earliest` is set on the group resource with `kafka-configs.sh --entity-type groups` before the first job is published. The same command sets the lock duration and the delivery count limit.
 
@@ -98,32 +102,35 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `26/26 checks passed`.
+The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `27/27 checks passed`.
 
-The jobs are published one at a time. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 16 run on the share group's rows, which come from four workers sharing three partitions:
+The jobs are published with producer batching turned off, so every job is its own record batch. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 17 run on the share group's rows, which come from four workers sharing three partitions:
 
 - Twenty-nine jobs are sent, once each, and the bounce job is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
-- The slow job took at least the gateway's slow time, and at least one later job of its partition finished before it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
+- The slow job took at least the gateway's slow time, at least half of the later jobs of its partition finished before it, and the last of them finished no more than 3 seconds after it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
 - The bounce job is not delivered again after the lock duration has passed, and `kafka-share-groups.sh --describe` lists four members.
 
-Checks 17 to 26 run the same jobs through the consumer group. The workers are replaced with `DELIVERY_MODE=group`, and once the four members hold their partitions the same 30 jobs are published again. The retry and bounce outcomes are the same. The control relation is the opposite of check 9: no later job of the slow job's partition finishes before the slow job, each partition was delivered by one worker, and exactly three of the four workers delivered, because the fourth owns no partition.
+Checks 18 to 27 run the same jobs through the consumer group. The workers are replaced with `DELIVERY_MODE=group`, and once the four members hold their partitions the same 30 jobs are published again. The retry and bounce outcomes are the same. The control relation is the opposite of check 9: no later job of the slow job's partition finishes before the slow job, each partition was delivered by one worker, and exactly three of the four workers delivered, because the fourth owns no partition.
 
 Change one thing and watch a guard fail:
 
-- Export `DELIVERY_MODE=group` before `./verify.sh`. The first run now delivers through the consumer group, so the share relations have nothing to hold on: check 9 fails because no later job finishes before the slow one, and check 15 fails because the share group has no members. Checks 4 to 8, 10, 11 and 12 to 14, which read the share rows, fail with it, and checks 19 to 21 fail because both runs wrote group rows. Check 11 is the share-only counterpart of check 25: it asks for a partition delivered by two or more workers, and a consumer group has none.
-- Export `SEED_LINGER_MS=500` before `./verify.sh`. The jobs of each partition are now written as one producer batch. Only check 9 fails: the worker that receives the slow job's batch acquires the jobs behind it, and none of them finishes before the slow one.
-- Export `SHARE_RECORD_LOCK_MS=15000`. Checks 5 to 8 fail. The slow job is sent twice: delivery count 1 from 15.8 s to 23.8 s on one worker, and delivery count 2 on the same worker from 32.7 s to 40.7 s. Seven other jobs of its partition are sent twice as well, and one of them, O-7028, five times, with delivery counts 1, 1, 1, 2 and 3. With the default 30 seconds every job is delivered once.
-- Export `SHARE_ACQUIRE_MODE=record_limit`. Each worker then acquires one record per poll. In a recorded run every job still reached a final outcome, but one job was sent twice, so checks 5 and 6 fail. The default mode stays.
+- Export `DELIVERY_MODE=group` before `./verify.sh`. The first run now delivers through the consumer group, so the share relations have nothing to hold on: check 9 fails because no later job finishes before the slow one, and check 16 fails because the share group has no members. Checks 4 to 8 and 10 to 15, which read the share rows, fail with it, and checks 20 to 22 fail because both runs wrote group rows. Check 12 is the share-only counterpart of check 26: it asks for a partition delivered by two or more workers, and a consumer group has none.
+- Export `SEED_LINGER_MS=500` before `./verify.sh`. The jobs of each partition are now written as one producer batch. Checks 9 and 12 fail: the worker that receives the slow job's batch acquires all twelve jobs behind it and runs them after the slow one, and every partition is delivered by a single worker.
+- Export `RETRY_MAX_WAIT=30` and `POLL_TIMEOUT_MS=1000`, the connector's defaults. Checks 9 and 10 fail: workers wait longer and longer between jobs, so few later jobs finish before the slow one and its partition is done more than a minute after it.
+- Export `SHARE_RECORD_LOCK_MS=15000` and `GATEWAY_SLOW_MS=20000`. The slow job now runs longer than the lock, and every check still passes: the connector renews the lock while the job runs, and the job is delivered once, with delivery count 1.
+- Export `SHARE_ACQUIRE_MODE=record_limit`. Each worker then acquires at most one record per fetch, whatever the batch. Every check still passes, because with one job per batch the default mode acquires one record as well.
 
 ## When not to use it
 
-Use a consumer group when order per key matters. A share group gives no ordering within a partition, so two events of one order can be processed at the same time on different workers. Use it when jobs are independent and slow enough that waiting behind a neighbour is the cost you are paying.
+Use a consumer group when order per key matters. A share group gives no ordering within a partition, so two events of one order can be processed at the same time on different workers. Use it when jobs are independent and an occasional slow job would otherwise hold up the jobs behind it.
 
-A share group also gives up the simple offset commit: acknowledgement is per record, and every record has a lock, a delivery count and a limit. Work that must run exactly once needs idempotence on top, because a lock that expires produces a second delivery. And if the load is many fast jobs on few slow workers, more partitions in a consumer group may be all you need.
+A share group also costs time on every job. A worker answers each job before it fetches the next, so in the recorded runs a partition of eight to ten fast jobs took 2.2 to 7 seconds through the share group and under 1 second through the consumer group. The partition with the slow job was done in 8 to 9.4 seconds either way; what changed is that most of its jobs no longer waited for the slow one.
+
+The share group gives up the simple offset commit as well: acknowledgement is per record, and every record has a lock, a delivery count and a limit. Work that must run exactly once needs idempotence on top, because a lock that expires produces a second delivery. And if the load is many fast jobs on few slow workers, more partitions in a consumer group may be all you need.
 
 > **🤖 Explore with your agent**
 > "In examples/07-queues-for-kafka, run ShareDeliveryWorker and GroupDeliveryRoute on the same 30 jobs with DELIVERY_MODE share and then group, using EmailGateway's C-SLOW customer. Compare which jobs of the slow job's partition finish before it in each mode, and state when a share group is the right choice and when a consumer group is."
-> Check: in share mode at least one later job of the slow partition finishes first; in group mode none does.
+> Check: in share mode most later jobs of the slow partition finish first; in group mode none does.
 
 ## References
 

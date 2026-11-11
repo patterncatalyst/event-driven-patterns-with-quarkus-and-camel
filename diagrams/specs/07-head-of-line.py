@@ -1,4 +1,4 @@
-"""Consumer group: one slow job holds back the later jobs of its partition. Share group: other workers take them."""
+"""Consumer group: one slow job holds back the later jobs of its partition. Share group: another worker takes them."""
 
 from generate_diagram import emit
 
@@ -16,8 +16,8 @@ emit(
         {"x": 670, "y": 100, "w": 250, "h": 70, "style": "ink", "lines": ["offsets 1, 2 ... wait", "and finish after the slow job"]},
         {"x": 40, "y": 190, "w": 250, "h": 50, "style": "ghost", "lines": ["worker-2, worker-3: the others", "worker-4: owns no partition"]},
         {"x": 40, "y": 320, "w": 250, "h": 70, "style": "accent", "lines": ["partition 1: offsets 0, 1, 2 ...", "offset 0 is the slow job (C-SLOW)"]},
-        {"x": 355, "y": 310, "w": 250, "h": 56, "style": "box", "lines": ["worker-1 holds offset 0", "one record, locked"]},
-        {"x": 355, "y": 380, "w": 250, "h": 70, "style": "box", "lines": ["worker-2, worker-3 and worker-4", "take offsets 1, 2 ... from the same partition"]},
+        {"x": 355, "y": 310, "w": 250, "h": 56, "style": "box", "lines": ["worker-1 acquired offset 0 alone", "one record, locked"]},
+        {"x": 355, "y": 380, "w": 250, "h": 70, "style": "box", "lines": ["another worker of the group", "takes offsets 1, 2 ... one at a time"]},
         {"x": 670, "y": 330, "w": 250, "h": 90, "style": "ink", "lines": ["later jobs finish before", "the slow job does", "no ordering guarantee"]},
     ],
     edges=[

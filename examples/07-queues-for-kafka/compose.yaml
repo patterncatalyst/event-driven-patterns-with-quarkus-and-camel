@@ -23,6 +23,8 @@ x-worker: &worker
     SHARE_ACQUIRE_MODE: ${SHARE_ACQUIRE_MODE:-batch_optimized}
     MAX_PARTITION_FETCH_BYTES: ${MAX_PARTITION_FETCH_BYTES:-1}
     MAX_POLL_RECORDS: ${MAX_POLL_RECORDS:-1}
+    RETRY_MAX_WAIT: ${RETRY_MAX_WAIT:-1}
+    POLL_TIMEOUT_MS: ${POLL_TIMEOUT_MS:-100}
     # The consumer-group run reads only jobs published after its members have joined.
     GROUP_OFFSET_RESET: latest
   mem_limit: 384m

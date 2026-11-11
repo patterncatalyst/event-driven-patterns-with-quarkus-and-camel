@@ -113,3 +113,15 @@ Under the stack lock, one at a time:
 - 05: bite run with the request metric renamed to a nonexistent series gives 19/24 (checks 5, 8, 11, 18, 20 fail); restored. Final verify.sh 24/24; mvn 6 tests, BUILD SUCCESS.
 - 06: final verify.sh 36/36; mvn 4 tests, BUILD SUCCESS (label-only verify.sh edit after the mvn run).
 - 07: `ShareDeliveryWorker` now a `@Blocking` method: verify.sh 26/26. `DELIVERY_MODE=group`: 11/26 (4 to 15 and 19 to 21 fail; new check 11 among them). `SHARE_RECORD_LOCK_MS=15000`: 22/26 (5 to 8 fail; slow job O-7001 sent at delivery count 1, 15.8 to 23.8 s, and count 2, 32.7 to 40.7 s; seven others twice; O-7028 five times). Orchestrator run `SHARE_ACQUIRE_MODE=record_limit`: 24/26 (5 and 6 fail, one job sent twice). Final verify.sh 26/26; mvn 10 tests, BUILD SUCCESS.
+
+## r03 repair round 2, chapter 07 (2026-11-11)
+
+Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-dump-log: p1 offsets 0 to 6 in one batch), and the connector's poll retry back-off (retry-max-wait 30 s) slowed the share consumer while a record was unanswered. Fix: seed with `batch.size=0`; `retry-max-wait=1`, `poll-timeout=100`. verify.sh now 27 checks (check 9: at least half of later jobs overtake; new check 10: slow partition done within 3 s after the slow job).
+
+- Default: 27/27 (07-r2-c2-final.log); slow job's worker held only offset 0; 9 of 12 later jobs finished first; partition done 1.0 s after the slow job.
+- `RETRY_MAX_WAIT=30 POLL_TIMEOUT_MS=1000`: 25/27, checks 9 and 10 fail (slow partition 98 s).
+- `DELIVERY_MODE=group`: 11/27, checks 4 to 16 and 20 to 22 fail.
+- `SEED_LINGER_MS=500`: 25/27, checks 9 and 12 fail.
+- `SHARE_RECORD_LOCK_MS=15000 GATEWAY_SLOW_MS=20000`: 27/27; the 20 s job was delivered once (lock renewed).
+- `SHARE_ACQUIRE_MODE=record_limit` (26-check version): 26/26.
+- mvn 10 tests, BUILD SUCCESS, after the last code change (07-r2-mvn-final.log).

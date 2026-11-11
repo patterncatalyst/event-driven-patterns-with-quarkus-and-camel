@@ -229,3 +229,13 @@ Strimzi blog additions: the two tuning posts are approved (owner review 2026-11-
 ### Bellemare chapters cited by the back-fill (r03)
 
 02 cites chapters 2, 5, 17; 03 cites 4, 5, 7; 04 cites 2 (plus Lawrence chapter 2). Evidence for all: the owner-confirmed table of contents above, fit by title.
+
+### Share consumer internals (r03 repair round 2, fetched 2026-11-11)
+
+| Source | URL | Quote | Used in |
+|---|---|---|---|
+| Apache Kafka clients 4.2.1, ShareConsumerImpl | https://github.com/apache/kafka/blob/4.2.1/clients/src/main/java/org/apache/kafka/clients/consumer/internals/ShareConsumerImpl.java | `throw new IllegalStateException("All records must be acknowledged in explicit acknowledgement mode.");` | 07 poll in explicit mode |
+| SmallRye Reactive Messaging 4.37.0, ReactiveKafkaShareConsumer | https://github.com/smallrye/smallrye-reactive-messaging/blob/4.37.0/smallrye-reactive-messaging-kafka/src/main/java/io/smallrye/reactive/messaging/kafka/impl/ReactiveKafkaShareConsumer.java | `.onFailure(IllegalStateException.class).retry().withBackOff(Duration.ofMillis(100), retryMaxWait)` | 07 retry-max-wait |
+| SmallRye Reactive Messaging 4.37.0, KafkaShareGroupCommit | https://github.com/smallrye/smallrye-reactive-messaging/blob/4.37.0/smallrye-reactive-messaging-kafka/src/main/java/io/smallrye/reactive/messaging/kafka/commit/KafkaShareGroupCommit.java | `c.acknowledge((ConsumerRecord) rec, AcknowledgeType.RENEW);` | 07 lock renewal |
+| SmallRye Kafka connector attributes | https://smallrye.io/smallrye-reactive-messaging/latest/kafka/receiving-kafka-records/ | "retry-max-wait: The max delay (in seconds) between 2 reconnects", default 30; "poll-timeout: The polling timeout in milliseconds", default 1000 | 07 connector settings |
+| Kafka 4.3 producer configs, batch.size | https://kafka.apache.org/43/configuration/producer-configs/ | "a batch size of zero will disable batching entirely" | 07 seed |

@@ -89,11 +89,16 @@ seed() {
         esac
         printf 'O-%d|{"orderId":"O-%d","order":{"id":"O-%d","customerId":"%s","itemSku":"SKU-1","quantity":1,"amount":10.00}}\n' \
             $((7000 + i)) $((7000 + i)) $((7000 + i)) "$customer"
-        # SEED_LINGER_MS=0 sends each job as its own batch; a larger value writes a partition's jobs as one batch.
-        if [[ "${SEED_LINGER_MS:-0}" == 0 ]]; then sleep 0.05; fi
     done | docker exec -i edp-kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 \
-        --topic "$TOPIC" --property parse.key=true --property 'key.separator=|' --producer-property "linger.ms=${SEED_LINGER_MS:-0}" >/dev/null 2>&1
+        --topic "$TOPIC" --property parse.key=true --property 'key.separator=|' "${SEED_MODE[@]}" >/dev/null 2>&1
 }
+# SEED_LINGER_MS=0 (the default) turns producer batching off (batch.size=0), so every job is its own record batch.
+# A larger value lets the producer wait and write a partition's jobs as one batch.
+if [[ "${SEED_LINGER_MS:-0}" == 0 ]]; then
+    SEED_MODE=(--producer-property batch.size=0)
+else
+    SEED_MODE=(--producer-property "linger.ms=$SEED_LINGER_MS")
+fi
 
 finished() { [[ "$(sql "SELECT count(DISTINCT order_id) FROM notifications.delivery_log WHERE mode='$1' AND outcome IN ('sent','rejected')")" == "$JOBS" ]]; }
 count() { sql "SELECT count(*) FROM notifications.delivery_log WHERE mode='$1' ${2:+AND $2}"; }
@@ -101,8 +106,16 @@ count() { sql "SELECT count(*) FROM notifications.delivery_log WHERE mode='$1' $
 # The slow job: partition, offset, finish time. Later jobs are the jobs of the same partition with a higher offset.
 SLOW="SELECT record_partition AS p, record_offset AS o, started_at AS st, finished_at AS f FROM notifications.delivery_log WHERE mode='\$M' AND customer_id LIKE 'C-SLOW%' AND outcome='sent'"
 slow_sql() { echo "${SLOW//\$M/$1}"; }
-later_count() { sql "WITH s AS ($(slow_sql "$1")) SELECT count(*) FROM notifications.delivery_log d, s WHERE d.mode='$1' AND d.outcome='sent' AND d.record_partition=s.p AND d.record_offset>s.o"; }
-overtaking_count() { sql "WITH s AS ($(slow_sql "$1")) SELECT count(*) FROM notifications.delivery_log d, s WHERE d.mode='$1' AND d.outcome='sent' AND d.record_partition=s.p AND d.record_offset>s.o AND d.finished_at<s.f"; }
+later_count() { sql "WITH s AS ($(slow_sql "$1")) SELECT count(DISTINCT d.order_id) FROM notifications.delivery_log d, s WHERE d.mode='$1' AND d.outcome='sent' AND d.record_partition=s.p AND d.record_offset>s.o"; }
+overtaking_count() { sql "WITH s AS ($(slow_sql "$1")) SELECT count(DISTINCT d.order_id) FROM notifications.delivery_log d, s WHERE d.mode='$1' AND d.outcome='sent' AND d.record_partition=s.p AND d.record_offset>s.o AND d.finished_at<s.f"; }
+half_overtook() { # at least 5 later jobs exist and at least half of them finished before the slow job
+    local later overtook
+    later=$(later_count "$1") && overtook=$(overtaking_count "$1") || return 1
+    (( later >= 5 && 2 * overtook >= later ))
+}
+# Milliseconds from the slow job's finish to the last finish of a later job in its partition (negative: all were earlier).
+drain_after_slow_ms() { sql "WITH s AS ($(slow_sql "$1")) SELECT floor(extract(epoch FROM (max(d.finished_at)-s.f))*1000) FROM notifications.delivery_log d, s WHERE d.mode='$1' AND d.record_partition=s.p AND d.record_offset>s.o GROUP BY s.f"; }
+at_most() { (( $1 <= $2 )); }
 slow_is_first() { sql "WITH s AS ($(slow_sql "$1")) SELECT count(*) FROM s WHERE s.o=(SELECT min(record_offset) FROM notifications.delivery_log WHERE mode='$1' AND record_partition=s.p)"; }
 slow_ms() { sql "WITH s AS ($(slow_sql "$1")) SELECT floor(extract(epoch FROM (f-st))*1000) FROM s"; }
 workers_used() { sql "SELECT count(DISTINCT worker) FROM notifications.delivery_log WHERE mode='$1'"; }
@@ -142,7 +155,8 @@ check "30 jobs produced 31 attempts: only the retry job has a second one" expect
 check "precondition: the slow job is the first record of its partition and at least 5 later jobs share the partition" \
     expect "$(slow_is_first $M)/$([[ "$(later_count $M)" -ge 5 ]] && echo yes)" "1/yes"
 check "precondition: the slow job took at least GATEWAY_SLOW_MS" at_least "$(slow_ms $M || echo 0)" "$GATEWAY_SLOW_MS"
-check "a later job of the slow job's partition finished before the slow job" positive "$(overtaking_count $M)"
+check "at least half of the later jobs of the slow job's partition finished before the slow job" half_overtook "$M"
+check "the slow job's partition was done within 3 s after the slow job finished" at_most "$(drain_after_slow_ms $M || echo 999999)" 3000
 check "at least 3 of the 4 workers delivered jobs" at_least "$(workers_used $M)" 3
 check "at least one partition was delivered by 2 or more different workers" at_least "$(max_workers_per_partition $M)" 2
 check "the retry job failed once, then was sent on delivery 2" \
