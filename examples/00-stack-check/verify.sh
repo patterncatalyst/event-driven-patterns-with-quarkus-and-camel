@@ -39,15 +39,15 @@ poll() { # poll <seconds> <command...>: retry every 3 s until the command succee
 }
 
 healthy() { [[ "$(docker inspect -f '{{.State.Health.Status}}' "$1")" == "healthy" ]]; }
-post() { curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "$1" "$APP/consignments"; }
-consignment() { printf '{"id":"%s","origin":"Rotterdam","destination":"Singapore","weightKg":%s,"carrier":"FASTLINE"}' "$1" "$2"; }
+post() { curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d "$1" "$APP/orders"; }
+order() { printf '{"id":"%s","customerId":"CUST-7","itemSku":"SKU-1","quantity":%s,"amount":49.90}' "$1" "$2"; }
 topic_offsets() {
-    docker exec edp-kafka /opt/kafka/bin/kafka-get-offsets.sh --bootstrap-server localhost:9092 --topic consignments \
+    docker exec edp-kafka /opt/kafka/bin/kafka-get-offsets.sh --bootstrap-server localhost:9092 --topic edp.orders.placed \
         | awk -F: '{s += $3} END {print s + 0}'
 }
 topic_has() {
     docker exec edp-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-        --topic consignments --from-beginning --timeout-ms 15000 --property print.key=true 2>/dev/null | grep -q "^$1"
+        --topic edp.orders.placed --from-beginning --timeout-ms 15000 --property print.key=true 2>/dev/null | grep -q "^$1"
 }
 http2xx() { [[ "$(post "$1")" =~ ^2 ]]; }
 http400() { [[ "$(post "$1")" == "400" ]]; }
@@ -58,7 +58,7 @@ prom_has_metric() {
 }
 loki_has_log() {
     local now; now=$(date +%s)
-    curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode 'query={service_name="stack-check"} |= "consignment received"' \
+    curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode 'query={service_name="stack-check"} |= "order received"' \
         --data-urlencode "start=$((now - 600))000000000" --data-urlencode "end=$((now + 60))000000000" | grep -q '"values":\[\['
 }
 
@@ -68,9 +68,9 @@ for c in edp-kafka edp-postgres edp-apicurio edp-connect edp-lgtm edp-stack-chec
     check "$c is healthy" healthy "$c"
 done
 
-ID="C-$(date +%s)"
-check "valid Consignment accepted with 2xx" http2xx "$(consignment "$ID" 1200)"
-check "the record keyed $ID arrives on the consignments topic" topic_has "$ID"
+ID="O-$(date +%s)"
+check "valid Order accepted with 2xx" http2xx "$(order "$ID" 2)"
+check "the record keyed $ID arrives on the edp.orders.placed topic" topic_has "$ID"
 check "PostgreSQL wal_level is logical" bash -c \
     "[[ \"\$(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -Atc 'SHOW wal_level')\" == logical ]]"
 check "Apicurio Registry reports ready" curl -sf http://localhost:19000/health/ready
@@ -83,7 +83,7 @@ check "Prometheus has a metric from stack-check" poll 90 prom_has_metric
 check "Loki has a log line from stack-check" poll 90 loki_has_log
 
 BEFORE=$(topic_offsets)
-check "negative witness: invalid Consignment gets 400" http400 "$(consignment C-INVALID -5)"
+check "negative witness: invalid Order (quantity 0) gets 400" http400 "$(order O-INVALID 0)"
 sleep 3
 AFTER=$(topic_offsets)
 check "negative witness: record count unchanged ($BEFORE)" test "$BEFORE" = "$AFTER"

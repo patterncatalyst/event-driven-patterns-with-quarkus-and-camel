@@ -1,6 +1,6 @@
 # Event-Driven Patterns with Quarkus and Camel
 
-A chaptered tutorial on event-driven patterns built with Quarkus, Apache Camel and Kafka. The running domain is shipping: consignments, handling events, tracking histories, tariffs, invoices and settlements. Every pattern chapter states the problem, shows the code that solves it, and ends with a runnable example that has its own tests and a `verify.sh`.
+A chaptered tutorial on event-driven patterns built with Quarkus, Apache Camel and Kafka. The running domain is order to delivery: orders, stock, payments, shipments and notifications, across five services. Every pattern chapter states the problem, shows the code that solves it, and ends with a runnable example that has its own tests and a `verify.sh`.
 
 Site: https://patterncatalyst.github.io/event-driven-patterns-with-quarkus-and-camel/
 

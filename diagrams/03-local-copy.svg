@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 440" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="50" width="1240" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="70" font-size="12" font-weight="700" fill="#888">Write path: the event carries the Order and its status</text>
+<rect x="20" y="215" width="1240" height="170" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="235" font-size="12" font-weight="700" fill="#888">Read path: order-service stopped</text>
+<rect x="40" y="95" width="250" height="80" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="165.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order-service</text>
+<text x="165.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">POST /orders, after commit</text>
+<rect x="350" y="95" width="250" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="475.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
+<text x="475.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">key O-1001, whole Order, PLACED</text>
+<rect x="660" y="95" width="250" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notification-service</text>
+<text x="785.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">one route per topic</text>
+<rect x="970" y="95" width="250" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="1095.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notifications.order_copy</text>
+<text x="1095.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">upsert by order id</text>
+<rect x="40" y="260" width="250" height="80" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="165.0" y="298.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order-service</text>
+<text x="165.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">stopped</text>
+<rect x="350" y="260" width="250" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="475.0" y="298.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Caller</text>
+<text x="475.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">GET /order-copies/O-1001</text>
+<rect x="660" y="260" width="250" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="298.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notification-service</text>
+<text x="785.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">reads its own table</text>
+<rect x="970" y="260" width="250" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="1095.0" y="298.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">200, every field</text>
+<text x="1095.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">a cancelled order shows CANCELLED</text>
+<path d="M290,135 L350,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M600,135 L660,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M910,135 L970,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M600,300 L660,300" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M910,300 L970,300" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="165" y="362" font-size="11" fill="#555555" text-anchor="middle">receives no request</text>
+<text x="640" y="28" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">State carried in the event, answered from a local copy</text>
+<text x="640" y="415" font-size="11" fill="#555555" text-anchor="middle">The copy answers without a request to the source; its freshness is the lag of the last event.</text>
+</svg>

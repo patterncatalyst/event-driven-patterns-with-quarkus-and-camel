@@ -1,7 +1,7 @@
 package com.patterncatalyst.shipping.crudvsevents;
 
-import com.patterncatalyst.shipping.ConsignmentStatus;
+import com.patterncatalyst.shipping.OrderStatus;
 
-/** Request body for a status change; the Consignment id comes from the path. */
-public record StatusRequest(ConsignmentStatus to, Integer expectedVersion) {
+/** Request body for a status change; the Order id comes from the path. */
+public record StatusRequest(OrderStatus to, Integer expectedVersion, String reason) {
 }

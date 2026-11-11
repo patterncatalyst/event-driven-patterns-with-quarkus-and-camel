@@ -24,8 +24,8 @@ The repo is public, so no tracked file may name the development machine, its own
 - **Versions**: latest stable upstream, exact pins, never prerelease, `latest` or floating tags. Open source only; nothing needing a licence key, subscription or fee. JDK 25 minimum.
 - **Images**: every image the book builds starts from UBI 10 (`registry.access.redhat.com/ubi10/openjdk-25`, `-runtime`). Fall back to `ubi9/openjdk-25` (same runtime, never a lower JDK) only on a real incompatibility, recorded next to the pin. Upstream images are used as published (Strimzi, CloudNativePG, LGTM, Debezium Connect, Ollama, LRA coordinator).
 - **Idiomatic code**: Hibernate ORM with Panache, Quarkus REST, SmallRye Reactive Messaging, SmallRye Health, Micrometer and OpenTelemetry, Dev Services, Flyway; Camel Java DSL, one route per `RouteBuilder`. Nothing hand-rolled that the framework provides.
-- **No vendor platforms in code**: nothing depends on OpenShift, CRC or a cloud. Appendix E is a demo of the same neutral code.
-- **Fixed domain**: use only the shipping entity names in `_plans/domain-model.md`; never invent an entity or an area. Carriers are FASTLINE and AIRCO.
+- **No vendor platforms in code**: nothing depends on OpenShift, CRC or a cloud. Appendix F is a demo of the same neutral code.
+- **Fixed domain**: EIP Camel's order-to-delivery domain (services order, inventory, payment, shipping, notification). Use only the entity, event and topic names in `_plans/domain-model.md`; never invent an entity or an area. Carriers are FASTLINE and AIRCO, never a real carrier. Event payload records live per example, not in domain-model.
 - **Evidence**: every claim in prose is backed by the example's tests, a recorded run or a fetched source. Evidence is never written into the prose; `_plans/claims.md` tracks it.
 - **Credit sources**: cite every source by author and work in `bibliography.md`. Never copy text, code or examples.
 - **Comparison code** is allowed as the exception, tested on the same input; idiomatic code is the lesson.
@@ -36,13 +36,13 @@ The repo is public, so no tracked file may name the development machine, its own
 
 ## Stack rules
 
-- Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix E). Fedora/RHEL hosts.
+- Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix F). Fedora/RHEL hosts.
 - One stack or cluster at a time. Stop it when idle. `scripts/stack-guard.sh` refuses a second stack.
 - **No forwarding of any kind**: no `kubectl port-forward`, `minikube tunnel`, SSH tunnels (`ssh -L/-R/-D`), `socat` relays, IP forwarding (`net.ipv4.ip_forward`), iptables/nft/firewalld rules or NAT. Publish ports instead: compose `ports:`, and on minikube NodePorts published with `minikube start --ports`. Tunnels and forwards disconnect and change the host. `scripts/validate.py` fails the build on any of these in reader-facing content, examples, scripts or workflows.
 - Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081 (management and health 19000), Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100.
 - Parts 1 to 5 run on compose (`lgtm-docker-stack`): Kafka KRaft, PostgreSQL on the CloudNativePG operand image, Apicurio, Debezium Connect (published `quay.io/debezium/connect` image first; our own UBI 10 image only on a real need), `grafana/otel-lgtm`.
 - Part 6 runs on minikube with the docker driver and containerd (`lgtm-minikube-stack`): Strimzi KRaft, CloudNativePG, LGTM.
-- OpenShift Local (CRC) appears only in Appendix E, through `lgtm-crc`, running the chapter 08 outbox.
+- OpenShift Local (CRC) appears only in Appendix F, through `lgtm-crc`, running the chapter 08 outbox.
 - Kafka 4.3.2 in both run targets (held to what Strimzi supports); KRaft only, no ZooKeeper.
 
 ## Structure
@@ -55,7 +55,7 @@ _layouts/ _includes/ assets/   site machinery
 diagrams/         specs/<name>.py -> <name>.svg + <name>.excalidraw
 examples/_infra/  per-service compose files + aggregate; LGTM
 examples/_k8s/    minikube manifests (Part 6)
-examples/domain-model/   shared shipping records, package com.patterncatalyst.shipping
+examples/domain-model/   shared order-to-delivery records (Order, InventoryItem, Payment, Shipment, Notification, enums, Topics), package com.patterncatalyst.shipping
 examples/NN-slug/ one Quarkus + Camel project, compose include, Containerfile, verify.sh, README
 scripts/          validate.py, voice-scan.sh, idiomatic-scan.sh, host_ids.py, site-build.sh,
                   setup-stack.sh, stack-guard.sh, verify-all.sh
@@ -87,6 +87,8 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - Traces, metrics and logs reach LGTM through OpenTelemetry from chapter 00 on.
 - Runs alone from a clean stack, with no other example running.
 - Quarkus tests use Dev Services and run before compose. Dev Services uses `docker.io/library/postgres` at the same 18.x minor as the CloudNativePG operand image used by compose; Kafka Dev Services uses the pinned `apache/kafka` image.
+- Topic convention: `edp.<domain>.<event>`, dots and hyphens only (for example `edp.orders.placed`).
+- Multi-service examples: aggregator `pom.xml` at `examples/NN-slug/`, one module per service, app ports 8080 and 8082, replicas unpublished.
 - Shared domain records come from `examples/domain-model`; no per-example copies. `mvn -B verify` in an example requires `examples/domain-model` installed first (`mvn -B -q install` there).
 - The Camel Kafka component reads `camel.component.kafka.brokers`, not the Quarkus `kafka.bootstrap.servers` (Dev Services fills it only in dev and test). In compose set env `CAMEL_COMPONENT_KAFKA_BROKERS=kafka:9094`; SmallRye Reactive Messaging and Kafka Streams apps use `KAFKA_BOOTSTRAP_SERVERS`. Datasource and OpenTelemetry settings use Quarkus env mapping (`QUARKUS_DATASOURCE_JDBC_URL`, `QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT`), with no custom placeholder indirection.
 - Every app service in compose has a healthcheck on `/q/health/ready`, so `up --wait` covers it.
@@ -115,7 +117,7 @@ CI runs `mvn verify` per changed example; the live `verify.sh` runs locally and 
 
 PRD §14, decided:
 
-- Q1 (2026-11-08): Docker Engine + `docker compose`; minikube (docker driver, containerd) for Part 6; CRC only in Appendix E.
+- Q1 (2026-11-08): Docker Engine + `docker compose`; minikube (docker driver, containerd) for Part 6; CRC only in Appendix E (renumbered Appendix F on 2026-11-10 when the resequencing appendix was added).
 - Q2 (2026-11-10): Debezium for CDC; Connect container on compose, `KafkaConnect`/`KafkaConnector` on Strimzi (ch 35); embedded `camel-quarkus-debezium-postgres` as a comparison section in ch 09.
 - Q3 (2026-11-10): event store is PostgreSQL on CloudNativePG with Panache: append-only `events` table, unique `(stream_id, version)`, `jsonb` payload. KurrentDB rejected (licence).
 - Q4: repo name `event-driven-patterns-with-quarkus-and-camel`.
@@ -135,6 +137,23 @@ PRD §14, decided:
 - Java package `com.patterncatalyst.shipping`.
 - Java 25 floor.
 - More than one figure per chapter wherever a figure explains better than text.
+
+2026-11-10 (r02 plan approval, all 12 recommendations):
+
+- Topic prefix `edp.<domain>.<event>`.
+- Event payload records live per example; domain-model holds entities, enums, `Carrier` and `Topics`.
+- Per-event topics as in EIP Camel; chapter 04 adds the ordered `edp.shipping.shipments` stream keyed by order id.
+- ShipmentInTransit added on `edp.shipping.in-transit`.
+- Order CANCELLED only from PLACED or PAID.
+- Chapter 04 wrong key is the event type (reorders); the carrier key shows skew, not reordering.
+- Text order ids (`O-1001`).
+- domain-model version 2.0.0.
+- Series domain page (Notion 40561a5f): note only that this book uses EIP Camel's domain; do not rewrite it.
+- Hub books.yml left alone this iteration (Bellemare `isbn: null`); our bibliography carries the ISBN.
+- Chapter 24 free-text source: a carrier delivery-exception note on `Shipment`, settled at r09.
+- Maven stays on 3.9.16 unless quarkusio/quarkus #57216 is fixed on the 3.40 LTS line.
+- Chapter 03 adds Claim Check as a second pattern; chapter 04 adds Resequencer as a second pattern.
+- Book links (titles, ISBNs, URLs) come from the hub `_data/books.yml`.
 
 ## Skills
 

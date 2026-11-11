@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1090 420" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="70" width="150" height="100" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="95.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order-service</text>
+<text x="95.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">Order</text>
+<rect x="320" y="70" width="150" height="100" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="395.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">inventory-service</text>
+<text x="395.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">InventoryItem</text>
+<rect x="620" y="70" width="150" height="100" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="695.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">payment-service</text>
+<text x="695.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">Payment</text>
+<rect x="920" y="70" width="150" height="100" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="995.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">shipping-service</text>
+<text x="995.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">Shipment</text>
+<rect x="20" y="290" width="1050" height="60" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="545.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notification-service</text>
+<text x="545.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">reads every topic, tells the customer, emits nothing</text>
+<path d="M170,100 L320,100" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="251.0" y="90.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">orders.placed</text>
+<text x="251.0" y="90.0" font-size="11" fill="#b8650a" text-anchor="middle">orders.placed</text>
+<path d="M320,145 L170,145" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="251.0" y="159.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">inventory.insufficient</text>
+<text x="251.0" y="159.0" font-size="11" fill="#555" text-anchor="middle">inventory.insufficient</text>
+<path d="M470,100 L620,100" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="551.0" y="90.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">inventory.reserved</text>
+<text x="551.0" y="90.0" font-size="11" fill="#b8650a" text-anchor="middle">inventory.reserved</text>
+<path d="M620,145 L470,145" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="551.0" y="159.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">payments.failed</text>
+<text x="551.0" y="159.0" font-size="11" fill="#555" text-anchor="middle">payments.failed</text>
+<path d="M770,100 L920,100" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="851.0" y="90.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">payments.processed</text>
+<text x="851.0" y="90.0" font-size="11" fill="#b8650a" text-anchor="middle">payments.processed</text>
+<path d="M95,170 L95,290" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M395,170 L395,290" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M695,170 L695,290" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M995,170 L995,290" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="545" y="28" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Five services, one step each, joined by Kafka topics</text>
+<text x="545" y="385" font-size="11" fill="#555555" text-anchor="middle">Topics carry the edp. prefix. Shipping also emits shipping.scheduled, in-transit and delivered; order also emits orders.cancelled.</text>
+</svg>

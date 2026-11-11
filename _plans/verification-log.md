@@ -45,3 +45,46 @@ Clean Docker state (`scripts/setup-stack.sh --clean`), each example alone, one a
 - Fresh-clone run by the re-validator (domain-model not preinstalled): 00 17/17, 01 10/10 before round 2.
 - Gates: validate.py ok (self-test 5/5), voice 0 ban-tier, idiomatic 0, host_ids 0 hits, site builds.
 - After the runs: no edp- containers or volumes remain.
+
+### r02 G1 (2026-11-10) · chapters 00 and 01 in the order-to-delivery domain
+
+Orchestrator serial run from a clean Docker state, each step alone, one after the other.
+
+- `examples/domain-model` 2.0.0 install: **79 tests** pass.
+- `examples/00-stack-check`: `mvn -B verify` **4/4**; `./verify.sh` **17/17 checks passed**.
+- `examples/01-crud-vs-events`: `mvn -B verify` **11/11**; `./verify.sh` **19/19 checks passed**.
+- Static gates: `validate.py` ok, `host_ids.py check` 0 hits, voice scan 0 ban-tier, site build ok, grep for the freight names (Consignment, HandlingEvent, weight, real carriers) 0 hits in chapters and examples (the `FEDEX` literal in `DomainModelTest` is the negative witness for an unknown carrier).
+- Experiments recorded:
+  - ch00: removing `onException` gives **16/17** (check 16 fails); renaming the producer topic gives **15/17** (checks 8 and 15 fail).
+  - ch01: `Lifecycle.allows` always true gives **16/19** (checks 11, 12, 15); removing the UPDATE/DELETE trigger gives **17/19** (checks 14, 16); removing V2 gives **17/19** (checks 17, 18); dropping `appendEvent` gives **14/19** (checks 6, 8, 10, 12, 15); removing the unique constraint fails the stale-version test (**10/11** mvn).
+- Sources fetched while rewriting the claims table: PostgreSQL SQL key words appendix (ORDER reserved), CREATE TRIGGER (TRUNCATE only FOR EACH STATEMENT), ALTER TABLE (DISABLE TRIGGER), Docker Engine install and post-install pages.
+- `claims.md` rewritten against the current prose: Consignment rows replaced by Order rows, new rows for the running-example section; domain facts only realised in later chapters are marked design.
+
+### r02 final serial run (2026-11-10)
+
+Orchestrator, clean Docker, under the stack lock, one at a time.
+
+- `examples/domain-model`: **79 tests** pass.
+- `examples/00-stack-check`: mvn **4/4**; `verify.sh` **17/17**.
+- `examples/01-crud-vs-events`: mvn **11/11**; `verify.sh` **19/19**.
+- `examples/02-event-notification`: mvn **6+4**; `verify.sh` **19/19**.
+- `examples/03-event-carried-state-transfer`: mvn **8+7**; `verify.sh` **30/30**.
+- `examples/04-ordering-and-partitioning`: mvn **4+6**; `verify.sh` **27/27**.
+- All BUILD SUCCESS.
+- Experiments recorded by the executors on 2026-11-10:
+  - ch02: removing `breakOnFirstError` gives **17/19** (checks 12, 14 fail); dropping the key header makes 3 of the 6 order-service tests fail.
+  - ch03: `ORDER_EVENTS_CARRY_STATE=false` gives **14/30**; `ORDER_EVENTS_ATTACHMENT=inline` gives **22/30**; inline with max-request-size 1048576 gives **20/30**; removing the status guard makes one `OrderCopyTest` fail.
+  - ch04: `SHIPPING_PARTITION_KEY=event-type` for run 1 gives **25/27** (checks 3, 5 fail; 6, 7, 9 are run-dependent); `RESEQUENCE=true` on all runs gives **24/27** (checks 14, 15, 16 fail).
+- Opus validation round 1: fresh-clone build with an empty Maven repository of domain-model plus 02, 03 and 04 `package`: BUILD SUCCESS.
+- Repair round 1 re-runs follow.
+
+## r02 repair round 1 re-run (2026-11-10)
+
+Orchestrator, clean Docker, under the stack lock, one at a time:
+
+- 02-event-notification: mvn 7 + 4 tests, BUILD SUCCESS; verify.sh 21/21. Experiment, `breakOnFirstError=true` removed from `OrderPlacedNotificationRoute`: 19/21, checks 14 (offset not committed past) and 16 (B's notification appears) fail; restored, diff clean.
+- Recorded by the ch02 repair executor: `camel-quarkus-opentelemetry2` removed from order-service gives 20/21 (check 7 fails); observer set to `TransactionPhase.IN_PROGRESS` makes `rolledBackOrderPublishesNothing` fail.
+- 03-event-carried-state-transfer: mvn 8 + 7, BUILD SUCCESS; verify.sh 30/30.
+- 04-ordering-and-partitioning: mvn 4 + 46 runs (12 methods, two `@RepeatedTest(20)`), BUILD SUCCESS; verify.sh 28/28. Recorded by the ch04 repair executor: without the `ON CONFLICT` create the new-order concurrency test errors 20/20; without the row lock the existing-order test failed 1 of 20 (probabilistic).
+- 00 and 01 unchanged in code since the final serial run (17/17, 19/19).
+- 02 key-header experiment re-run after repair: order-service 7 tests, 3 fail (recordCarriesOnlyTheOrderIdKeyedByOrderId, orderIsReadableWhenTheRecordIsPublished, duplicateAndInvalidOrdersPublishNothing); restored.

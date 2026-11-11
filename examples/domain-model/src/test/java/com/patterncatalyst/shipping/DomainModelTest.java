@@ -1,465 +1,288 @@
 package com.patterncatalyst.shipping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class DomainModelTest {
 
-    static final Instant T0 = Instant.parse("2026-01-01T00:00:00Z");
     static final BigDecimal TEN = new BigDecimal("10.00");
-    static final BigDecimal NEG = new BigDecimal("-0.01");
 
-    static HandlingEvent event(String consignmentId) {
-        return new HandlingEvent("e1", consignmentId, "LOAD", "NLRTM", T0);
-    }
-
-    static PortCall call() {
-        return new PortCall("NLRTM", T0, T0.plusSeconds(3600));
+    static Order order(int quantity, BigDecimal amount) {
+        return new Order("O-1001", "C-7", "SKU-1", quantity, amount);
     }
 
     @Nested
-    class ConsignmentTest {
+    class OrderTest {
         @Test
         void constructsWithValidFields() {
-            var c = new Consignment("c1", "NLRTM", "SGSIN", TEN, Carrier.FASTLINE);
-            assertEquals("c1", c.id());
+            assertEquals("O-1001", order(2, TEN).id());
+        }
+
+        @Test
+        void roundsAmountToTwoDecimalsHalfUp() {
+            assertEquals(new BigDecimal("20.00"), order(1, new BigDecimal("19.999")).amount());
+            assertEquals(new BigDecimal("10.01"), order(1, new BigDecimal("10.005")).amount());
+            assertEquals(new BigDecimal("5.00"), order(1, new BigDecimal("5")).amount());
         }
 
         @Test
         void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new Consignment(" ", "NLRTM", "SGSIN", TEN, "FASTLINE"));
+            assertThrows(IllegalArgumentException.class, () -> new Order(" ", "C-7", "SKU-1", 1, TEN));
         }
 
         @Test
-        void rejectsNullOrigin() {
-            assertThrows(NullPointerException.class, () -> new Consignment("c1", null, "SGSIN", TEN, "FASTLINE"));
+        void rejectsBlankCustomer() {
+            assertThrows(IllegalArgumentException.class, () -> new Order("O-1", "", "SKU-1", 1, TEN));
         }
 
         @Test
-        void rejectsBlankDestination() {
-            assertThrows(IllegalArgumentException.class, () -> new Consignment("c1", "NLRTM", "", TEN, "FASTLINE"));
+        void rejectsBlankSku() {
+            assertThrows(IllegalArgumentException.class, () -> new Order("O-1", "C-7", " ", 1, TEN));
         }
 
         @Test
-        void rejectsZeroWeight() {
-            assertThrows(IllegalArgumentException.class,
-                    () -> new Consignment("c1", "NLRTM", "SGSIN", BigDecimal.ZERO, "FASTLINE"));
+        void rejectsNullText() {
+            assertThrows(NullPointerException.class, () -> new Order(null, "C-7", "SKU-1", 1, TEN));
         }
 
         @Test
-        void rejectsNullWeight() {
-            assertThrows(NullPointerException.class, () -> new Consignment("c1", "NLRTM", "SGSIN", null, "FASTLINE"));
+        void rejectsZeroQuantity() {
+            assertThrows(IllegalArgumentException.class, () -> order(0, TEN));
         }
 
         @Test
-        void rejectsBlankCarrier() {
-            assertThrows(IllegalArgumentException.class, () -> new Consignment("c1", "NLRTM", "SGSIN", TEN, " "));
-        }
-    }
-
-    @Nested
-    class ConsignmentStatusTest {
-        @Test
-        void hasLifecycleInOrder() {
-            assertEquals(List.of("BOOKED", "LOADED", "IN_TRANSIT", "CLEARED", "DELIVERED"),
-                    java.util.Arrays.stream(ConsignmentStatus.values()).map(Enum::name).toList());
-        }
-    }
-
-    @Nested
-    class HandlingEventTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals("LOAD", event("c1").type());
+        void rejectsNegativeQuantity() {
+            assertThrows(IllegalArgumentException.class, () -> order(-1, TEN));
         }
 
         @Test
-        void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new HandlingEvent("", "c1", "LOAD", "NLRTM", T0));
-        }
-
-        @Test
-        void rejectsBlankConsignmentId() {
-            assertThrows(IllegalArgumentException.class, () -> new HandlingEvent("e1", " ", "LOAD", "NLRTM", T0));
-        }
-
-        @Test
-        void rejectsBlankType() {
-            assertThrows(IllegalArgumentException.class, () -> new HandlingEvent("e1", "c1", " ", "NLRTM", T0));
-        }
-
-        @Test
-        void rejectsBlankLocation() {
-            assertThrows(IllegalArgumentException.class, () -> new HandlingEvent("e1", "c1", "LOAD", "", T0));
-        }
-
-        @Test
-        void rejectsNullTimestamp() {
-            assertThrows(NullPointerException.class, () -> new HandlingEvent("e1", "c1", "LOAD", "NLRTM", null));
-        }
-    }
-
-    @Nested
-    class TrackingHistoryTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals(1, new TrackingHistory("c1", List.of(event("c1"))).events().size());
-        }
-
-        @Test
-        void rejectsBlankConsignmentId() {
-            assertThrows(IllegalArgumentException.class, () -> new TrackingHistory(" ", List.of()));
-        }
-
-        @Test
-        void rejectsNullEvents() {
-            assertThrows(NullPointerException.class, () -> new TrackingHistory("c1", null));
-        }
-
-        @Test
-        void rejectsEventOfAnotherConsignment() {
-            assertThrows(IllegalArgumentException.class, () -> new TrackingHistory("c1", List.of(event("c2"))));
-        }
-
-        @Test
-        void copiesEventsDefensively() {
-            var source = new ArrayList<>(List.of(event("c1")));
-            var history = new TrackingHistory("c1", source);
-            source.clear();
-            assertEquals(1, history.events().size());
-            assertThrows(UnsupportedOperationException.class, () -> history.events().clear());
-        }
-    }
-
-    @Nested
-    class TariffTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals(TEN, new Tariff("FASTLINE", "NLRTM", "SGSIN", TEN, "EUR").ratePerKg());
-        }
-
-        @Test
-        void rejectsBlankCarrier() {
-            assertThrows(IllegalArgumentException.class, () -> new Tariff(" ", "NLRTM", "SGSIN", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankOrigin() {
-            assertThrows(IllegalArgumentException.class, () -> new Tariff("AIRCO", "", "SGSIN", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankDestination() {
-            assertThrows(IllegalArgumentException.class, () -> new Tariff("AIRCO", "NLRTM", " ", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsNegativeRate() {
-            assertThrows(IllegalArgumentException.class, () -> new Tariff("AIRCO", "NLRTM", "SGSIN", NEG, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankCurrency() {
-            assertThrows(IllegalArgumentException.class, () -> new Tariff("AIRCO", "NLRTM", "SGSIN", TEN, ""));
-        }
-    }
-
-    @Nested
-    class RateQuoteTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals(TEN, new RateQuote("q1", "c1", "AIRCO", TEN, "EUR").amount());
-        }
-
-        @Test
-        void acceptsZeroAmount() {
-            assertEquals(0, new RateQuote("q1", "c1", "AIRCO", BigDecimal.ZERO, "EUR").amount().signum());
-        }
-
-        @Test
-        void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new RateQuote(" ", "c1", "AIRCO", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankConsignmentId() {
-            assertThrows(IllegalArgumentException.class, () -> new RateQuote("q1", "", "AIRCO", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankCarrier() {
-            assertThrows(IllegalArgumentException.class, () -> new RateQuote("q1", "c1", " ", TEN, "EUR"));
+        void rejectsZeroAmount() {
+            assertThrows(IllegalArgumentException.class, () -> order(1, BigDecimal.ZERO));
         }
 
         @Test
         void rejectsNegativeAmount() {
-            assertThrows(IllegalArgumentException.class, () -> new RateQuote("q1", "c1", "AIRCO", NEG, "EUR"));
+            assertThrows(IllegalArgumentException.class, () -> order(1, new BigDecimal("-0.01")));
         }
 
         @Test
         void rejectsNullAmount() {
-            assertThrows(NullPointerException.class, () -> new RateQuote("q1", "c1", "AIRCO", null, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankCurrency() {
-            assertThrows(IllegalArgumentException.class, () -> new RateQuote("q1", "c1", "AIRCO", TEN, " "));
+            assertThrows(NullPointerException.class, () -> order(1, null));
         }
     }
 
     @Nested
-    class InvoiceTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals("i1", new Invoice("i1", "c1", TEN, "EUR").id());
+    class OrderStatusTest {
+        @ParameterizedTest
+        @CsvSource({
+            "PLACED,PAID,true", "PLACED,CANCELLED,true", "PLACED,PLACED,false",
+            "PLACED,SHIPPED,false", "PLACED,DELIVERED,false",
+            "PAID,SHIPPED,true", "PAID,CANCELLED,true", "PAID,PLACED,false",
+            "PAID,PAID,false", "PAID,DELIVERED,false",
+            "SHIPPED,DELIVERED,true", "SHIPPED,CANCELLED,false", "SHIPPED,PLACED,false",
+            "SHIPPED,PAID,false", "SHIPPED,SHIPPED,false",
+            "DELIVERED,PLACED,false", "DELIVERED,PAID,false", "DELIVERED,SHIPPED,false",
+            "DELIVERED,DELIVERED,false", "DELIVERED,CANCELLED,false",
+            "CANCELLED,PLACED,false", "CANCELLED,PAID,false", "CANCELLED,SHIPPED,false",
+            "CANCELLED,DELIVERED,false", "CANCELLED,CANCELLED,false"
+        })
+        void transitionTable(OrderStatus from, OrderStatus to, boolean legal) {
+            assertEquals(legal, from.canMoveTo(to));
         }
 
         @Test
-        void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new Invoice("", "c1", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankConsignmentId() {
-            assertThrows(IllegalArgumentException.class, () -> new Invoice("i1", " ", TEN, "EUR"));
-        }
-
-        @Test
-        void rejectsNegativeAmount() {
-            assertThrows(IllegalArgumentException.class, () -> new Invoice("i1", "c1", NEG, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankCurrency() {
-            assertThrows(IllegalArgumentException.class, () -> new Invoice("i1", "c1", TEN, ""));
+        void tableCoversEveryPair() {
+            assertEquals(25, OrderStatus.values().length * OrderStatus.values().length);
         }
     }
 
     @Nested
-    class SettlementTest {
+    class InventoryItemTest {
         @Test
-        void constructsWithValidFields() {
-            assertEquals("s1", new Settlement("s1", "i1", TEN, T0).id());
+        void acceptsZeroStock() {
+            assertEquals(0, new InventoryItem("SKU-1", 0).quantityOnHand());
+        }
+
+        @Test
+        void rejectsBlankSku() {
+            assertThrows(IllegalArgumentException.class, () -> new InventoryItem(" ", 1));
+        }
+
+        @Test
+        void rejectsNegativeQuantity() {
+            assertThrows(IllegalArgumentException.class, () -> new InventoryItem("SKU-1", -1));
+        }
+    }
+
+    @Nested
+    class PaymentTest {
+        @Test
+        void constructsAndRounds() {
+            var p = new Payment("P-1", "O-1001", new BigDecimal("19.999"), PaymentStatus.PENDING);
+            assertEquals(new BigDecimal("20.00"), p.amount());
         }
 
         @Test
         void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new Settlement(" ", "i1", TEN, T0));
+            assertThrows(IllegalArgumentException.class, () -> new Payment("", "O-1", TEN, PaymentStatus.PENDING));
         }
 
         @Test
-        void rejectsBlankInvoiceId() {
-            assertThrows(IllegalArgumentException.class, () -> new Settlement("s1", "", TEN, T0));
+        void rejectsBlankOrderId() {
+            assertThrows(IllegalArgumentException.class, () -> new Payment("P-1", " ", TEN, PaymentStatus.PENDING));
         }
 
         @Test
-        void rejectsNegativeAmount() {
-            assertThrows(IllegalArgumentException.class, () -> new Settlement("s1", "i1", NEG, T0));
+        void rejectsZeroAmount() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Payment("P-1", "O-1", BigDecimal.ZERO, PaymentStatus.PENDING));
         }
 
         @Test
-        void rejectsNullSettledAt() {
-            assertThrows(NullPointerException.class, () -> new Settlement("s1", "i1", TEN, null));
+        void rejectsNullStatus() {
+            assertThrows(NullPointerException.class, () -> new Payment("P-1", "O-1", TEN, null));
+        }
+    }
+
+    @Nested
+    class ShipmentTest {
+        @Test
+        void pendingMayLackTrackingNumber() {
+            var s = new Shipment("S-1", "O-1", Carrier.FASTLINE, null, ShipmentStatus.PENDING);
+            assertNull(s.trackingNumber());
+        }
+
+        @Test
+        void scheduledWithTrackingNumber() {
+            var s = new Shipment("S-1", "O-1", Carrier.AIRCO, "TRK-1", ShipmentStatus.SCHEDULED);
+            assertEquals("TRK-1", s.trackingNumber());
+        }
+
+        @Test
+        void rejectsMissingTrackingNumberAfterPending() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Shipment("S-1", "O-1", Carrier.AIRCO, null, ShipmentStatus.SCHEDULED));
+        }
+
+        @Test
+        void rejectsBlankTrackingNumber() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Shipment("S-1", "O-1", Carrier.AIRCO, " ", ShipmentStatus.PENDING));
+        }
+
+        @Test
+        void rejectsBlankId() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Shipment("", "O-1", Carrier.AIRCO, "T", ShipmentStatus.SCHEDULED));
+        }
+
+        @Test
+        void rejectsBlankOrderId() {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Shipment("S-1", " ", Carrier.AIRCO, "T", ShipmentStatus.SCHEDULED));
+        }
+
+        @Test
+        void rejectsNullCarrier() {
+            assertThrows(NullPointerException.class,
+                    () -> new Shipment("S-1", "O-1", null, "T", ShipmentStatus.SCHEDULED));
+        }
+
+        @Test
+        void rejectsNullStatus() {
+            assertThrows(NullPointerException.class, () -> new Shipment("S-1", "O-1", Carrier.AIRCO, "T", null));
+        }
+    }
+
+    @Nested
+    class ShipmentStatusTest {
+        @ParameterizedTest
+        @CsvSource({
+            "PENDING,SCHEDULED,true", "SCHEDULED,IN_TRANSIT,true", "IN_TRANSIT,DELIVERED,true",
+            "PENDING,IN_TRANSIT,false", "PENDING,DELIVERED,false", "PENDING,PENDING,false",
+            "SCHEDULED,PENDING,false", "SCHEDULED,DELIVERED,false", "SCHEDULED,SCHEDULED,false",
+            "IN_TRANSIT,PENDING,false", "IN_TRANSIT,SCHEDULED,false", "IN_TRANSIT,IN_TRANSIT,false",
+            "DELIVERED,PENDING,false", "DELIVERED,SCHEDULED,false", "DELIVERED,IN_TRANSIT,false",
+            "DELIVERED,DELIVERED,false"
+        })
+        void transitionTable(ShipmentStatus from, ShipmentStatus to, boolean legal) {
+            assertEquals(legal, from.canMoveTo(to));
         }
     }
 
     @Nested
     class CarrierTest {
         @Test
-        void constructsWithKnownCodes() {
-            assertEquals("FASTLINE", new Carrier(Carrier.FASTLINE, "Fastline").code());
-            assertEquals("AIRCO", new Carrier(Carrier.AIRCO, "Airco").code());
+        void unknownCarrierFails() {
+            assertThrows(IllegalArgumentException.class, () -> Carrier.valueOf("FEDEX"));
         }
 
         @Test
-        void rejectsBlankCode() {
-            assertThrows(IllegalArgumentException.class, () -> new Carrier(" ", "Fastline"));
-        }
-
-        @Test
-        void rejectsBlankName() {
-            assertThrows(IllegalArgumentException.class, () -> new Carrier("FASTLINE", ""));
+        void knownCarriers() {
+            assertEquals(Carrier.AIRCO, Carrier.valueOf("AIRCO"));
+            assertEquals(2, Carrier.values().length);
         }
     }
 
     @Nested
-    class CustomsDeclarationTest {
+    class NotificationTest {
         @Test
-        void constructsWithValidFields() {
-            assertEquals("SG", new CustomsDeclaration("d1", "c1", "SG", TEN, "EUR").destinationCountry());
+        void constructs() {
+            assertEquals("OrderPlaced", new Notification("N-1", "O-1", "C-7", "OrderPlaced").eventType());
         }
 
         @Test
         void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new CustomsDeclaration(" ", "c1", "SG", TEN, "EUR"));
+            assertThrows(IllegalArgumentException.class, () -> new Notification(" ", "O-1", "C-7", "X"));
         }
 
         @Test
-        void rejectsBlankConsignmentId() {
-            assertThrows(IllegalArgumentException.class, () -> new CustomsDeclaration("d1", "", "SG", TEN, "EUR"));
+        void rejectsBlankOrderId() {
+            assertThrows(IllegalArgumentException.class, () -> new Notification("N-1", "", "C-7", "X"));
         }
 
         @Test
-        void rejectsBlankDestinationCountry() {
-            assertThrows(IllegalArgumentException.class, () -> new CustomsDeclaration("d1", "c1", " ", TEN, "EUR"));
+        void rejectsBlankCustomerId() {
+            assertThrows(IllegalArgumentException.class, () -> new Notification("N-1", "O-1", " ", "X"));
         }
 
         @Test
-        void rejectsNegativeDeclaredValue() {
-            assertThrows(IllegalArgumentException.class, () -> new CustomsDeclaration("d1", "c1", "SG", NEG, "EUR"));
-        }
-
-        @Test
-        void rejectsBlankCurrency() {
-            assertThrows(IllegalArgumentException.class, () -> new CustomsDeclaration("d1", "c1", "SG", TEN, ""));
+        void rejectsBlankEventType() {
+            assertThrows(IllegalArgumentException.class, () -> new Notification("N-1", "O-1", "C-7", ""));
         }
     }
 
     @Nested
-    class ManifestTest {
+    class TopicsTest {
         @Test
-        void constructsWithValidFields() {
-            assertEquals(2, new Manifest("m1", "s1", List.of("c1", "c2")).consignmentIds().size());
+        void catalogHasNineDistinctPrefixedTopics() {
+            assertEquals(9, Topics.ALL.size());
+            assertEquals(9, new HashSet<>(Topics.ALL).size());
+            for (String t : Topics.ALL) {
+                assertTrue(t.startsWith("edp."), t);
+                assertTrue(!t.contains("_"), t);
+            }
         }
 
         @Test
-        void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new Manifest(" ", "s1", List.of()));
+        void shipmentStreamIsOutsideTheCatalog() {
+            assertEquals("edp.shipping.shipments", Topics.SHIPPING_SHIPMENTS);
+            assertTrue(!Topics.ALL.contains(Topics.SHIPPING_SHIPMENTS));
         }
 
         @Test
-        void rejectsBlankSailingId() {
-            assertThrows(IllegalArgumentException.class, () -> new Manifest("m1", "", List.of()));
-        }
-
-        @Test
-        void rejectsNullConsignmentIds() {
-            assertThrows(NullPointerException.class, () -> new Manifest("m1", "s1", null));
-        }
-
-        @Test
-        void rejectsBlankConsignmentIdElement() {
-            assertThrows(IllegalArgumentException.class, () -> new Manifest("m1", "s1", List.of(" ")));
-        }
-
-        @Test
-        void copiesIdsDefensively() {
-            var source = new ArrayList<>(List.of("c1"));
-            var manifest = new Manifest("m1", "s1", source);
-            source.add("c2");
-            assertEquals(1, manifest.consignmentIds().size());
-        }
-    }
-
-    @Nested
-    class VesselTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals("9811000", new Vessel("9811000", "Ever Given").imo());
-        }
-
-        @Test
-        void rejectsBlankImo() {
-            assertThrows(IllegalArgumentException.class, () -> new Vessel(" ", "Ever Given"));
-        }
-
-        @Test
-        void rejectsBlankName() {
-            assertThrows(IllegalArgumentException.class, () -> new Vessel("9811000", ""));
-        }
-    }
-
-    @Nested
-    class PortCallTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals("NLRTM", call().port());
-        }
-
-        @Test
-        void acceptsDepartureEqualToArrival() {
-            assertEquals(T0, new PortCall("NLRTM", T0, T0).departure());
-        }
-
-        @Test
-        void rejectsBlankPort() {
-            assertThrows(IllegalArgumentException.class, () -> new PortCall(" ", T0, T0));
-        }
-
-        @Test
-        void rejectsNullArrival() {
-            assertThrows(NullPointerException.class, () -> new PortCall("NLRTM", null, T0));
-        }
-
-        @Test
-        void rejectsNullDeparture() {
-            assertThrows(NullPointerException.class, () -> new PortCall("NLRTM", T0, null));
-        }
-
-        @Test
-        void rejectsDepartureBeforeArrival() {
-            assertThrows(IllegalArgumentException.class, () -> new PortCall("NLRTM", T0, T0.minusSeconds(1)));
-        }
-    }
-
-    @Nested
-    class SailingTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals(1, new Sailing("s1", "9811000", List.of(call())).portCalls().size());
-        }
-
-        @Test
-        void rejectsBlankId() {
-            assertThrows(IllegalArgumentException.class, () -> new Sailing(" ", "9811000", List.of(call())));
-        }
-
-        @Test
-        void rejectsBlankVesselImo() {
-            assertThrows(IllegalArgumentException.class, () -> new Sailing("s1", "", List.of(call())));
-        }
-
-        @Test
-        void rejectsNullPortCalls() {
-            assertThrows(NullPointerException.class, () -> new Sailing("s1", "9811000", null));
-        }
-
-        @Test
-        void rejectsEmptyPortCalls() {
-            assertThrows(IllegalArgumentException.class, () -> new Sailing("s1", "9811000", List.of()));
-        }
-
-        @Test
-        void copiesPortCallsDefensively() {
-            var source = new ArrayList<>(List.of(call()));
-            var sailing = new Sailing("s1", "9811000", source);
-            source.clear();
-            assertEquals(1, sailing.portCalls().size());
-        }
-    }
-
-    @Nested
-    class SlotIdTest {
-        @Test
-        void constructsWithValidFields() {
-            assertEquals(0, new SlotId("s1", 0).number());
-        }
-
-        @Test
-        void rejectsBlankSailingId() {
-            assertThrows(IllegalArgumentException.class, () -> new SlotId(" ", 1));
-        }
-
-        @Test
-        void rejectsNegativeNumber() {
-            assertThrows(IllegalArgumentException.class, () -> new SlotId("s1", -1));
+        void catalogIsUnmodifiable() {
+            assertThrows(UnsupportedOperationException.class, () -> Topics.ALL.add("edp.x"));
         }
     }
 }

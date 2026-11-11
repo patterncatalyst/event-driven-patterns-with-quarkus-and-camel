@@ -1,14 +1,14 @@
 package com.patterncatalyst.shipping.crudvsevents;
 
-import com.patterncatalyst.shipping.ConsignmentStatus;
+import com.patterncatalyst.shipping.OrderStatus;
 
-/** BOOKED, LOADED, IN_TRANSIT, CLEARED, DELIVERED: one step forward at a time. */
+/** PLACED, PAID, SHIPPED, DELIVERED, one step at a time; CANCELLED only from PLACED or PAID. */
 final class Lifecycle {
 
     private Lifecycle() {
     }
 
-    static boolean allows(ConsignmentStatus from, ConsignmentStatus to) {
-        return to.ordinal() == from.ordinal() + 1;
+    static boolean allows(OrderStatus from, OrderStatus to) {
+        return from.canMoveTo(to);
     }
 }

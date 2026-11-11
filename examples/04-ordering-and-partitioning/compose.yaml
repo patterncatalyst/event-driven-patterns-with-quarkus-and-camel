@@ -1,0 +1,100 @@
+name: edp-04
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+x-order-service: &order-service
+  build:
+    context: ..
+    dockerfile: 04-ordering-and-partitioning/order-service/Containerfile
+  environment:
+    QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+    QUARKUS_DATASOURCE_USERNAME: edp
+    QUARKUS_DATASOURCE_PASSWORD: edp
+    CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+    QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    # false: apply events as they arrive. true: hold each until its per-order sequence number is next.
+    RESEQUENCE: ${RESEQUENCE:-false}
+  mem_limit: 384m
+  healthcheck:
+    test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+    start_period: 15s
+  networks: [edp]
+
+services:
+  # Creates the two topics with fixed partition counts, then exits.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        kt=/opt/kafka/bin/kafka-topics.sh
+        $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.shipments --partitions 3 --replication-factor 1
+        # The probe topic exists only so verify.sh can ask the broker which partition a key maps to.
+        $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.probe --partitions 3 --replication-factor 1
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  shipping-service:
+    build:
+      context: ..
+      dockerfile: 04-ordering-and-partitioning/shipping-service/Containerfile
+    container_name: edp-shipping-service
+    ports:
+      - "8080:8080"
+    environment:
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      # order-id (default), event-type or carrier
+      SHIPPING_PARTITION_KEY: ${SHIPPING_PARTITION_KEY:-order-id}
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      lgtm:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+  # Two replicas of one service in one consumer group. Their hostnames are their Kafka client ids.
+  order-1:
+    <<: *order-service
+    container_name: edp-order-1
+    hostname: order-1
+    ports:
+      - "8082:8080"
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+
+  order-2:
+    <<: *order-service
+    container_name: edp-order-2
+    hostname: order-2
+    depends_on:
+      order-1:
+        condition: service_healthy
+
+networks:
+  edp:
+    name: edp

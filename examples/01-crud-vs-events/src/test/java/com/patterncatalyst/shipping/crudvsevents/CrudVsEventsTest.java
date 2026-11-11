@@ -27,128 +27,146 @@ class CrudVsEventsTest {
     @Inject
     DataSource dataSource;
 
-    private static String book() {
-        String id = "C-" + UUID.randomUUID();
-        given().contentType(ContentType.JSON)
-                .body(Map.of("id", id, "origin", "NLRTM", "destination", "SGSIN",
-                        "weightKg", 1250.5, "carrier", "FASTLINE"))
-                .post("/consignments").then().statusCode(201);
+    private static Map<String, Object> order(String id, Object amount) {
+        return Map.of("id", id, "customerId", "CU-77", "itemSku", "SKU-42", "quantity", 3, "amount", amount);
+    }
+
+    private static String place() {
+        String id = "O-" + UUID.randomUUID();
+        given().contentType(ContentType.JSON).body(order(id, 59.90)).post("/orders").then().statusCode(201);
         return id;
     }
 
     private static int change(String id, String to) {
         return given().contentType(ContentType.JSON).body(Map.of("to", to))
-                .post("/consignments/" + id + "/status").statusCode();
+                .post("/orders/" + id + "/status").statusCode();
     }
 
     private static long events(String id) {
-        return QuarkusTransaction.requiringNew().call(() -> ConsignmentEvent.count("streamId", id));
+        return QuarkusTransaction.requiringNew().call(() -> OrderEvent.count("streamId", id));
     }
 
     private static long rows(String id) {
-        return QuarkusTransaction.requiringNew().call(() -> ConsignmentRow.count("id", id));
+        return QuarkusTransaction.requiringNew().call(() -> OrderRow.count("id", id));
     }
 
     @Test
     void oneRowAndOneEventPerChange() {
-        String id = book();
-        assertEquals(204, change(id, "LOADED"));
-        assertEquals(204, change(id, "IN_TRANSIT"));
+        String id = place();
+        assertEquals(204, change(id, "PAID"));
+        assertEquals(204, change(id, "SHIPPED"));
         assertEquals(1, rows(id));
         assertEquals(3, events(id));
-        given().get("/consignments/" + id).then().body("status", equalTo("IN_TRANSIT"));
+        given().get("/orders/" + id).then().body("status", equalTo("SHIPPED"));
     }
 
     @Test
     void replayEqualsRow() {
-        String id = book();
-        change(id, "LOADED");
-        change(id, "IN_TRANSIT");
-        change(id, "CLEARED");
-        String row = given().get("/consignments/" + id).asString();
-        String replayed = given().get("/consignments/" + id + "/replayed").asString();
+        String id = place();
+        change(id, "PAID");
+        change(id, "SHIPPED");
+        change(id, "DELIVERED");
+        String row = given().get("/orders/" + id).asString();
+        String replayed = given().get("/orders/" + id + "/replayed").asString();
         assertEquals(row, replayed);
     }
 
     @Test
     void priorStatusesComeFromEventsOnly() {
-        String id = book();
-        change(id, "LOADED");
-        change(id, "IN_TRANSIT");
-        given().get("/consignments/" + id + "/history").then()
-                .body("entries.status", contains("BOOKED", "LOADED", "IN_TRANSIT"))
+        String id = place();
+        change(id, "PAID");
+        change(id, "SHIPPED");
+        given().get("/orders/" + id + "/history").then()
+                .body("entries.status", contains("PLACED", "PAID", "SHIPPED"))
                 .body("entries.version", contains(1, 2, 3));
-        given().get("/consignments/" + id).then().body("status", equalTo("IN_TRANSIT"));
+        given().get("/orders/" + id).then().body("status", equalTo("SHIPPED"));
     }
 
     @Test
     void illegalTransitionIsRefusedAndAppendsNothing() {
-        String id = book();
-        change(id, "LOADED");
-        assertEquals(409, change(id, "BOOKED"));
-        assertEquals(409, change(id, "CLEARED"));
+        String id = place();
+        change(id, "PAID");
+        assertEquals(409, change(id, "PLACED"));
+        assertEquals(409, change(id, "DELIVERED"));
         assertEquals(2, events(id));
-        given().get("/consignments/" + id).then().body("status", equalTo("LOADED"));
+        given().get("/orders/" + id).then().body("status", equalTo("PAID"));
     }
 
     @Test
     void appendOnlyTriggersRefuseUpdateDeleteAndTruncate() throws SQLException {
-        String id = book();
+        String id = place();
         try (Connection c = dataSource.getConnection(); Statement s = c.createStatement()) {
             assertThrows(SQLException.class,
-                    () -> s.executeUpdate("UPDATE consignment_event SET type = 'X' WHERE stream_id = '" + id + "'"));
+                    () -> s.executeUpdate("UPDATE order_event SET type = 'X' WHERE stream_id = '" + id + "'"));
             assertThrows(SQLException.class,
-                    () -> s.executeUpdate("DELETE FROM consignment_event WHERE stream_id = '" + id + "'"));
-            assertThrows(SQLException.class, () -> s.execute("TRUNCATE consignment_event"));
+                    () -> s.executeUpdate("DELETE FROM order_event WHERE stream_id = '" + id + "'"));
+            assertThrows(SQLException.class, () -> s.execute("TRUNCATE order_event"));
         }
         assertEquals(1, events(id));
     }
 
     @Test
-    void weightIsNormalisedOnceSoRowEventAndReplayAgree() {
-        String id = "C-" + UUID.randomUUID();
-        given().contentType(ContentType.JSON)
-                .body(Map.of("id", id, "origin", "NLRTM", "destination", "SGSIN",
-                        "weightKg", 1.2345, "carrier", "FASTLINE"))
-                .post("/consignments").then().statusCode(201);
-        String row = given().get("/consignments/" + id).then()
-                .body("consignment.weightKg", equalTo(1.235f)).extract().asString();
-        assertEquals(row, given().get("/consignments/" + id + "/replayed").asString());
+    void amountIsNormalisedOnceSoRowEventAndReplayAgree() {
+        String id = "O-" + UUID.randomUUID();
+        given().contentType(ContentType.JSON).body(order(id, 19.999)).post("/orders").then().statusCode(201);
+        String row = given().get("/orders/" + id).then()
+                .body("order.amount", equalTo(20.00f)).extract().asString();
+        assertEquals(row, given().get("/orders/" + id + "/replayed").asString());
     }
 
     @Test
-    void bookingTheSameIdTwiceIsRefusedWith409() {
-        String id = book();
-        given().contentType(ContentType.JSON)
-                .body(Map.of("id", id, "origin", "NLRTM", "destination", "SGSIN",
-                        "weightKg", 10, "carrier", "AIRCO"))
-                .post("/consignments").then().statusCode(409);
+    void placingTheSameIdTwiceIsRefusedWith409() {
+        String id = place();
+        given().contentType(ContentType.JSON).body(order(id, 10)).post("/orders").then().statusCode(409);
         assertEquals(1, rows(id));
         assertEquals(1, events(id));
     }
 
     @Test
+    void cancelFromPaidIsAllowedAndRecordsTheReason() {
+        String id = place();
+        assertEquals(204, change(id, "PAID"));
+        given().contentType(ContentType.JSON).body(Map.of("to", "CANCELLED", "reason", "customer request"))
+                .post("/orders/" + id + "/status").then().statusCode(204);
+        given().get("/orders/" + id).then().body("status", equalTo("CANCELLED"));
+        given().get("/orders/" + id + "/replayed").then().body("status", equalTo("CANCELLED"));
+        given().get("/orders/" + id + "/history").then()
+                .body("entries.status", contains("PLACED", "PAID", "CANCELLED"));
+        assertEquals(3, events(id));
+    }
+
+    @Test
+    void cancelAfterShippedIsRefusedAndAppendsNothing() {
+        String id = place();
+        change(id, "PAID");
+        change(id, "SHIPPED");
+        assertEquals(409, change(id, "CANCELLED"));
+        assertEquals(3, events(id));
+        given().get("/orders/" + id).then().body("status", equalTo("SHIPPED"));
+    }
+
+    @Test
     void staleExpectedVersionIsRejectedByTheUniqueConstraint() {
-        String id = book();
-        given().contentType(ContentType.JSON).body(Map.of("to", "LOADED", "expectedVersion", 1))
-                .post("/consignments/" + id + "/status").then().statusCode(204);
-        given().contentType(ContentType.JSON).body(Map.of("to", "IN_TRANSIT", "expectedVersion", 1))
-                .post("/consignments/" + id + "/status").then().statusCode(409);
+        String id = place();
+        given().contentType(ContentType.JSON).body(Map.of("to", "PAID", "expectedVersion", 1))
+                .post("/orders/" + id + "/status").then().statusCode(204);
+        given().contentType(ContentType.JSON).body(Map.of("to", "SHIPPED", "expectedVersion", 1))
+                .post("/orders/" + id + "/status").then().statusCode(409);
         assertEquals(2, events(id));
-        given().get("/consignments/" + id).then().body("status", equalTo("LOADED"));
+        given().get("/orders/" + id).then().body("status", equalTo("PAID"));
     }
 
     @Test
     void loadedEventChangesAreNeverWrittenBack() {
-        String id = book();
+        String id = place();
         QuarkusTransaction.requiringNew().run(() -> {
-            ConsignmentEvent event = ConsignmentEvent.find("streamId", id).firstResult();
+            OrderEvent event = OrderEvent.find("streamId", id).firstResult();
             event.type = "Altered";
             event.version = 99;
         });
-        ConsignmentEvent reloaded = QuarkusTransaction.requiringNew()
-                .call(() -> ConsignmentEvent.find("streamId", id).firstResult());
-        assertEquals("ConsignmentBooked", reloaded.type);
+        OrderEvent reloaded = QuarkusTransaction.requiringNew()
+                .call(() -> OrderEvent.find("streamId", id).firstResult());
+        assertEquals("OrderPlaced", reloaded.type);
         assertEquals(1, reloaded.version);
     }
 }

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="40" y="60" width="240" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="160.0" y="93.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order replica B</text>
+<text x="160.0" y="110.0" font-size="11.5" fill="#555555" text-anchor="middle">receives 2 InTransit, 3 Delivered</text>
+<rect x="40" y="270" width="240" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="160.0" y="303.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order replica A</text>
+<text x="160.0" y="320.0" font-size="11.5" fill="#555555" text-anchor="middle">receives 1 Scheduled after it resumes</text>
+<rect x="350" y="150" width="250" height="100" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="475.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">pending_shipment_event</text>
+<text x="475.0" y="207.5" font-size="11.5" fill="#555555" text-anchor="middle">unique (order_id, sequence)</text>
+<text x="475.0" y="222.5" font-size="11.5" fill="#555555" text-anchor="middle">holds 2 and 3 for this order</text>
+<rect x="350" y="300" width="250" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="475.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order row, locked</text>
+<text x="475.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">next_sequence = 1</text>
+<rect x="670" y="225" width="250" height="90" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="795.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">apply 1, 2, 3 in one transaction</text>
+<text x="795.0" y="277.5" font-size="11.5" fill="#555555" text-anchor="middle">delete each; next_sequence = 4</text>
+<text x="795.0" y="292.5" font-size="11.5" fill="#555555" text-anchor="middle">status ends DELIVERED</text>
+<path d="M280,95 L350,185" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M280,305 L350,335" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M475,250 L475,300" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M600,335 L670,285" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M600,200 L670,250" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Each order&#x27;s events wait in the database until their turn</text>
+<text x="480" y="430" font-size="11" fill="#555555" text-anchor="middle">If 1 never arrives, 2 and 3 stay held. Other orders are not affected.</text>
+</svg>
