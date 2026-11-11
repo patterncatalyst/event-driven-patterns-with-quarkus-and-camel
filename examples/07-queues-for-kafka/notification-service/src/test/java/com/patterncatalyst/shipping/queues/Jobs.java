@@ -72,4 +72,9 @@ final class Jobs {
         Awaitility.await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(100))
                 .until(() -> rows(mode, orderId).size() >= count);
     }
+
+    /** Waits the full period, so a row that arrives late is in the log before the test asserts on it. */
+    static void settle(Duration period) {
+        Awaitility.await().pollDelay(period).atMost(period.plus(Duration.ofSeconds(5))).until(() -> true);
+    }
 }

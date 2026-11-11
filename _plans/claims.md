@@ -324,12 +324,13 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 06-10 | 06 | The broker answers a fetch once fetch.min.bytes is available; a backlogged consumer always has that much waiting (reworded from an unrun 'changes nothing' claim) | sources.md consumer configs fetch.min.bytes definition | _docs/06-optimizing-subscribers.md:30 | sourced |
 | 07-01 | 07 | A share group shares a partition only when members outnumber partitions | kafka-share-groups --describe --members in the ch07 window (3/3 one each; 4 members two per partition) | _docs/07-queues-for-kafka.md | verified |
 | 07-02 | 07 | Retry job fails at delivery count 1 and is sent at count 2; bounce is rejected once and not redelivered | verify.sh 07 checks 12 to 14; ShareDeliveryTest | _docs/07-queues-for-kafka.md | verified |
-| 07-03 | 07 | Under a share group a later job of the slow job's partition finishes first | verify.sh 07 check 9; fails with DELIVERY_MODE=group and SEED_LINGER_MS=500 | _docs/07-queues-for-kafka.md | verified |
+| 07-03 | 07 | Under a share group a later job of the slow job's partition finishes first; group mode gives 11/26 (checks 4 to 15 and 19 to 21 fail) | verify.sh 07 check 9; 07-r1-group.log; SEED_LINGER_MS=500 fails 9 | _docs/07-queues-for-kafka.md:113 | verified |
 | 07-04 | 07 | Under a consumer group nothing overtakes, one worker per partition, 3 of 4 workers deliver | verify.sh 07 checks 24 to 26 | _docs/07-queues-for-kafka.md | verified |
 | 07-05 | 07 | The default acquire mode takes the whole fetched batch; one-record batches limit hoarding | SEED_LINGER_MS=500 run; S1 spike | _docs/07-queues-for-kafka.md | verified |
-| 07-06 | 07 | record_limit acquire mode delivered 8 of 30 in 25 s against 30 in 15 s | single-worker runs, ch07 window | _docs/07-queues-for-kafka.md | recorded |
-| 07-07 | 07 | With a 15 s lock the 8 s slow job was redelivered after it finished | 07-v3, 07-v4 runs | _docs/07-queues-for-kafka.md | verified |
+| 07-06 | 07 | record_limit acquire mode: every job reaches a final outcome but one job was sent twice (checks 5 and 6 fail, 24/26) | 07-record-limit.log (orchestrator run, 2026-11-11) | _docs/07-queues-for-kafka.md:116 | verified |
+| 07-07 | 07 | With a 15 s lock checks 5 to 8 fail (22/26): slow job sent at delivery count 1 and again at count 2, seven other jobs sent twice, one job five times | 07-lock15.log, 07-lock15-db.log | _docs/07-queues-for-kafka.md:115 | verified |
 | 07-08 | 07 | The Camel Kafka component has no share-group option | sources.md Camel Kafka component row | _docs/07-queues-for-kafka.md | verified |
+| 07-10 | 07 | Check 11 (a partition delivered by 2 or more workers) fails under DELIVERY_MODE=group; share delivery uses a @Blocking method (26/26) | 07-r1-group.log; 07-r1-verify-final.log | _docs/07-queues-for-kafka.md:106 | verified |
 | 07-09 | 07 | Lock default 30 s, delivery count limit 5, no ordering guarantee, accept/release/reject | sources.md Kafka design, KIP-932, Strimzi post | _docs/07-queues-for-kafka.md | verified |
 
 ### r03 reference back-fill

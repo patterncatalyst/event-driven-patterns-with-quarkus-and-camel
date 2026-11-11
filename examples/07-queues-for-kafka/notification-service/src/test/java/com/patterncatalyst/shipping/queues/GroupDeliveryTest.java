@@ -2,6 +2,7 @@ package com.patterncatalyst.shipping.queues;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -15,6 +16,8 @@ import io.quarkus.test.junit.TestProfile;
 @TestProfile(GroupModeProfile.class)
 class GroupDeliveryTest {
 
+    static final Duration SETTLE = Duration.ofSeconds(5);
+
     @ConfigProperty(name = "kafka.bootstrap.servers")
     String bootstrapServers;
 
@@ -22,6 +25,7 @@ class GroupDeliveryTest {
     void anOrdinaryJobIsSentOnce() {
         Jobs.send(bootstrapServers, "G-1", "C-1");
         Jobs.awaitRows("group", "G-1", 1);
+        Jobs.settle(SETTLE);
         assertEquals(List.of("sent"), Jobs.outcomes("group", "G-1"));
     }
 
@@ -29,6 +33,7 @@ class GroupDeliveryTest {
     void aTransientFailureIsRetriedAndSentOnTheSecondAttempt() {
         Jobs.send(bootstrapServers, "G-2", "C-RETRY-1");
         Jobs.awaitRows("group", "G-2", 2);
+        Jobs.settle(SETTLE);
         assertEquals(List.of("failed", "sent"), Jobs.outcomes("group", "G-2"));
         assertEquals(List.of(1, 2), Jobs.deliveryCounts("group", "G-2"));
     }
@@ -37,6 +42,7 @@ class GroupDeliveryTest {
     void aBounceIsRejectedOnceAndNotRetried() {
         Jobs.send(bootstrapServers, "G-3", "C-BOUNCE-1");
         Jobs.awaitRows("group", "G-3", 1);
+        Jobs.settle(SETTLE);
         assertEquals(List.of("rejected"), Jobs.outcomes("group", "G-3"));
     }
 }

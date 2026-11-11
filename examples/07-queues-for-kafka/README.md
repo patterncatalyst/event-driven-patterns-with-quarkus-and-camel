@@ -9,7 +9,7 @@ Quarkus, SmallRye Reactive Messaging (Kafka), Camel Kafka, Hibernate ORM with Pa
 | Service | Port | Purpose |
 |---|---|---|
 | `worker-1` | 8080 | A `notification-service` replica. Health on `/q/health/ready` |
-| `worker-2` to `worker-4` | none | The other replicas of the same service and group. There are more workers than partitions deliberately |
+| `worker-2` to `worker-4` | none | The other replicas of the same service and group. There are more workers than partitions |
 
 `EmailGateway` behaviour by customer id: `C-SLOW*` takes `GATEWAY_SLOW_MS` (8000 ms), `C-RETRY*` fails once (transient) and then succeeds, `C-BOUNCE*` always fails (permanent). Every other customer takes 50 ms.
 
@@ -40,7 +40,7 @@ docker compose down -v
 
 1. Starts the stack. `topics-init` creates the topic and sets `share.auto.offset.reset=earliest`, the lock duration and the delivery count limit on the share group, before any worker joins.
 2. Waits for four members with a stable assignment, then publishes 30 jobs with the console producer, one batch per job. Job 1 is `C-SLOW-1`; job 5 is `C-RETRY-1`; job 6 is `C-BOUNCE-1`.
-3. Share run: every job finishes, 29 are sent once each, the retry job has delivery counts 1 and 2, the bounce job is rejected once and not delivered again after the lock duration, at least three of the four workers deliver jobs, no worker has two attempts at once, and a later job of the slow job's partition finishes before the slow job (after asserting that the slow job is first in its partition with at least five later jobs).
+3. Share run: every job finishes, 29 are sent once each, the retry job has delivery counts 1 and 2, the bounce job is rejected once and not delivered again after the lock duration, at least three of the four workers deliver jobs, a partition is delivered by at least two different workers, and a later job of the slow job's partition finishes before the slow job (after asserting that the slow job is first in its partition with at least five later jobs).
 4. Control run: the workers restart with `DELIVERY_MODE=group` and a new classic group joins, and the same 30 jobs are published again. The same outcomes hold, no later job of the slow partition finishes before the slow job, and each partition has one worker, and exactly three of the four workers deliver.
 
 ## Layout

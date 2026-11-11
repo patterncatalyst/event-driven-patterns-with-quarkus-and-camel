@@ -16,7 +16,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 holds the slow job and worker-2 and worker-3 take the later jobs from the same partition" caption="Who waits behind one slow job" %}
+{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 holds the slow job and worker-2, worker-3 and worker-4 take the later jobs from the same partition" caption="Who waits behind one slow job" %}
 
 ## What to observe
 
@@ -24,7 +24,7 @@ mvn -B verify
 2. **A share group does not.** Another worker takes the later jobs while the first holds the slow one, so at least one later job finishes first.
 3. **Release redelivers.** The retry job is delivered twice, with delivery counts 1 and 2.
 4. **Reject ends it.** The bounce job is delivered once and is not delivered again after the lock duration.
-5. **One job per worker.** No worker has two attempts in progress at once.
+5. **Shared partitions.** At least one partition is delivered by two or more different workers.
 6. **More workers than partitions.** The share group lists four members and at least three deliver jobs. In the consumer group one of the four workers owns no partition and delivers nothing.
 
 ## Infrastructure

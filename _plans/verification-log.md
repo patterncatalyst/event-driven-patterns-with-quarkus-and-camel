@@ -105,3 +105,11 @@ Orchestrator, clean Docker, under the stack lock, one at a time: domain-model 79
 
 - 05: default/unbatched throughput 4.2x (recorded 4.9x), records per request 58x; tuned/unbatched 0.39x (recorded 0.4x); linger 0, 5, 20, 100 ms gives 41, 187, 198, 200 records per request with p50 following linger; bytes per record lz4 0.38, gzip 0.23, zstd 0.19 of none (recorded 0.38, 0.23, 0.19). Every relation has the same direction.
 - 06: drain medians consumers-1 19.29 s, consumers-3 6.38, consumers-9 6.36, consumers-12 6.37, consumers-12-roundrobin 2.23, poll-50 6.37 (recorded 19.18, 6.36, 6.35, 6.36, 2.22, 6.37). Same direction and size.
+
+## r03 repair round 1 (2026-11-11)
+
+Under the stack lock, one at a time:
+
+- 05: bite run with the request metric renamed to a nonexistent series gives 19/24 (checks 5, 8, 11, 18, 20 fail); restored. Final verify.sh 24/24; mvn 6 tests, BUILD SUCCESS.
+- 06: final verify.sh 36/36; mvn 4 tests, BUILD SUCCESS (label-only verify.sh edit after the mvn run).
+- 07: `ShareDeliveryWorker` now a `@Blocking` method: verify.sh 26/26. `DELIVERY_MODE=group`: 11/26 (4 to 15 and 19 to 21 fail; new check 11 among them). `SHARE_RECORD_LOCK_MS=15000`: 22/26 (5 to 8 fail; slow job O-7001 sent at delivery count 1, 15.8 to 23.8 s, and count 2, 32.7 to 40.7 s; seven others twice; O-7028 five times). Orchestrator run `SHARE_ACQUIRE_MODE=record_limit`: 24/26 (5 and 6 fail, one job sent twice). Final verify.sh 26/26; mvn 10 tests, BUILD SUCCESS.

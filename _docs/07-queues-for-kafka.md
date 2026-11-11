@@ -9,7 +9,7 @@ duration: "40 minutes"
 
 The notification service sends an email for every order placed. The email provider is usually quick, but one customer's mailbox takes eight seconds to answer. Thirty orders arrive on `edp.orders.placed`, which has three partitions, and the slow one is the first record of its partition. Twelve more jobs sit behind it in that partition, and nothing about them is slow.
 
-{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 holds the slow job and worker-2 and worker-3 take the later jobs from the same partition" caption="Figure 7.1: Who waits behind one slow job" %}
+{% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 holds the slow job and worker-2, worker-3 and worker-4 take the later jobs from the same partition" caption="Figure 7.1: Who waits behind one slow job" %}
 
 ## Pattern: Competing Consumers
 
@@ -17,13 +17,13 @@ The notification service sends an email for every order placed. The email provid
 
 A topic's partitions are split among the members of a consumer group, and each partition has exactly one owner in the group. The owner delivers its records one after another. A job that takes eight seconds therefore keeps every later job of its partition waiting for eight seconds, even when other workers are idle. Adding workers beyond the number of partitions does not help: the extra ones own nothing.
 
-Partitioned ordering is what makes this the right design when order per key matters. When the jobs are independent, as emails are, the ordering guarantee costs parallelism and buys nothing.
+Partitioned ordering is what makes this the right design when order per key matters. When the jobs are independent, as emails are, the per-partition order limits parallelism and gives the jobs nothing they need.
 
 ### The solution
 
 **Competing Consumers are several workers that take jobs from one channel concurrently, each job going to whichever worker is free.**
 
-Hohpe and Woolf describe the pattern as multiple consumers on a single channel that process messages concurrently. Kafka's share groups implement it on a partitioned log: partitions may be assigned to several consumers at once, the number of consumers can exceed the number of partitions, and records are acknowledged individually instead of by offset. The broker hands a record to one consumer and locks it. The consumer answers with one of three acknowledgements:
+Hohpe and Woolf answer the problem of a client that must handle many messages at once by putting several receivers on the same channel, so that each message is taken by one of them and the receivers work in parallel. Kafka's share groups implement it on a partitioned log: partitions may be assigned to several consumers at once, the number of consumers can exceed the number of partitions, and records are acknowledged individually instead of by offset. The broker hands a record to one consumer and locks it. The consumer answers with one of three acknowledgements:
 
 - accept: the job is done and is not delivered again.
 - release: the job goes back to the share group and is delivered again, with a higher delivery count.
@@ -55,7 +55,7 @@ mp.messaging.incoming.delivery-jobs.max.poll.records=1
 mp.messaging.incoming.delivery-jobs.max.partition.fetch.bytes=1
 ```
 
-`ShareDeliveryWorker` is a method with `@Incoming("delivery-jobs")`. It reads the delivery count from the record, makes the attempt and answers per record:
+`ShareDeliveryWorker` is a `@Blocking` method with `@Incoming("delivery-jobs")`. It reads the delivery count from the record, makes the attempt and answers per record:
 
 ```java
 return switch (outcome) {
@@ -98,22 +98,22 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and three workers, sets the share group's settings, publishes 30 jobs and prints `26/26 checks passed`.
+The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `26/26 checks passed`.
 
 The jobs are published one at a time. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 16 run on the share group's rows, which come from four workers sharing three partitions:
 
-- Twenty-nine jobs are sent, once each, and the thirtieth is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
-- The slow job took at least the gateway's slow time, and at least one later job of its partition finished before it. At least three of the four workers delivered jobs, and no worker ever had two attempts in progress at once.
+- Twenty-nine jobs are sent, once each, and the bounce job is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
+- The slow job took at least the gateway's slow time, and at least one later job of its partition finished before it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
 - The bounce job is not delivered again after the lock duration has passed, and `kafka-share-groups.sh --describe` lists four members.
 
 Checks 17 to 26 run the same jobs through the consumer group. The workers are replaced with `DELIVERY_MODE=group`, and once the four members hold their partitions the same 30 jobs are published again. The retry and bounce outcomes are the same. The control relation is the opposite of check 9: no later job of the slow job's partition finishes before the slow job, each partition was delivered by one worker, and exactly three of the four workers delivered, because the fourth owns no partition.
 
 Change one thing and watch a guard fail:
 
-- Export `DELIVERY_MODE=group` before `./verify.sh`. The first run now delivers through the consumer group, so the share relations have nothing to hold on: check 9 fails because no later job finishes before the slow one, and check 15 fails because the share group has no members. Checks 4 to 8, 10 and 12 to 14, which read the share rows, fail with it, and checks 19 to 21 fail because both runs wrote group rows.
+- Export `DELIVERY_MODE=group` before `./verify.sh`. The first run now delivers through the consumer group, so the share relations have nothing to hold on: check 9 fails because no later job finishes before the slow one, and check 15 fails because the share group has no members. Checks 4 to 8, 10, 11 and 12 to 14, which read the share rows, fail with it, and checks 19 to 21 fail because both runs wrote group rows. Check 11 is the share-only counterpart of check 25: it asks for a partition delivered by two or more workers, and a consumer group has none.
 - Export `SEED_LINGER_MS=500` before `./verify.sh`. The jobs of each partition are now written as one producer batch. Only check 9 fails: the worker that receives the slow job's batch acquires the jobs behind it, and none of them finishes before the slow one.
-- Export `SHARE_RECORD_LOCK_MS=15000`. The slow job takes 8 seconds, but its acknowledgement is not accepted: the slow job is delivered again after it has finished, and several jobs are delivered more than once, so checks 5 and 6 fail. With the default 30 seconds every job is delivered once.
-- Export `SHARE_ACQUIRE_MODE=record_limit`. Each worker then acquires one record per poll, and in a run with one worker 8 of 30 jobs were delivered in 25 seconds, against all 30 in 15 seconds with the default mode, so the example does not use it.
+- Export `SHARE_RECORD_LOCK_MS=15000`. Checks 5 to 8 fail. The slow job is sent twice: delivery count 1 from 15.8 s to 23.8 s on one worker, and delivery count 2 on the same worker from 32.7 s to 40.7 s. Seven other jobs of its partition are sent twice as well, and one of them, O-7028, five times, with delivery counts 1, 1, 1, 2 and 3. With the default 30 seconds every job is delivered once.
+- Export `SHARE_ACQUIRE_MODE=record_limit`. Each worker then acquires one record per poll. In a recorded run every job still reached a final outcome, but one job was sent twice, so checks 5 and 6 fail. The default mode stays.
 
 ## When not to use it
 
@@ -129,8 +129,8 @@ A share group also gives up the simple offset commit: acknowledgement is per rec
 
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Competing Consumers](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html)
 - Apache Kafka, KIP-932: [Queues for Kafka](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka)
-- Apache Kafka documentation, Design, "The Share Consumer": [kafka.apache.org/documentation](https://kafka.apache.org/43/design/design/)
+- Apache Kafka documentation, Design, "The Share Consumer": [Design](https://kafka.apache.org/43/design/design/)
 - Apache Kafka documentation, group configs: [kafka.apache.org/43/configuration/group-configs](https://kafka.apache.org/43/configuration/group-configs/)
 - Strimzi blog, [Using Queues for Apache Kafka with Strimzi](https://strimzi.io/blog/2025/08/20/queues-for-kafka/), 2025
-- SmallRye Reactive Messaging, [Receiving Kafka Records Using Kafka Queues (Share Groups)](https://smallrye.io/smallrye-reactive-messaging/latest/kafka/receiving-kafka-records/)
+- SmallRye Reactive Messaging, [Receiving records](https://smallrye.io/smallrye-reactive-messaging/latest/kafka/receiving-kafka-records/)
 - Apache Camel, Kafka component documentation: [camel.apache.org/components/latest/kafka-component.html](https://camel.apache.org/components/latest/kafka-component.html)
