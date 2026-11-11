@@ -100,3 +100,8 @@ Each chapter executor had an exclusive window under the stack lock.
 ## r03 final serial run (2026-11-11)
 
 Orchestrator, clean Docker, under the stack lock, one at a time: domain-model 79 tests; 00 4 tests, 17/17; 01 11 tests, 19/19; 02 7 + 4 tests, 21/21; 03 8 + 7 tests, 30/30; 04 4 + 46 tests, 28/28; 05 6 tests, 24/24; 06 4 tests, 36/36; 07 10 tests, 26/26. All BUILD SUCCESS. No edp-* containers left.
+
+## r03 quick bench confirmation (2026-11-11, 3 repeats, not committed)
+
+- 05: default/unbatched throughput 4.2x (recorded 4.9x), records per request 58x; tuned/unbatched 0.39x (recorded 0.4x); linger 0, 5, 20, 100 ms gives 41, 187, 198, 200 records per request with p50 following linger; bytes per record lz4 0.38, gzip 0.23, zstd 0.19 of none (recorded 0.38, 0.23, 0.19). Every relation has the same direction.
+- 06: drain medians consumers-1 19.29 s, consumers-3 6.38, consumers-9 6.36, consumers-12 6.37, consumers-12-roundrobin 2.23, poll-50 6.37 (recorded 19.18, 6.36, 6.35, 6.36, 2.22, 6.37). Same direction and size.
