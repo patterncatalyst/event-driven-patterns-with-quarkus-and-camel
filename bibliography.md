@@ -37,6 +37,8 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html" rel="noopener">Resequencer</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Restoring order to out-of-sequence messages</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html" rel="noopener">Competing Consumers</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Several consumers sharing one channel, as in a share group</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html" rel="noopener">Polling Consumer</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A consumer that fetches when it is ready, as the Kafka poll loop does</td></tr>
+    <tr><td><a href="https://microservices.io/patterns/data/transactional-outbox.html" rel="noopener">Pattern: Transactional outbox</a></td><td>Chris Richardson</td><td>Writing the message in the same transaction as the business change, and the message relay</td></tr>
+    <tr><td><a href="https://microservices.io/patterns/data/transaction-log-tailing.html" rel="noopener">Pattern: Transaction log tailing</a></td><td>Chris Richardson</td><td>Publishing outbox rows by reading the database transaction log</td></tr>
   </tbody>
 </table>
 
@@ -76,6 +78,15 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-875%3A+First-class+offsets+support+in+Kafka+Connect" rel="noopener">KIP-875: First-class offsets support in Kafka Connect</a></td><td>Connector offsets</td></tr>
     <tr><td><a href="https://strimzi.io/documentation/" rel="noopener">Strimzi</a></td><td>Kafka on Kubernetes: KRaft, topics, Connect, Cruise Control, MirrorMaker 2</td></tr>
     <tr><td><a href="https://debezium.io/documentation/" rel="noopener">Debezium</a></td><td>Log-based change data capture and the outbox event router</td></tr>
+    <tr><td><a href="https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html" rel="noopener">Debezium Outbox Event Router</a></td><td>Routing outbox rows to topics, the event id header and payload expansion</td></tr>
+    <tr><td><a href="https://debezium.io/documentation/reference/stable/integrations/outbox.html" rel="noopener">Debezium Outbox Quarkus Extension</a></td><td>Writing the outbox row from a Quarkus transaction</td></tr>
+    <tr><td><a href="https://debezium.io/documentation/reference/stable/connectors/postgresql.html" rel="noopener">Debezium connector for PostgreSQL</a></td><td>Snapshots, replica identity, heartbeats, replication slots and incremental snapshots</td></tr>
+    <tr><td><a href="https://debezium.io/documentation/reference/stable/configuration/signalling.html" rel="noopener">Debezium signaling</a></td><td>The signal table and ad hoc incremental snapshots</td></tr>
+    <tr><td><a href="https://kafka.apache.org/43/kafka-connect/user-guide/" rel="noopener">Kafka Connect user guide, REST API</a></td><td>Stopping a connector and reading or changing its offsets</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/logicaldecoding-explanation.html" rel="noopener">PostgreSQL logical decoding concepts</a></td><td>Replication slots and the WAL they retain</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/view-pg-replication-slots.html" rel="noopener">PostgreSQL pg_replication_slots</a></td><td>Slot positions, wal_status and safe_wal_size</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/protocol-replication.html" rel="noopener">PostgreSQL streaming replication protocol</a></td><td>Where START_REPLICATION begins streaming a logical slot</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/debezium-postgres-component.html" rel="noopener">Camel Debezium PostgreSQL component</a></td><td>The embedded change-data-capture consumer and its headers</td></tr>
     <tr><td><a href="https://www.apicur.io/registry/docs/" rel="noopener">Apicurio Registry</a></td><td>Schema registry and compatibility rules</td></tr>
     <tr><td><a href="https://quarkus.io/guides/" rel="noopener">Quarkus</a></td><td>The Quarkus runtime, Dev Services, messaging and Kafka Streams</td></tr>
     <tr><td><a href="https://smallrye.io/smallrye-reactive-messaging/" rel="noopener">SmallRye Reactive Messaging</a></td><td>The Kafka connector Quarkus messaging uses, including share-group consumers</td></tr>
