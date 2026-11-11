@@ -140,4 +140,5 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | B | Compose to Kubernetes | Kafka and PostgreSQL configuration |
 | C | Querying streams without ksqlDB | ShipmentDelivered counts per carrier per window, three ways |
 | D | Pattern map, glossary, EIP Camel cross-reference | same domain as EIP Camel, so the cross-reference is by event |
-| E | OpenShift Local: outbox on CRC | the chapter 08 `Order` outbox |
+| E | Resequencing across partitions, in depth | shipment events from several partitions, producers and topics put back in per-order order: per-order buffer vs Camel Resequencer (batch and stream mode, global sequence, funnel topic), gap timeouts, lost events, restart, memory bounds |
+| F | OpenShift Local: outbox on CRC | the chapter 08 `Order` outbox |

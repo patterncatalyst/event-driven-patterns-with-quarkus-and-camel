@@ -377,7 +377,7 @@ def check_podman(rep: Report):
         except (UnicodeDecodeError, OSError):
             continue
         for m in re.finditer(r"podman", text, re.I):
-            rep.err(p, line_of(text, m.start()), "'podman' is only allowed in _plans/ and the Appendix E chapter")
+            rep.err(p, line_of(text, m.start()), "'podman' is only allowed in _plans/ and the Appendix F chapter")
             break
 
 

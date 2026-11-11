@@ -24,7 +24,7 @@ The repo is public, so no tracked file may name the development machine, its own
 - **Versions**: latest stable upstream, exact pins, never prerelease, `latest` or floating tags. Open source only; nothing needing a licence key, subscription or fee. JDK 25 minimum.
 - **Images**: every image the book builds starts from UBI 10 (`registry.access.redhat.com/ubi10/openjdk-25`, `-runtime`). Fall back to `ubi9/openjdk-25` (same runtime, never a lower JDK) only on a real incompatibility, recorded next to the pin. Upstream images are used as published (Strimzi, CloudNativePG, LGTM, Debezium Connect, Ollama, LRA coordinator).
 - **Idiomatic code**: Hibernate ORM with Panache, Quarkus REST, SmallRye Reactive Messaging, SmallRye Health, Micrometer and OpenTelemetry, Dev Services, Flyway; Camel Java DSL, one route per `RouteBuilder`. Nothing hand-rolled that the framework provides.
-- **No vendor platforms in code**: nothing depends on OpenShift, CRC or a cloud. Appendix E is a demo of the same neutral code.
+- **No vendor platforms in code**: nothing depends on OpenShift, CRC or a cloud. Appendix F is a demo of the same neutral code.
 - **Fixed domain**: EIP Camel's order-to-delivery domain (services order, inventory, payment, shipping, notification). Use only the entity, event and topic names in `_plans/domain-model.md`; never invent an entity or an area. Carriers are FASTLINE and AIRCO, never a real carrier. Event payload records live per example, not in domain-model.
 - **Evidence**: every claim in prose is backed by the example's tests, a recorded run or a fetched source. Evidence is never written into the prose; `_plans/claims.md` tracks it.
 - **Credit sources**: cite every source by author and work in `bibliography.md`. Never copy text, code or examples.
@@ -36,13 +36,13 @@ The repo is public, so no tracked file may name the development machine, its own
 
 ## Stack rules
 
-- Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix E). Fedora/RHEL hosts.
+- Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix F). Fedora/RHEL hosts.
 - One stack or cluster at a time. Stop it when idle. `scripts/stack-guard.sh` refuses a second stack.
 - **No forwarding of any kind**: no `kubectl port-forward`, `minikube tunnel`, SSH tunnels (`ssh -L/-R/-D`), `socat` relays, IP forwarding (`net.ipv4.ip_forward`), iptables/nft/firewalld rules or NAT. Publish ports instead: compose `ports:`, and on minikube NodePorts published with `minikube start --ports`. Tunnels and forwards disconnect and change the host. `scripts/validate.py` fails the build on any of these in reader-facing content, examples, scripts or workflows.
 - Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081 (management and health 19000), Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100.
 - Parts 1 to 5 run on compose (`lgtm-docker-stack`): Kafka KRaft, PostgreSQL on the CloudNativePG operand image, Apicurio, Debezium Connect (published `quay.io/debezium/connect` image first; our own UBI 10 image only on a real need), `grafana/otel-lgtm`.
 - Part 6 runs on minikube with the docker driver and containerd (`lgtm-minikube-stack`): Strimzi KRaft, CloudNativePG, LGTM.
-- OpenShift Local (CRC) appears only in Appendix E, through `lgtm-crc`, running the chapter 08 outbox.
+- OpenShift Local (CRC) appears only in Appendix F, through `lgtm-crc`, running the chapter 08 outbox.
 - Kafka 4.3.2 in both run targets (held to what Strimzi supports); KRaft only, no ZooKeeper.
 
 ## Structure
@@ -117,7 +117,7 @@ CI runs `mvn verify` per changed example; the live `verify.sh` runs locally and 
 
 PRD §14, decided:
 
-- Q1 (2026-11-08): Docker Engine + `docker compose`; minikube (docker driver, containerd) for Part 6; CRC only in Appendix E.
+- Q1 (2026-11-08): Docker Engine + `docker compose`; minikube (docker driver, containerd) for Part 6; CRC only in Appendix E (renumbered Appendix F on 2026-11-10 when the resequencing appendix was added).
 - Q2 (2026-11-10): Debezium for CDC; Connect container on compose, `KafkaConnect`/`KafkaConnector` on Strimzi (ch 35); embedded `camel-quarkus-debezium-postgres` as a comparison section in ch 09.
 - Q3 (2026-11-10): event store is PostgreSQL on CloudNativePG with Panache: append-only `events` table, unique `(stream_id, version)`, `jsonb` payload. KurrentDB rejected (licence).
 - Q4: repo name `event-driven-patterns-with-quarkus-and-camel`.
