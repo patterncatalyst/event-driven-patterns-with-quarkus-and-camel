@@ -142,7 +142,7 @@ echo "Crash after the commit"
 export CRASH_AFTER_COMMIT_FOR=O-2001,O-2002
 "${COMPOSE[@]}" up -d --no-deps --force-recreate --wait order-service
 check "order-service runs with the crash switch set for O-2001 and O-2002" \
-    expect "$(docker exec edp-order-service printenv CRASH_AFTER_COMMIT_FOR)" "$CRASH_AFTER_COMMIT_FOR"
+    expect "$(docker exec edp-order-service printenv DEMO_CRASH_AFTER_COMMIT_FOR)" "$CRASH_AFTER_COMMIT_FOR"
 poll 60 ready || fail_loudly "order-service is not ready with the crash switch set"
 check "outbox: placing O-2001 never gets a response and the service is gone" \
     expect "$(post /orders O-2001)/$(exited_by_halt && echo halted)" "000/halted"
@@ -175,6 +175,10 @@ check "all five events are delivered, in the order the orders committed" \
 echo "Observability"
 check "Tempo has a trace for order-service" poll 90 tempo_has_trace order-service
 check "Loki has logs for order-service" poll 90 loki_has_log order-service
+
+echo "Control: commit first without the crash"
+check "comparison, commit first: with no crash O-2003 returns 201 and exactly one event arrives" \
+    expect "$(post '/orders/dual-write?mode=commit-first' O-2003)/$(poll 30 has_count O-2003 1 && echo one)" "201/one"
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]

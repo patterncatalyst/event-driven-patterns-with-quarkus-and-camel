@@ -5,11 +5,12 @@
 <text x="150.0" y="115.0" font-size="11.5" fill="#555555" text-anchor="middle">op u</text>
 <text x="150.0" y="130.0" font-size="11.5" fill="#555555" text-anchor="middle">before: key only or whole row</text>
 <text x="150.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">after: item_sku, qty_on_hand</text>
-<rect x="30" y="200" width="240" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="150.0" y="228.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">delete envelope</text>
-<text x="150.0" y="245.0" font-size="11.5" fill="#555555" text-anchor="middle">op d</text>
-<text x="150.0" y="260.0" font-size="11.5" fill="#555555" text-anchor="middle">before: the old row</text>
-<text x="150.0" y="275.0" font-size="11.5" fill="#555555" text-anchor="middle">after: null</text>
+<rect x="30" y="190" width="240" height="110" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="150.0" y="220.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">delete envelope</text>
+<text x="150.0" y="237.5" font-size="11.5" fill="#555555" text-anchor="middle">op d</text>
+<text x="150.0" y="252.5" font-size="11.5" fill="#555555" text-anchor="middle">before: key only, or</text>
+<text x="150.0" y="267.5" font-size="11.5" fill="#555555" text-anchor="middle">whole row under FULL</text>
+<text x="150.0" y="282.5" font-size="11.5" fill="#555555" text-anchor="middle">after: null</text>
 <rect x="30" y="320" width="240" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="150.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Debezium tombstone</text>
 <text x="150.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">key, no value</text>
@@ -38,5 +39,5 @@
 <path d="M805,140 L805,200" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <path d="M805,280 L805,320" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Camel maps the envelope; the delete is published once, not twice</text>
-<text x="480" y="450" font-size="11" fill="#555555" text-anchor="middle">Without the drop, Debezium&#x27;s tombstone would be read as a change and published as a second record for the key.</text>
+<text x="480" y="450" font-size="11" fill="#555555" text-anchor="middle">Without the drop, Debezium&#x27;s tombstone fails conversion and is logged as a failed change.</text>
 </svg>

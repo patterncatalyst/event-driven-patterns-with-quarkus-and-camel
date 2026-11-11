@@ -165,3 +165,9 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 | 10 | 2 | 39/39 |
 
 Each verify.sh started with `down -v --remove-orphans` then `up --build --force-recreate --renew-anon-volumes`; no edp-* containers or volumes left. Static gates: validate ok, voice 0 ban-tier, idiomatic 0 ban-tier, host_ids 0, site builds. Words: 08 1,822; 09 2,391; 10 2,026.
+
+## r04 repair round 1 (2026-11-11)
+
+Opus round 1: REPAIR (M1 to M6, L1 to L14; runs and gates were already clean). Fixed by a repair executor: stale backward-alter wording (figure 10.2, example page, README); figure 9.3 tombstone note; ch 10 signal topic routed to edp.inventory.signals plus check 40; ch 08 forward reference; schema validation in every profile; unbacked no_data sentence; heartbeat topics via topic.heartbeat.name; references, bibliography, idioms (env mapping, Camel variable); ch 08 control check 27.
+Live after the fixes, each from clean: 08 27/27, 09 35/35, 10 40/40 (first ch 10 run 39/40: check 36 used grep -q on docker logs under pipefail; fixed to capture first). mvn: 08 7, 09 8, 10 2 tests. Gates clean.
+- Ch 08 no route.by.field re-measured with check 27 (08-noroute-r2.log): 21/27, checks 6, 7, 9, 11, 17, 24 fail, as the chapter states.

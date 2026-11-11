@@ -35,7 +35,7 @@ docker compose down -v
 4. Heartbeat: a burst of about 55 MB into `legacy_audit`. Both slots retain it. With `heartbeat.action.query` the slot releases it after an offset flush; with the interval alone it never does.
 5. Incremental snapshot: one insert into the signal table re-emits each row as an `r` event while an update made at the same time still arrives, and the latest document per SKU matches the table.
 6. Embedded: the service is recreated with `CDC_MODE=embedded`. The engine takes its own slot, publishes the same `sku:qty` set as the Connect path, streams an update, and publishes every row again after its offset file is deleted.
-7. Checks that every topic under `edp.` is named `edp.<domain>.<event>`. Debezium names a table's topic `<prefix>.<schema>.<table>`, so the two helper tables would land on `edp.inventory.dbz_signal` and `edp.inventory.dbz_heartbeat`; each has a RegexRouter to a name without underscores. `interval-only` has its own `topic.prefix` because two connectors with one prefix in one Connect worker collide on the same JMX metrics name, and the second waits about a minute before its slot starts.
+7. Checks that every topic under `edp.` is named `edp.<domain>.<event>`. Debezium names a table's topic `<prefix>.<schema>.<table>`, so the two helper tables would land on `edp.inventory.dbz_signal` and `edp.inventory.dbz_heartbeat`; each has a RegexRouter to a name without underscores. `interval-only` has its own `topic.prefix` because two connectors with one prefix in one Connect worker collide on the same JMX metrics name, and the second waits almost two minutes before its slot starts.
 
 ## Layout
 

@@ -15,7 +15,7 @@ duration: "45 minutes"
 
 ### The problem
 
-PostgreSQL and Kafka have no shared transaction. A service that changes its own state and announces the change writes to both, and any failure between the two writes leaves them disagreeing. Retrying does not help when the process itself is gone, and publishing before the commit cannot be taken back. Distributed transactions across a database and a broker are not available for Kafka, so the atomic unit has to be something the database alone can commit.
+PostgreSQL and Kafka have no shared transaction. A service that changes its own state and announces the change writes to both, and any failure between the two writes leaves them disagreeing. Retrying does not help when the process itself is gone, and publishing before the commit cannot be taken back. Kafka transactions are scoped to a single Kafka cluster and cannot enlist a database, so the atomic unit has to be something the database alone can commit.
 
 ### The solution
 
@@ -100,13 +100,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the order service against PostgreSQL and Kafka from Dev Services: the order row and the outbox row are written together, a rolled-back order leaves neither, a duplicate is refused without a second row, and the two comparison routes lose and invent events when the crash switch fires. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, registers the connector and prints `26/26 checks passed`.
+The Maven build runs the order service against PostgreSQL and Kafka from Dev Services: the order row and the outbox row are written together, a rolled-back order leaves neither, a duplicate is refused without a second row, the commit-first route loses an event when the crash switch fires, and the publish-first route invents one when its commit fails. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, registers the connector and prints `27/27 checks passed`.
 
 The checks read the effects, not the status codes:
 
 - Placing `O-1001` leaves exactly one record on `edp.orders.placed`, keyed `O-1001`, with an `id` header, `eventType` `OrderPlaced` and the order as a JSON object. The order row exists, the outbox table is empty, and no `outbox.event.*` topic was created.
 - A second `O-1001` is refused with 409, and after a wait there is still one record and one row.
-- With the crash switch set, `O-2001` through the outbox never gets a response and the container exits with code 137. After a restart its order row exists and exactly one record for it arrives. The same crash after the commit of the commit-first route leaves the order row for `O-2002` and no record for it, however long the check waits.
+- With the crash switch set, `O-2001` through the outbox never gets a response and the container exits with 137, as after a SIGKILL. After a restart its order row exists and exactly one record for it arrives. The same crash after the commit of the commit-first route leaves the order row for `O-2002` and no record for it after a wait. With no crash switch the same commit-first route publishes exactly one event, so the loss comes from the crash and not from the route.
 - Publish first, then commit: a second order with the same id fails at commit, and the topic holds two records for one order.
 - Connect is stopped and five orders `O-4001` to `O-4005` are placed. All five are accepted, nothing reaches the topic while Connect is down, and after it starts again all five arrive in the order they committed. The topic has one partition so that this order is visible; with several, only the order per key holds.
 - A trace and logs for `order-service` reach Tempo and Loki.
@@ -114,7 +114,7 @@ The checks read the effects, not the status codes:
 Change one thing and watch a guard fail:
 
 - Run `REMOVE_AFTER_INSERT=false ./verify.sh`. Check 8 fails: the outbox rows stay in the table. The records on the topic are the same, because the connector reads the insert, not the table.
-- Remove the `route.by.field` and `route.topic.replacement` lines from `connect/order-outbox.json`. Checks 6, 7, 9, 11, 17 and 24 fail, 20 of 26 pass: the records go to `outbox.event.Order`, so everything that reads `edp.orders.placed` finds nothing.
+- Remove the `route.by.field` and `route.topic.replacement` lines from `connect/order-outbox.json`. Checks 6, 7, 9, 11, 17 and 24 fail, 21 of 27 pass: the records go to `outbox.event.Order`, so everything that reads `edp.orders.placed` finds nothing.
 - Stop Kafka and place an order. Through the outbox the request returns 201 in about 10 ms, because the service never talks to Kafka, and the event arrives within seconds of the broker coming back. Through the commit-first route the order is committed, the request fails with a 500 after 60 seconds (the producer's blocking timeout) and no event is ever published. Through the publish-first route the request also fails after 60 seconds, and there is no order row either.
 - Place one order, wait a minute, then run `docker kill edp-connect` during a burst of 200 orders and start it again. Every order arrives. In one run the topic held 337 records for 201 orders: 136 `id` headers appeared twice, because the killed connector had stored no offset since the first order and read the log again from there. A consumer that must not process an event twice has to drop them. The wait matters. Connect stores offsets once a minute, and a connector that has never stored one takes a new snapshot after the restart (of an empty outbox table) and streams from the current end of the WAL, past changes the slot still holds. Whether that loses events depends on timing: in one run killed before the first offset the burst lost 3 of 200 events; in two others every change had been read before the kill and nothing was lost.
 
@@ -122,7 +122,7 @@ Change one thing and watch a guard fail:
 
 An outbox costs a table, a connector and a replication slot to operate. A slot that nobody reads keeps the write-ahead log on disk, so a stopped connector is an alarm and not a harmless state. The event reaches Kafka after the commit, not with it, so a reader of the topic sees it a moment after a reader of the database does.
 
-If a lost or phantom event is acceptable, such as a metric or a cache hint, publishing from the request is simpler. If the service has no database transaction to join, for example because it only forwards messages, there is nothing to make atomic. When the events are the state itself, event sourcing removes the second write instead of making it safe. And when the table is already captured as a change stream, the next chapter reads the tables themselves, with no outbox rows at all.
+If a lost or phantom event is acceptable, such as a metric or a cache hint, publishing from the request is simpler. If the service has no database transaction to join, for example because it only forwards messages, there is nothing to make atomic. When the events are the state itself, event sourcing removes the second write instead of making it safe. When the data is already in tables the service cannot change, Transaction Log Tailing reads those tables directly, with no outbox rows.
 
 > **🤖 Explore with your agent**
 > "In examples/08-transactional-outbox, set CRASH_AFTER_COMMIT_FOR for two order ids, place one through OrderService.place and one through DualWriteCommitFirstRoute, restart the service, and compare which of them has an event on edp.orders.placed. State the rule that makes the outbox side safe."
@@ -131,11 +131,14 @@ If a lost or phantom event is acceptable, such as a metric or a cache hint, publ
 ## References
 
 - Chris Richardson, [Pattern: Transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html), microservices.io
+- Strimzi blog, [Exactly-once semantics with Kafka transactions](https://strimzi.io/blog/2023/05/03/kafka-transactions/)
+- Apache Kafka documentation, [Producer configs](https://kafka.apache.org/43/configuration/producer-configs/) (`max.block.ms`)
 - Chris Richardson, [Pattern: Transaction log tailing](https://microservices.io/patterns/data/transaction-log-tailing.html), microservices.io
 - Debezium documentation, [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
 - Debezium documentation, [Outbox Quarkus Extension](https://debezium.io/documentation/reference/stable/integrations/outbox.html)
 - Debezium documentation, [Debezium connector for PostgreSQL](https://debezium.io/documentation/reference/stable/connectors/postgresql.html)
 - PostgreSQL documentation, [Logical Decoding Concepts](https://www.postgresql.org/docs/18/logicaldecoding-explanation.html)
-- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 6 (integrating with existing systems)
-- Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, chapter 2 (anatomy of message-driven systems)
-- Enterprise Integration Patterns with Camel, chapter 15 (the polling outbox) and Cloud-Native Design Patterns, chapter 4 (data): [EIP Camel](https://github.com/patterncatalyst/enterprise-integration-patterns-with-camel), [CNDP](https://github.com/patterncatalyst/cloud-native-design-patterns)
+- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 6: Integrating Event-Driven Architectures with Existing Systems
+- Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 2: Anatomy of Message-Driven Systems
+- Enterprise Integration Patterns with Camel, chapter 15: [Producer and Transactional Patterns](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/15-producer-patterns/) (the polling outbox)
+- Cloud-Native Design Patterns, chapter 4: [Data](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/04-data/)

@@ -23,7 +23,7 @@ mvn -B verify
 1. **Offsets are refused while running.** PATCH and DELETE return 400 until the connector is stopped.
 2. **A stopped connector keeps WAL.** The slot goes inactive, retained bytes grow with writes to tables the connector does not capture, and resume delivers every change.
 3. **A forward alter skips.** Ten updates made while stopped never arrive; the next one does.
-4. **A backward alter does nothing.** The slot's position wins and nothing is replayed.
+4. **A backward alter cannot rewind.** Nothing older than the slot arrives, and the last change before the stop arrives once more.
 5. **A reset re-snapshots.** Exactly five `r` rows with current values, no history.
 6. **A dropped slot fails the task; a lost slot does not.** The first shows a trace; the second leaves the connector running with no task.
 7. **Recovery is the same for both.** Stop, drop the slot, delete the offsets, resume.

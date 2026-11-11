@@ -16,7 +16,7 @@
   "signal.data.collection": "inventory.dbz_signal",
   "heartbeat.interval.ms": "5000",
   "heartbeat.action.query": "INSERT INTO inventory.dbz_heartbeat (id, ts) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET ts = EXCLUDED.ts",
-  "topic.heartbeat.prefix": "edp.heartbeat",
+  "topic.heartbeat.name": "edp.inventory.connector-heartbeats",
   "key.converter": "org.apache.kafka.connect.json.JsonConverter",
   "key.converter.schemas.enable": "false",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",

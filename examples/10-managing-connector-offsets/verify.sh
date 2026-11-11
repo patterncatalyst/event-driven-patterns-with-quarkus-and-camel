@@ -135,7 +135,7 @@ offsets_topic_has_key() {
     kafka kafka-console-consumer.sh --topic edp-connect-offsets --from-beginning --timeout-ms 5000 --property print.key=true 2>/dev/null \
         | grep -qF "[\"$NAME\",{\"server\":\"edp\"}]"
 }
-connect_logged_unobtainable_slot() { docker logs edp-connect 2>&1 | grep -q "Cannot obtain valid replication slot"; }
+connect_logged_unobtainable_slot() { local log; log="$(docker logs edp-connect 2>&1)"; [[ "$log" == *"Cannot obtain valid replication slot"* ]]; } # no pipe: grep -q would SIGPIPE docker logs under pipefail
 stays() { # stays <seconds> <command...>: the command succeeds now and keeps succeeding for the whole period
     local end=$((SECONDS + $1)); shift
     while (( SECONDS < end )); do "$@" || return 1; sleep 1; done
@@ -273,6 +273,12 @@ check "a signal re-reads the 5 rows while the connector keeps running" poll 60 f
 
 echo "Observability"
 check "Tempo has a trace for inventory-service" poll 90 tempo_has_trace inventory-service
+
+topic_names_conform() { # every topic the connector writes is edp.<domain>.<event>: lower case, digits, hyphens
+    local t
+    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(kafka kafka-topics.sh --list 2>/dev/null | grep '^edp\.')
+}
+check "every topic under edp. has the name edp.<domain>.<event>, the signal topic included" topic_names_conform
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]

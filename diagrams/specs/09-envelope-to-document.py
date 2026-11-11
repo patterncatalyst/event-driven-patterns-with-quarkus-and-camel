@@ -8,7 +8,7 @@ emit(
     480,
     nodes=[
         {"x": 30, "y": 60, "w": 240, "h": 110, "style": "box", "lines": ["update envelope", "op u", "before: key only or whole row", "after: item_sku, qty_on_hand"]},
-        {"x": 30, "y": 200, "w": 240, "h": 90, "style": "box", "lines": ["delete envelope", "op d", "before: the old row", "after: null"]},
+        {"x": 30, "y": 190, "w": 240, "h": 110, "style": "box", "lines": ["delete envelope", "op d", "before: key only, or", "whole row under FULL", "after: null"]},
         {"x": 30, "y": 320, "w": 240, "h": 70, "style": "ghost", "lines": ["Debezium tombstone", "key, no value"]},
         {"x": 340, "y": 140, "w": 260, "h": 150, "style": "accent", "lines": ["InventoryItemDocumentRoute", "drop records with no value", "unmarshal to ChangeEnvelope", "key from after, or before on d", "map the legacy row"]},
         {"x": 670, "y": 60, "w": 270, "h": 80, "style": "box", "lines": ["document, key SKU-1", "sku, quantityOnHand"]},
@@ -28,6 +28,6 @@ emit(
         {"x": 480, "y": 24, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
          "text": "Camel maps the envelope; the delete is published once, not twice"},
         {"x": 480, "y": 450, "anchor": "middle", "size": 11, "color": "#555555",
-         "text": "Without the drop, Debezium's tombstone would be read as a change and published as a second record for the key."},
+         "text": "Without the drop, Debezium's tombstone fails conversion and is logged as a failed change."},
     ],
 )

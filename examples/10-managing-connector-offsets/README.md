@@ -34,11 +34,12 @@ docker compose down -v
 
 1. Starts the stack, creates the legacy tables, registers `inventory-cdc`. The snapshot delivers five `r` rows; GET offsets returns the `{"server":"edp"}` partition and an `lsn` that equals the slot's `confirmed_flush_lsn`; the offsets topic holds the same key.
 2. A PATCH or DELETE on the running connector is refused. After `PUT /stop` the slot is inactive, 20,000 uncaptured rows and 100 updates keep more than 15 MB of WAL, and no row reaches `item_change`. After `PUT /resume` all 100 updates arrive and the retained WAL falls below 1 MB.
-3. Forward alter: ten updates made while stopped are skipped when the offset is set to the current WAL position, and the next update arrives. Backward alter: the offset is set to the snapshot position and only the two new changes arrive.
+3. Forward alter: ten updates made while stopped are skipped when the offset is set to the current WAL position, and the next update arrives. Backward alter: the offset is set to the snapshot position and the two new changes plus one repeat of the last change before the stop arrive.
 4. Reset: `DELETE` on the offsets, then exactly five `r` rows with the current values and no `u` row.
 5. Dropped slot with offsets kept: the task is `FAILED` with the "no longer available on the server" trace, and a restart with `onlyFailed` leaves it failed. Stop, delete offsets and resume recover it.
 6. Lost slot (`max_slot_wal_keep_size` of 1 MB, a WAL switch and a checkpoint): `wal_status` is `lost`, the connector stays `RUNNING` with no task for at least 60 seconds, delivers nothing, and a restart changes nothing. Drop the slot, delete the offsets and resume to recover.
 7. An incremental snapshot signal re-reads the five rows while the connector keeps running. Tempo has a trace for `inventory-service`.
+8. Every topic under `edp.` is named `edp.<domain>.<event>`; the signal table's topic is routed to `edp.inventory.signals` (check 40).
 
 ## Layout
 

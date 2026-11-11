@@ -18,8 +18,11 @@
   "key.converter.schemas.enable": "false",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",
   "value.converter.schemas.enable": "false",
-  "transforms": "reroute",
+  "transforms": "reroute,signals",
   "transforms.reroute.type": "org.apache.kafka.connect.transforms.RegexRouter",
   "transforms.reroute.regex": "edp\\.inventory\\.inventory_item",
-  "transforms.reroute.replacement": "edp.inventory.item-changes"
+  "transforms.reroute.replacement": "edp.inventory.item-changes",
+  "transforms.signals.type": "org.apache.kafka.connect.transforms.RegexRouter",
+  "transforms.signals.regex": "edp\\.inventory\\.dbz_signal",
+  "transforms.signals.replacement": "edp.inventory.signals"
 }

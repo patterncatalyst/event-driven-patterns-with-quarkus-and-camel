@@ -16,7 +16,7 @@ emit(
         {"x": 670, "y": 110, "w": 250, "h": 70, "style": "ink", "lines": ["streaming starts at the offset", "changes in between are skipped"]},
         {"x": 40, "y": 330, "w": 250, "h": 70, "style": "box", "lines": ["slot confirmed_flush_lsn", "the server's position"]},
         {"x": 355, "y": 330, "w": 250, "h": 70, "style": "accent", "lines": ["stored offset lsn", "altered to an older position"]},
-        {"x": 670, "y": 330, "w": 250, "h": 70, "style": "ink", "lines": ["streaming starts at the slot", "nothing is replayed"]},
+        {"x": 670, "y": 330, "w": 250, "h": 90, "style": "ink", "lines": ["streaming starts at the slot", "nothing older than the slot;", "the last change may repeat once"]},
     ],
     edges=[
         {"x1": 290, "y1": 145, "x2": 355, "y2": 145},

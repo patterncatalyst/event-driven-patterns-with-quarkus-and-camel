@@ -25,7 +25,7 @@ curl -s localhost:8083/connectors/inventory-cdc/offsets
 
 `lsn` is a position in PostgreSQL's write-ahead log (WAL), written as a bigint. After streaming starts the offset also carries `lsn_proc`, `lsn_commit` and `messageType`. The Debezium documentation does not list these keys; they come from the connector's source. The record on the offsets topic has the key `["inventory-cdc",{"server":"edp"}]` and the same offset as its value.
 
-Connect writes the offsets topic on a timer, `offset.flush.interval.ms`, which defaults to 60 seconds. Until the next flush, a GET returns the previous position, and a Connect process that dies between flushes restarts from it, so the changes after it arrive a second time. A consumer of the topic has to tolerate duplicates in that case anyway. The example sets one second so that every read matches the connector's real position.
+Connect writes the offsets topic on a timer, `offset.flush.interval.ms`, which defaults to 60 seconds. Until the next flush, a GET returns the previous position, and a Connect process that dies between flushes restarts from it, so the changes after it arrive a second time. A consumer of the topic has to tolerate duplicates in that case anyway. With a one-second interval every read matches the connector's real position.
 
 ## Stopping, listing, altering, resetting
 
@@ -38,7 +38,7 @@ curl -X PATCH -H 'Content-Type: application/json' localhost:8083/connectors/inve
 curl -X PUT localhost:8083/connectors/inventory-cdc/resume
 ```
 
-An alter replaces the stored offset. For this connector `lsn` alone is enough. A reset deletes the stored offset, so the connector behaves as if it had never run: with `snapshot.mode=initial` it takes a snapshot again. Neither call touches the database, and both return before anything has been read, so the effect shows only after the resume.
+An alter replaces the stored offset. For this connector `lsn` alone is enough. A reset deletes the stored offset, so the connector behaves as if it had never run: with `snapshot.mode=initial` it takes a snapshot again. The effect shows only after the resume.
 
 Deleting a connector with `DELETE /connectors/{name}` does not delete its offsets. A connector created again under the same name finds them and continues.
 
@@ -48,14 +48,14 @@ A PostgreSQL connector has a second position that it does not own. The logical r
 
 When a client starts streaming from a slot, PostgreSQL begins at the requested position or at the slot's `confirmed_flush_lsn`, whichever is greater. Two consequences follow:
 
-- **Altering forward skips changes.** Set the offset to the current end of the WAL and everything written in between is never published. The slot moves up to match once the connector acknowledges.
+- **Altering forward skips changes.** Set the offset to the current end of the WAL and everything written in between is never published.
 - **Altering backward does not rewind.** An older offset is clamped to the slot's position, so nothing before `confirmed_flush_lsn` can be asked for again. It is not free of duplicates, though: the altered offset holds only an `lsn`, and the last transaction the connector delivered before the stop arrives a second time, even when the slot had acknowledged it.
 
 {% include excalidraw.html file="10-offset-vs-slot" alt="An offset altered ahead of the slot makes streaming start at the offset and skip the changes in between; an offset altered behind the slot is ignored and streaming starts at the slot" caption="Figure 10.2: The server streams from the greater of the two positions" %}
 
 Debezium has an `offset.mismatch.strategy` option, in technology preview, that can compare the two positions; its default, `no_validation`, trusts the stored offset and does not notice that a slot was recreated.
 
-A reset has a different shape. With `snapshot.mode=initial` the connector reads the table's current rows as snapshot (`r`) events, not the history of how they got there, and then streams from the new slot position. A SKU updated a hundred times arrives once, with its latest quantity. With `snapshot.mode=no_data` a reset takes no snapshot but still streams from the slot's `confirmed_flush_lsn`, so it replays whatever the slot had not yet confirmed. "Nothing is re-delivered" is true only when the slot has no backlog.
+A reset has a different shape. With `snapshot.mode=initial` the connector reads the table's current rows as snapshot (`r`) events, not the history of how they got there, and then streams from the new slot position. A SKU updated a hundred times arrives once, with its latest quantity. With `snapshot.mode=no_data` a reset takes no snapshot but still streams from the slot's `confirmed_flush_lsn`,: the changes made while stopped arrive, plus a repeat of the last change before the stop.
 
 An alter is therefore the tool for "skip this bad batch", and a reset is the tool for "rebuild the downstream copy from the table as it is now". Neither can rewind.
 
@@ -85,9 +85,9 @@ from("kafka:" + Topics.INVENTORY_ITEM_CHANGES + "?groupId=inventory-change-log")
         .bean("itemChangeRecorder", "record");
 ```
 
-`ChangeEnvelope` keeps the operation, the row after the change and `source.lsn`. The recorder persists an `ItemChange` Panache entity: `op`, `sku`, `qty`, `lsn` and `received_at`. The table is the observable record of what the connector delivered, and the experiments read it to tell a replay from a skip. The `lsn` column makes a duplicate visible as the same position twice.
+`ChangeEnvelope` keeps the operation, the row after the change and `source.lsn`. The recorder persists an `ItemChange` Panache entity: `op`, `sku`, `qty`, `lsn` and `received_at`. The table records what the connector delivered, so a replay and a skip can be told apart. The `lsn` column makes a duplicate visible as the same position twice.
 
-Altering and resetting offsets change what the consumer sees: a skip is a gap, a reset is a second snapshot of the same rows. A consumer that cannot tolerate either needs the safeguards of its own chapters, such as an idempotent receiver. This consumer has none, so that the effects stay visible.
+Altering and resetting offsets change what the consumer sees: a skip is a gap, a reset is a second snapshot of the same rows. A consumer that cannot tolerate either needs an Idempotent Receiver.
 
 ## Build, run, observe
 
@@ -98,7 +98,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`mvn verify` runs against Kafka and PostgreSQL from Dev Services and checks that envelopes become rows in order with their LSN, once each. `verify.sh` brings up Kafka, PostgreSQL, Connect and the LGTM stack, seeds five SKUs, registers the connector and finishes with 39/39 checks passed. Checks 1 to 6 cover the snapshot, the offset shape and its relation to the slot. Check 7 is the refusal while running. Checks 8 to 14 stop the connector, grow the retained WAL and show the resume delivering every change. The forward alter (checks 15 to 18) skips ten updates and delivers the next; the backward alter (checks 19 to 22) replays nothing older than the slot, but repeats the last change before the stop once; the reset (checks 23 to 26) delivers five snapshot rows and no history. The dropped slot (checks 27 to 30) and the lost slot (checks 31 to 37) show the two failure shapes and recover from each. Check 38 re-reads the table with a signal instead of a reset.
+`mvn verify` runs against Kafka and PostgreSQL from Dev Services and checks that envelopes become rows in order with their LSN, once each. `verify.sh` brings up Kafka, PostgreSQL, Connect and the LGTM stack, seeds five SKUs, registers the connector and finishes with 40/40 checks passed. Checks 1 to 6 cover the snapshot, the offset shape and its relation to the slot. Check 7 is the refusal while running. Checks 8 to 14 stop the connector, grow the retained WAL and show the resume delivering every change. The forward alter (checks 15 to 18) skips ten updates and delivers the next; the backward alter (checks 19 to 22) replays nothing older than the slot, but repeats the last change before the stop once; the reset (checks 23 to 26) delivers five snapshot rows and no history. The dropped slot (checks 27 to 30) and the lost slot (checks 31 to 37) show the two failure shapes and recover from each. Check 38 re-reads the table with a signal instead of a reset. Check 40 confirms that every topic under `edp.` follows `edp.<domain>.<event>`, which is why the signal table's topic is renamed to `edp.inventory.signals`.
 
 Change one thing and watch a guard fail:
 

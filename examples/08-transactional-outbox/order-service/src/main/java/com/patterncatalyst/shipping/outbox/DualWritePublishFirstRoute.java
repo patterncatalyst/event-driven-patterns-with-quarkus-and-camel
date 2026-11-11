@@ -21,12 +21,12 @@ public class DualWritePublishFirstRoute extends RouteBuilder {
     public void configure() {
         from(ENDPOINT)
                 .routeId("dual-write-publish-first")
-                .setHeader("order", body())
+                .setVariable("order", body())
                 .setBody(e -> OrderPlaced.of(e.getMessage().getBody(Order.class)))
                 .setHeader(KafkaConstants.KEY, simple("${body.orderId}"))
                 .marshal().json()
                 .toF("kafka:%s", Topics.ORDERS_PLACED)
-                .setBody(header("order"))
+                .setBody(variable("order"))
                 .bean("orderService", "save");
     }
 }

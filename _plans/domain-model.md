@@ -73,6 +73,10 @@ Chapter 04 adds one ordered stream topic, `edp.shipping.shipments`, keyed by ord
 
 Chapter 09 adds two more non-catalog topics: `edp.inventory.item-changes` (raw Debezium change envelopes of the legacy `inventory_item` table) and `edp.inventory.items` (compacted `InventoryItem` state documents keyed by sku). Neither is in `Topics.ALL`.
 
+Chapter 09 also writes helper topics that no service reads: `edp.inventory.signals` (events of the Debezium signal table), `edp.inventory.heartbeats` (events of the heartbeat table the heartbeat query writes), `edp.inventory.interval-only-signals` (the interval-only witness connector's signal table) and the heartbeat record topics, set with `topic.heartbeat.name`: `edp.inventory.connector-heartbeats` (main connector) and `edp.inventory.interval-only-heartbeats` (witness). "heartbeat" is not a domain, so no topic is named `edp.heartbeat.*`.
+
+Chapter 10 reuses `edp.inventory.item-changes` and routes its signal table to `edp.inventory.signals`. It has no heartbeat.
+
 ## Lifecycles
 
 - Order: PLACED to PAID to SHIPPED to DELIVERED, one step forward at a time. CANCELLED is allowed from PLACED or PAID only. DELIVERED and CANCELLED are terminal.

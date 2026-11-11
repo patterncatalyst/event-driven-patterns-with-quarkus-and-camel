@@ -37,7 +37,7 @@ services:
       QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
       QUARKUS_DEBEZIUM_OUTBOX_REMOVE_AFTER_INSERT: ${REMOVE_AFTER_INSERT:-true}
       # Demo code: order ids for which the JVM stops right after the commit.
-      CRASH_AFTER_COMMIT_FOR: ${CRASH_AFTER_COMMIT_FOR:-}
+      DEMO_CRASH_AFTER_COMMIT_FOR: ${CRASH_AFTER_COMMIT_FOR:-}
     depends_on:
       topics-init:
         condition: service_completed_successfully

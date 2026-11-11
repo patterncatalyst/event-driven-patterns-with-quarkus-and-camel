@@ -39,6 +39,7 @@ docker compose down -v
 5. Restarts the service with the crash switch for `O-2001` and `O-2002`. Through the outbox, the order and exactly one event survive; through the commit-first route, the order survives and its event is lost (15 to 19).
 6. Stops Connect, places five orders, starts Connect: all five arrive in commit order (20 to 24).
 7. A trace in Tempo and logs in Loki (25, 26).
+8. Control: the commit-first route with no crash publishes exactly one event (27).
 
 ## Layout
 
