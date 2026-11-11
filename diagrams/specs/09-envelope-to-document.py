@@ -7,7 +7,7 @@ emit(
     960,
     480,
     nodes=[
-        {"x": 30, "y": 60, "w": 240, "h": 110, "style": "box", "lines": ["update envelope", "op u", "before: key only or whole row", "after: item_sku, qty_on_hand"]},
+        {"x": 30, "y": 60, "w": 240, "h": 110, "style": "box", "lines": ["update envelope", "op u", "before: none, or whole row under FULL", "after: item_sku, qty_on_hand"]},
         {"x": 30, "y": 190, "w": 240, "h": 110, "style": "box", "lines": ["delete envelope", "op d", "before: key only, or", "whole row under FULL", "after: null"]},
         {"x": 30, "y": 320, "w": 240, "h": 70, "style": "ghost", "lines": ["Debezium tombstone", "key, no value"]},
         {"x": 340, "y": 140, "w": 260, "h": 150, "style": "accent", "lines": ["InventoryItemDocumentRoute", "drop records with no value", "unmarshal to ChangeEnvelope", "key from after, or before on d", "map the legacy row"]},

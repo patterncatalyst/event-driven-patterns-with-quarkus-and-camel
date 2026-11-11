@@ -3,7 +3,7 @@
 <rect x="30" y="60" width="240" height="110" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
 <text x="150.0" y="98.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">update envelope</text>
 <text x="150.0" y="115.0" font-size="11.5" fill="#555555" text-anchor="middle">op u</text>
-<text x="150.0" y="130.0" font-size="11.5" fill="#555555" text-anchor="middle">before: key only or whole row</text>
+<text x="150.0" y="130.0" font-size="11.5" fill="#555555" text-anchor="middle">before: none, or whole row under FULL</text>
 <text x="150.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">after: item_sku, qty_on_hand</text>
 <rect x="30" y="190" width="240" height="110" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
 <text x="150.0" y="220.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">delete envelope</text>

@@ -275,8 +275,12 @@ echo "Observability"
 check "Tempo has a trace for inventory-service" poll 90 tempo_has_trace inventory-service
 
 topic_names_conform() { # every topic the connector writes is edp.<domain>.<event>: lower case, digits, hyphens
-    local t
-    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(kafka kafka-topics.sh --list 2>/dev/null | grep '^edp\.')
+    local list t want
+    list=$(kafka kafka-topics.sh --list) || return 1
+    for want in edp.inventory.item-changes edp.inventory.signals; do
+        grep -qx "$want" <<<"$list" || { echo "missing $want"; return 1; }
+    done
+    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(grep '^edp\.' <<<"$list")
 }
 check "every topic under edp. has the name edp.<domain>.<event>, the signal topic included" topic_names_conform
 

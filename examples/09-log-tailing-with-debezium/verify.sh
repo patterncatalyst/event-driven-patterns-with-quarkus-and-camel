@@ -217,8 +217,12 @@ poll 90 healthy || true
 check "after the offset file is deleted the engine publishes every row again" poll 90 ge "$((BEFORE + ROWS))" embedded_docs
 
 topic_names_conform() { # every topic the connectors write is edp.<domain>.<event>: lower case, digits, hyphens
-    local t
-    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(kafka kafka-topics.sh --list 2>/dev/null | grep '^edp\.')
+    local list t want
+    list=$(kafka kafka-topics.sh --list) || return 1
+    for want in edp.inventory.item-changes edp.inventory.connector-heartbeats edp.inventory.interval-only-heartbeats edp.inventory.signals; do
+        grep -qx "$want" <<<"$list" || { echo "missing $want"; return 1; }
+    done
+    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(grep '^edp\.' <<<"$list")
 }
 check "every topic under edp. has the name edp.<domain>.<event>, including the heartbeat, signal and helper-table topics" topic_names_conform
 
