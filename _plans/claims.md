@@ -290,3 +290,65 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 04-45 | 04 | AI callout: order-id ends DELIVERED in lifecycle order; event-type ends SHIPPED with Delivered applied before Scheduled | verify.sh 04 checks 6, 7, 15, 16 | _docs/04-ordering-and-partitioning.md:119 | verified |
 | 04-46 | 04 | References: Hohpe and Woolf Resequencer; Kafka documentation Main Concepts and Terminology | sources.md rows (confirmed) | _docs/04-ordering-and-partitioning.md:124 | verified |
 | 04-47 | 04 | Both replicas create the order row as PAID, following the lifecycle (a shipment follows PaymentProcessed); the first shipment event then sets SHIPPED | ShipmentApplier.lockOrCreate inserts status PAID (code); verify.sh 04 final statuses | _docs/04-ordering-and-partitioning.md:64; repo | by construction (ShipmentApplier.lockOrCreate inserts PAID) |
+
+## r03 (chapters 05 to 07, 2026-11-11)
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| 05-01 | 05 | Kafka producer defaults: linger 5 ms, batch.size 16384, acks all, idempotence true, no compression | sources.md Kafka 4.3 producer configs; KIP-1030 | _docs/05-optimizing-publishers.md | verified |
+| 05-02 | 05 | Linger default is 5 ms, formerly 0, raised by KIP-1030 for lightly loaded producers; under load batches still fill (linger-0 row, 38 records per request) | sources.md KIP-1030; bench-2026-11-10-summary.csv linger-0 row | _docs/05-optimizing-publishers.md:22 | verified |
+| 05-03 | 05 | Compression may not suit low-latency workloads | sources.md Strimzi Optimizing Kafka producers | _docs/05-optimizing-publishers.md | verified |
+| 05-04 | 05 | Plain Kafka clients either silently disable idempotence or throw ConfigException on conflicting settings | sources.md Kafka 4.3 producer configs | _docs/05-optimizing-publishers.md | verified |
+| 05-05 | 05 | Camel always passes enable.idempotence, so acks=1 alone fails at startup | experiment G (ConfigException captured); Camel KafkaConfiguration | _docs/05-optimizing-publishers.md | verified |
+| 05-06 | 05 | acks=all and acks=1 wait for the same replica on a one-broker cluster | Kafka documentation only, no run | _docs/05-optimizing-publishers.md | sourced |
+| 05-07 | 05 | Unbatched route sends at most 3 records per request | verify.sh 05 check 12; bench 2.95 to 2.99 | _docs/05-optimizing-publishers.md | verified |
+| 05-08 | 05 | Results tables as ratios to the unbatched route: throughput 4.9 / 0.40, records per request 58 / 67, p50 0.13 / 2.7, bytes per record 0.75 / 0.29; linger and codec tables as ratios; linger records per request 5.05 / 5.15 / 5.20 of linger 0 | recomputed from results/bench-2026-11-10-summary.csv; quick bench confirms direction | _docs/05-optimizing-publishers.md:79 | verified |
+| 05-09 | 05 | Tuned route about 0.4x unbatched throughput; p50 latency follows linger | bench CSV medians; linger sweep | _docs/05-optimizing-publishers.md | verified |
+| 05-10 | 05 | lz4, gzip, zstd bytes per record about 0.38, 0.23, 0.19 of none | bench codec sweep | _docs/05-optimizing-publishers.md | verified |
+| 05-11 | 05 | lz4 batches appear in the broker log | verify.sh 05 check 16 | _docs/05-optimizing-publishers.md | verified |
+| 05-12 | 05 | A single synchronous caller sends about 1 record per request against 100 with 100 callers | verify.sh 05 checks 19, 20 | _docs/05-optimizing-publishers.md | verified |
+| 05-13 | 05 | acks=1 with idempotence off gives no producer id | verify.sh 05 checks 17, 22 | _docs/05-optimizing-publishers.md | verified |
+| 05-14 | 05 | Client metrics bound through the factory per client id and client_seq | FlashSaleTest; Prometheus names | _docs/05-optimizing-publishers.md | verified |
+| 05-15 | 05 | Camel's own Kafka clients are not observed by Camel or the Quarkus Micrometer binder | S2 spike | _docs/05-optimizing-publishers.md | verified |
+| 05-16 | 05 | Compression cuts bytes per record by a large factor (replaces the contradicted "little difference" sentence) | codec table; verify.sh 05 check 16 | _docs/05-optimizing-publishers.md:131 | verified |
+| 05-17 | 05 | Checks 5, 8, 11, 18 require requests > 0 (guards the ratio checks against a missing metric) | bite run 19/24, failing 5, 8, 11, 18, 20 | examples/05-optimizing-publishers/verify.sh | verified |
+| 06-01 | 06 | A fetch can return more records than one poll hands out; the client buffers the rest | sources.md consumer configs max.poll.records quotes | _docs/06-optimizing-subscribers.md | verified |
+| 06-02 | 06 | Consumer defaults max.poll.records 500, fetch.min.bytes 1, fetch.max.wait.ms 500, max.poll.interval.ms 300000 | application.properties; consumer configs page | _docs/06-optimizing-subscribers.md | verified |
+| 06-03 | 06 | Exceeding max.poll.interval.ms evicts the member, logs the poll-timeout and LeaveGroup lines, and re-delivers (duplicates) | verify.sh 06 checks 19 to 23; experiment FIXED_MAX_POLL_RECORDS=500 fails 21 to 23 | _docs/06-optimizing-subscribers.md | verified |
+| 06-04 | 06 | Drain time ratios to one thread: 0.33 for 3, 9 and 12 threads under the default assignor, 0.12 for 12 under RoundRobin (run in a separate invocation) | results/bench-2026-11-11.csv medians; quick bench confirms | _docs/06-optimizing-subscribers.md:50 | verified |
+| 06-05 | 06 | max.poll.records below the limit does not change drain time | bench poll-50 6.37 against consumers-3 6.36 | _docs/06-optimizing-subscribers.md | verified |
+| 06-06 | 06 | Under a 300/s trickle, fetch.min.bytes 65536 cuts fetch requests from about 2,400 to 60 | verify.sh 06 check 26; TRICKLE_MIN_BYTES=1 fails 26 | _docs/06-optimizing-subscribers.md | verified |
+| 06-07 | 06 | Replica 1 gives up all 9 partitions under classic RangeAssignor and fewer than half under the consumer protocol (4 or 5 in recorded runs); CooperativeSticky gave up 4 | verify.sh 06 checks 29, 33; final run printed 4, earlier runs 5; CLASSIC_ASSIGNOR experiment 4 | _docs/06-optimizing-subscribers.md:58 | verified |
+| 06-08 | 06 | Group type is Classic or Consumer per protocol | verify.sh 06 checks 27, 30; SECOND_PROTOCOL=classic fails 30, 33 | _docs/06-optimizing-subscribers.md | verified |
+| 06-09 | 06 | RangeAssignor over three 3-partition topics leaves 9 of 12 members idle; RoundRobin leaves 3 | verify.sh 06 checks 14, 17 | _docs/06-optimizing-subscribers.md | verified |
+| 06-10 | 06 | The broker answers a fetch once fetch.min.bytes is available; a backlogged consumer always has that much waiting (reworded from an unrun 'changes nothing' claim) | sources.md consumer configs fetch.min.bytes definition | _docs/06-optimizing-subscribers.md:30 | sourced |
+| 07-01 | 07 | A share group shares a partition only when members outnumber partitions | kafka-share-groups --describe --members in the ch07 window (3/3 one each; 4 members two per partition) | _docs/07-queues-for-kafka.md | verified |
+| 07-02 | 07 | Retry job fails at delivery count 1 and is sent at count 2; bounce is rejected once and not redelivered | verify.sh 07 checks 12 to 14; ShareDeliveryTest | _docs/07-queues-for-kafka.md | verified |
+| 07-03 | 07 | Under a share group a later job of the slow job's partition finishes first; group mode gives 11/26 (checks 4 to 15 and 19 to 21 fail) | verify.sh 07 check 9; 07-r1-group.log; SEED_LINGER_MS=500 fails 9 | _docs/07-queues-for-kafka.md:113 | cut (superseded by 07-r2-08, round 2) |
+| 07-04 | 07 | Under a consumer group nothing overtakes, one worker per partition, 3 of 4 workers deliver | verify.sh 07 checks 24 to 26 | _docs/07-queues-for-kafka.md | verified |
+| 07-05 | 07 | The default acquire mode takes the whole fetched batch; one-record batches limit hoarding | SEED_LINGER_MS=500 run; S1 spike | _docs/07-queues-for-kafka.md | verified |
+| 07-06 | 07 | record_limit acquire mode: every job reaches a final outcome but one job was sent twice (checks 5 and 6 fail, 24/26) | 07-record-limit.log (orchestrator run, 2026-11-11) | _docs/07-queues-for-kafka.md:116 | cut (superseded by 07-r2-06, round 2) |
+| 07-07 | 07 | With a 15 s lock checks 5 to 8 fail (22/26): slow job sent at delivery count 1 and again at count 2, seven other jobs sent twice, one job five times | 07-lock15.log, 07-lock15-db.log | _docs/07-queues-for-kafka.md:115 | cut (bullet removed in round 2; lock renewal makes it obsolete) |
+| 07-08 | 07 | The Camel Kafka component has no share-group option | sources.md Camel Kafka component row | _docs/07-queues-for-kafka.md | verified |
+| 07-10 | 07 | Check 11 (a partition delivered by 2 or more workers) fails under DELIVERY_MODE=group; share delivery uses a @Blocking method (26/26) | 07-r1-group.log; 07-r1-verify-final.log | _docs/07-queues-for-kafka.md:106 | verified |
+| 07-09 | 07 | Lock default 30 s, delivery count limit 5, no ordering guarantee, accept/release/reject | sources.md Kafka design, KIP-932, Strimzi post | _docs/07-queues-for-kafka.md | verified |
+| 07-r2-01 | 07 | The slow job's worker acquires only the slow job; with one-record batches other workers take the later jobs; at least half (8 to 12 of 12) finish before it | 07-r2-pt100, 07-r2-final, 07-r2-c2-final, 07-r2-c2-lock15slow20 -db.log; verify.sh 07 check 9 | _docs/07-queues-for-kafka.md:74 | verified |
+| 07-r2-02 | 07 | batch_optimized acquires the whole fetched batch; a burst written as one batch waits behind the slow job (SEED_LINGER_MS=500 fails 9 and 12) | 07-r2-c2-linger500.log; 07-r2-hold1-db.log dump (7-record batch) | _docs/07-queues-for-kafka.md:74 | verified |
+| 07-r2-03 | 07 | In explicit mode the share consumer refuses poll while a record is unanswered; the connector retries with back-off capped at retry-max-wait (default 30 s) | sources.md rows: Kafka ShareConsumerImpl 4.2.1, SmallRye ReactiveKafkaShareConsumer 4.37.0, connector attribute table | _docs/07-queues-for-kafka.md:76 | sourced |
+| 07-r2-04 | 07 | With connector defaults (retry-max-wait 30, poll-timeout 1000) the slow partition took 98 s and 2 of 12 later jobs overtook; checks 9 and 10 fail | 07-r2-c2-oldconn.log | _docs/07-queues-for-kafka.md:119 | verified |
+| 07-r2-05 | 07 | The connector renews the lock of a job in progress; with a 15 s lock a 20 s job is delivered once | 07-r2-c2-lock15slow20.log; sources.md KafkaShareGroupCommit RENEW | _docs/07-queues-for-kafka.md:36 | verified |
+| 07-r2-06 | 07 | record_limit acquire mode: every check passes with one-record batches | 07-r2-recordlimit.log; 07-r3-recordlimit.log (27/27, orchestrator) | _docs/07-queues-for-kafka.md:121 | verified |
+| 07-r2-07 | 07 | Slow partition done in 8 to 9.4 s in share mode against 8.8 s in group mode; fast partitions about 2 to 7 s against under 1 s | span tables in 07-r2-pt100, -lock15, -final, -c2-final -db.log | _docs/07-queues-for-kafka.md:127 | verified |
+| 07-r2-08 | 07 | DELIVERY_MODE=group fails checks 4 to 16 and 20 to 22 (11/27) | 07-r2-c2-group.log | _docs/07-queues-for-kafka.md:117 | verified |
+| 07-r2-09 | 07 | Seeding with batch.size=0 writes one-record batches | kafka-dump-log in 07-r2-bs0-db.log; sources.md producer configs batch.size | _docs/07-queues-for-kafka.md:107 | verified |
+
+### r03 reference back-fill
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| r03-bf-01 | 02 | References: Bellemare ch 2 Fundamentals of Events and Event Streams, ch 5 Designing Events, ch 17 Integrating Event-Driven and Request-Response | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/02-event-notification.md:124 | verified |
+| r03-bf-02 | 03 | References: Bellemare ch 4 Schemas and Data Contracts, ch 5 Designing Events, ch 7 Denormalization and Eventification | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/03-event-carried-state-transfer.md:147 | verified |
+| r03-bf-03 | 04 | References: Bellemare ch 2 Fundamentals of Events and Event Streams | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/04-ordering-and-partitioning.md:126 | verified |
+| r03-bf-04 | 04 | References: Lawrence ch 2 Anatomy of Message-Driven Systems (owner-approved r03 addition) | sources.md Lawrence TOC row, chapter title matches | _docs/04-ordering-and-partitioning.md:125 | verified |
+| r03-bf-05 | 05 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/05-optimizing-publishers.md:145 | verified |
+| r03-bf-06 | 06 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/06-optimizing-subscribers.md:125 | verified |

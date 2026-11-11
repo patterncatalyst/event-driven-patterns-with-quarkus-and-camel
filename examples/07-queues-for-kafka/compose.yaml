@@ -1,0 +1,104 @@
+name: edp-07
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+x-worker: &worker
+  build:
+    context: ..
+    dockerfile: 07-queues-for-kafka/notification-service/Containerfile
+  environment:
+    QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+    QUARKUS_DATASOURCE_USERNAME: edp
+    QUARKUS_DATASOURCE_PASSWORD: edp
+    CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+    KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+    QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    # share (default) reads through a share group; group reads through a consumer group.
+    # The value is the Quarkus profile: the group profile turns the share channel off and the Camel route on.
+    QUARKUS_PROFILE: ${DELIVERY_MODE:-share}
+    GATEWAY_SLOW_MS: ${GATEWAY_SLOW_MS:-8000}
+    SHARE_ACQUIRE_MODE: ${SHARE_ACQUIRE_MODE:-batch_optimized}
+    MAX_PARTITION_FETCH_BYTES: ${MAX_PARTITION_FETCH_BYTES:-1}
+    MAX_POLL_RECORDS: ${MAX_POLL_RECORDS:-1}
+    RETRY_MAX_WAIT: ${RETRY_MAX_WAIT:-1}
+    POLL_TIMEOUT_MS: ${POLL_TIMEOUT_MS:-100}
+    # The consumer-group run reads only jobs published after its members have joined.
+    GROUP_OFFSET_RESET: latest
+  mem_limit: 384m
+  healthcheck:
+    test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+    start_period: 15s
+  networks: [edp]
+
+services:
+  # Creates the job topic with three partitions and sets the share group's settings on the group, then exits.
+  # A share group starts at the end of the topic unless its group setting says otherwise, so this runs before any job.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.orders.placed --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-configs.sh --bootstrap-server kafka:9094 --alter --entity-type groups --entity-name notification-share \
+          --add-config share.auto.offset.reset=earliest,share.record.lock.duration.ms=$$SHARE_RECORD_LOCK_MS,share.delivery.count.limit=$$SHARE_DELIVERY_COUNT_LIMIT
+    environment:
+      SHARE_RECORD_LOCK_MS: ${SHARE_RECORD_LOCK_MS:-30000}
+      SHARE_DELIVERY_COUNT_LIMIT: ${SHARE_DELIVERY_COUNT_LIMIT:-5}
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  # Four replicas of one service. The hostname is the Kafka client id and the worker column of the delivery log.
+  worker-1:
+    <<: *worker
+    container_name: edp-worker-1
+    hostname: worker-1
+    ports:
+      - "8080:8080"
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+
+  worker-2:
+    <<: *worker
+    container_name: edp-worker-2
+    hostname: worker-2
+    depends_on:
+      worker-1:
+        condition: service_healthy
+
+  worker-3:
+    <<: *worker
+    container_name: edp-worker-3
+    hostname: worker-3
+    depends_on:
+      worker-1:
+        condition: service_healthy
+
+  # A fourth replica for three partitions: in a consumer group it owns nothing, in a share group it shares.
+  worker-4:
+    <<: *worker
+    container_name: edp-worker-4
+    hostname: worker-4
+    depends_on:
+      worker-1:
+        condition: service_healthy
+
+networks:
+  edp:
+    name: edp

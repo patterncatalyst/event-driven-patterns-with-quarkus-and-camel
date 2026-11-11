@@ -121,4 +121,5 @@ Publishing after the commit leaves a window: if the process stops between the co
 - Martin Fowler, 2017: [What do you mean by "Event-Driven"?](https://martinfowler.com/articles/201701-event-driven.html)
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Event Message](https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventMessage.html)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026: Chapter 2, Anatomy of Message-Driven Systems
+- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 2, Fundamentals of Events and Event Streams; Chapter 5, Designing Events; Chapter 17, Integrating Event-Driven and Request-Response Microservices
 - Apache Camel, Kafka component documentation: [camel.apache.org/components/latest/kafka-component.html](https://camel.apache.org/components/latest/kafka-component.html)

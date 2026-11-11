@@ -12,7 +12,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 |---|---|---|---|---|
 | r01 | Repo, Jekyll site, CLAUDE.md, _plans, domain-model mirror, compose _infra, domain-model module, CI, validate.py, version re-survey, source and Strimzi-post confirmation | 00 to 01 | C | done (r01.0, 2026-11-10) |
 | r02 | Order-to-delivery domain rework of 00 and 01; events between services | 02 to 04 (event notification, event-carried state transfer with claim check, ordering and partitioning with resequencer) | C | done (r02.0, 2026-11-10) |
-| r03 | Publishers, subscribers, queues | 05 to 07 | C | planned |
+| r03 | Publishers, subscribers, queues | 05 to 07 (optimizing publishers, optimizing subscribers, queues for Kafka with share groups) | C | done (r03.0, 2026-11-11) |
 | r04 | Outbox, Debezium in depth, connector offsets on compose | 08 to 10 | C | planned |
 | r05 | Idempotency, exactly-once, retry and dead letter | 11 to 13 | C | planned |
 | r06 | Aggregate root and the event store, snapshots | 14 to 15 | C | planned |
@@ -22,7 +22,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r10 | Observing event flows | 25 to 27 | C | planned |
 | r11 | minikube + Strimzi + CloudNativePG + LGTM setup; KRaft, UTO, SSA, security context | 28 to 31 | K | planned |
 | r12 | Monitoring Strimzi, Cruise Control, MM2, Connect on Strimzi; chapter 10's Strimzi half | 32 to 35 | K | planned |
-| r13 | Appendices A to F (C: Kafka Streams, Flink SQL, RisingWave; E: resequencing across partitions in depth; F: outbox on CRC) | A to F | C, K, CRC | planned |
+| r13 | Appendices A to G (C: Kafka Streams, Flink SQL, RisingWave; E: resequencing across partitions in depth; F: deploying event-driven services on minikube; G: outbox on CRC) | A to G | C, K, CRC | planned |
 | r14 | Retro: QA sweep, idiomatic review, voice review, host scrub, re-survey, full re-run | all | C, K | planned |
 | r15 | The deck: `lgtm-presentation/` built like CNDP's, with `text/`, `edits/`, `BUILD.md` and a "Take it with you" QR slide; figures reused from chapter specs; stands alone | none | none | planned |
 

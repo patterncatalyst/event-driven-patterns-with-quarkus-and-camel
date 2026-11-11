@@ -144,5 +144,6 @@ Do not use a claim check for small payloads. A reference costs a second store, a
 - Martin Fowler, 2017: [What do you mean by "Event-Driven"?](https://martinfowler.com/articles/201701-event-driven.html)
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Claim Check](https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026: Chapter 9, Composing Data from Different Sources
+- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 4, Schemas and Data Contracts; Chapter 5, Designing Events; Chapter 7, Denormalization and Eventification
 - Apache Camel: [Claim Check EIP](https://camel.apache.org/components/latest/eips/claimCheck-eip.html)
 - Apache Kafka: [Broker configuration, `message.max.bytes`](https://kafka.apache.org/43/configuration/broker-configs/) and [producer configuration, `max.request.size`](https://kafka.apache.org/43/configuration/producer-configs/)
