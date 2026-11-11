@@ -6,7 +6,7 @@
   "database.user": "edp",
   "database.password": "edp",
   "database.dbname": "edp",
-  "topic.prefix": "edp",
+  "topic.prefix": "edp-interval-only",
   "plugin.name": "pgoutput",
   "slot.name": "edp_interval_only",
   "publication.name": "edp_interval_only",
@@ -18,5 +18,9 @@
   "key.converter": "org.apache.kafka.connect.json.JsonConverter",
   "key.converter.schemas.enable": "false",
   "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-  "value.converter.schemas.enable": "false"
+  "value.converter.schemas.enable": "false",
+  "transforms": "reroute",
+  "transforms.reroute.type": "org.apache.kafka.connect.transforms.RegexRouter",
+  "transforms.reroute.regex": "edp-interval-only\\.inventory\\.dbz_signal",
+  "transforms.reroute.replacement": "edp.inventory.interval-only-signals"
 }

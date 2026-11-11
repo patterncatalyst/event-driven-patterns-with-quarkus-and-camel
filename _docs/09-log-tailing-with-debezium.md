@@ -41,11 +41,14 @@ Kafka Connect runs the connector. `inventory-service` does not call Debezium; it
 "signal.data.collection": "inventory.dbz_signal",
 "heartbeat.interval.ms": "5000",
 "heartbeat.action.query": "INSERT INTO inventory.dbz_heartbeat (id, ts) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET ts = EXCLUDED.ts",
-"transforms.reroute.regex": "edp\\.inventory\\.inventory_item",
-"transforms.reroute.replacement": "edp.inventory.item-changes"
+"transforms": "items,signals,heartbeats",
+"transforms.items.regex": "edp\\.inventory\\.inventory_item",
+"transforms.items.replacement": "edp.inventory.item-changes"
 ```
 
-The slot is named for its reader, one slot per reader: a second reader of the same table gets its own slot and position. A `filtered` publication holds only the listed tables. Debezium names a table's topic after the server, schema and table, which leaves the `edp.<domain>.<event>` convention, so a `RegexRouter` renames it to `edp.inventory.item-changes`. The values are JSON without schemas, and the key columns are the record key.
+The `signals` and `heartbeats` transforms are the same `RegexRouter` for the two helper tables.
+
+The slot is named for its reader, one slot per reader: a second reader of the same table gets its own slot and position. A `filtered` publication holds only the listed tables. Debezium names a table's topic after the server, schema and table, which leaves the `edp.<domain>.<event>` convention, so a `RegexRouter` renames it to `edp.inventory.item-changes`, and one for each helper table renames `dbz_signal` and `dbz_heartbeat`, whose names carry an underscore, to `edp.inventory.signals` and `edp.inventory.heartbeats`. The values are JSON without schemas, and the key columns are the record key.
 
 `InventoryItemDocumentRoute` reads that topic and republishes each row as an `InventoryItem`, the record from the domain model, keyed by SKU on `edp.inventory.items`:
 
@@ -70,7 +73,7 @@ from("kafka:" + Topics.INVENTORY_ITEM_CHANGES + "?groupId=inventory-documents")
 
 **What `before` holds.** PostgreSQL logs the old row only as far as the table's replica identity says. Under the default that is the primary key: an update carries no old row, and a delete carries the key with placeholders in the other columns. `ALTER TABLE ... REPLICA IDENTITY FULL` logs the whole old row, at the cost of a larger log. The documents here need only the key; a consumer that audits what a quantity was needs `FULL`.
 
-**The slot and the heartbeat.** The connector confirms a position when an event for a captured table arrives. When the captured table is quiet and another table in the database is busy, the log grows with changes the connector never receives, the slot stays where it was, and so does the WAL behind it. `heartbeat.interval.ms` emits a heartbeat record on a timer, but with a filtered publication that alone does not release the log. `heartbeat.action.query` also runs a statement on the timer. When it writes a table that is in the publication, the change comes back through the slot and the connector confirms a position beyond the burst. `lsn.flush.mode=connector_and_driver` also confirms positions without a heartbeat table. The helper table's own events go to a topic nothing reads, `edp.inventory.dbz_heartbeat`.
+**The slot and the heartbeat.** The connector confirms a position when an event for a captured table arrives. When the captured table is quiet and another table in the database is busy, the log grows with changes the connector never receives, the slot stays where it was, and so does the WAL behind it. `heartbeat.interval.ms` emits a heartbeat record on a timer, but with a filtered publication that alone does not release the log. `heartbeat.action.query` also runs a statement on the timer. When it writes a table that is in the publication, the change comes back through the slot and the connector confirms a position beyond the burst. `lsn.flush.mode=connector_and_driver` also confirms positions without a heartbeat table. The helper table's own events go to a topic nothing reads, `edp.inventory.heartbeats`. The heartbeat record itself goes to `edp.heartbeat.edp`, from `topic.heartbeat.prefix`; the property that looks like it, `heartbeat.topics.prefix`, is ignored.
 
 **Incremental snapshots.** To read a table again, for a consumer that lost its state, the connector watches a signal table. An insert of an `execute-snapshot` row names the tables and starts an incremental snapshot: the table is read in chunks by primary key while streaming goes on. A row read during a chunk is dropped if a change for the same key was streamed in the same window, so the replay cannot overwrite a newer change with an older one.
 
@@ -127,20 +130,21 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the route against Kafka from Dev Services: mapping, tombstones, the order of changes to one row, the rows the embedded engine hands over, and a row the domain rejects. `verify.sh` starts Kafka, PostgreSQL, Kafka Connect and the LGTM stack, creates and seeds the legacy table, registers the connectors with `PUT /connectors/<name>/config` and prints `TBD/34 checks passed`. It needs `jq` on the host.
+The Maven build runs the route against Kafka from Dev Services: mapping, tombstones, the order of changes to one row, the rows the embedded engine hands over, and a row the domain rejects. `verify.sh` starts Kafka, PostgreSQL, Kafka Connect and the LGTM stack, creates and seeds the legacy table, registers the connectors with `PUT /connectors/<name>/config` and prints `35/35 checks passed`. It needs `jq` on the host.
 
 - Checks 1 to 6: the connector and its task run, the slot is active, the publication holds the legacy table, the signal table and the heartbeat table and not the busy one, and the snapshot published five `r` events and five documents that match the table.
 - Checks 7 to 16: an update becomes a `u` event and a document with the domain's names. Under the default replica identity a delete's `before` carries the key and not the old quantity; after `ALTER TABLE ... REPLICA IDENTITY FULL` it carries the whole row. Debezium's own tombstone is on the change topic, the document topic gets exactly one for each delete, and the service logs no failure for the record it drops.
 - Checks 17 and 18: three updates of one row in one transaction arrive as documents in commit order, with increasing `source.lsn`.
-- Checks 19 to 24: a burst of about `TBD` MB goes into a table nobody captures. Both slots retain it. With the heartbeat query the slot's retained WAL falls to `TBD` within one offset flush; with the interval alone, on a second connector, it is still `TBD` when the first has released it. The burst produced no change event.
+- Checks 19 to 24: a burst of about 55 MB goes into a table nobody captures. Both slots retain it. With the heartbeat query the slot's retained WAL falls to 192 bytes within one offset flush; with the interval alone, on a second connector, it is still 55 MB when the first has released it. The burst produced no change event.
 - Checks 25 to 29: one insert into the signal table re-emits each untouched row as an `r` event while an update made at once still arrives, and the latest document per SKU matches the table. Tempo has a trace for the service.
 - Checks 30 to 34: the service is recreated with `CDC_MODE=embedded`. The engine holds its own slot, publishes the same `sku:qty` set as the Connect path, streams an update, and publishes every row again after its offset file is deleted.
+- Check 35: every topic under `edp.` is named `edp.<domain>.<event>`, the helper-table and heartbeat topics included.
 
 Change one thing and watch a guard fail:
 
 - Remove `.filter(body().isNotNull())` from `InventoryItemDocumentRoute`. Check 13 fails: Debezium's tombstone has no body to unmarshal, so each delete logs a failed change, and the documents are unchanged.
 - Delete the `ALTER TABLE ... REPLICA IDENTITY FULL` line in `verify.sh`. Checks 14 and 15 fail: the table stays on the default, and the delete's `before` carries the key and not the old quantity.
-- Remove `heartbeat.action.query` from `connect/inventory-cdc.json`. Check 22 fails: the real connector now behaves like the witness, and the burst stays in the log, `TBD` MB after the wait.
+- Remove `heartbeat.action.query` from `connect/inventory-cdc.json`. Check 22 fails: the real connector now behaves like the witness, and the burst stays in the log, 55 MB after the wait.
 - Update a row to a negative quantity. The domain's `InventoryItem` rejects it, the route logs the failed change and skips it, the SKU's document keeps its earlier value, and the next change on the topic is processed.
 - Remove the line that deletes the offset file in `verify.sh`. Check 34 fails: the engine resumes from its stored offset and publishes nothing again.
 

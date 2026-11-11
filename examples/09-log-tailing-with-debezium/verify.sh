@@ -49,6 +49,8 @@ poll() { # poll <seconds> <command...>: retry every second until the command suc
     done
 }
 
+note() { printf 'NOTE: %s\n' "$*"; }  # a measured number for the chapter, not a check
+mb() { awk -v b="$1" 'BEGIN {if (b < 1048576) printf "%d B", b; else printf "%.1f MB", b / 1048576}'; }
 expect() { [[ "$1" == "$2" ]]; } # expect <actual> <expected>
 at_least() { (( $1 >= $2 )); }
 # Re-evaluated on every poll: is <wanted> <command...> and ge <wanted> <command...> compare the command's output.
@@ -70,8 +72,9 @@ connector_running() {
 }
 
 # Topic readers. Records come back as "key<TAB>value", or "headers<TAB>key<TAB>value" for the documents.
-dump_changes() { kafka kafka-console-consumer.sh --topic "$CHANGES" --from-beginning --timeout-ms 5000 --property print.key=true 2>/dev/null || true; }
-dump_docs() { kafka kafka-console-consumer.sh --topic "$DOCS" --from-beginning --timeout-ms 5000 --property print.headers=true --property print.key=true 2>/dev/null || true; }
+# The console consumer prints a notice on stdout before the first record; every record line holds a tab.
+dump_changes() { kafka kafka-console-consumer.sh --topic "$CHANGES" --from-beginning --timeout-ms 5000 --property print.key=true 2>/dev/null | grep -P '\t' || true; }
+dump_docs() { kafka kafka-console-consumer.sh --topic "$DOCS" --from-beginning --timeout-ms 5000 --property print.headers=true --property print.key=true 2>/dev/null | grep -P '\t' || true; }
 end_offsets() { kafka kafka-get-offsets.sh --topic "$1" --time latest 2>/dev/null | awk -F: '{s += $3} END {print s + 0}'; }
 
 events() { dump_changes | cut -f2 | grep -v '^null$' || true; }  # one change envelope per line, no tombstones
@@ -173,9 +176,13 @@ echo "Heartbeat: a quiet slot beside a busy table"
 CHANGES_BEFORE=$(end_offsets "$CHANGES")
 check "precondition: the interval-only connector and its task are RUNNING" poll 60 connector_running interval-only
 sql "INSERT INTO inventory.legacy_audit (note) SELECT repeat('x', 1000) FROM generate_series(1, $BURST_ROWS)" >/dev/null
-check "precondition: the burst on the uncaptured table is retained by the slot with the heartbeat query" at_least "$(retained edp_inventory)" "$THRESHOLD"
-check "precondition: the burst is retained by the slot with the interval only" at_least "$(retained edp_interval_only)" "$THRESHOLD"
+RETAINED_QUERY=$(retained edp_inventory)
+RETAINED_INTERVAL=$(retained edp_interval_only)
+note "right after the burst the slot with the heartbeat query retains $(mb "$RETAINED_QUERY"), the interval-only slot $(mb "$RETAINED_INTERVAL")"
+check "precondition: the burst on the uncaptured table is retained by the slot with the heartbeat query" at_least "$RETAINED_QUERY" "$THRESHOLD"
+check "precondition: the burst is retained by the slot with the interval only" at_least "$RETAINED_INTERVAL" "$THRESHOLD"
 check "with heartbeat.action.query the slot releases the burst" poll 150 slot_below edp_inventory 1048576
+note "after the wait the slot with the heartbeat query retains $(mb "$(retained edp_inventory)"), the interval-only slot $(mb "$(retained edp_interval_only)")"
 check "with only heartbeat.interval.ms the slot still holds the burst" at_least "$(retained edp_interval_only)" "$THRESHOLD"
 check "the burst produced no change event" expect "$(end_offsets "$CHANGES")" "$CHANGES_BEFORE"
 
@@ -205,6 +212,12 @@ docker kill "$SERVICE" >/dev/null
 docker start "$SERVICE" >/dev/null
 poll 90 healthy || true
 check "after the offset file is deleted the engine publishes every row again" poll 90 ge "$((BEFORE + ROWS))" embedded_docs
+
+topic_names_conform() { # every topic the connectors write is edp.<domain>.<event>: lower case, digits, hyphens
+    local t
+    while read -r t; do [[ "$t" =~ ^edp\.[a-z0-9-]+\.[a-z0-9-]+$ ]] || { echo "$t"; return 1; }; done < <(kafka kafka-topics.sh --list 2>/dev/null | grep '^edp\.')
+}
+check "every topic under edp. has the name edp.<domain>.<event>, including the heartbeat, signal and helper-table topics" topic_names_conform
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]
