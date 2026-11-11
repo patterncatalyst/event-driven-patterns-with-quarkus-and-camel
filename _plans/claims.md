@@ -337,8 +337,8 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 07-r2-03 | 07 | In explicit mode the share consumer refuses poll while a record is unanswered; the connector retries with back-off capped at retry-max-wait (default 30 s) | sources.md rows: Kafka ShareConsumerImpl 4.2.1, SmallRye ReactiveKafkaShareConsumer 4.37.0, connector attribute table | _docs/07-queues-for-kafka.md:76 | sourced |
 | 07-r2-04 | 07 | With connector defaults (retry-max-wait 30, poll-timeout 1000) the slow partition took 98 s and 2 of 12 later jobs overtook; checks 9 and 10 fail | 07-r2-c2-oldconn.log | _docs/07-queues-for-kafka.md:119 | verified |
 | 07-r2-05 | 07 | The connector renews the lock of a job in progress; with a 15 s lock a 20 s job is delivered once | 07-r2-c2-lock15slow20.log; sources.md KafkaShareGroupCommit RENEW | _docs/07-queues-for-kafka.md:36 | verified |
-| 07-r2-06 | 07 | record_limit acquire mode: every check passes with one-record batches | 07-r2-recordlimit.log | _docs/07-queues-for-kafka.md:121 | verified |
-| 07-r2-07 | 07 | Slow partition done in 8 to 9.4 s in share mode against 8.8 s in group mode; fast partitions 2.2 to 7 s against under 1 s | span tables in 07-r2-pt100, -lock15, -final, -c2-final -db.log | _docs/07-queues-for-kafka.md:127 | verified |
+| 07-r2-06 | 07 | record_limit acquire mode: every check passes with one-record batches | 07-r2-recordlimit.log; 07-r3-recordlimit.log (27/27, orchestrator) | _docs/07-queues-for-kafka.md:121 | verified |
+| 07-r2-07 | 07 | Slow partition done in 8 to 9.4 s in share mode against 8.8 s in group mode; fast partitions about 2 to 7 s against under 1 s | span tables in 07-r2-pt100, -lock15, -final, -c2-final -db.log | _docs/07-queues-for-kafka.md:127 | verified |
 | 07-r2-08 | 07 | DELIVERY_MODE=group fails checks 4 to 16 and 20 to 22 (11/27) | 07-r2-c2-group.log | _docs/07-queues-for-kafka.md:117 | verified |
 | 07-r2-09 | 07 | Seeding with batch.size=0 writes one-record batches | kafka-dump-log in 07-r2-bs0-db.log; sources.md producer configs batch.size | _docs/07-queues-for-kafka.md:107 | verified |
 

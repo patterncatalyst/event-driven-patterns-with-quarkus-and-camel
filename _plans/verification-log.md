@@ -125,3 +125,4 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - `SHARE_RECORD_LOCK_MS=15000 GATEWAY_SLOW_MS=20000`: 27/27; the 20 s job was delivered once (lock renewed).
 - `SHARE_ACQUIRE_MODE=record_limit` (26-check version): 26/26.
 - mvn 10 tests, BUILD SUCCESS, after the last code change (07-r2-mvn-final.log).
+- Orchestrator, after round 3: `SHARE_ACQUIRE_MODE=record_limit` on the 27-check verify.sh: 27/27.

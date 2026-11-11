@@ -104,7 +104,7 @@ mvn -B verify
 
 The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `27/27 checks passed`.
 
-The jobs are published with producer batching turned off, so every job is its own record batch. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 17 run on the share group's rows, which come from four workers sharing three partitions:
+The jobs are published with producer batching turned off, so every job is its own record batch. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 16 run on the share group's rows, which come from four workers sharing three partitions:
 
 - Twenty-nine jobs are sent, once each, and the bounce job is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
 - The slow job took at least the gateway's slow time, at least half of the later jobs of its partition finished before it, and the last of them finished no more than 3 seconds after it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
@@ -124,7 +124,7 @@ Change one thing and watch a guard fail:
 
 Use a consumer group when order per key matters. A share group gives no ordering within a partition, so two events of one order can be processed at the same time on different workers. Use it when jobs are independent and an occasional slow job would otherwise hold up the jobs behind it.
 
-A share group also costs time on every job. A worker answers each job before it fetches the next, so in the recorded runs a partition of eight to ten fast jobs took 2.2 to 7 seconds through the share group and under 1 second through the consumer group. The partition with the slow job was done in 8 to 9.4 seconds either way; what changed is that most of its jobs no longer waited for the slow one.
+A share group also costs time on every job. A worker answers each job before it fetches the next, so in the recorded runs a partition of eight to ten fast jobs took about 2 to 7 seconds through the share group and under 1 second through the consumer group. The partition with the slow job was done in 8 to 9.4 seconds either way; what changed is that most of its jobs no longer waited for the slow one.
 
 The share group gives up the simple offset commit as well: acknowledgement is per record, and every record has a lock, a delivery count and a limit. Work that must run exactly once needs idempotence on top, because a lock that expires produces a second delivery. And if the load is many fast jobs on few slow workers, more partitions in a consumer group may be all you need.
 
