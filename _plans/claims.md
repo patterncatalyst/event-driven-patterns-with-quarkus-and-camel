@@ -296,13 +296,13 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | id | chapter | claim | evidence (test, run or source) | ref | status |
 |---|---|---|---|---|---|
 | 05-01 | 05 | Kafka producer defaults: linger 5 ms, batch.size 16384, acks all, idempotence true, no compression | sources.md Kafka 4.3 producer configs; KIP-1030 | _docs/05-optimizing-publishers.md | verified |
-| 05-02 | 05 | linger.ms 0 effectively sends one message per batch | sources.md KIP-1030 | _docs/05-optimizing-publishers.md | verified |
+| 05-02 | 05 | Linger default is 5 ms, formerly 0, raised by KIP-1030 for lightly loaded producers; under load batches still fill (linger-0 row, 38 records per request) | sources.md KIP-1030; bench-2026-11-10-summary.csv linger-0 row | _docs/05-optimizing-publishers.md:22 | verified |
 | 05-03 | 05 | Compression may not suit low-latency workloads | sources.md Strimzi Optimizing Kafka producers | _docs/05-optimizing-publishers.md | verified |
 | 05-04 | 05 | Plain Kafka clients either silently disable idempotence or throw ConfigException on conflicting settings | sources.md Kafka 4.3 producer configs | _docs/05-optimizing-publishers.md | verified |
 | 05-05 | 05 | Camel always passes enable.idempotence, so acks=1 alone fails at startup | experiment G (ConfigException captured); Camel KafkaConfiguration | _docs/05-optimizing-publishers.md | verified |
 | 05-06 | 05 | acks=all and acks=1 wait for the same replica on a one-broker cluster | Kafka documentation only, no run | _docs/05-optimizing-publishers.md | sourced |
 | 05-07 | 05 | Unbatched route sends at most 3 records per request | verify.sh 05 check 12; bench 2.95 to 2.99 | _docs/05-optimizing-publishers.md | verified |
-| 05-08 | 05 | Default route about 4.9x unbatched throughput with about 58x records per request | results/bench-2026-11-10-summary.csv medians | _docs/05-optimizing-publishers.md | verified |
+| 05-08 | 05 | Results tables as ratios to the unbatched route: throughput 4.9 / 0.40, records per request 58 / 67, p50 0.13 / 2.7, bytes per record 0.75 / 0.29; linger and codec tables as ratios | recomputed from results/bench-2026-11-10-summary.csv; quick bench confirms direction | _docs/05-optimizing-publishers.md:79 | verified |
 | 05-09 | 05 | Tuned route about 0.4x unbatched throughput; p50 latency follows linger | bench CSV medians; linger sweep | _docs/05-optimizing-publishers.md | verified |
 | 05-10 | 05 | lz4, gzip, zstd bytes per record about 0.38, 0.23, 0.19 of none | bench codec sweep | _docs/05-optimizing-publishers.md | verified |
 | 05-11 | 05 | lz4 batches appear in the broker log | verify.sh 05 check 16 | _docs/05-optimizing-publishers.md | verified |
@@ -313,10 +313,10 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 06-01 | 06 | A fetch can return more records than one poll hands out; the client buffers the rest | sources.md consumer configs max.poll.records quotes | _docs/06-optimizing-subscribers.md | verified |
 | 06-02 | 06 | Consumer defaults max.poll.records 500, fetch.min.bytes 1, fetch.max.wait.ms 500, max.poll.interval.ms 300000 | application.properties; consumer configs page | _docs/06-optimizing-subscribers.md | verified |
 | 06-03 | 06 | Exceeding max.poll.interval.ms evicts the member, logs the poll-timeout and LeaveGroup lines, and re-delivers (duplicates) | verify.sh 06 checks 19 to 23; experiment FIXED_MAX_POLL_RECORDS=500 fails 21 to 23 | _docs/06-optimizing-subscribers.md | verified |
-| 06-04 | 06 | 3 threads drain in about a third of the time of 1; 12 threads under RoundRobinAssignor about 9x faster than 1 | results/bench-2026-11-11.csv medians | _docs/06-optimizing-subscribers.md | verified |
+| 06-04 | 06 | Drain time ratios to one thread: 0.33 for 3, 9 and 12 threads under the default assignor, 0.12 for 12 under RoundRobin (run in a separate invocation) | results/bench-2026-11-11.csv medians; quick bench confirms | _docs/06-optimizing-subscribers.md:50 | verified |
 | 06-05 | 06 | max.poll.records below the limit does not change drain time | bench poll-50 6.37 against consumers-3 6.36 | _docs/06-optimizing-subscribers.md | verified |
 | 06-06 | 06 | Under a 300/s trickle, fetch.min.bytes 65536 cuts fetch requests from about 2,400 to 60 | verify.sh 06 check 26; TRICKLE_MIN_BYTES=1 fails 26 | _docs/06-optimizing-subscribers.md | verified |
-| 06-07 | 06 | Classic RangeAssignor revokes 9 of 9; consumer protocol 5; CooperativeSticky 4 | verify.sh 06 checks 29, 33; CLASSIC_ASSIGNOR experiment | _docs/06-optimizing-subscribers.md | verified |
+| 06-07 | 06 | Replica 1 gives up all 9 partitions under classic RangeAssignor and fewer than half under the consumer protocol (4 or 5 in recorded runs); CooperativeSticky gave up 4 | verify.sh 06 checks 29, 33; final run printed 4, earlier runs 5; CLASSIC_ASSIGNOR experiment 4 | _docs/06-optimizing-subscribers.md:58 | verified |
 | 06-08 | 06 | Group type is Classic or Consumer per protocol | verify.sh 06 checks 27, 30; SECOND_PROTOCOL=classic fails 30, 33 | _docs/06-optimizing-subscribers.md | verified |
 | 06-09 | 06 | RangeAssignor over three 3-partition topics leaves 9 of 12 members idle; RoundRobin leaves 3 | verify.sh 06 checks 14, 17 | _docs/06-optimizing-subscribers.md | verified |
 | 06-10 | 06 | The broker answers a fetch once fetch.min.bytes is available; a backlogged consumer always has that much waiting (reworded from an unrun 'changes nothing' claim) | sources.md consumer configs fetch.min.bytes definition | _docs/06-optimizing-subscribers.md:30 | sourced |
@@ -340,3 +340,5 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | r03-bf-04 | 04 | References: Lawrence ch 2 Anatomy of Message-Driven Systems (owner-approved r03 addition) | sources.md Lawrence TOC row, chapter title matches | _docs/04-ordering-and-partitioning.md:125 | verified |
 | r03-bf-05 | 05 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/05-optimizing-publishers.md:143 | verified |
 | r03-bf-06 | 06 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/06-optimizing-subscribers.md:125 | verified |
+| 05-16 | 05 | Compression cuts bytes per record by a large factor (replaces the contradicted "little difference" sentence) | codec table; verify.sh 05 check 16 | _docs/05-optimizing-publishers.md:131 | verified |
+| 05-17 | 05 | Checks 5, 8, 11, 18 require requests > 0 (guards the ratio checks against a missing metric) | bite run 19/24, failing 5, 8, 11, 18, 20 | examples/05-optimizing-publishers/verify.sh | verified |
