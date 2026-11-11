@@ -41,7 +41,36 @@ Adam Bellemare, *Building Event-Driven Microservices, Second Edition*, O'Reilly,
 - O'Reilly MCP search confirms the title, author, date and ISBN. Its results carry no chapter list.
 - oreilly.com returned HTTP 403 to scripted fetch, and ebooks.com also 403. The 2nd edition chapter list could not be obtained.
 - r02 re-check: two further O'Reilly MCP searches (keywords: events, event notification, state, data contracts, partitioning, ordering, claim check, large events) returned only catalog records for the book, with no chapter or section titles. Every topic below stays **owner to verify**.
-- Status for every Bellemare chapter reference: **owner to verify** in the owner's O'Reilly account. The PRD gives topics only, and no chapter numbers are asserted here.
+- **Table of contents confirmed by the owner from their O'Reilly account, 2026-11-10** (pasted into the session; the owner's link is the learning.oreilly.com edition of the same ISBN). Chapter numbers and titles below may be cited. Section titles are known only for chapters 20 and 21 (listed below); cite every other chapter by its title, for the topic its title names.
+
+| Part | Ch | Title |
+|---|---|---|
+| I Introduction to Event-Driven Microservices | 1 | Why Event-Driven Microservices |
+| | 2 | Fundamentals of Events and Event Streams |
+| | 3 | Fundamentals of Event-Driven Microservices |
+| II Events and Event Streams | 4 | Schemas and Data Contracts |
+| | 5 | Designing Events |
+| | 6 | Integrating Event-Driven Architectures with Existing Systems |
+| | 7 | Denormalization and Eventification |
+| | 8 | Stateful Event-Driven Microservices |
+| | 9 | Deterministic Stream Processing |
+| | 10 | Building Workflows with Microservices |
+| III Event-Driven Microservices Frameworks | 11 | Basic Producer and Consumer Microservices |
+| | 12 | Heavyweight Framework Microservices |
+| | 13 | Lightweight Framework Microservices |
+| | 14 | Streaming SQL |
+| | 15 | Microservices Using Functions as a Service |
+| IV Consistency, Bad Data, and Supportive Tooling | 16 | Eventual Consistency |
+| | 17 | Integrating Event-Driven and Request-Response Microservices |
+| | 18 | Handling Bad Data in Event Streams |
+| | 19 | Supportive Tooling |
+| | 20 | Testing Event-Driven Microservices |
+| | 21 | Deploying Event-Driven Microservices |
+| | 22 | Conclusion |
+
+Sections confirmed by the owner:
+- Ch 20: General Testing Principles; Unit-Testing Microservice Functions; Testing the Full Event-Driven Topology; Testing Schema Evolution and Compatibility; Integration Testing of Event-Driven Microservices; Local Integration Testing; Testing Using Fully Remote Cloud Services; Choosing Your Full-Remote Integration Testing Strategy.
+- Ch 21: Principles of Microservice Deployment; Architectural Components of Microservice Deployment (Continuous Integration, Delivery, and Deployment Systems; Container Management Systems and Commodity Hardware); The Basic Full-Stop Deployment Pattern; The Rolling Update Pattern; The Breaking Schema Change Pattern; The Blue-Green Deployment Pattern.
 
 ## PRD section 5 mapping, Lawrence
 
@@ -57,37 +86,29 @@ All chapter numbers below exist in the confirmed table of contents; the fit is b
 | 8 | Evolution of Messages and Message Streams | 18 | confirmed |
 | 9 | Composing Data from Different Sources | 03, 09, 19, 20, 21 | confirmed |
 
-## r02 topics, Bellemare (cited by topic only, no chapter numbers)
+## Bellemare mapping by chapter title (TOC confirmed 2026-11-10)
 
-| Topic | Status |
+Fit is by chapter title. A chapter is cited for the topic its title names, never for a specific claim inside it.
+
+| Book chapter | This book |
 |---|---|
-| (a) events, event notification vs state | owner to verify (search returned no section titles) |
-| (b) data contracts, event-carried state | owner to verify (search returned no section titles) |
-| (c) partitioning and ordering | owner to verify (search returned no section titles) |
-| (d) large events, claim check | owner to verify (search returned no section titles) |
+| 2 Fundamentals of Events and Event Streams | 02 event notification; 04 ordering and partitioning |
+| 5 Designing Events | 02, 03 (what an event carries) |
+| 4 Schemas and Data Contracts | 03 event-carried state transfer; 18 schema evolution |
+| 7 Denormalization and Eventification | 03 (state carried on the event) |
+| 17 Integrating Event-Driven and Request-Response Microservices | 02 (the fetch back over HTTP) |
+| 11 Basic Producer and Consumer Microservices | 05 publishers; 06 subscribers |
+| 6 Integrating Event-Driven Architectures with Existing Systems | 08 outbox; 09 log tailing |
+| 18 Handling Bad Data in Event Streams | 13 retry and dead letter |
+| 16 Eventual Consistency | 16 CQRS read lag |
+| 8 Stateful Event-Driven Microservices | 19 to 21 |
+| 9 Deterministic Stream Processing | 17 reprocessing; 19 to 21 |
+| 14 Streaming SQL | Appendix C |
+| 10 Building Workflows with Microservices | 22, 23 sagas |
+| 20 Testing Event-Driven Microservices | Appendix A |
+| 21 Deploying Event-Driven Microservices | the deployment appendix |
 
-## PRD section 5 mapping, Bellemare (topic as given in the PRD)
-
-| PRD chapter | Topic | Status |
-|---|---|---|
-| 02 | events | owner to verify |
-| 03 | data contracts | owner to verify |
-| 04 | partitioning | owner to verify |
-| 05 | producers | owner to verify |
-| 06 | consumers | owner to verify |
-| 08 | CDC/outbox | owner to verify |
-| 09 | CDC | owner to verify |
-| 11 | delivery guarantees | owner to verify |
-| 12 | EOS | owner to verify |
-| 13 | error handling | owner to verify |
-| 14 | event sourcing | owner to verify |
-| 16 | materialized views | owner to verify |
-| 17 | reprocessing | owner to verify |
-| 18 | schemas | owner to verify |
-| 19 | stateful streaming | owner to verify |
-| 20 | joins | owner to verify |
-| 21 | windowing | owner to verify |
-| 22, 23 | workflows | owner to verify |
+Chapters 11 and 12 (delivery guarantees, exactly-once) and 14, 15 (aggregate root, snapshots) have no chapter title that names their topic; confirm at those iterations or cite no Bellemare chapter.
 
 ## Strimzi blog posts
 
