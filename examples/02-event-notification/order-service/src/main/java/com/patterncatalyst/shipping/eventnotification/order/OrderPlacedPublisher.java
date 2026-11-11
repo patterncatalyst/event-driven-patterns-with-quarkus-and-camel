@@ -17,7 +17,7 @@ public class OrderPlacedPublisher {
         this.producer = producer;
     }
 
-    void onPlaced(@Observes(during = TransactionPhase.IN_PROGRESS) OrderPlaced event) {
+    void onPlaced(@Observes(during = TransactionPhase.AFTER_SUCCESS) OrderPlaced event) {
         producer.sendBodyAndHeader(OrderPlacedRoute.ENDPOINT, event, KafkaConstants.KEY, event.orderId());
     }
 }
