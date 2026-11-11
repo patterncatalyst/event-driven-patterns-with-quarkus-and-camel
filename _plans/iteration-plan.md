@@ -12,7 +12,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 |---|---|---|---|---|
 | r01 | Repo, Jekyll site, CLAUDE.md, _plans, domain-model mirror, compose _infra, domain-model module, CI, validate.py, version re-survey, source and Strimzi-post confirmation | 00 to 01 | C | done (r01.0, 2026-11-10) |
 | r02 | Order-to-delivery domain rework of 00 and 01; events between services | 02 to 04 (event notification, event-carried state transfer with claim check, ordering and partitioning with resequencer) | C | done (r02.0, 2026-11-10) |
-| r03 | Publishers, subscribers, queues | 05 to 07 | C | planned |
+| r03 | Publishers, subscribers, queues | 05 to 07 | C | in progress |
 | r04 | Outbox, Debezium in depth, connector offsets on compose | 08 to 10 | C | planned |
 | r05 | Idempotency, exactly-once, retry and dead letter | 11 to 13 | C | planned |
 | r06 | Aggregate root and the event store, snapshots | 14 to 15 | C | planned |
