@@ -290,3 +290,42 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 04-45 | 04 | AI callout: order-id ends DELIVERED in lifecycle order; event-type ends SHIPPED with Delivered applied before Scheduled | verify.sh 04 checks 6, 7, 15, 16 | _docs/04-ordering-and-partitioning.md:119 | verified |
 | 04-46 | 04 | References: Hohpe and Woolf Resequencer; Kafka documentation Main Concepts and Terminology | sources.md rows (confirmed) | _docs/04-ordering-and-partitioning.md:124 | verified |
 | 04-47 | 04 | Both replicas create the order row as PAID, following the lifecycle (a shipment follows PaymentProcessed); the first shipment event then sets SHIPPED | ShipmentApplier.lockOrCreate inserts status PAID (code); verify.sh 04 final statuses | _docs/04-ordering-and-partitioning.md:64; repo | by construction (ShipmentApplier.lockOrCreate inserts PAID) |
+
+## r03 (chapters 05 to 07, 2026-11-11)
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| 05-01 | 05 | Kafka producer defaults: linger 5 ms, batch.size 16384, acks all, idempotence true, no compression | sources.md Kafka 4.3 producer configs; KIP-1030 | _docs/05-optimizing-publishers.md | verified |
+| 05-02 | 05 | linger.ms 0 effectively sends one message per batch | sources.md KIP-1030 | _docs/05-optimizing-publishers.md | verified |
+| 05-03 | 05 | Compression may not suit low-latency workloads | sources.md Strimzi Optimizing Kafka producers | _docs/05-optimizing-publishers.md | verified |
+| 05-04 | 05 | Plain Kafka clients either silently disable idempotence or throw ConfigException on conflicting settings | sources.md Kafka 4.3 producer configs | _docs/05-optimizing-publishers.md | verified |
+| 05-05 | 05 | Camel always passes enable.idempotence, so acks=1 alone fails at startup | experiment G (ConfigException captured); Camel KafkaConfiguration | _docs/05-optimizing-publishers.md | verified |
+| 05-06 | 05 | acks=all and acks=1 wait for the same replica on a one-broker cluster | Kafka documentation only, no run | _docs/05-optimizing-publishers.md | sourced |
+| 05-07 | 05 | Unbatched route sends at most 3 records per request | verify.sh 05 check 12; bench 2.95 to 2.99 | _docs/05-optimizing-publishers.md | verified |
+| 05-08 | 05 | Default route about 4.9x unbatched throughput with about 58x records per request | results/bench-2026-11-10-summary.csv medians | _docs/05-optimizing-publishers.md | verified |
+| 05-09 | 05 | Tuned route about 0.4x unbatched throughput; p50 latency follows linger | bench CSV medians; linger sweep | _docs/05-optimizing-publishers.md | verified |
+| 05-10 | 05 | lz4, gzip, zstd bytes per record about 0.38, 0.23, 0.19 of none | bench codec sweep | _docs/05-optimizing-publishers.md | verified |
+| 05-11 | 05 | lz4 batches appear in the broker log | verify.sh 05 check 16 | _docs/05-optimizing-publishers.md | verified |
+| 05-12 | 05 | A single synchronous caller sends about 1 record per request against 100 with 100 callers | verify.sh 05 checks 19, 20 | _docs/05-optimizing-publishers.md | verified |
+| 05-13 | 05 | acks=1 with idempotence off gives no producer id | verify.sh 05 checks 17, 22 | _docs/05-optimizing-publishers.md | verified |
+| 05-14 | 05 | Client metrics bound through the factory per client id and client_seq | FlashSaleTest; Prometheus names | _docs/05-optimizing-publishers.md | verified |
+| 05-15 | 05 | Camel's own Kafka clients are not observed by Camel or the Quarkus Micrometer binder | S2 spike | _docs/05-optimizing-publishers.md | verified |
+| 06-01 | 06 | A fetch can return more records than one poll hands out; the client buffers the rest | sources.md consumer configs max.poll.records quotes | _docs/06-optimizing-subscribers.md | verified |
+| 06-02 | 06 | Consumer defaults max.poll.records 500, fetch.min.bytes 1, fetch.max.wait.ms 500, max.poll.interval.ms 300000 | application.properties; consumer configs page | _docs/06-optimizing-subscribers.md | verified |
+| 06-03 | 06 | Exceeding max.poll.interval.ms evicts the member, logs the poll-timeout and LeaveGroup lines, and re-delivers (duplicates) | verify.sh 06 checks 19 to 23; experiment FIXED_MAX_POLL_RECORDS=500 fails 21 to 23 | _docs/06-optimizing-subscribers.md | verified |
+| 06-04 | 06 | 3 threads drain in about a third of the time of 1; 12 threads under RoundRobinAssignor about 9x faster than 1 | results/bench-2026-11-11.csv medians | _docs/06-optimizing-subscribers.md | verified |
+| 06-05 | 06 | max.poll.records below the limit does not change drain time | bench poll-50 6.37 against consumers-3 6.36 | _docs/06-optimizing-subscribers.md | verified |
+| 06-06 | 06 | Under a 300/s trickle, fetch.min.bytes 65536 cuts fetch requests from about 2,400 to 60 | verify.sh 06 check 26; TRICKLE_MIN_BYTES=1 fails 26 | _docs/06-optimizing-subscribers.md | verified |
+| 06-07 | 06 | Classic RangeAssignor revokes 9 of 9; consumer protocol 5; CooperativeSticky 4 | verify.sh 06 checks 29, 33; CLASSIC_ASSIGNOR experiment | _docs/06-optimizing-subscribers.md | verified |
+| 06-08 | 06 | Group type is Classic or Consumer per protocol | verify.sh 06 checks 27, 30; SECOND_PROTOCOL=classic fails 30, 33 | _docs/06-optimizing-subscribers.md | verified |
+| 06-09 | 06 | RangeAssignor over three 3-partition topics leaves 9 of 12 members idle; RoundRobin leaves 3 | verify.sh 06 checks 14, 17 | _docs/06-optimizing-subscribers.md | verified |
+| 06-10 | 06 | The broker answers a fetch once fetch.min.bytes is available; a backlogged consumer always has that much waiting (reworded from an unrun 'changes nothing' claim) | sources.md consumer configs fetch.min.bytes definition | _docs/06-optimizing-subscribers.md:30 | sourced |
+| 07-01 | 07 | A share group shares a partition only when members outnumber partitions | kafka-share-groups --describe --members in the ch07 window (3/3 one each; 4 members two per partition) | _docs/07-queues-for-kafka.md | verified |
+| 07-02 | 07 | Retry job fails at delivery count 1 and is sent at count 2; bounce is rejected once and not redelivered | verify.sh 07 checks 12 to 14; ShareDeliveryTest | _docs/07-queues-for-kafka.md | verified |
+| 07-03 | 07 | Under a share group a later job of the slow job's partition finishes first | verify.sh 07 check 9; fails with DELIVERY_MODE=group and SEED_LINGER_MS=500 | _docs/07-queues-for-kafka.md | verified |
+| 07-04 | 07 | Under a consumer group nothing overtakes, one worker per partition, 3 of 4 workers deliver | verify.sh 07 checks 24 to 26 | _docs/07-queues-for-kafka.md | verified |
+| 07-05 | 07 | The default acquire mode takes the whole fetched batch; one-record batches limit hoarding | SEED_LINGER_MS=500 run; S1 spike | _docs/07-queues-for-kafka.md | verified |
+| 07-06 | 07 | record_limit acquire mode delivered 8 of 30 in 25 s against 30 in 15 s | single-worker runs, ch07 window | _docs/07-queues-for-kafka.md | recorded |
+| 07-07 | 07 | With a 15 s lock the 8 s slow job was redelivered after it finished | 07-v3, 07-v4 runs | _docs/07-queues-for-kafka.md | verified |
+| 07-08 | 07 | The Camel Kafka component has no share-group option | sources.md Camel Kafka component row | _docs/07-queues-for-kafka.md | verified |
+| 07-09 | 07 | Lock default 30 s, delivery count limit 5, no ordering guarantee, accept/release/reject | sources.md Kafka design, KIP-932, Strimzi post | _docs/07-queues-for-kafka.md | verified |

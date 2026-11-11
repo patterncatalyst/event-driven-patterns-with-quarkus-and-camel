@@ -88,3 +88,15 @@ Orchestrator, clean Docker, under the stack lock, one at a time:
 - 04-ordering-and-partitioning: mvn 4 + 46 runs (12 methods, two `@RepeatedTest(20)`), BUILD SUCCESS; verify.sh 28/28. Recorded by the ch04 repair executor: without the `ON CONFLICT` create the new-order concurrency test errors 20/20; without the row lock the existing-order test failed 1 of 20 (probabilistic).
 - 00 and 01 unchanged in code since the final serial run (17/17, 19/19).
 - 02 key-header experiment re-run after repair: order-service 7 tests, 3 fail (recordCarriesOnlyTheOrderIdKeyedByOrderId, orderIsReadableWhenTheRecordIsPublished, duplicateAndInvalidOrdersPublishNothing); restored.
+
+## r03 runtime windows (2026-11-10 to 2026-11-11)
+
+Each chapter executor had an exclusive window under the stack lock.
+
+- 05-optimizing-publishers: verify.sh 24/24 from clean. Experiments, one guard broken each: A fails check 12; B fails 14, 15, 16, 20; C fails 13; D fails 17; E fails 22; F fails 19; G (`REQUIRED_ACKS=1` with idempotence left on) stops at startup with a `ConfigException`. Bench 5 repeats, `results/bench-2026-11-10.csv` and summary; linger and codec sweeps recorded.
+- 06-optimizing-subscribers: verify.sh 36/36 from clean. Combined experiment run 29/36: `FIXED_MAX_POLL_RECORDS=500` fails 21 to 23; `CLASSIC_ASSIGNOR=CooperativeStickyAssignor` fails 29 (4 revoked instead of 9); `TRICKLE_MIN_BYTES=1` fails 26; `SECOND_PROTOCOL=classic` fails 30 and 33. Probe: after eviction 55 of 500 rows had attempts 2. Bench 5 repeats, `results/bench-2026-11-11.csv` (merged from two invocations; `consumers-12-roundrobin` run separately with `PROFILES`).
+- 07-queues-for-kafka: verify.sh 26/26 from clean (two consecutive runs). `DELIVERY_MODE=group` gives 12/26 (check 9 and 15 among the failures); `SEED_LINGER_MS=500` gives 25/26 (check 9 fails). With a 15 s record lock checks 5 and 6 failed (the 8 s job was redelivered). Not run: pause-based lock expiry, `share.delivery.count.limit=2`.
+
+## r03 final serial run (2026-11-11)
+
+Orchestrator, clean Docker, under the stack lock, one at a time: domain-model 79 tests; 00 4 tests, 17/17; 01 11 tests, 19/19; 02 7 + 4 tests, 21/21; 03 8 + 7 tests, 30/30; 04 4 + 46 tests, 28/28; 05 6 tests, 24/24; 06 4 tests, 36/36; 07 10 tests, 26/26. All BUILD SUCCESS. No edp-* containers left.

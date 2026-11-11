@@ -27,7 +27,7 @@ Two settings govern the fetch, and one governs the poll. A third pair decides wh
 
 With the defaults, a consumer that has caught up gets an answer as soon as any record arrives, so a steady trickle becomes a steady stream of small fetch requests. Raising `fetch.min.bytes` makes the broker wait to collect more data, so each answer carries more records and the consumer sends fewer requests. The price is latency: a record may wait up to `fetch.max.wait.ms` before it is returned.
 
-This only matters once the consumer has caught up. A consumer with a backlog finds a full fetch waiting whatever the minimum is, so the setting changes nothing about draining a backlog.
+This only matters once the consumer has caught up. The broker answers a fetch as soon as `fetch.min.bytes` of data is available, and a consumer with a backlog always has that much waiting.
 
 With 6000 records arriving at 300 per second on one topic, a consumer with the defaults sent about 2,400 fetch requests, and one with `fetch.min.bytes=65536` sent 60. The records arrived at the same rate in both runs, so the larger minimum cut the request rate by a factor of about 40, at the cost of up to 500 ms of delay per record.
 
