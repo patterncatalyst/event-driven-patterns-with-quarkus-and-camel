@@ -3,7 +3,11 @@ package com.patterncatalyst.shipping.ordering;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CyclicBarrier;
 
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 
 import com.patterncatalyst.shipping.OrderStatus;
@@ -64,5 +68,37 @@ class ShipmentBufferTest {
         accept("BUF-5", DELIVERED, 3);
         assertEquals(List.of(SCHEDULED), Fixtures.appliedTypes("BUF-5"));
         assertEquals(1, Fixtures.pending("BUF-5"));
+    }
+
+    @RepeatedTest(20)
+    void twoReplicasHandlingANewOrderAtOnceApplyOneThenTwo(RepetitionInfo info) throws Exception {
+        String id = "BUF-RACE-" + info.getCurrentRepetition();
+        var start = new CyclicBarrier(2);
+        var second = CompletableFuture.runAsync(() -> concurrently(start, id, IN_TRANSIT, 2));
+        var first = CompletableFuture.runAsync(() -> concurrently(start, id, SCHEDULED, 1));
+        CompletableFuture.allOf(first, second).get();
+        assertEquals(List.of(SCHEDULED, IN_TRANSIT), Fixtures.appliedTypes(id));
+        assertEquals(0, Fixtures.pending(id));
+    }
+
+    @RepeatedTest(20)
+    void twoReplicasHandlingAnExistingOrderAtOnceApplyOneTwoThree(RepetitionInfo info) throws Exception {
+        String id = "BUF-RACE-EXISTING-" + info.getCurrentRepetition();
+        accept(id, DELIVERED, 3);
+        var start = new CyclicBarrier(2);
+        var second = CompletableFuture.runAsync(() -> concurrently(start, id, IN_TRANSIT, 2));
+        var first = CompletableFuture.runAsync(() -> concurrently(start, id, SCHEDULED, 1));
+        CompletableFuture.allOf(first, second).get();
+        assertEquals(List.of(SCHEDULED, IN_TRANSIT, DELIVERED), Fixtures.appliedTypes(id));
+        assertEquals(0, Fixtures.pending(id));
+    }
+
+    private void concurrently(CyclicBarrier start, String orderId, String type, int sequence) {
+        try {
+            start.await();
+            accept(orderId, type, sequence);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

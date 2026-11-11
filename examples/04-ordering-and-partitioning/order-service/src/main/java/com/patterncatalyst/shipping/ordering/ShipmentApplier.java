@@ -31,17 +31,21 @@ public class ShipmentApplier {
         record(lockOrCreate(event.orderId()), event);
     }
 
-    /** The order's row, locked for the rest of the transaction; created if this is the order's first event. */
+    /**
+     * The order's row, locked for the rest of the transaction. The row is created first with an
+     * insert that does nothing when it already exists, so two replicas handling the order's first
+     * event cannot both insert, and the lock then serialises them on a row that is certain to exist.
+     */
     OrderStatusRow lockOrCreate(String orderId) {
-        OrderStatusRow row = OrderStatusRow.findById(orderId, LockModeType.PESSIMISTIC_WRITE);
-        if (row == null) {
-            row = new OrderStatusRow();
-            row.orderId = orderId;
-            row.status = OrderStatus.PLACED;
-            row.lastEvent = "";
-            row.persist();
-        }
-        return row;
+        OrderStatusRow.getEntityManager().createNativeQuery("""
+                INSERT INTO orders.order_status (order_id, status, last_event, next_sequence)
+                VALUES (:id, :status, '', 1)
+                ON CONFLICT (order_id) DO NOTHING
+                """)
+                .setParameter("id", orderId)
+                .setParameter("status", OrderStatus.PAID.name())
+                .executeUpdate();
+        return OrderStatusRow.findById(orderId, LockModeType.PESSIMISTIC_WRITE);
     }
 
     void record(OrderStatusRow row, ShipmentEvent event) {

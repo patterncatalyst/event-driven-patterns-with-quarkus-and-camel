@@ -16,6 +16,7 @@ LIFECYCLE=ShipmentScheduled,ShipmentInTransit,ShipmentDelivered
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
 TOTAL=0
 PASSED=0
+PAUSES=""
 RUN="$(date +%s)"
 
 cleanup() {
@@ -71,6 +72,7 @@ owner_of() { grep "^$1=" <<<"$ASSIGN" | cut -d= -f2; }
 
 end_offsets() { kafka kafka-get-offsets.sh --topic "$1"; } # topic:partition:offset
 
+# edp.shipping.probe exists only to ask the broker which partition its default partitioner gives a key.
 # The partition the stock console producer, with the default partitioner, gives a key.
 probe_partition() {
     local before after
@@ -107,6 +109,7 @@ stall() {
     PRE_DELIVERED_OWNER=$OTHER_OWNER_OF_DELIVERED
     [[ -n "$PAUSED" ]] || fail_loudly "no replica owns partition $ps"
 
+    local paused_at=$SECONDS
     "${COMPOSE[@]}" pause "$PAUSED" >/dev/null
     RECEIPTS=$(publish "$id")
     PARTS=$(partitions_of <<<"$RECEIPTS" | paste -sd, -)
@@ -126,6 +129,7 @@ stall() {
     HELD=$(held_count "$id")
     echo "  applied while $PAUSED is paused: ${DURING:-nothing}; held in the buffer: $HELD"
     "${COMPOSE[@]}" unpause "$PAUSED" >/dev/null
+    PAUSES+=$((SECONDS - paused_at))" "
     local end2=$((SECONDS + 90))
     until [[ "$(history_count "$id")" == 3 ]]; do (( SECONDS < end2 )) || break; sleep 1; done
     HISTORY=$(history "$id")
@@ -215,6 +219,10 @@ check "history is in lifecycle order" expect "$HISTORY" "$LIFECYCLE"
 check "final status is DELIVERED" expect "$STATUS" DELIVERED
 check "the buffer is empty once sequence 1 arrives" expect "$HELD_AFTER" 0
 check "no rebalance: assignment unchanged" expect "$AFTER" "$BEFORE"
+
+# The consumer session timeout is 45 s by default; a longer pause would trigger a rebalance.
+all_pauses_short() { local p; for p in $PAUSES; do (( p < 45 )) || return 1; done; }
+check "every pause was shorter than the 45 s session timeout" all_pauses_short
 
 check "Tempo has a trace for shipping-service" poll 90 tempo_has_trace shipping-service
 check "Tempo has a trace for order-service" poll 90 tempo_has_trace order-service

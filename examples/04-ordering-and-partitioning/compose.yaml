@@ -40,6 +40,7 @@ services:
         set -e
         kt=/opt/kafka/bin/kafka-topics.sh
         $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.shipments --partitions 3 --replication-factor 1
+        # The probe topic exists only so verify.sh can ask the broker which partition a key maps to.
         $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.probe --partitions 3 --replication-factor 1
     restart: "no"
     mem_limit: 512m

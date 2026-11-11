@@ -8,9 +8,10 @@ import io.quarkus.panache.common.Sort;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+
+import org.jboss.resteasy.reactive.RestPath;
 
 /** Reads what the replicas have applied. */
 @Path("/orders")
@@ -25,7 +26,7 @@ public class OrderResource {
 
     @GET
     @Path("{id}/status")
-    public Status status(@PathParam("id") String id) {
+    public Status status(@RestPath String id) {
         OrderStatusRow row = OrderStatusRow.findById(id);
         if (row == null) {
             throw new NotFoundException();
@@ -35,7 +36,7 @@ public class OrderResource {
 
     @GET
     @Path("{id}/history")
-    public List<Applied> history(@PathParam("id") String id) {
+    public List<Applied> history(@RestPath String id) {
         return StatusHistoryRow.<StatusHistoryRow>list("orderId", Sort.by("id"), id).stream()
                 .map(h -> new Applied(h.eventType, h.sequence, h.status, h.replica))
                 .toList();

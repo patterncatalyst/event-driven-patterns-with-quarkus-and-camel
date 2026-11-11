@@ -12,7 +12,6 @@ public class ShipmentConsumeRoute extends RouteBuilder {
 
     @Override
     public void configure() {
-        // A concurrent first insert for the same order loses the race once; a retry sees the row.
         onException(Exception.class).maximumRedeliveries(3).redeliveryDelay(200);
 
         from("kafka:" + Topics.SHIPPING_SHIPMENTS + "?groupId={{order.group}}&clientId={{order.replica}}")

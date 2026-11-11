@@ -12,7 +12,7 @@ Quarkus, Camel (Kafka and platform-http), Hibernate ORM with Panache, Flyway, Po
 | `order-1` | 8082 | One `order-service` replica. `GET /orders/{id}/status` and `GET /orders/{id}/history` |
 | `order-2` | none | The second replica of the same service and group |
 
-`SHIPPING_PARTITION_KEY` is `order-id` (default), `event-type` or `carrier`. `RESEQUENCE=true` on the order replicas stores each event in `orders.pending_shipment_event` and applies an order's events from its `next_sequence` onward, in sequence order, under a row lock on the order. Events that arrive early wait in the table; a missing event holds that order's later events, and only that order's.
+`SHIPPING_PARTITION_KEY` is `order-id` (default), `event-type` or `carrier`. `RESEQUENCE=true` on the order replicas stores each event in `orders.pending_shipment_event` and applies an order's events from its `next_sequence` onward, in sequence order, under a row lock on the order, which is created first, with an insert that does nothing on a conflict, when the order's first event arrives. Events that arrive early wait in the table; a missing event holds that order's later events, and only that order's.
 
 Every event carries `sequence` (1, 2, 3 within the order).
 
@@ -31,7 +31,7 @@ docker compose down -v
 ## What verify.sh does
 
 1. Finds, with `kafka-consumer-groups.sh --describe`, which replica owns the partition of the `ShipmentScheduled` record, pauses it with `docker compose pause`, publishes one order, waits until the other replica has applied what it owns, resumes the paused replica and waits for the history to hold three rows. The group is described before and after: no rebalance.
-2. Runs that with the order-id key (order kept), the carrier key (order kept, two of three partitions used) and the event-type key (the order regresses to SHIPPED).
+2. Runs that with the order-id key (order kept) and, after publishing six orders with the carrier key and checking that each stays in one partition and that at most two partitions are used, with the event-type key (the order regresses to SHIPPED).
 3. Runs the event-type key again with `RESEQUENCE=true`: while the owner of `Scheduled` is paused the other replica holds two events in the buffer and applies none, and the same stall ends at DELIVERED in lifecycle order.
 
 The event-type runs fail loudly, before asserting anything else, if the `Scheduled` and `Delivered` partitions are owned by the same replica.
@@ -44,6 +44,6 @@ The event-type runs fail loudly, before asserting anything else, if the `Schedul
 | `shipping-service/.../PartitionKeyStrategy` | The three key strategies |
 | `order-service/.../ShipmentConsumeRoute` | Reads the stream; applies directly or hands the event to the buffer |
 | `order-service/.../ShipmentBuffer` | Locks the order, stores the event, applies the buffered run from `next_sequence` |
-| `order-service/.../ShipmentApplier` | Status mapping, last write wins, one history row per event |
+| `order-service/.../ShipmentApplier` | Status mapping, last write wins, one history row per event; creates the order's row (PAID) with an insert that does nothing on a conflict, then locks it |
 | `order-service/src/main/resources/db/migration` | `orders.order_status` (with `next_sequence`), `orders.order_status_history` and `orders.pending_shipment_event` |
 | `compose.yaml` | Creates the topics (3 partitions), then the services and two order replicas |
