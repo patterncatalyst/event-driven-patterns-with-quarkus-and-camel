@@ -6,7 +6,10 @@ render_with_liquid: false
 
 # r04 plan: chapters 08 to 10, transactional outbox, Debezium in depth, connector offsets on compose (Opus planner, 2026-11-11)
 
-Status: awaiting owner review.
+Status: approved 2026-11-11 with all 13 recommendations, with two owner changes:
+
+- Decision 1 changed: try Debezium 3.7.1.Final for debezium-quarkus-outbox first (S1 checks the mixed `debezium-api` jars against the Camel BOM's 3.6.3); fall back to 3.6.x only on a real failure, recorded in versions.md.
+- Camel: the owner expects Camel 4.22.2 (the 4.22 patch released 2026-10-17). Camel Quarkus 3.40.0, the newest, is built on Camel 4.22.1 and the platform 3.40.1.2 carries 4.22.1. Spike S6 imports `org.apache.camel:camel-bom:4.22.2` ahead of the platform BOM; if every example 00 to 07 passes `mvn verify` and the final serial run, the pin moves to 4.22.2 (camel-launcher too); otherwise hold at 4.22.1 with the failure recorded.
 
 ## Findings
 
@@ -103,7 +106,7 @@ Layout: The problem; Where a source connector keeps its place; Stopping, listing
 
 Executors make no git writes and do not edit claims.md, verification-log.md, CLAUDE.md, `_infra` or validate.py.
 
-Spikes: S1 outbox extension on Quarkus 3.40.1.2 with the Camel BOM (dependency tree, 3.7.1 then 3.6.x; Flyway table vs mapping; `additional-fields` topic reaches EventRouter; remove-after-insert emits; OTel; PK violation at commit rolls back the outbox insert and maps to 409). S2 Connect image plugins, EventRouter, RegexRouter, heartbeat prefix. S3 heartbeat with pgoutput, filtered publication and a busy uncaptured table: interval alone or `heartbeat.action.query`. S4 KIP-875 on PostgresConnector: offset shape, PATCH response, forward skip, backward clamp, DELETE then snapshot, duplicates after re-snapshot, lost slot status and recovery. S5 camel-quarkus-debezium-postgres options, headers, 512m memory, coexistence with the Connect slot.
+Spikes: S1 outbox extension on Quarkus 3.40.1.2 with the Camel BOM (dependency tree, 3.7.1 then 3.6.x; Flyway table vs mapping; `additional-fields` topic reaches EventRouter; remove-after-insert emits; OTel; PK violation at commit rolls back the outbox insert and maps to 409). S2 Connect image plugins, EventRouter, RegexRouter, heartbeat prefix. S3 heartbeat with pgoutput, filtered publication and a busy uncaptured table: interval alone or `heartbeat.action.query`. S4 KIP-875 on PostgresConnector: offset shape, PATCH response, forward skip, backward clamp, DELETE then snapshot, duplicates after re-snapshot, lost slot status and recovery. S5 camel-quarkus-debezium-postgres options, headers, 512m memory, coexistence with the Connect slot. S6 Camel 4.22.2 override: camel-bom 4.22.2 imported before the platform BOM in one example, `dependency:tree` shows camel-* 4.22.2 only, `mvn verify` green; then G0 applies it to 00 to 07 and runs `mvn verify` for each.
 
 ## Acceptance criteria
 
