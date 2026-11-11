@@ -77,3 +77,13 @@ Orchestrator, clean Docker, under the stack lock, one at a time.
   - ch04: `SHIPPING_PARTITION_KEY=event-type` for run 1 gives **25/27** (checks 3, 5 fail; 6, 7, 9 are run-dependent); `RESEQUENCE=true` on all runs gives **24/27** (checks 14, 15, 16 fail).
 - Opus validation round 1: fresh-clone build with an empty Maven repository of domain-model plus 02, 03 and 04 `package`: BUILD SUCCESS.
 - Repair round 1 re-runs follow.
+
+## r02 repair round 1 re-run (2026-11-10)
+
+Orchestrator, clean Docker, under the stack lock, one at a time:
+
+- 02-event-notification: mvn 7 + 4 tests, BUILD SUCCESS; verify.sh 21/21. Experiment, `breakOnFirstError=true` removed from `OrderPlacedNotificationRoute`: 19/21, checks 14 (offset not committed past) and 16 (B's notification appears) fail; restored, diff clean.
+- Recorded by the ch02 repair executor: `camel-quarkus-opentelemetry2` removed from order-service gives 20/21 (check 7 fails); observer set to `TransactionPhase.IN_PROGRESS` makes `rolledBackOrderPublishesNothing` fail.
+- 03-event-carried-state-transfer: mvn 8 + 7, BUILD SUCCESS; verify.sh 30/30.
+- 04-ordering-and-partitioning: mvn 4 + 46 runs (12 methods, two `@RepeatedTest(20)`), BUILD SUCCESS; verify.sh 28/28. Recorded by the ch04 repair executor: without the `ON CONFLICT` create the new-order concurrency test errors 20/20; without the row lock the existing-order test failed 1 of 20 (probabilistic).
+- 00 and 01 unchanged in code since the final serial run (17/17, 19/19).

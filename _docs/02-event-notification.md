@@ -95,7 +95,7 @@ Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to follow t
 
 Change one thing and watch a guard fail:
 
-- Remove `breakOnFirstError=true` from the consumer route. The consumer reads past the record it could not fetch and commits it, so the offset moves beyond B and B's notification never appears: `verify.sh` checks 12 and 14 fail.
+- Remove `breakOnFirstError=true` from the consumer route. The consumer reads past the record it could not fetch and commits it, so the offset moves beyond B and B's notification never appears: `verify.sh` checks 14 and 16 fail.
 - Send the event without the key header in `OrderPlacedPublisher`. The record is no longer keyed by the order id, and the three Maven tests that read the topic by order id fail.
 
 ## When not to use it
