@@ -329,3 +329,14 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 07-07 | 07 | With a 15 s lock the 8 s slow job was redelivered after it finished | 07-v3, 07-v4 runs | _docs/07-queues-for-kafka.md | verified |
 | 07-08 | 07 | The Camel Kafka component has no share-group option | sources.md Camel Kafka component row | _docs/07-queues-for-kafka.md | verified |
 | 07-09 | 07 | Lock default 30 s, delivery count limit 5, no ordering guarantee, accept/release/reject | sources.md Kafka design, KIP-932, Strimzi post | _docs/07-queues-for-kafka.md | verified |
+
+### r03 reference back-fill
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| r03-bf-01 | 02 | References: Bellemare ch 2 Fundamentals of Events and Event Streams, ch 5 Designing Events, ch 17 Integrating Event-Driven and Request-Response | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/02-event-notification.md:124 | verified |
+| r03-bf-02 | 03 | References: Bellemare ch 4 Schemas and Data Contracts, ch 5 Designing Events, ch 7 Denormalization and Eventification | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/03-event-carried-state-transfer.md:147 | verified |
+| r03-bf-03 | 04 | References: Bellemare ch 2 Fundamentals of Events and Event Streams | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/04-ordering-and-partitioning.md:126 | verified |
+| r03-bf-04 | 04 | References: Lawrence ch 2 Anatomy of Message-Driven Systems (owner-approved r03 addition) | sources.md Lawrence TOC row, chapter title matches | _docs/04-ordering-and-partitioning.md:125 | verified |
+| r03-bf-05 | 05 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/05-optimizing-publishers.md:143 | verified |
+| r03-bf-06 | 06 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/06-optimizing-subscribers.md:125 | verified |
