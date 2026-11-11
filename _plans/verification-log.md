@@ -68,8 +68,8 @@ Orchestrator, clean Docker, under the stack lock, one at a time.
 - `examples/00-stack-check`: mvn **4/4**; `verify.sh` **17/17**.
 - `examples/01-crud-vs-events`: mvn **11/11**; `verify.sh` **19/19**.
 - `examples/02-event-notification`: mvn **6+4**; `verify.sh` **19/19**.
-- `examples/03-claim-check`: mvn **8+7**; `verify.sh` **30/30**.
-- `examples/04-event-ordering`: mvn **4+6**; `verify.sh` **27/27**.
+- `examples/03-event-carried-state-transfer`: mvn **8+7**; `verify.sh` **30/30**.
+- `examples/04-ordering-and-partitioning`: mvn **4+6**; `verify.sh` **27/27**.
 - All BUILD SUCCESS.
 - Experiments recorded by the executors on 2026-11-10:
   - ch02: removing `breakOnFirstError` gives **17/19** (checks 12, 14 fail); dropping the key header makes 3 of the 6 order-service tests fail.

@@ -22,9 +22,9 @@ mvn -B verify
 
 1. **Order id keeps the order.** With one replica paused, the other applies nothing of the order, and after the pause the history is Scheduled, InTransit, Delivered and the status is DELIVERED.
 2. **Event type loses it.** The replica that stays up applies InTransit and Delivered while the other is paused. After it resumes, Scheduled arrives last and the status ends SHIPPED.
-3. **Carrier keeps each order whole.** Many orders use only two of three partitions.
+3. **Carrier keeps each order whole.** Six orders use at most two of three partitions.
 4. **The buffer restores it.** With `RESEQUENCE=true` the replica that stays up holds the two early events in `pending_shipment_event` and applies none. After the pause the same run ends DELIVERED in lifecycle order.
-5. **A missing event costs time.** The buffer holds that order's later events until the missing one arrives. Other orders are not held.
+5. **A missing event holds its order.** The buffer holds that order's later events until the missing one arrives. Other orders are not held.
 6. **No rebalance.** The consumer group assignment is the same before and after the pause.
 
 ## Infrastructure

@@ -70,7 +70,7 @@ Run one stack. The services publish fixed host ports, so a second copy fails to 
 
 ## The running example
 
-Every example in the book is a piece of one business: an online shop that sells and ships physical goods. A customer orders an item. The shop records the order, reserves stock, takes payment, books a carrier and delivers the parcel, and tells the customer after each step. Five services each own one of those steps. They share no tables and call no one else's API; they react to events on Kafka. Two patterns call the order service by design: event notification fetches the current order back, and a claim check fetches a stored attachment.
+Every example in the book is a piece of one business: an online shop that sells and ships physical goods. A customer orders an item. The shop records the order, reserves stock, takes payment, books a carrier and delivers the parcel, and tells the customer after each step. Five services each own one of those steps. They share no tables and react to events on Kafka. Two patterns call the order service by design: event notification fetches the current order back, and a claim check fetches a stored attachment.
 
 {% include excalidraw.html file="00-running-example" alt="Five services: order, inventory, payment and shipping in a row joined by topics, with notification below receiving from all of them" caption="Figure 0.2: Five services joined by topics" %}
 

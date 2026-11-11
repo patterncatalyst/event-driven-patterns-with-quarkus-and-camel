@@ -43,7 +43,7 @@ With the order id as the key, one replica owns all three events and the other ow
 
 With the event type as the key, the unpaused replica applies ShipmentInTransit and ShipmentDelivered. When the paused replica resumes it applies ShipmentScheduled last, and the status regresses from DELIVERED to SHIPPED.
 
-The carrier key shows the cost of a poor key without reordering anything. Order is kept per order and parallelism is capped by the number of distinct keys.
+The carrier key keeps each order's events in one partition, so nothing is reordered, but it has only two values: at most two of the three partitions receive records, and the replica that owns the third has nothing to do.
 
 ## Pattern: Resequencer
 
@@ -92,7 +92,7 @@ The same stall that leaves an order SHIPPED now ends DELIVERED. The unpaused rep
 
 The buffer handles the other orderings the same way. Events arriving as 3, 2, 1 are applied as 1, 2, 3. With 1 and 3 delivered, event 3 waits until 2 arrives. A duplicate is ignored. A gap in one order does not hold another order's events, because the lock and the counter belong to one order. Two replicas that receive an order's first two events at the same moment end with 1 and 2 applied and nothing held.
 
-A missing event holds that order's later events indefinitely: nothing here gives up on a gap, so a lost event needs a timeout or a repair decision. Only that order waits. The buffer is a database table, so every event that arrives early costs an insert and a delete. The lock serialises events of the same order, which is the order of work you want, and does not affect other orders.
+A missing event holds that order's later events indefinitely: nothing here gives up on a gap, so a lost event needs a timeout or a repair decision. Only that order waits. The buffer is a database table, so every event that arrives early costs an insert and a delete. The lock makes events of the same order wait for each other; events of other orders do not wait for it.
 
 ## Build, run, observe
 

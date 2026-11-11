@@ -106,11 +106,11 @@ The cost is the call back to the source. While the source is down, the consumer 
 
 Fowler also warns that a flow made of notifications is not explicit in any program text; a trace that spans both services shows the flow.
 
-Every consumer that fetches adds one request to order-service for each event it reads. A source that cannot take that load is a reason to carry the state in the event instead.
+Every consumer that fetches adds one request to order-service for each event it reads.
 
 A consumer reads current state, not the state at event time. A notification built after the order was cancelled says CANCELLED, which is right for a customer and wrong for an auditor who wants to know what the order looked like when it was placed. When consumers need the state as it was at event time, or the source cannot take the read load or answer reliably, carry the state in the event instead.
 
-Publishing after the commit leaves a window: if the process stops between the commit and the publish, the order exists and the event does not. The failed-publish case leaves the order readable and the topic empty, and nothing in this design repairs it.
+Publishing after the commit leaves a window: if the process stops between the commit and the publish, the order exists and the event does not. If the publish itself fails, the order can still be read from order-service and nothing reaches the topic, and nothing here publishes the event later.
 
 > **🤖 Explore with your agent**
 > "In examples/02-event-notification, stop notification-service, place an Order with order-service, cancel it, then start notification-service. Read the Notification from GET /notifications and compare its orderStatus with the status the OrderPlaced event announced. State the rule that says when a consumer may fetch current state and when the event must carry the state, and name one Order field each case needs."
