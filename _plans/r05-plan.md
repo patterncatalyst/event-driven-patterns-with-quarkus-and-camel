@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r05 plan: chapters 11 to 13, idempotent consumer and inbox, exactly-once with Kafka transactions, retry and dead letter (Opus planner, 2026-11-11)
 
-Status: draft for owner review. Nothing written to disk. Branch `release/r05` is clean at r04.0 (e655839).
+Status: **approved by the owner 2026-11-11, all 15 recommendations**; merge when validation and CI pass (owner). Branch `release/r05` from main at 45d8e79.
 
 Planner note: one ephemeral `docker run --rm docker.io/apache/kafka:4.3.2` was run (help output only, no stack, removed on exit). No other state was changed.
 
