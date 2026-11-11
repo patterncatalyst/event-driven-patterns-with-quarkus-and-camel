@@ -3,7 +3,7 @@ title: "Ordering and partitioning"
 order: 4
 part: getting-started
 permalink: /docs/04-ordering-and-partitioning/
-description: "Kafka orders records only within a partition. Key an order's events by the order id, and use a resequencer when the key cannot change."
+description: "Kafka orders records only within a partition. Key an order's events by the order id, and hold events in a per-order buffer when the key cannot change."
 duration: "40 minutes"
 ---
 
@@ -25,7 +25,7 @@ Kafka's documentation states the guarantee as order per partition: any consumer 
 
 ### How Quarkus and Camel model it
 
-`shipping-service` plans the three events of an order with two sequence numbers: `sequence` counts within the order (1, 2, 3) and `streamSequence` counts across everything the service publishes. A Camel route splits the plan, sets the Kafka key header from a strategy, marshals each event to JSON and sends it with the Kafka producer, waiting for the broker's answer. The response lists the partition and offset of every record.
+`shipping-service` numbers the three events of an order 1, 2 and 3 in `sequence`. A Camel route splits the plan, sets the Kafka key header from a strategy, marshals each event to JSON and sends it with the Kafka producer, waiting for the broker's answer. The response lists the partition and offset of every record.
 
 `PartitionKeyStrategy` has three values, chosen by `SHIPPING_PARTITION_KEY`:
 
@@ -55,33 +55,44 @@ Sometimes the key cannot be the entity id. Several producers publish about one o
 
 **A Resequencer is a stateful filter that holds out-of-sequence messages and releases them in order.**
 
-Hohpe and Woolf's Resequencer needs a sequence number in each message and a place where all messages of a sequence arrive. Keying by entity id is the first answer, because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays in latency and memory.
+Hohpe and Woolf's Resequencer needs a sequence number in each message and a place where the held messages wait. Keying by entity id is the first answer, because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays in latency and storage.
 
 ### How Quarkus and Camel model it
 
-Camel's Resequence EIP has a batch mode and a stream mode. Stream mode releases a message as soon as the next expected sequence number arrives, needs integer sequence numbers starting at 1, and buffers up to a capacity of 1000 messages by default. When a number does not arrive, the resequencer waits for its timeout, disregards the expected number and moves on.
+Every shipment event already carries `sequence`, its number within the order. Both `order-service` replicas share the database, so the database is the place where an order's events wait. With `RESEQUENCE=true` the consume route hands each event to `ShipmentBuffer` instead of applying it:
 
-Two properties of that design shaped the example.
+1. Lock the order's row in `orders.order_status` with `PESSIMISTIC_WRITE`. The row holds `next_sequence`, the number to apply next, starting at 1.
+2. If the event's sequence is below `next_sequence`, or the same event is already held, ignore it.
+3. Otherwise store it in `orders.pending_shipment_event`, which has a unique constraint on order id and sequence.
+4. While the buffer holds the event numbered `next_sequence`, apply it, delete it and increment `next_sequence`.
 
-**One sequence per resequencer.** Camel's stream resequencer orders a single run of consecutive integers, so a per-order number (1, 2, 3 for every order) cannot drive it for many orders at once. The example resequences on `streamSequence`, the producer's own count. The cost is real: a lost event holds back every order behind it until the timeout. The example's counter lives in memory, so the producer and the resequencer restart together; a production producer needs a persistent counter. A per-order sequence would avoid both, but the EIP takes one expression and keeps one sequence.
+All four steps run in one `@Transactional` method, so an event is either held or applied, never both, and a crash between them leaves nothing half done.
 
-**Every event in one place.** Each replica sees only its partitions. With `RESEQUENCE=true` a replica forwards each event to a topic with one partition, the funnel, and one consumer in the group reads it and runs the resequencer.
-
-{% raw %}
 ```java
-from("{{order.resequence.from}}")
-        .unmarshal().json(ShipmentEvent.class)
-        .resequence(simple("${body.streamSequence}"))
-            .stream().timeout("{{order.resequence.timeout}}").capacity(1000)
-        .to("direct:apply-shipment");
+@Transactional
+public void accept(String payload) throws JsonProcessingException {
+    ShipmentEvent event = json.readValue(payload, ShipmentEvent.class);
+    OrderStatusRow order = applier.lockOrCreate(event.orderId());
+    // ... ignore an event that was already applied or is already held, else persist it
+    PendingShipmentEvent next;
+    while ((next = PendingShipmentEvent.<PendingShipmentEvent>find("orderId = ?1 and sequence = ?2",
+            order.orderId, order.nextSequence).firstResult()) != null) {
+        applier.record(order, json.readValue(next.payload, ShipmentEvent.class));
+        next.delete();
+        order.nextSequence++;
+    }
+}
 ```
-{% endraw %}
 
-{% include excalidraw.html file="04-resequencer" alt="Both replicas forward events to a one-partition funnel; the resequencer holds events 2 and 3 until event 1 arrives and then applies 1, 2, 3" caption="Figure 4.3: Funnel to one partition, then restore the sequence" %}
+The row lock is what makes two replicas safe. Both can receive events of the same order, because the key puts them in different partitions, and the second one to ask for the lock waits until the first commits. It then sees the first replica's changes, so no event is applied twice and none is applied out of turn.
 
-The same stall that leaves an order SHIPPED now ends DELIVERED. The unpaused replica forwards ShipmentInTransit and ShipmentDelivered, the resequencer holds them because number 1 is missing, and nothing is applied. When the paused replica resumes and forwards ShipmentScheduled, the resequencer releases 1, 2 and 3 in order.
+{% include excalidraw.html file="04-resequencer" alt="Replica B receives events 2 and 3 and stores them in the pending table; replica A receives event 1, and under the order's row lock events 1, 2 and 3 are applied in order and deleted from the table" caption="Figure 4.3: Hold in the database, apply from the next expected sequence" %}
 
-The timeout sets the price of a gap. If an event is lost, later events wait the full timeout and then flow, with the lost number skipped. The timeout must exceed the longest stall you want to absorb, and the buffer must hold what arrives meanwhile.
+The same stall that leaves an order SHIPPED now ends DELIVERED. The unpaused replica receives ShipmentInTransit and ShipmentDelivered, finds that number 1 is missing, and stores both. Nothing is applied and the table holds two rows for the order. When the paused replica resumes and receives ShipmentScheduled, one transaction applies 1, 2 and 3 in order and empties the table.
+
+Three more cases have tests. Events arriving as 3, 2, 1 are applied as 1, 2, 3. With 1 and 3 delivered, event 3 waits until 2 arrives. A duplicate is ignored. A gap in one order does not hold another order's events, because the lock and the counter belong to one order.
+
+The costs are plain. A missing event holds that order's later events indefinitely: nothing in the example gives up on a gap, so a lost event needs a timeout or a repair decision that the example does not make for you. Only that order waits. The buffer lives in the database, so it survives a restart and costs a write and a delete for every event that arrives early. The lock serialises events of the same order, which is the order of work you want, and does not affect other orders.
 
 ## Build, run, observe
 
@@ -92,24 +103,23 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs eight tests across both services against Kafka and PostgreSQL from Dev Services, with three partitions. They compute the expected partition of every key with Kafka's own murmur2 and compare it with the placement the broker reports, for all three strategies. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack, `shipping-service` and two `order-service` replicas, runs the stalled-replica order under four configurations and prints `25/25 checks passed`.
+The Maven build runs ten tests across both services against Kafka and PostgreSQL from Dev Services, with three partitions. Four of them compute the expected partition of every key with Kafka's own murmur2 and compare it with the placement the broker reports, for all three strategies; the others cover arrival order and the buffer. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack, `shipping-service` and two `order-service` replicas, runs the stalled-replica order under four configurations and prints `27/27 checks passed`.
 
 Change one thing and watch a guard fail:
 
-- Export `SHIPPING_PARTITION_KEY=event-type` before `./verify.sh`. The first run now spreads the order across partitions: checks 3, 5, 6, 7 and 9 fail, because events are applied while the paused replica is down, the history leaves lifecycle order and the status ends SHIPPED.
+- Export `SHIPPING_PARTITION_KEY=event-type` before `./verify.sh`. The first run now spreads the order across partitions: check 3 fails because the three events no longer share the key's partition, and check 5 fails because the unpaused replica applies events while the other is paused. Checks 6, 7 and 9 fail too when the paused replica happens to own the partition of ShipmentScheduled.
 - Compare the third and fourth runs. They differ only in `RESEQUENCE=true`: the third ends SHIPPED with Delivered applied first, the fourth ends DELIVERED in lifecycle order.
-- Give the resequencer a missing number and a short timeout in the tests: the later event is held until the timeout, then released, and the gap is skipped.
+- Export `RESEQUENCE=true` before `./verify.sh`. The buffer is now on in the event-type run as well, so the negative witness stops failing: checks 14, 15 and 16 fail because the order no longer ends SHIPPED.
 
 ## When not to use it
 
-Keying by entity id does not order events across entities, and it leaves the partition count as the limit on parallelism. A resequencer adds latency equal to the longest gap it waits out, memory for everything it holds, and a single point where the whole sequence must pass, which limits throughput to one consumer. If the events can share a key, use the key. If order only matters for the final state, a version or sequence number checked at the write, which rejects an older event, is cheaper than reordering.
+Keying by entity id does not order events across entities, and it leaves the partition count as the limit on parallelism. A buffer adds latency equal to the longest gap it waits out, rows in the database for everything it holds, and a row lock per event. If the events can share a key, use the key. If order only matters for the final state, a version or sequence number checked at the write, which rejects an older event, is cheaper than reordering.
 
 > **🤖 Explore with your agent**
-> "In examples/04-ordering-and-partitioning, publish one order with SHIPPING_PARTITION_KEY set to order-id and then to event-type, pause the order replica that owns the ShipmentScheduled partition each time, and compare the OrderStatus and the order_status_history rows. State which key keeps ShipmentDelivered after ShipmentScheduled, and which sequence number the Resequencer needs to put them back."
+> "In examples/04-ordering-and-partitioning, publish one order with SHIPPING_PARTITION_KEY set to order-id and then to event-type, pause the order replica that owns the ShipmentScheduled partition each time, and compare the OrderStatus and the order_status_history rows. State which key keeps ShipmentDelivered after ShipmentScheduled, and how the per-order buffer puts them back using the sequence number."
 > Check: order-id ends DELIVERED in lifecycle order; event-type ends SHIPPED with ShipmentDelivered applied before ShipmentScheduled.
 
 ## References
 
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Resequencer](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html)
 - Apache Kafka documentation, Introduction, "Main Concepts and Terminology": [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
-- Apache Camel, [Resequence EIP](https://camel.apache.org/components/latest/eips/resequence-eip.html)

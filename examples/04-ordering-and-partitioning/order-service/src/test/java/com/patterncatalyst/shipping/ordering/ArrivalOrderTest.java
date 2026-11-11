@@ -22,19 +22,19 @@ class ArrivalOrderTest {
     @ConfigProperty(name = "kafka.bootstrap.servers")
     String bootstrapServers;
 
-    private void send(String orderId, String type, int sequence, long streamSequence) {
+    private void send(String orderId, String type, int sequence) {
         try (var producer = new KafkaProducer<>(Map.<String, Object>of("bootstrap.servers", bootstrapServers),
                 new StringSerializer(), new StringSerializer())) {
             producer.send(new ProducerRecord<>(Topics.SHIPPING_SHIPMENTS, orderId,
-                    Fixtures.json(orderId, type, sequence, streamSequence)));
+                    Fixtures.json(orderId, type, sequence)));
         }
     }
 
     @Test
     void inLifecycleOrderTheOrderEndsDelivered() {
-        send("ARR-1", "ShipmentScheduled", 1, 1);
-        send("ARR-1", "ShipmentInTransit", 2, 2);
-        send("ARR-1", "ShipmentDelivered", 3, 3);
+        send("ARR-1", "ShipmentScheduled", 1);
+        send("ARR-1", "ShipmentInTransit", 2);
+        send("ARR-1", "ShipmentDelivered", 3);
         Fixtures.awaitApplied("ARR-1", 3);
         assertEquals(List.of("ShipmentScheduled", "ShipmentInTransit", "ShipmentDelivered"),
                 Fixtures.appliedTypes("ARR-1"));
@@ -44,8 +44,8 @@ class ArrivalOrderTest {
     @Test
     void deliveredArrivingBeforeScheduledLeavesTheOrderShipped() {
         // Last write wins: the status follows arrival, not the lifecycle.
-        send("ARR-2", "ShipmentDelivered", 3, 6);
-        send("ARR-2", "ShipmentScheduled", 1, 4);
+        send("ARR-2", "ShipmentDelivered", 3);
+        send("ARR-2", "ShipmentScheduled", 1);
         Fixtures.awaitApplied("ARR-2", 2);
         assertEquals(OrderStatus.SHIPPED, Fixtures.statusOf("ARR-2"));
     }

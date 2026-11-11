@@ -2,7 +2,7 @@
 title: "Ordering and partitioning"
 order: 4
 permalink: /examples/04-ordering-and-partitioning/
-description: "One order's shipment events keyed three ways, a paused consumer replica, and a resequencer that restores the lifecycle."
+description: "One order's shipment events keyed three ways, a paused consumer replica, and a per-order buffer that restores the lifecycle."
 ---
 
 [`examples/04-ordering-and-partitioning/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/04-ordering-and-partitioning) publishes the shipment events of an order to a topic with three partitions and applies them in two `order-service` replicas that share a consumer group. It accompanies [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }}).
@@ -23,8 +23,8 @@ mvn -B verify
 1. **Order id keeps the order.** With one replica paused, the other applies nothing of the order, and after the pause the history is Scheduled, InTransit, Delivered and the status is DELIVERED.
 2. **Event type loses it.** The replica that stays up applies InTransit and Delivered while the other is paused. After it resumes, Scheduled arrives last and the status ends SHIPPED.
 3. **Carrier keeps each order whole.** Many orders use only two of three partitions.
-4. **The resequencer restores it.** With `RESEQUENCE=true` the same run ends DELIVERED in lifecycle order.
-5. **A missing sequence number costs time.** The resequencer holds later events until its timeout releases them.
+4. **The buffer restores it.** With `RESEQUENCE=true` the replica that stays up holds the two early events in `pending_shipment_event` and applies none. After the pause the same run ends DELIVERED in lifecycle order.
+5. **A missing event costs time.** The buffer holds that order's later events until the missing one arrives. Other orders are not held.
 6. **No rebalance.** The consumer group assignment is the same before and after the pause.
 
 ## Infrastructure

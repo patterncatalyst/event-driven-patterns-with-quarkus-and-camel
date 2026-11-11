@@ -15,9 +15,8 @@ x-order-service: &order-service
     QUARKUS_DATASOURCE_PASSWORD: edp
     CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
     QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
-    # false: apply events as they arrive. true: funnel them and apply in stream sequence.
+    # false: apply events as they arrive. true: hold each until its per-order sequence number is next.
     RESEQUENCE: ${RESEQUENCE:-false}
-    RESEQUENCE_TIMEOUT_MS: ${RESEQUENCE_TIMEOUT_MS:-30000}
   mem_limit: 384m
   healthcheck:
     test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
@@ -41,7 +40,6 @@ services:
         set -e
         kt=/opt/kafka/bin/kafka-topics.sh
         $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.shipments --partitions 3 --replication-factor 1
-        $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.shipments-funnel --partitions 1 --replication-factor 1
         $$kt --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.shipping.probe --partitions 3 --replication-factor 1
     restart: "no"
     mem_limit: 512m

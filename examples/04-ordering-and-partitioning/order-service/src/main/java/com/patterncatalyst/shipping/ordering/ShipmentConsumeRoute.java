@@ -6,7 +6,7 @@ import com.patterncatalyst.shipping.Topics;
 
 /**
  * Reads this replica's partitions of the shipment stream. Without RESEQUENCE the event is applied
- * as it arrives; with it, the event is forwarded to the single-partition funnel where it is put back in sequence.
+ * as it arrives; with it, the event goes through the per-order buffer.
  */
 public class ShipmentConsumeRoute extends RouteBuilder {
 
@@ -19,14 +19,10 @@ public class ShipmentConsumeRoute extends RouteBuilder {
                 .routeId("shipment-consume")
                 .choice()
                     .when(simple("{{order.resequence}}"))
-                        .to("kafka:" + ShipmentFunnel.TOPIC)
+                        .bean("shipmentBuffer", "accept")
                     .otherwise()
                         .unmarshal().json(ShipmentEvent.class)
-                        .to("direct:apply-shipment")
+                        .bean("shipmentApplier", "apply")
                 .end();
-
-        from("direct:apply-shipment")
-                .routeId("shipment-apply")
-                .bean("shipmentApplier", "apply");
     }
 }

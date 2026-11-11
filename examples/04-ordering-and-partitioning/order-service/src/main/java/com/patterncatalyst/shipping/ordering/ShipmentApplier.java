@@ -25,20 +25,29 @@ public class ShipmentApplier {
         };
     }
 
+    /** Applies the event as it arrives. */
     @Transactional
     public void apply(ShipmentEvent event) {
-        OrderStatus status = statusFor(event.type());
-        OrderStatusRow row = OrderStatusRow.findById(event.orderId(), LockModeType.PESSIMISTIC_WRITE);
-        boolean created = row == null;
-        if (created) {
+        record(lockOrCreate(event.orderId()), event);
+    }
+
+    /** The order's row, locked for the rest of the transaction; created if this is the order's first event. */
+    OrderStatusRow lockOrCreate(String orderId) {
+        OrderStatusRow row = OrderStatusRow.findById(orderId, LockModeType.PESSIMISTIC_WRITE);
+        if (row == null) {
             row = new OrderStatusRow();
-            row.orderId = event.orderId();
-        }
-        row.status = status;
-        row.lastEvent = event.type();
-        if (created) {
+            row.orderId = orderId;
+            row.status = OrderStatus.PLACED;
+            row.lastEvent = "";
             row.persist();
         }
+        return row;
+    }
+
+    void record(OrderStatusRow row, ShipmentEvent event) {
+        OrderStatus status = statusFor(event.type());
+        row.status = status;
+        row.lastEvent = event.type();
 
         var history = new StatusHistoryRow();
         history.orderId = event.orderId();

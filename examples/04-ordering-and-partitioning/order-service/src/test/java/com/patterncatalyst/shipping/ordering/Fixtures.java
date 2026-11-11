@@ -15,10 +15,10 @@ final class Fixtures {
     private Fixtures() {
     }
 
-    static String json(String orderId, String type, int sequence, long streamSequence) {
+    static String json(String orderId, String type, int sequence) {
         return """
-                {"orderId":"%s","type":"%s","sequence":%d,"streamSequence":%d,"carrier":"FASTLINE"}
-                """.formatted(orderId, type, sequence, streamSequence).strip();
+                {"orderId":"%s","type":"%s","sequence":%d,"carrier":"FASTLINE"}
+                """.formatted(orderId, type, sequence).strip();
     }
 
     static List<String> appliedTypes(String orderId) {
@@ -30,6 +30,10 @@ final class Fixtures {
     static OrderStatus statusOf(String orderId) {
         return QuarkusTransaction.requiringNew().call(() ->
                 ((OrderStatusRow) OrderStatusRow.findById(orderId)).status);
+    }
+
+    static long pending(String orderId) {
+        return QuarkusTransaction.requiringNew().call(() -> PendingShipmentEvent.count("orderId", orderId));
     }
 
     static void awaitApplied(String orderId, int count) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Starts the stack and runs one order through a stalled partition three ways: keyed by order id,
 # keyed by carrier, keyed by event type (the negative witness), and then keyed by event type again
-# with the resequencer on. KEEP=1 leaves the stack running afterwards.
+# with the per-order buffer on. KEEP=1 leaves the stack running afterwards.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 # shellcheck source=../../scripts/stack-guard.sh
@@ -11,7 +11,6 @@ COMPOSE=(docker compose -f compose.yaml)
 SHIP=http://localhost:8080
 ORDERS=http://localhost:8082
 TOPIC=edp.shipping.shipments
-FUNNEL=edp.shipping.shipments-funnel
 GROUP=order-service
 LIFECYCLE=ShipmentScheduled,ShipmentInTransit,ShipmentDelivered
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
@@ -71,7 +70,6 @@ group_idle() { # every partition has committed up to its end
 owner_of() { grep "^$1=" <<<"$ASSIGN" | cut -d= -f2; }
 
 end_offsets() { kafka kafka-get-offsets.sh --topic "$1"; } # topic:partition:offset
-funnel_total() { end_offsets "$FUNNEL" | awk -F: '{s += $3} END {print s + 0}'; }
 
 # The partition the stock console producer, with the default partitioner, gives a key.
 probe_partition() {
@@ -90,14 +88,15 @@ sequences_of() { grep -o '"sequence":[0-9]*' | cut -d: -f2 | paste -sd, -; }
 
 history() { "${PSQL[@]}" -c "SELECT coalesce(string_agg(event_type, ',' ORDER BY id), '') FROM orders.order_status_history WHERE order_id='$1'"; }
 history_count() { "${PSQL[@]}" -c "SELECT count(*) FROM orders.order_status_history WHERE order_id='$1'"; }
+held_count() { "${PSQL[@]}" -c "SELECT count(*) FROM orders.pending_shipment_event WHERE order_id='$1'"; }
 final_status() { "${PSQL[@]}" -c "SELECT coalesce(max(status), '') FROM orders.order_status WHERE order_id='$1'"; }
 tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
 
 # Stalls the replica that owns the Scheduled record's partition, publishes one order, waits until
 # the other replica has done what it can, then releases the stall and waits for convergence.
-#   stall <order id> <Scheduled key> <Delivered key> <direct|funnel>
+#   stall <order id> <Scheduled key> <Delivered key> <direct|buffer>
 stall() {
-    local id="$1" skey="$2" dkey="$3" mode="$4" ps pd p base
+    local id="$1" skey="$2" dkey="$3" mode="$4" ps pd p
     ASSIGN=$(assignment)
     BEFORE=$ASSIGN
     ps=$(probe_partition "$skey"); pd=$(probe_partition "$dkey")
@@ -108,7 +107,6 @@ stall() {
     PRE_DELIVERED_OWNER=$OTHER_OWNER_OF_DELIVERED
     [[ -n "$PAUSED" ]] || fail_loudly "no replica owns partition $ps"
 
-    base=$(funnel_total)
     "${COMPOSE[@]}" pause "$PAUSED" >/dev/null
     RECEIPTS=$(publish "$id")
     PARTS=$(partitions_of <<<"$RECEIPTS" | paste -sd, -)
@@ -121,16 +119,18 @@ stall() {
         local end=$((SECONDS + 60))
         until [[ "$(history_count "$id")" == "$EXPECT_OTHER" ]]; do (( SECONDS < end )) || break; sleep 1; done
     else
-        local want=$((base + EXPECT_OTHER)) end=$((SECONDS + 60))
-        until [[ "$(funnel_total)" == "$want" ]]; do (( SECONDS < end )) || break; sleep 1; done
+        local end=$((SECONDS + 60))
+        until [[ "$(held_count "$id")" == "$EXPECT_OTHER" ]]; do (( SECONDS < end )) || break; sleep 1; done
     fi
     DURING=$(history "$id")
-    echo "  applied while $PAUSED is paused: ${DURING:-nothing}"
+    HELD=$(held_count "$id")
+    echo "  applied while $PAUSED is paused: ${DURING:-nothing}; held in the buffer: $HELD"
     "${COMPOSE[@]}" unpause "$PAUSED" >/dev/null
     local end2=$((SECONDS + 90))
     until [[ "$(history_count "$id")" == 3 ]]; do (( SECONDS < end2 )) || break; sleep 1; done
     HISTORY=$(history "$id")
     STATUS=$(final_status "$id")
+    HELD_AFTER=$(held_count "$id")
     echo "  applied in the end: $HISTORY (status $STATUS)"
     poll 60 group_ready || true
     AFTER=$(assignment)
@@ -198,21 +198,22 @@ check "DELIVERED was applied before SCHEDULED" delivered_before_scheduled
 check "final status regressed to SHIPPED" expect "$STATUS" SHIPPED
 check "no rebalance: assignment unchanged" expect "$AFTER" "$BEFORE"
 
-# 4. Event-type key with the resequencer on.
-echo "Event-type key with the resequencer"
+# 4. Event-type key with the per-order buffer on.
+echo "Event-type key with the buffer"
 poll 60 group_idle || true
 RESEQUENCE=true "${COMPOSE[@]}" up -d --no-deps --force-recreate --wait order-1 order-2
-"${COMPOSE[@]}" up -d --no-deps --force-recreate --wait shipping-service
-check "replicas rejoin the group with the resequencer on" poll 90 group_ready
+check "replicas rejoin the group with the buffer on" poll 90 group_ready
 ID="O-$RUN-3"
-stall "$ID" ShipmentScheduled ShipmentDelivered funnel
+stall "$ID" ShipmentScheduled ShipmentDelivered buffer
 [[ "$PRE_PAUSED" != "$PRE_DELIVERED_OWNER" ]] \
     || fail_loudly "Scheduled and Delivered are owned by the same replica ($PRE_PAUSED)"
 check "precondition: Scheduled and Delivered partitions are owned by different replicas" \
     expect "$([[ "$PRE_PAUSED" != "$PRE_DELIVERED_OWNER" ]] && echo yes)" yes
-check "events that arrived early are held, none applied, while sequence 1 is missing" expect "$DURING" ""
+check "events that arrived early are held in the buffer while sequence 1 is missing" expect "$HELD" 2
+check "none of the held events is applied while sequence 1 is missing" expect "$DURING" ""
 check "history is in lifecycle order" expect "$HISTORY" "$LIFECYCLE"
 check "final status is DELIVERED" expect "$STATUS" DELIVERED
+check "the buffer is empty once sequence 1 arrives" expect "$HELD_AFTER" 0
 check "no rebalance: assignment unchanged" expect "$AFTER" "$BEFORE"
 
 check "Tempo has a trace for shipping-service" poll 90 tempo_has_trace shipping-service
