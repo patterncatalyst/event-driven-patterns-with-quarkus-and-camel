@@ -131,7 +131,7 @@ Change one thing and watch a guard fail:
 
 ## When not to use it
 
-Do not copy state that must be current. A balance, a stock level or a payment status that decides something right now belongs with its owner, and event notification with a fetch keeps one answer. Do not copy state that more than a few consumers will have to keep correct, because every copy is a place to be wrong. Do not carry state whose shape you cannot hold stable: the event is a contract, and every field you add is one more thing consumers depend on.
+Do not copy state that must be current. A balance, a stock level or a payment status that decides something right now belongs with its owner, and event notification with a fetch keeps one answer. Do not copy state that more than a few consumers will have to keep correct, because every copy could potentially be wrong. Do not carry state whose shape you cannot hold stable: the event is a contract, and every field you add is one more thing consumers depend on.
 
 Do not use a claim check for small payloads. A reference costs a second store, a second call and a lifecycle for the stored content, and a claim that outlives its order is data nobody owns. If every consumer reads the attachment, put it in the event and raise the limits, or store it once and let them all fetch it. And a claim check does not make the publish atomic with the commit: the order can commit and the event can still fail.
 
