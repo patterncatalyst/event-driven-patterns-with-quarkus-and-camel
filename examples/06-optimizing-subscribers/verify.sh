@@ -141,7 +141,10 @@ loki_has_logs() {
 
 # --- start ------------------------------------------------------------------------------------
 
-"${COMPOSE[@]}" up -d --build --wait kafka postgres lgtm
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait kafka postgres lgtm
 "${COMPOSE[@]}" build notification-service notification-2 >/dev/null
 
 echo "Backlog"

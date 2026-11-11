@@ -298,6 +298,12 @@ def check_examples(rep: Report):
             r = subprocess.run(["bash", "-n", str(v)], capture_output=True, text=True)
             if r.returncode:
                 rep.err(v, None, f"bash -n failed: {r.stderr.strip()}")
+            # Every live run starts from fresh containers and volumes, never a leftover stack.
+            body = v.read_text(encoding="utf-8")
+            if not (re.search(r"down -v --remove-orphans", body)
+                    and re.search(r"up -d --build --force-recreate --renew-anon-volumes --wait", body)):
+                rep.err(v, None, "verify.sh must start fresh: `down -v --remove-orphans`, then "
+                                 "`up -d --build --force-recreate --renew-anon-volumes --wait`")
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
     for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml"):

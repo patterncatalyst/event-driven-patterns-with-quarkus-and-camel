@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="120" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Connector</text>
+<rect x="20" y="200" width="920" height="120" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="220" font-size="12" font-weight="700" fill="#888">Signal table</text>
+<rect x="20" y="340" width="920" height="90" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="360" font-size="12" font-weight="700" fill="#888">Documents topic</text>
+<rect x="40" y="92" width="230" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="155.0" y="125.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">initial snapshot</text>
+<text x="155.0" y="142.0" font-size="11.5" fill="#555555" text-anchor="middle">5 r events, one per row</text>
+<rect x="310" y="92" width="300" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="460.0" y="125.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">streaming from the slot</text>
+<text x="460.0" y="142.0" font-size="11.5" fill="#555555" text-anchor="middle">c, u and d events in log order</text>
+<rect x="650" y="92" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="125.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">streaming continues</text>
+<text x="785.0" y="142.0" font-size="11.5" fill="#555555" text-anchor="middle">r events interleave with changes</text>
+<rect x="310" y="232" width="300" height="70" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="460.0" y="265.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">insert execute-snapshot</text>
+<text x="460.0" y="282.0" font-size="11.5" fill="#555555" text-anchor="middle">data-collections: inventory_item</text>
+<rect x="650" y="232" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="265.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">incremental snapshot</text>
+<text x="785.0" y="282.0" font-size="11.5" fill="#555555" text-anchor="middle">rows read in chunks, by primary key</text>
+<rect x="40" y="362" width="880" height="54" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="480.0" y="387.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">one document per SKU, latest wins</text>
+<text x="480.0" y="404.0" font-size="11.5" fill="#555555" text-anchor="middle">a row read during a chunk loses to a change streamed in the same window</text>
+<path d="M270,127 L310,127" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M610,127 L650,127" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M460,232 L460,162" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M610,267 L650,267" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M785,232 L785,162" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M155,162 L155,362" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M900,162 L900,362" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">A snapshot gives the table&#x27;s state once; the log keeps it current; a signal reads it again</text>
+</svg>

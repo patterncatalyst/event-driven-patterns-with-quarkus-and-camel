@@ -281,6 +281,17 @@ class DomainModelTest {
         }
 
         @Test
+        void inventoryCdcTopicsAreOutsideTheCatalog() {
+            assertEquals("edp.inventory.item-changes", Topics.INVENTORY_ITEM_CHANGES);
+            assertEquals("edp.inventory.items", Topics.INVENTORY_ITEMS);
+            for (String topic : List.of(Topics.INVENTORY_ITEM_CHANGES, Topics.INVENTORY_ITEMS)) {
+                assertTrue(topic.matches("edp\\.[a-z]+\\.[a-z-]+"), topic);
+                assertTrue(!Topics.ALL.contains(topic));
+            }
+            assertTrue(!Topics.INVENTORY_ITEM_CHANGES.equals(Topics.INVENTORY_ITEMS));
+        }
+
+        @Test
         void catalogIsUnmodifiable() {
             assertThrows(UnsupportedOperationException.class, () -> Topics.ALL.add("edp.x"));
         }

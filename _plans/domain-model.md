@@ -71,6 +71,12 @@ Topic convention: `edp.<domain>.<event>`. Names use dots and hyphens only, never
 
 Chapter 04 adds one ordered stream topic, `edp.shipping.shipments`, keyed by order id (3 partitions).
 
+Chapter 09 adds two more non-catalog topics: `edp.inventory.item-changes` (raw Debezium change envelopes of the legacy `inventory_item` table) and `edp.inventory.items` (compacted `InventoryItem` state documents keyed by sku). Neither is in `Topics.ALL`.
+
+Chapter 09 also writes helper topics that no service reads: `edp.inventory.signals` (events of the Debezium signal table), `edp.inventory.heartbeats` (events of the heartbeat table the heartbeat query writes), `edp.inventory.interval-only-signals` (the interval-only witness connector's signal table) and the heartbeat record topics, set with `topic.heartbeat.name`: `edp.inventory.connector-heartbeats` (main connector) and `edp.inventory.interval-only-heartbeats` (witness). "heartbeat" is not a domain, so no topic is named `edp.heartbeat.*`.
+
+Chapter 10 reuses `edp.inventory.item-changes` and routes its signal table to `edp.inventory.signals`. It has no heartbeat.
+
 ## Lifecycles
 
 - Order: PLACED to PAID to SHIPPED to DELIVERED, one step forward at a time. CANCELLED is allowed from PLACED or PAID only. DELIVERED and CANCELLED are terminal.
@@ -108,9 +114,9 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 05 | Optimizing publishers | a flash sale of OrderPlaced bursts from order-service over three publish routes (unbatched control, Kafka defaults, tuned); batching, `linger.ms`, compression, `acks`, idempotence; throughput and latency measured |
 | 06 | Optimizing subscribers | notification-service draining three catalog topics (`edp.orders.placed`, `edp.payments.processed`, `edp.shipping.scheduled`, 3 partitions each); fetch sizing, `max.poll.records`, concurrency, the new rebalance protocol; lag measured |
 | 07 | Queues for Kafka | `Notification` delivery jobs taken from `edp.orders.placed` and shared by three workers through a share group (SmallRye Reactive Messaging) with per-record acknowledgement, against a Camel consumer group with head-of-line blocking; a slow email gateway |
-| 08 | Transactional outbox | `Order` placed plus an outbox row, then the Debezium Outbox Event Router, then `edp.orders.placed` |
-| 09 | Log tailing with Debezium | a legacy `inventory_item` stock table tailed by Debezium; a Camel route maps the envelope to an `InventoryItem` state document |
-| 10 | Managing connector offsets | stop, list, alter and reset the inventory connector's offsets (Connect REST on compose, `KafkaConnector` on Strimzi) |
+| 08 | Transactional outbox | `Order` placed plus an outbox row (debezium-quarkus-outbox), then the Debezium Outbox Event Router, then `edp.orders.placed`, keyed by order id, with `id` and `eventType` headers |
+| 09 | Log tailing with Debezium | the legacy `inventory.inventory_item` table (`item_sku`, `qty_on_hand`, `last_changed`) tailed by Debezium to `edp.inventory.item-changes`; a Camel route maps the envelopes to `InventoryItem` documents on `edp.inventory.items` |
+| 10 | Managing connector offsets | stop, list, alter and reset the `inventory-cdc` connector offsets through Connect REST on compose (the Strimzi half arrives in r12) |
 | 11 | Idempotent consumer and inbox | inventory-service reserves stock once per OrderPlaced event id; a duplicate without the inbox double-decrements `quantityOnHand` |
 | 12 | Exactly-once with Kafka transactions | payment-service reads InventoryReserved, writes `Payment` and publishes PaymentProcessed in one transaction; `read_committed` |
 | 13 | Retry and dead letter | a malformed OrderPlaced goes to a DLQ topic; a transient payment-gateway failure is redelivered |

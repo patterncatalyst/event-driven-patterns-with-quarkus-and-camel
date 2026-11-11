@@ -126,3 +126,53 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - `SHARE_ACQUIRE_MODE=record_limit` (26-check version): 26/26.
 - mvn 10 tests, BUILD SUCCESS, after the last code change (07-r2-mvn-final.log).
 - Orchestrator, after round 3: `SHARE_ACQUIRE_MODE=record_limit` on the 27-check verify.sh: 27/27.
+
+## r04 chapter 10 window (2026-11-11)
+
+- Run 1 (10-w1): 36/39. Check 4 read the offset before Connect stored it; 19 and 22 failed from the empty value. Fix: check 4 polls (30 s) and a precondition stops the run if no lsn is stored.
+- Run 2 (10-w2): 37/39. Checks 20 and 21: the backward alter repeated the last change before the stop (SKU-1 qty 7777, same lsn) once. Run 3 (KEEP=1, rows dumped) showed the same; run 4 with a precondition that the offset equals confirmed_flush_lsn before the stop still repeated it. Behaviour asserted: 2 new changes plus one repeat, nothing older.
+- Run 5 (10-w5): 39/39 from clean; no edp-* left.
+- Experiments (10-exp.log): E1 OFFSET_FLUSH_INTERVAL_MS=60000: check 4 fails, run stops at its precondition. E2 docker kill edp-connect between flushes: 21 changes written, 21 delivered again after restart. E3 no_data config, 3 updates while stopped, DELETE offsets, resume: 0 r rows, 4 u rows (the 3 plus a repeat of the last change before the stop). PATCH while running: check 7. Incremental snapshot instead of reset: check 38.
+
+## r04 chapter 09 window (2026-11-11)
+
+- w1: 25/34. Root causes: kafka-console-consumer prints a KIP-848 notice on stdout before records, so the jq parsing of dumps failed (checks 5, 7, 10, 15, 18, 25 to 27); the interval-only connector shared topic.prefix=edp, a JMX name collision delayed the edp_inventory slot about 110 s (check 2). Fixes: dumps keep record lines only; interval-only prefix edp-interval-only; helper-table topics routed to conforming names; check 35 asserts every edp. topic name.
+- r1 34/34, r2 35/35, r3 35/35 from clean (two consecutive N/N). No edp-* left.
+- Measured (r3): burst about 55 MB; query slot 54.6 MB before release, 192 B after (r2: 0 B); interval-only slot 55.0 MB after the wait.
+- Experiments: remove tombstone filter 34/35 (13); delete REPLICA IDENTITY FULL 33/35 (14, 15); remove heartbeat.action.query 34/35 (22), 55.1 MB held; negative quantity: document unchanged, "quantityOnHand must not be negative" logged, next update processed; remove the offset-file rm 34/35 (34). Details: scratchpad 09-window.md (not committed).
+
+## r04 chapter 08 window (2026-11-11)
+
+- First run already 26/26; script hardened anyway (record-line filter for the console consumer, no grep -q under pipefail) and the fresh-start lines added. f1 and f2: 26/26 from clean, consecutive. No edp-* left.
+- Experiments: remove-after-insert=false 25/26 (8); no route.by.field 20/26 (6, 7, 9, 11, 17, 24); Kafka stopped: outbox 201 in about 10 ms, delivered after restart, commit-first 500 after 60 s with the row and no event, publish-first 500 after 60 s with no row; docker kill Connect during a 200-order burst after a stored offset: 337 records for 201 orders, 136 duplicate id headers, none lost.
+- Kill before the first stored offset: one run lost 3 of 200 (B-080, B-148, B-153). Orchestrator re-ran it twice (08-nowarm.log): 201 of 201 both times; Connect log shows the restarted connector re-snapshots the empty outbox table and streams from the snapshot LSN, above the slot's latestFlushedLsn. Prose states the mechanism and that loss is timing-dependent.
+
+## r04 final serial run (2026-11-11, fresh containers per example, Camel 4.22.2)
+
+| Example | mvn verify tests | verify.sh |
+|---|---|---|
+| domain-model 2.1.0 | 80 | n/a |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7 + 4 | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 26/26 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 39/39 |
+
+Each verify.sh started with `down -v --remove-orphans` then `up --build --force-recreate --renew-anon-volumes`; no edp-* containers or volumes left. Static gates: validate ok, voice 0 ban-tier, idiomatic 0 ban-tier, host_ids 0, site builds. Words: 08 1,822; 09 2,391; 10 2,026.
+
+## r04 repair round 1 (2026-11-11)
+
+Opus round 1: REPAIR (M1 to M6, L1 to L14; runs and gates were already clean). Fixed by a repair executor: stale backward-alter wording (figure 10.2, example page, README); figure 9.3 tombstone note; ch 10 signal topic routed to edp.inventory.signals plus check 40; ch 08 forward reference; schema validation in every profile; unbacked no_data sentence; heartbeat topics via topic.heartbeat.name; references, bibliography, idioms (env mapping, Camel variable); ch 08 control check 27.
+Live after the fixes, each from clean: 08 27/27, 09 35/35, 10 40/40 (first ch 10 run 39/40: check 36 used grep -q on docker logs under pipefail; fixed to capture first). mvn: 08 7, 09 8, 10 2 tests. Gates clean.
+- Ch 08 no route.by.field re-measured with check 27 (08-noroute-r2.log): 21/27, checks 6, 7, 9, 11, 17, 24 fail, as the chapter states.
+
+## r04 validation round 2 (2026-11-11)
+
+Opus round 2: SHIP after one typo (ch 10 "`,:`"); all round-1 findings verified resolved; 9 regenerated figures byte-identical to specs; 7-gram overlap with EIP ch 15, appendix R, CNDP ch 4 is 0. Fixed anyway (fix-now): typo; checks 35 (09) and 40 (10) now fail when the topic listing fails and require the expected topics (09: item-changes, connector-heartbeats, interval-only-heartbeats, signals; 10: item-changes, signals); stale claims rows 09-06, 08-08, r04-r1-10; figure 9.3 update box; CrashSwitch Javadoc; ch 10 names check 39.
+Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp-* left.

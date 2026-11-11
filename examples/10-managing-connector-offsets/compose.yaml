@@ -1,0 +1,62 @@
+name: edp-10
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-connect.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+services:
+  # Connect writes its source offsets to edp-connect-offsets when this interval passes. The default is 60000 ms,
+  # which makes a GET on the offsets lag the connector by up to a minute; one second keeps the reads current.
+  connect:
+    environment:
+      - OFFSET_FLUSH_INTERVAL_MS=${OFFSET_FLUSH_INTERVAL_MS:-1000}
+
+  # Creates the change topic with one partition, so the topic order is the WAL order, then exits.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.inventory.item-changes --partitions 1 --replication-factor 1
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: 10-managing-connector-offsets/inventory-service/Containerfile
+    container_name: edp-inventory-service
+    hostname: inventory-service
+    ports:
+      - "8080:8080"
+    environment:
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+      QUARKUS_DATASOURCE_USERNAME: edp
+      QUARKUS_DATASOURCE_PASSWORD: edp
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp

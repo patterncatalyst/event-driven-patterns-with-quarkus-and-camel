@@ -84,7 +84,10 @@ metric_live() { # metric_live <service> <metric>: Prometheus holds a sample for 
     curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$2{service_name=\"$1\"}" | grep -q '"value"'
 }
 
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 
 # Happy path: place A, the event carries the id, the notification holds the fetched facts.
 A="O-$(date +%s)-A"

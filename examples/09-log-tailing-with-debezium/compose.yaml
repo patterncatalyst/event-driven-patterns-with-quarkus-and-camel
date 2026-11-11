@@ -1,0 +1,60 @@
+name: edp-09
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-connect.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+services:
+  # Creates the two topics before anything writes to them, then exits. The documents topic is compacted:
+  # the latest document per SKU is the state, and a tombstone removes a SKU.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.inventory.item-changes --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.inventory.items --partitions 3 --replication-factor 1 --config cleanup.policy=compact
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: 09-log-tailing-with-debezium/Containerfile
+    container_name: edp-09-inventory
+    ports:
+      - "8080:8080"
+    environment:
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      # connect (default) reads the envelopes Kafka Connect writes; embedded runs Debezium inside the service.
+      # The value is the Quarkus profile.
+      QUARKUS_PROFILE: ${CDC_MODE:-connect}
+      CDC_PG_HOST: postgres
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
