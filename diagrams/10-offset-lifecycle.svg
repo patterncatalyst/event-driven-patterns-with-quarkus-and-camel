@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="40" y="160" width="190" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="135.0" y="198.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RUNNING</text>
+<text x="135.0" y="215.0" font-size="11.5" fill="#555555" text-anchor="middle">GET offsets works</text>
+<rect x="385" y="160" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="480.0" y="198.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">STOPPED</text>
+<text x="480.0" y="215.0" font-size="11.5" fill="#555555" text-anchor="middle">no tasks, slot inactive</text>
+<rect x="730" y="40" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="825.0" y="78.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">PATCH offsets</text>
+<text x="825.0" y="95.0" font-size="11.5" fill="#555555" text-anchor="middle">alter: skip forward</text>
+<rect x="730" y="280" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="825.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">DELETE offsets</text>
+<text x="825.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">reset: snapshot again</text>
+<rect x="40" y="320" width="400" height="60" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="240.0" y="348.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">PATCH or DELETE while RUNNING</text>
+<text x="240.0" y="365.0" font-size="11.5" fill="#555555" text-anchor="middle">HTTP 400: must be STOPPED</text>
+<path d="M230,190 L385,190" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M575,175 L730,80" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M575,225 L730,320" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M730,100 L230,170" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M730,340 L230,230" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M135,240 L135,320" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Stop first, change the offset, then resume</text>
+<text x="305" y="178" font-size="12" fill="#444444" text-anchor="middle">PUT /stop</text>
+<text x="480" y="130" font-size="12" fill="#444444" text-anchor="middle">PUT /resume afterwards</text>
+</svg>
