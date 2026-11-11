@@ -133,3 +133,10 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - Run 2 (10-w2): 37/39. Checks 20 and 21: the backward alter repeated the last change before the stop (SKU-1 qty 7777, same lsn) once. Run 3 (KEEP=1, rows dumped) showed the same; run 4 with a precondition that the offset equals confirmed_flush_lsn before the stop still repeated it. Behaviour asserted: 2 new changes plus one repeat, nothing older.
 - Run 5 (10-w5): 39/39 from clean; no edp-* left.
 - Experiments (10-exp.log): E1 OFFSET_FLUSH_INTERVAL_MS=60000: check 4 fails, run stops at its precondition. E2 docker kill edp-connect between flushes: 21 changes written, 21 delivered again after restart. E3 no_data config, 3 updates while stopped, DELETE offsets, resume: 0 r rows, 4 u rows (the 3 plus a repeat of the last change before the stop). PATCH while running: check 7. Incremental snapshot instead of reset: check 38.
+
+## r04 chapter 09 window (2026-11-11)
+
+- w1: 25/34. Root causes: kafka-console-consumer prints a KIP-848 notice on stdout before records, so the jq parsing of dumps failed (checks 5, 7, 10, 15, 18, 25 to 27); the interval-only connector shared topic.prefix=edp, a JMX name collision delayed the edp_inventory slot about 110 s (check 2). Fixes: dumps keep record lines only; interval-only prefix edp-interval-only; helper-table topics routed to conforming names; check 35 asserts every edp. topic name.
+- r1 34/34, r2 35/35, r3 35/35 from clean (two consecutive N/N). No edp-* left.
+- Measured (r3): burst about 55 MB; query slot 54.6 MB before release, 192 B after (r2: 0 B); interval-only slot 55.0 MB after the wait.
+- Experiments: remove tombstone filter 34/35 (13); delete REPLICA IDENTITY FULL 33/35 (14, 15); remove heartbeat.action.query 34/35 (22), 55.1 MB held; negative quantity: document unchanged, "quantityOnHand must not be negative" logged, next update processed; remove the offset-file rm 34/35 (34). Details: scratchpad 09-window.md (not committed).
