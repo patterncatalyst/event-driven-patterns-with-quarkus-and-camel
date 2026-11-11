@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">One caller, waits for each acknowledgement</text>
+<rect x="20" y="235" width="920" height="170" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="255" font-size="12" font-weight="700" fill="#888">Many callers in flight</text>
+<rect x="40" y="100" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">caller sends record 1</text>
+<text x="140.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">then waits</text>
+<rect x="300" y="100" width="200" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="400.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">batch of 1 record</text>
+<text x="400.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">waits up to linger.ms</text>
+<rect x="560" y="100" width="180" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="650.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">request with 1 record</text>
+<text x="650.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">acknowledged</text>
+<rect x="780" y="100" width="140" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="850.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">record 2</text>
+<text x="850.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">sent next</text>
+<rect x="40" y="285" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">200 callers send</text>
+<text x="140.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">records 1 to 200</text>
+<rect x="300" y="285" width="200" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="400.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">shared batches fill</text>
+<text x="400.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">before linger.ms ends</text>
+<rect x="560" y="285" width="180" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="650.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">request with</text>
+<text x="650.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">many records</text>
+<rect x="780" y="285" width="140" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="850.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">callers released</text>
+<text x="850.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">on the ack</text>
+<path d="M240,135 L300,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M500,135 L560,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M740,135 L780,135" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M240,320 L300,320" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M500,320 L560,320" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M740,320 L780,320" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">linger.ms only helps when sends overlap</text>
+<text x="480" y="440" font-size="11" fill="#555555" text-anchor="middle">A single caller pays the linger wait on every record and never fills a batch.</text>
+</svg>
