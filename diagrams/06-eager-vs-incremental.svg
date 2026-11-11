@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="50" width="920" height="125" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="70" font-size="12" font-weight="700" fill="#888">Classic protocol, RangeAssignor</text>
+<rect x="20" y="205" width="920" height="125" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="225" font-size="12" font-weight="700" fill="#888">Consumer protocol (KIP-848)</text>
+<rect x="40" y="85" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="175.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replica 1 owns all 9</text>
+<text x="175.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">partitions and processes</text>
+<rect x="345" y="85" width="270" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="480.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replica 2 joins: replica 1</text>
+<text x="480.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">revokes all 9 and stops</text>
+<rect x="650" y="85" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="118.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">both rejoin and receive</text>
+<text x="785.0" y="135.0" font-size="11.5" fill="#555555" text-anchor="middle">an assignment, then resume</text>
+<rect x="40" y="240" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="175.0" y="273.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replica 1 owns all 9</text>
+<text x="175.0" y="290.0" font-size="11.5" fill="#555555" text-anchor="middle">partitions and processes</text>
+<rect x="345" y="240" width="270" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="480.0" y="273.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replica 2 joins: replica 1 gives</text>
+<text x="480.0" y="290.0" font-size="11.5" fill="#555555" text-anchor="middle">up only the partitions that move</text>
+<rect x="650" y="240" width="270" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="785.0" y="273.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replica 1 keeps processing</text>
+<text x="785.0" y="290.0" font-size="11.5" fill="#555555" text-anchor="middle">the partitions it still owns</text>
+<path d="M310,120 L345,120" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M615,120 L650,120" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M310,275 L345,275" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M615,275 L650,275" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="480" y="24" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">A joining member stops the whole group under the classic protocol, and only the moved partitions under KIP-848</text>
+<text x="480" y="358" font-size="11" fill="#555555" text-anchor="middle">Classic with CooperativeStickyAssignor also revokes only the partitions that move.</text>
+</svg>

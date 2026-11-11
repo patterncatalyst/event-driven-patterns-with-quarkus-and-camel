@@ -1,0 +1,35 @@
+# bench.sh 2026-11-11: drain of a seeded backlog of 3000 records (3 topics x 3 partitions x 1000 per topic) by the notification service
+# settings: NOTIFY_WORK_MS=5 per record, one broker, one PostgreSQL, one fresh consumer group per run, 5 repeats interleaved
+# host class: 16-thread laptop CPU, Docker Engine, Kafka and PostgreSQL in containers on the same host
+# drain_s: last minus first row time
+date,profile,repeat,rows,drain_s
+2026-11-11,consumers-1,1,3000,19.60
+2026-11-11,consumers-3,1,3000,6.37
+2026-11-11,consumers-9,1,3000,6.35
+2026-11-11,consumers-12,1,3000,6.38
+2026-11-11,consumers-12-roundrobin,1,3000,2.23
+2026-11-11,poll-50,1,3000,6.39
+2026-11-11,consumers-1,2,3000,19.34
+2026-11-11,consumers-3,2,3000,6.37
+2026-11-11,consumers-9,2,3000,6.42
+2026-11-11,consumers-12,2,3000,6.35
+2026-11-11,consumers-12-roundrobin,2,3000,2.22
+2026-11-11,poll-50,2,3000,6.36
+2026-11-11,consumers-1,3,3000,19.09
+2026-11-11,consumers-3,3,3000,6.36
+2026-11-11,consumers-9,3,3000,6.35
+2026-11-11,consumers-12,3,3000,6.42
+2026-11-11,consumers-12-roundrobin,3,3000,2.22
+2026-11-11,poll-50,3,3000,6.37
+2026-11-11,consumers-1,4,3000,19.18
+2026-11-11,consumers-3,4,3000,6.36
+2026-11-11,consumers-9,4,3000,6.39
+2026-11-11,consumers-12,4,3000,6.36
+2026-11-11,consumers-12-roundrobin,4,3000,2.22
+2026-11-11,poll-50,4,3000,6.38
+2026-11-11,consumers-1,5,3000,19.17
+2026-11-11,consumers-3,5,3000,6.36
+2026-11-11,consumers-9,5,3000,6.35
+2026-11-11,consumers-12,5,3000,6.36
+2026-11-11,consumers-12-roundrobin,5,3000,2.22
+2026-11-11,poll-50,5,3000,6.36
