@@ -109,7 +109,10 @@ ordered_lsns() { # the three updates of SKU-2 in the order they arrive, with str
 healthy() { [[ "$(docker inspect -f '{{.State.Health.Status}}' "$SERVICE")" == healthy ]]; }
 
 echo "Starting the stack"
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 
 # The legacy table, as a team outside this book owns it: no migrations from the service, a busy table nobody
 # captures, the signal table incremental snapshots read, and the heartbeat table.

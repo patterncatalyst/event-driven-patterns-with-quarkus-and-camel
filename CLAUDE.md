@@ -86,6 +86,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - `verify.sh` checks the observable effect, not an exit code, and includes a negative witness: a check that fails when the pattern's guard is removed.
 - Traces, metrics and logs reach LGTM through OpenTelemetry from chapter 00 on.
 - Runs alone from a clean stack, with no other example running.
+- Every live run starts fresh (owner rule, 2026-11-11): `verify.sh` first runs `docker compose down -v --remove-orphans`, then `up -d --build --force-recreate --renew-anon-volumes --wait`, and ends with `down -v` unless `KEEP=1`. Containers and volumes are never reused between runs. `scripts/validate.py` enforces it.
 - Quarkus tests use Dev Services and run before compose. Dev Services uses `docker.io/library/postgres` at the same 18.x minor as the CloudNativePG operand image used by compose; Kafka Dev Services uses the pinned `apache/kafka` image.
 - Topic convention: `edp.<domain>.<event>`, dots and hyphens only (for example `edp.orders.placed`).
 - Multi-service examples: aggregator `pom.xml` at `examples/NN-slug/`, one module per service, app ports 8080 and 8082, replicas unpublished.

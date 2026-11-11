@@ -47,7 +47,10 @@ tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlenc
 expect() { [[ "$1" == "$2" ]]; } # expect <actual> <expected>
 refused() { ! "${PSQL[@]}" -c "$1" ; } # the statement must fail
 
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 
 ID="O-$(date +%s)"
 PLACE_CODE=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \

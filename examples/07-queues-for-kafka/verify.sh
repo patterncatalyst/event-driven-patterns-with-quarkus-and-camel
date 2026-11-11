@@ -128,7 +128,10 @@ positive() { (( $1 > 0 )); }
 zero() { (( $1 == 0 )); }
 
 echo "Starting the stack in $FIRST_MODE mode"
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 
 check "job topic has 3 partitions" \
     expect "$(kafka kafka-topics.sh --describe --topic "$TOPIC" | grep -o 'PartitionCount: [0-9]*' | cut -d' ' -f2)" 3

@@ -75,7 +75,10 @@ tempo_count() { # tempo_count <traceql>: number of traces matching
 }
 HTTP_CLIENT_SPANS='{ resource.service.name = "notification-service" && kind = client && span.http.request.method =~ ".+" }'
 
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 
 STAMP=$(date +%s)
 A="O-$STAMP-A"; B="O-$STAMP-B"; C="O-$STAMP-C"; D="O-$STAMP-D"; E="O-$STAMP-E"
