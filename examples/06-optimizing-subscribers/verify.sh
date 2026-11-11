@@ -150,7 +150,7 @@ for t in "${TOPICS[@]}"; do
     check "precondition: $t holds $PER_TOPIC seeded records across 3 partitions" \
         expect "$(end_offset_sum "$t") $(kafka kafka-topics.sh --describe --topic "$t" | grep -c 'Partition: ')" "$PER_TOPIC 3"
 done
-check "precondition: the first group does not exist yet, so its lag is the whole backlog of $BACKLOG" \
+check "precondition: the first group does not exist yet, so nothing has been consumed" \
     expect "$(group_listed g-default && echo yes || echo no)" no
 
 echo "Default run"

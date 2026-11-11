@@ -49,7 +49,7 @@ docker compose --profile '*' down -v
 
 ## What verify.sh does
 
-1. Checks that the seeder wrote 200 records into each topic and that the first group does not exist, so its lag is the whole backlog.
+1. Checks that the seeder wrote 200 records into each topic and that the first group does not exist yet, so nothing has been consumed.
 2. Drains with the defaults: one row per record, lag 0, one attempt per row, all nine partitions, one consumer thread.
 3. `consumersCount=3`: three members, none idle, three consumer threads. `consumersCount=12`: with the default `RangeAssignor` only three members own partitions (three each) and nine are idle; with `RoundRobinAssignor` nine own one each and exactly three are idle.
 4. Poll interval: with 50 ms of work per record and an interval of 5 seconds, `max.poll.records=500` delivers records again (attempts above 1) and logs the client leaving the group; `max.poll.records=20` does neither and stores every record.

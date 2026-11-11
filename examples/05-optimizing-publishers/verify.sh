@@ -78,7 +78,8 @@ for p in unbatched default tuned; do
     check "$p: $N orders accepted, none failed" \
         expect "$(field orders)/$(field failed)" "$N/0"
     check "$p: the topic's end offsets grew by exactly $N" expect "$OFFSET_GROWTH" "$N"
-    check "$p: precondition, the producer's own record counter grew by $N" expect "$DELTA_SENT" "$N"
+    check "$p: precondition, the producer's own counters grew by $N records in more than 0 requests" \
+        expect "$DELTA_SENT/$(( DELTA_REQUESTS > 0 ))" "$N/1"
     RPR[$p]=$(ratio "$DELTA_SENT" "$DELTA_REQUESTS")
     BPR[$p]=$(ratio "$DELTA_BYTES" "$DELTA_SENT")
 done
@@ -95,7 +96,8 @@ check "every batch carries a producer id while idempotence is on (control for th
 
 echo "One caller at a time"
 burst tuned 300 1
-check "precondition: 300 sequential orders counted by the producer" expect "$DELTA_SENT" 300
+check "precondition: 300 sequential orders counted by the producer, in more than 0 requests" \
+    expect "$DELTA_SENT/$(( DELTA_REQUESTS > 0 ))" "300/1"
 check "tuned with one caller: at most 1.5 records per request" le "$(ratio "$DELTA_SENT" "$DELTA_REQUESTS")" 1.5
 burst tuned 300 100
 check "control, same route with 100 callers: more than 3 records per request" \

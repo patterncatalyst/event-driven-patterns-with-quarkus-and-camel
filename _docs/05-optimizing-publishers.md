@@ -11,7 +11,7 @@ duration: "45 minutes"
 
 A flash sale places twenty thousand orders in a few seconds. Each order becomes an `OrderPlaced` record on `edp.orders.placed`, a topic with three partitions on one broker. The Camel route that publishes them works, and nobody has looked at it since it passed its first test. The question is how many requests those twenty thousand records cost the broker, how many bytes each one puts on the wire, and what a caller waits for before it is told the order was published.
 
-The producer has four settings that change the answer: how long it waits to fill a batch, how large a batch may grow, whether it compresses, and how many brokers must acknowledge a write. A fifth fact matters more than any of them: the kind of caller that sends the records.
+The producer has four settings that change the answer: how long it waits to fill a batch, how large a batch may grow, whether it compresses, and how many brokers must acknowledge a write. How the caller sends matters as much: one caller that waits for each acknowledgement never fills a batch.
 
 {% include excalidraw.html file="05-batch-fill" alt="Records from many callers go into one open batch per partition; a request carries every batch that is ready" caption="Figure 5.1: One open batch per partition, one request for every ready batch" %}
 
@@ -19,7 +19,7 @@ The producer has four settings that change the answer: how long it waits to fill
 
 `send` does not write to the network. The producer appends the record to an open batch for the record's partition and returns. A background sender thread takes batches that are ready and sends them to the partition leaders. One request to a broker carries the ready batches for every partition that broker leads.
 
-A batch is ready when it is full or when it has waited long enough. Full means `batch.size` bytes, 16384 by default. Waiting long enough means `linger.ms`, which is 5 milliseconds by default since Kafka 4.0. Before that the default was 0, and at 0 Kafka effectively sends one message per batch (KIP-1030). The two settings are the two limits on a batch: the first one reached sends it.
+A batch is ready when it is full or when it has waited long enough. Full means `batch.size` bytes, 16384 by default. Waiting long enough means `linger.ms`, 5 milliseconds by default. It used to be 0, and KIP-1030 raised it because a producer that sends as soon as it can produces small batches when it is lightly loaded. Under load batches still fill while earlier requests are in flight, as the linger 0 row below shows. The two settings are the two limits on a batch: the first one reached sends it.
 
 A producer that is busy fills batches while earlier requests are still waiting for their acknowledgement. A producer that sends one record at a time has nothing to fill them with.
 
@@ -27,7 +27,7 @@ A producer that is busy fills batches while earlier requests are still waiting f
 
 Raising `linger.ms` buys fuller batches with latency: a record may wait that long before it leaves. Raising `batch.size` lets a batch grow larger before it is sent. Fewer, larger requests cost the broker less per record, and the cost shows up as records per request and as throughput under load.
 
-The setting only helps when sends overlap. A caller that sends one record and waits for the acknowledgement before sending the next never has two records in the producer at once, so a batch never holds more than one record, and each record waits out the full linger time. In a Camel route, that caller is a thread that blocks in `to("kafka:...")` or a route that sets `synchronous=true`. Concurrency makes the producer efficient, not the linger value.
+The setting only helps when sends overlap. A caller that sends one record and waits for the acknowledgement before sending the next never has two records in the producer at once, so a batch never holds more than one record, and each record waits out the full linger time. In a Camel route, that caller is a thread that blocks in `to("kafka:...")` or a route that sets `synchronous=true`. Batches fill only when several sends are in the producer at once; the linger value alone does not fill them.
 
 A fixed number of callers also turns `linger.ms` into a ceiling on throughput. With 200 callers in flight, each waiting for its acknowledgement, a burst cannot move faster than 200 records per linger interval once the batches are full or the linger has expired. The measured 50th percentile latency follows the linger setting, and throughput falls as it rises, as the results below show. A longer linger pays only when callers do not wait for each acknowledgement, or when there are many more of them.
 
@@ -78,31 +78,33 @@ Throughput and latency belong to the machine and to the moment, so `bench.sh` me
 
 | Route (200 callers) | Orders per second, median (range) | p50 latency, median | Records per request, median | Bytes per record, median |
 |---|---|---|---|---|
-| Unbatched | 23,500 (10,200 to 32,900) | 7.8 ms | 3.0 | 352 |
-| Default | 115,000 (50,500 to 140,700) | 1.0 ms | 172 | 265 |
-| Tuned (20 ms, 128 KiB, lz4) | 9,300 (9,200 to 9,400) | 21 ms | 200 | 101 |
+| Unbatched | 1.0 (0.43 to 1.40) | 1.0 | 1.0 | 1.0 |
+| Default | 4.9 (2.1 to 6.0) | 0.13 | 58 | 0.75 |
+| Tuned (20 ms, 128 KiB, lz4) | 0.40 (0.39 to 0.40) | 2.7 | 67 | 0.29 |
 
-Relative to the unbatched route, the default route moves about 4.9 times the orders per second, with about 58 times the records per request. The tuned route sends the most records per request and the fewest bytes per record, and it is the slowest of the three: about 0.4 times the unbatched throughput, because every record waits for the linger. The unbatched and default medians come from rounds that differ widely, as the ranges show, and the first round of each was the slowest. The tuned route's rounds agree closely, because its time is set by the linger.
+Every figure is a ratio of the route's median to the unbatched route's median in the same run, so the unbatched row is 1.0 by definition. The unbatched route's own rounds ranged from 0.43 to 1.40 of its median.
 
-The same route with other lingers, 200 callers, `lz4`:
+Relative to the unbatched route, the default route moves about 4.9 times the orders per second, with about 58 times the records per request, and the unbatched route sends about 3 records per request. The tuned route sends the most records per request and the fewest bytes per record, and it is the slowest of the three: about 0.4 times the unbatched throughput, because every record waits for the linger. The unbatched and default medians come from rounds that differ widely, as the ranges show, and the first round of each was the slowest. The tuned route's rounds agree closely, because its time is set by the linger.
 
-| `linger.ms` | Orders per second, median | p50 latency | Records per request |
+The same route with other lingers, 200 callers, `lz4`, as ratios to `linger.ms=0` in that sweep:
+
+| `linger.ms` | Orders per second | p50 latency | Records per request |
 |---|---|---|---|
-| 0 | 56,800 | 2.5 ms | 38 |
-| 5 | 24,900 | 6.4 ms | 194 |
-| 20 | 9,100 | 20.9 ms | 198 |
-| 100 | 1,900 | 102 ms | 200 |
+| 0 | 1.0 | 1.0 | 1.0 |
+| 5 | 0.44 | 2.6 | 5.1 |
+| 20 | 0.16 | 8.3 | 5.2 |
+| 100 | 0.03 | 40 | 5.2 |
 
-Batches are already near full at 5 ms, so a longer linger adds latency and no batching. With the linger at 20 ms, the codec changes the bytes and little else:
+Batches are already near full at 5 ms, so a longer linger adds latency and no batching. At 0 the batches were also far from empty, about 38 records per request. With the linger at 20 ms, the codec changes the bytes and little else, shown as ratios to no compression:
 
-| Codec | Bytes per record, median | Orders per second, median |
+| Codec | Bytes per record | Orders per second |
 |---|---|---|
-| none | 265 | 9,100 |
-| lz4 | 101 | 9,100 |
-| gzip | 61 | 8,900 |
-| zstd | 52 | 8,900 |
+| none | 1.0 | 1.0 |
+| lz4 | 0.38 | 0.99 |
+| gzip | 0.23 | 0.97 |
+| zstd | 0.19 | 0.98 |
 
-Compared with no compression, `lz4` sends about 0.38 times the bytes per record, `gzip` about 0.23 times and `zstd` about 0.19 times, and the throughput differences are inside the run-to-run ranges.
+The throughput differences are inside the run-to-run ranges.
 
 ## Build, run, observe
 
@@ -114,11 +116,11 @@ mvn -B verify
 ./bench.sh
 ```
 
-The Maven build runs six tests against Kafka from Dev Services with three partitions: every profile publishes every order exactly once, the tuned route sends more records per request than the unbatched route, one caller never fills a batch, each producer is metered under its own client id, an unknown profile is rejected, and latency is recorded per profile. `verify.sh` starts Kafka, the LGTM stack and `order-service`, bursts 20,000 orders through each route, and prints `24/24 checks passed`. Checks 1 to 11 confirm that each route's burst reached the topic exactly once and that the producer's own counter agrees. Checks 12 to 22 are the relations, and checks 23 and 24 find a trace in Tempo and a log line in Loki. `bench.sh` writes `results/bench-<date>.csv` and a summary of medians and ranges.
+The Maven build runs six tests against Kafka from Dev Services with three partitions: every profile publishes every order exactly once, the tuned route sends more records per request than the unbatched route, one caller never fills a batch, each producer is metered under its own client id, an unknown profile is rejected, and latency is recorded per profile. `verify.sh` starts Kafka, the LGTM stack and `order-service`, bursts 20,000 orders through each route, and prints `24/24 checks passed`. Checks 1 and 2 confirm the partitions and the health of `order-service`. Checks 3 to 11 confirm that each route's burst reached the topic exactly once and that the producer's own counters agree. Checks 12 to 22 are the relations and their preconditions, and checks 23 and 24 find a trace in Tempo and a log line in Loki. `bench.sh` writes `results/bench-<date>.csv` and a summary of medians and ranges.
 
 Change one thing and watch a guard fail:
 
-- Remove `&producerBatchSize=0` from `UnbatchedPublishRoute`. Check 12 fails: the control now sends about 29 records per request instead of 3, and every other check still passes.
+- Remove `&producerBatchSize=0` from `UnbatchedPublishRoute`. Check 12 fails: the control now sends about ten times as many records per request, and every other check still passes.
 - Set `PUBLISHER_LINGER_MS=0`, `PUBLISHER_BATCH_SIZE=0` and `PUBLISHER_COMPRESSION=none`, so the tuned route has no tuning. Checks 14, 15, 16 and 20 fail: records per request, bytes per record, the `lz4` batches in the broker's log, and the 100 callers on the same route.
 - Add `&lingerMs=0&producerBatchSize=0` to `DefaultPublishRoute`. Check 13 fails.
 - Run the one-caller step with 100 callers instead of one. Check 19 fails.
@@ -128,10 +130,10 @@ Change one thing and watch a guard fail:
 
 ## When not to tune
 
-A publisher that sends a few records a second is already inside Kafka's defaults, and a 20 millisecond linger adds latency to every record in exchange for batches that never fill. In the measurements above the default settings were the fastest and the tuned route the slowest, because 200 callers each waited for an acknowledgement and the linger set the pace. Tune when measured records per request is close to one while the sends are concurrent, or when bytes on the wire or on disk are the cost, and then raise the linger only as far as the latency budget allows. Compression costs CPU on the producer and makes little difference for records that are already small and varied. A caller that waits for each acknowledgement before it sends the next needs more callers, or a different route design, before any producer setting helps.
+A publisher that sends a few records a second is already inside Kafka's defaults, and a 20 millisecond linger adds latency to every record in exchange for batches that never fill. In the measurements above the default settings were the fastest and the tuned route the slowest, because 200 callers each waited for an acknowledgement and the linger set the pace. Tune when measured records per request is close to one while the sends are concurrent, or when bytes on the wire or on disk are the cost, and then raise the linger only as far as the latency budget allows. Compression costs CPU on the producer and cuts the bytes per record by a large factor, as the codec table shows. A caller that waits for each acknowledgement before it sends the next needs more callers, or a different route design, before any producer setting helps.
 
 > **🤖 Explore with your agent**
-> "In examples/05-optimizing-publishers, run `POST /flash-sale` for the unbatched, default and tuned profiles with the same number of orders and with concurrency 1 and then 200, and compare records per request from `kafka_producer_record_send_total` and `kafka_producer_request_total` for each `client_id`. State which setting changes records per request, and what the single caller shows about `lingerMs`."
+> "In examples/05-optimizing-publishers, drive `FlashSaleResource` with `POST /flash-sale` for the unbatched, default and tuned profiles with the same number of orders and with concurrency 1 and then 200, and compare `TunedPublishRoute`, `UnbatchedPublishRoute` and `DefaultPublishRoute` by records per request from `kafka_producer_record_send_total` and `kafka_producer_request_total` for each `client_id`. `KafkaClientMetricsFactory` labels the metrics with `client_id`. State which setting changes records per request, and what the single caller shows about `lingerMs`."
 > Check: the tuned profile has far more records per request than the unbatched profile at concurrency 200, and about one record per request at concurrency 1.
 
 ## References

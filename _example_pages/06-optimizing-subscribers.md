@@ -16,7 +16,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-{% include excalidraw.html file="06-concurrency-cap" alt="Nine partitions each assigned to one of the first nine of twelve consumers; the last three consumers are idle" caption="Twelve consumers on nine partitions" %}
+{% include excalidraw.html file="06-concurrency-cap" alt="Under RoundRobinAssignor, nine partitions are each assigned to one of the first nine of twelve consumers; the last three consumers are idle" caption="Twelve consumers on nine partitions" %}
 
 ## What to observe
 
