@@ -146,3 +146,22 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - First run already 26/26; script hardened anyway (record-line filter for the console consumer, no grep -q under pipefail) and the fresh-start lines added. f1 and f2: 26/26 from clean, consecutive. No edp-* left.
 - Experiments: remove-after-insert=false 25/26 (8); no route.by.field 20/26 (6, 7, 9, 11, 17, 24); Kafka stopped: outbox 201 in about 10 ms, delivered after restart, commit-first 500 after 60 s with the row and no event, publish-first 500 after 60 s with no row; docker kill Connect during a 200-order burst after a stored offset: 337 records for 201 orders, 136 duplicate id headers, none lost.
 - Kill before the first stored offset: one run lost 3 of 200 (B-080, B-148, B-153). Orchestrator re-ran it twice (08-nowarm.log): 201 of 201 both times; Connect log shows the restarted connector re-snapshots the empty outbox table and streams from the snapshot LSN, above the slot's latestFlushedLsn. Prose states the mechanism and that loss is timing-dependent.
+
+## r04 final serial run (2026-11-11, fresh containers per example, Camel 4.22.2)
+
+| Example | mvn verify tests | verify.sh |
+|---|---|---|
+| domain-model 2.1.0 | 80 | n/a |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7 + 4 | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 26/26 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 39/39 |
+
+Each verify.sh started with `down -v --remove-orphans` then `up --build --force-recreate --renew-anon-volumes`; no edp-* containers or volumes left. Static gates: validate ok, voice 0 ban-tier, idiomatic 0 ban-tier, host_ids 0, site builds. Words: 08 1,822; 09 2,391; 10 2,026.
