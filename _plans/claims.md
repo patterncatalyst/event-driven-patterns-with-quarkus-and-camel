@@ -310,6 +310,8 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 05-13 | 05 | acks=1 with idempotence off gives no producer id | verify.sh 05 checks 17, 22 | _docs/05-optimizing-publishers.md | verified |
 | 05-14 | 05 | Client metrics bound through the factory per client id and client_seq | FlashSaleTest; Prometheus names | _docs/05-optimizing-publishers.md | verified |
 | 05-15 | 05 | Camel's own Kafka clients are not observed by Camel or the Quarkus Micrometer binder | S2 spike | _docs/05-optimizing-publishers.md | verified |
+| 05-16 | 05 | Compression cuts bytes per record by a large factor (replaces the contradicted "little difference" sentence) | codec table; verify.sh 05 check 16 | _docs/05-optimizing-publishers.md:131 | verified |
+| 05-17 | 05 | Checks 5, 8, 11, 18 require requests > 0 (guards the ratio checks against a missing metric) | bite run 19/24, failing 5, 8, 11, 18, 20 | examples/05-optimizing-publishers/verify.sh | verified |
 | 06-01 | 06 | A fetch can return more records than one poll hands out; the client buffers the rest | sources.md consumer configs max.poll.records quotes | _docs/06-optimizing-subscribers.md | verified |
 | 06-02 | 06 | Consumer defaults max.poll.records 500, fetch.min.bytes 1, fetch.max.wait.ms 500, max.poll.interval.ms 300000 | application.properties; consumer configs page | _docs/06-optimizing-subscribers.md | verified |
 | 06-03 | 06 | Exceeding max.poll.interval.ms evicts the member, logs the poll-timeout and LeaveGroup lines, and re-delivers (duplicates) | verify.sh 06 checks 19 to 23; experiment FIXED_MAX_POLL_RECORDS=500 fails 21 to 23 | _docs/06-optimizing-subscribers.md | verified |
@@ -340,5 +342,3 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | r03-bf-04 | 04 | References: Lawrence ch 2 Anatomy of Message-Driven Systems (owner-approved r03 addition) | sources.md Lawrence TOC row, chapter title matches | _docs/04-ordering-and-partitioning.md:125 | verified |
 | r03-bf-05 | 05 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/05-optimizing-publishers.md:143 | verified |
 | r03-bf-06 | 06 | References: Bellemare ch 11 Basic Producer and Consumer Microservices | sources.md Bellemare 2nd ed TOC (pasted by owner from O'Reilly, 2026-11-10), chapter title matches | _docs/06-optimizing-subscribers.md:125 | verified |
-| 05-16 | 05 | Compression cuts bytes per record by a large factor (replaces the contradicted "little difference" sentence) | codec table; verify.sh 05 check 16 | _docs/05-optimizing-publishers.md:131 | verified |
-| 05-17 | 05 | Checks 5, 8, 11, 18 require requests > 0 (guards the ratio checks against a missing metric) | bite run 19/24, failing 5, 8, 11, 18, 20 | examples/05-optimizing-publishers/verify.sh | verified |
