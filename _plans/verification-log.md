@@ -87,3 +87,4 @@ Orchestrator, clean Docker, under the stack lock, one at a time:
 - 03-event-carried-state-transfer: mvn 8 + 7, BUILD SUCCESS; verify.sh 30/30.
 - 04-ordering-and-partitioning: mvn 4 + 46 runs (12 methods, two `@RepeatedTest(20)`), BUILD SUCCESS; verify.sh 28/28. Recorded by the ch04 repair executor: without the `ON CONFLICT` create the new-order concurrency test errors 20/20; without the row lock the existing-order test failed 1 of 20 (probabilistic).
 - 00 and 01 unchanged in code since the final serial run (17/17, 19/19).
+- 02 key-header experiment re-run after repair: order-service 7 tests, 3 fail (recordCarriesOnlyTheOrderIdKeyedByOrderId, orderIsReadableWhenTheRecordIsPublished, duplicateAndInvalidOrdersPublishNothing); restored.

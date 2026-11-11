@@ -87,7 +87,7 @@ mvn -B verify
 The Maven build runs both services' tests against PostgreSQL and Kafka started by Dev Services. In notification-service the order-service is a test resource served on the test application's own port, so a test can make the source answer, refuse or report CANCELLED on demand. `verify.sh` starts Kafka, PostgreSQL, LGTM and both services with Docker Compose and prints `21/21 checks passed`:
 
 - Placing an order publishes one record keyed by the order id whose value holds exactly the event id, the time and the order id.
-- The notification holds the customer and amount that order-service holds, read through the fetch, and one Tempo trace holds order-service's `POST /orders` span together with the consume and the fetch in notification-service. Request metrics and JVM metrics from both services reach Prometheus.
+- The notification holds the customer and amount that order-service holds, read through the fetch, and one Tempo trace holds order-service's `POST /orders` span together with the consume and the fetch in notification-service. Request metrics from order-service and JVM metrics from notification-service reach Prometheus.
 - With notification-service stopped, a second order placed and then order-service stopped too, notification-service starts, tries the fetch, fails, and neither writes a notification nor moves the group's offset past the record. When order-service starts again the notification appears and the group has committed everything.
 - A third order cancelled before notification-service reads its event yields a notification that says CANCELLED.
 
