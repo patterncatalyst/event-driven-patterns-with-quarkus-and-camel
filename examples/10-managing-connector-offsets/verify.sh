@@ -107,6 +107,7 @@ rows() { sql "SELECT count(*) FROM inventory.item_change ${1:+WHERE $1}"; }
 max_id() { sql "SELECT coalesce(max(id),0) FROM inventory.item_change"; }
 rows_are() { [[ "$(rows "$1")" == "$2" ]]; } # rows_are "<where>" <count>
 rows_stay() { stays "$3" rows_are "$1" "$2"; } # rows_stay "<where>" <count> <seconds>
+repeat_is_last_change() { rows_are "id > 0 AND qty=7777" 2 && rows_stay "id > 0" $(($1 + 3)) 5; }
 updates() { # updates <first quantity> <count>: one transaction each, spread over SKU-1 to SKU-5
     local i
     for i in $(seq 0 $(($2 - 1))); do
@@ -203,16 +204,16 @@ check "the 10 updates made before the alter are skipped" rows_stay "qty BETWEEN 
 check "exactly one change arrived since the stop" expect "$(rows)" $((BEFORE_ALTER + 1))
 
 echo "Backward alter"
-# Precondition: the slot has acknowledged everything already delivered. Without this wait the last
-# delivered change can come a second time after the resume, because the slot trails delivery.
+# Precondition: the slot has acknowledged everything already delivered, so the repeat below is not a
+# flush race: the bare lsn written by PATCH still makes the last transaction before the stop come again.
 poll 30 offset_matches_slot || fail_loudly "the slot did not acknowledge the delivered changes"
 stopped_cleanly || fail_loudly "the connector did not stop"
 BEFORE_BACKWARD=$(rows)
 updates 6001 2
 check "PATCH to the snapshot lsn, far behind the slot, is accepted and GET returns it" patched_to "$SNAPSHOT_LSN"
 resumed_cleanly || fail_loudly "the connector did not resume after the backward alter"
-check "only the 2 new changes are delivered, none of the history is replayed" poll 30 rows_are "id > 0" $((BEFORE_BACKWARD + 2))
-check "the 2 changes are not followed by a replay" rows_stay "id > 0" $((BEFORE_BACKWARD + 2)) 5
+check "the 2 new changes and one repeat of the last change before the stop arrive, nothing older" poll 30 rows_are "id > 0" $((BEFORE_BACKWARD + 3))
+check "the repeat is the qty 7777 change, and no further replay follows" repeat_is_last_change "$BEFORE_BACKWARD"
 check "the stored offset moves forward again past the lsn that was written" poll 30 offset_moved_past "$SNAPSHOT_LSN"
 
 echo "Reset"
