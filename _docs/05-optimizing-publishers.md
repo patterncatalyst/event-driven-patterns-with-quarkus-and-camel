@@ -82,7 +82,7 @@ Throughput and latency belong to the machine and to the moment, so `bench.sh` me
 | Default | 4.9 (2.1 to 6.0) | 0.13 | 58 | 0.75 |
 | Tuned (20 ms, 128 KiB, lz4) | 0.40 (0.39 to 0.40) | 2.7 | 67 | 0.29 |
 
-Every figure is a ratio of the route's median to the unbatched route's median in the same run, so the unbatched row is 1.0 by definition. The unbatched route's own rounds ranged from 0.43 to 1.40 of its median.
+Every median is divided by the unbatched route's median in the same run, so the unbatched row is 1.0 by definition. Each range is the route's lowest and highest round divided by the same unbatched median. The unbatched route's own rounds ranged from 0.43 to 1.40 of its median.
 
 Relative to the unbatched route, the default route moves about 4.9 times the orders per second, with about 58 times the records per request, and the unbatched route sends about 3 records per request. The tuned route sends the most records per request and the fewest bytes per record, and it is the slowest of the three: about 0.4 times the unbatched throughput, because every record waits for the linger. The unbatched and default medians come from rounds that differ widely, as the ranges show, and the first round of each was the slowest. The tuned route's rounds agree closely, because its time is set by the linger.
 
@@ -91,9 +91,9 @@ The same route with other lingers, 200 callers, `lz4`, as ratios to `linger.ms=0
 | `linger.ms` | Orders per second | p50 latency | Records per request |
 |---|---|---|---|
 | 0 | 1.0 | 1.0 | 1.0 |
-| 5 | 0.44 | 2.6 | 5.1 |
-| 20 | 0.16 | 8.3 | 5.2 |
-| 100 | 0.03 | 40 | 5.2 |
+| 5 | 0.44 | 2.6 | 5.05 |
+| 20 | 0.16 | 8.3 | 5.15 |
+| 100 | 0.03 | 40 | 5.20 |
 
 Batches are already near full at 5 ms, so a longer linger adds latency and no batching. At 0 the batches were also far from empty, about 38 records per request. With the linger at 20 ms, the codec changes the bytes and little else, shown as ratios to no compression:
 
