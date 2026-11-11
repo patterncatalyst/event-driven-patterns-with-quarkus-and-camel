@@ -140,3 +140,9 @@ Cause of the acquire-ahead: the seed wrote bursts as one producer batch (kafka-d
 - r1 34/34, r2 35/35, r3 35/35 from clean (two consecutive N/N). No edp-* left.
 - Measured (r3): burst about 55 MB; query slot 54.6 MB before release, 192 B after (r2: 0 B); interval-only slot 55.0 MB after the wait.
 - Experiments: remove tombstone filter 34/35 (13); delete REPLICA IDENTITY FULL 33/35 (14, 15); remove heartbeat.action.query 34/35 (22), 55.1 MB held; negative quantity: document unchanged, "quantityOnHand must not be negative" logged, next update processed; remove the offset-file rm 34/35 (34). Details: scratchpad 09-window.md (not committed).
+
+## r04 chapter 08 window (2026-11-11)
+
+- First run already 26/26; script hardened anyway (record-line filter for the console consumer, no grep -q under pipefail) and the fresh-start lines added. f1 and f2: 26/26 from clean, consecutive. No edp-* left.
+- Experiments: remove-after-insert=false 25/26 (8); no route.by.field 20/26 (6, 7, 9, 11, 17, 24); Kafka stopped: outbox 201 in about 10 ms, delivered after restart, commit-first 500 after 60 s with the row and no event, publish-first 500 after 60 s with no row; docker kill Connect during a 200-order burst after a stored offset: 337 records for 201 orders, 136 duplicate id headers, none lost.
+- Kill before the first stored offset: one run lost 3 of 200 (B-080, B-148, B-153). Orchestrator re-ran it twice (08-nowarm.log): 201 of 201 both times; Connect log shows the restarted connector re-snapshots the empty outbox table and streams from the snapshot LSN, above the slot's latestFlushedLsn. Prose states the mechanism and that loss is timing-dependent.

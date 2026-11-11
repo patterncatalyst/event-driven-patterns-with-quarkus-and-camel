@@ -100,7 +100,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the order service against PostgreSQL and Kafka from Dev Services: the order row and the outbox row are written together, a rolled-back order leaves neither, a duplicate is refused without a second row, and the two comparison routes lose and invent events when the crash switch fires. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, registers the connector and prints `TBD/26 checks passed`.
+The Maven build runs the order service against PostgreSQL and Kafka from Dev Services: the order row and the outbox row are written together, a rolled-back order leaves neither, a duplicate is refused without a second row, and the two comparison routes lose and invent events when the crash switch fires. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, registers the connector and prints `26/26 checks passed`.
 
 The checks read the effects, not the status codes:
 
@@ -114,9 +114,9 @@ The checks read the effects, not the status codes:
 Change one thing and watch a guard fail:
 
 - Run `REMOVE_AFTER_INSERT=false ./verify.sh`. Check 8 fails: the outbox rows stay in the table. The records on the topic are the same, because the connector reads the insert, not the table.
-- Remove the `route.by.field` and `route.topic.replacement` lines from `connect/order-outbox.json`. Check 9 fails, and so does every check that reads `edp.orders.placed`: the records go to `outbox.event.Order`.
-- Stop Kafka and place an order. Through the outbox the request returns 201 and the event follows when Kafka is back: TBD. Through the commit-first route the order is committed and the request fails: TBD.
-- Run `docker kill edp-connect` during a burst of 200 orders and start it again. Every order arrives. The number of records whose `id` header appears twice is TBD; a consumer that must not process an event twice has to drop them.
+- Remove the `route.by.field` and `route.topic.replacement` lines from `connect/order-outbox.json`. Checks 6, 7, 9, 11, 17 and 24 fail, 20 of 26 pass: the records go to `outbox.event.Order`, so everything that reads `edp.orders.placed` finds nothing.
+- Stop Kafka and place an order. Through the outbox the request returns 201 in about 10 ms, because the service never talks to Kafka, and the event arrives within seconds of the broker coming back. Through the commit-first route the order is committed, the request fails with a 500 after 60 seconds (the producer's blocking timeout) and no event is ever published. Through the publish-first route the request also fails after 60 seconds, and there is no order row either.
+- Place one order, wait a minute, then run `docker kill edp-connect` during a burst of 200 orders and start it again. Every order arrives. In one run the topic held 337 records for 201 orders: 136 `id` headers appeared twice, because the killed connector had stored no offset since the first order and read the log again from there. A consumer that must not process an event twice has to drop them. The wait matters. Connect stores offsets once a minute, and a connector that has never stored one takes a new snapshot after the restart (of an empty outbox table) and streams from the current end of the WAL, past changes the slot still holds. Whether that loses events depends on timing: in one run killed before the first offset the burst lost 3 of 200 events; in two others every change had been read before the kill and nothing was lost.
 
 ## When not to use it
 

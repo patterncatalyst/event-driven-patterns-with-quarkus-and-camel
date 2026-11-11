@@ -50,7 +50,7 @@ expect() { [[ "$1" == "$2" ]]; } # expect <actual> <expected>
 fail_loudly() { printf 'PRECONDITION FAILED: %s\n' "$1" >&2; exit 1; }
 
 sql() { "${PSQL[@]}" -c "$1"; }
-ready() { curl -sf "$ORDERS/q/health/ready"; }
+ready() { curl -sf "$ORDERS/q/health/ready" >/dev/null; }
 order_json() { printf '{"id":"%s","customerId":"CU-77","itemSku":"SKU-42","quantity":3,"amount":59.90}' "$1"; }
 # The HTTP status of a POST, or 000 when the service goes away before it answers.
 post() { # post <path> <orderId>
@@ -65,13 +65,13 @@ import json, sys
 d = json.load(sys.stdin)
 sys.exit(0 if d['connector']['state'] == 'RUNNING' and d['tasks'] and all(t['state'] == 'RUNNING' for t in d['tasks']) else 1)"
 }
-plugin_listed() { curl -sf "$CONNECT/connector-plugins" | grep -q 'io.debezium.connector.postgresql.PostgresConnector'; }
+plugin_listed() { local out; out="$(curl -sf "$CONNECT/connector-plugins")" || return 1; [[ "$out" == *io.debezium.connector.postgresql.PostgresConnector* ]]; }
 slot_is() { [[ "$(sql "SELECT active FROM pg_replication_slots WHERE slot_name='$SLOT'")" == "$1" ]]; }
 
 # Every record of the order topic as "headers<TAB>key<TAB>value", read from the beginning.
 dump() {
     docker exec edp-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic "$TOPIC" \
-        --from-beginning --timeout-ms 5000 --formatter-property print.headers=true --formatter-property print.key=true 2>/dev/null
+        --from-beginning --timeout-ms 5000 --formatter-property print.headers=true --formatter-property print.key=true 2>/dev/null | grep -F $'\t' || true
 }
 records_for() { dump | awk -F'\t' -v k="$1" '$(NF-1) == k'; }
 count_for() { records_for "$1" | wc -l; }
@@ -80,7 +80,7 @@ settles_at() { sleep "$3"; has_count "$1" "$2"; } # settles_at <orderId> <n> <se
 orders_rows() { sql "SELECT count(*) FROM orders.orders WHERE id='$1'"; }
 outbox_rows() { sql "SELECT count(*) FROM orders.outboxevent"; }
 all_topics() { docker exec edp-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list; }
-no_default_topic() { ! all_topics | grep -q '^outbox\.event\.'; }
+no_default_topic() { [[ "$(all_topics | grep -c '^outbox\.event\.' || true)" == 0 ]]; }
 
 # The record of an order has an id header (a UUID) and eventType OrderPlaced, and its value is the order as a JSON object.
 record_is_the_order() {
@@ -97,12 +97,15 @@ assert isinstance(d, dict) and d['orderId'] == sys.argv[2] and d['customerId'] =
 # The keys of the topic, in topic order, as one comma-separated string, for the orders O-4001 to O-4005.
 keys_in_topic_order() { dump | awk -F'\t' '$(NF-1) ~ /^O-400[1-5]$/ {print $(NF-1)}' | paste -sd, -; }
 
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
-loki_has_log() { curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}" | grep -q '"values"'; }
+tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
+loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 exited_by_halt() { [[ "$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' edp-order-service)" == "exited 137" ]]; }
 
 echo "Starting the stack"
-"${COMPOSE[@]}" up -d --build --wait
+# Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
+# then create every container and anonymous volume anew.
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+"${COMPOSE[@]}" up -d --build --force-recreate --renew-anon-volumes --wait
 poll 60 ready || fail_loudly "order-service is not ready"
 poll 30 plugin_listed || fail_loudly "Connect does not list the PostgreSQL connector"
 register_connector >/dev/null || fail_loudly "the connector was not accepted by Connect"
