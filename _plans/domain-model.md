@@ -136,7 +136,7 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 33 | Cruise Control | `KafkaRebalance` over the `edp.*` topics |
 | 34 | MirrorMaker 2 | `edp.shipping.*` topics replicated; notification-service consumer failover |
 | 35 | Debezium and Connect on Strimzi | the order outbox and inventory CDC connectors as `KafkaConnect` and `KafkaConnector` against a CNPG `Cluster` |
-| A | Testing event-driven code | the entities from the chapters, tested |
+| A | Testing event-driven code | the chapters' own examples, tested: Dev Services against real Kafka and PostgreSQL (pinned images, partition counts, shared containers); proving a check bites (break the guard, confirm the check fails, restore); asserting on topics by key, partition and offset, draining for the full wait instead of stopping at the first match; deterministic ordering tests (pause a replica, assert the precondition, compute placement with Kafka's murmur2); concurrency tests (two threads released together, repeated) and their limit (a probabilistic catch); Camel route tests (camel-quarkus-junit5, AdviceWith, an HTTP dependency stubbed with a test resource); event contract tests (schema compatibility in Apicurio, after ch 18); end-to-end verify.sh checks and trace, metric and log assertions in LGTM |
 | B | Compose to Kubernetes | Kafka and PostgreSQL configuration |
 | C | Querying streams without ksqlDB | ShipmentDelivered counts per carrier per window, three ways |
 | D | Pattern map, glossary, EIP Camel cross-reference | same domain as EIP Camel, so the cross-reference is by event |

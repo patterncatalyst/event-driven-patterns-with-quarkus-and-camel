@@ -68,13 +68,20 @@ d=json.loads(sys.argv[1])
 assert sorted(d)==['eventId','occurredAt','orderId'] and d['orderId']==sys.argv[2]" "$value" "$1"
 }
 fetch_failed_in_log() { local log; log="$(docker logs edp-notification-service 2>&1)"; [[ "$log" == *"Exhausted after delivery attempt"* ]]; }
+# A trace that holds order-service's POST /orders server span and a notification-service span: the
+# trace context crossed Kafka. The fetch alone would put notification-service and order-service in a
+# trace of their own, without the POST /orders span.
 trace_spans_both() {
-    local id
+    local id trace
     for id in $(curl -sf -G "http://localhost:3200/api/search" --data-urlencode 'tags=service.name=order-service' \
         --data-urlencode limit=20 | grep -o '"traceID":"[0-9a-f]*"' | cut -d'"' -f4); do
-        curl -sf "http://localhost:3200/api/traces/$id" | grep -q '"stringValue":"notification-service"' && return 0
+        trace="$(curl -sf "http://localhost:3200/api/traces/$id")" || continue
+        grep -q '"stringValue":"notification-service"' <<<"$trace" && grep -q '"name":"POST /orders"' <<<"$trace" && return 0
     done
     return 1
+}
+metric_live() { # metric_live <service> <metric>: Prometheus holds a sample for the service
+    curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$2{service_name=\"$1\"}" | grep -q '"value"'
 }
 
 "${COMPOSE[@]}" up -d --build --wait
@@ -88,7 +95,9 @@ check "notification for A appears" poll 60 has_notification "$A"
 check "notification holds the fetched customer CU-77" expect "$(notifications "$A" | field customerId)" CU-77
 check "notification holds the fetched amount 59.90" expect "$(notifications "$A" | field amount)" 59.9
 check "notification holds the status PLACED" expect "$(notifications "$A" | field orderStatus)" PLACED
-check "one Tempo trace spans order-service and notification-service" poll 90 trace_spans_both
+check "one Tempo trace holds the POST /orders span and the notification-service spans" poll 90 trace_spans_both
+check "order-service request metrics reach Prometheus" poll 90 metric_live order-service http_server_requests_milliseconds_count
+check "notification-service JVM metrics reach Prometheus" poll 90 metric_live notification-service jvm_memory_used_bytes
 
 # Source down: B is placed while notification-service is stopped, then order-service goes away
 # before notification-service comes back. The record must wait, uncommitted, for the source.

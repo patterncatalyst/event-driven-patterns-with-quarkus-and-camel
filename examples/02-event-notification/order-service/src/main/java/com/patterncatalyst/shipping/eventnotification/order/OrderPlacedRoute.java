@@ -14,6 +14,6 @@ public class OrderPlacedRoute extends RouteBuilder {
         from(ENDPOINT)
                 .routeId("order-placed-publisher")
                 .marshal().json()
-                .to("kafka:" + Topics.ORDERS_PLACED);
+                .toF("kafka:%s", Topics.ORDERS_PLACED);
     }
 }

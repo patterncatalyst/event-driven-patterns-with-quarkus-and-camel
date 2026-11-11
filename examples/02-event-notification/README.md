@@ -11,7 +11,7 @@ Quarkus REST, Hibernate ORM with Panache, Flyway and PostgreSQL in both services
 | order-service | 8080 | Owns the `orders` schema. `POST /orders` places an order and publishes `OrderPlaced`. `GET /orders/{id}` returns its fields and current status. `POST /orders/{id}/cancel` cancels it (409 once it is past PAID) |
 | notification-service | 8082 | Owns the `notifications` schema. Consumes `edp.orders.placed`, fetches the order, stores a notification. `GET /notifications?orderId=` lists them |
 
-`OrderPlaced` is `{eventId, occurredAt, orderId}` on `edp.orders.placed`, keyed by order id. order-service publishes it after the order's transaction commits, so the fetch never races the insert.
+`OrderPlaced` is `{eventId, occurredAt, orderId}` on `edp.orders.placed`, keyed by order id. order-service publishes it after the order's transaction commits, so a record is never visible before its row, and a rolled-back order publishes nothing.
 
 ## Run
 
@@ -31,10 +31,10 @@ docker compose down -v
 |---|---|
 | `order-service/.../OrderService` | Stores the order and fires the CDI event inside the transaction |
 | `order-service/.../OrderPlacedPublisher` | Observes `AFTER_SUCCESS` and hands the event to the route |
-| `order-service/.../OrderPlacedRoute` | `direct:order-placed` to the topic as JSON, keyed by order id |
+| `order-service/.../OrderPlacedRoute` | `direct:order-placed` to the topic as JSON; the key header comes from `OrderPlacedPublisher` |
 | `notification-service/.../OrderPlacedNotificationRoute` | Kafka consumer with `breakOnFirstError`, redelivery, the `toD` fetch and the store |
 | `notification-service/src/test/.../StubOrderService` | Test-scoped JAX-RS resource that stands in for order-service |
 | `*/Containerfile` | UBI 10 multi-stage builds; context is `examples/` |
 | `compose.yaml` | Includes Kafka, PostgreSQL and LGTM from `_infra`; adds both services |
 
-Compose supplies `ORDER_SERVICE_URL`, `CAMEL_COMPONENT_KAFKA_BROKERS`, the datasource settings and the OTLP endpoint as environment variables. Traces and logs reach `http://lgtm:4318` with `service.name` `order-service` and `notification-service`.
+Compose supplies `ORDER_SERVICE_URL`, `CAMEL_COMPONENT_KAFKA_BROKERS`, the datasource settings and the OTLP endpoint as environment variables. Traces, metrics and logs reach `http://lgtm:4318` with `service.name` `order-service` and `notification-service`.

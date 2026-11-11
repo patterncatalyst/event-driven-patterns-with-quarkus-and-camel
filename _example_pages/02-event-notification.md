@@ -22,7 +22,7 @@ mvn -B verify
 
 1. **The record carries only the id.** The record on `edp.orders.placed` has the order id as its key and `eventId`, `occurredAt` and `orderId` as its value.
 2. **The notification holds fetched facts.** `GET /notifications?orderId=` on port 8082 returns the customer, amount and status read from order-service.
-3. **One trace spans both services.** Grafana at `http://localhost:3000` shows a trace from the `POST /orders` request to the fetch in `notification-service`.
+3. **One trace spans both services.** Grafana at `http://localhost:3000` shows one trace holding the `POST /orders` request in order-service and the consume and the fetch in `notification-service`. Metrics from both services reach Prometheus.
 4. **A missing source holds the record.** With order-service stopped, no notification appears and the group's offset stays where it was. When order-service returns, the notification appears.
 5. **The fetch reads current state.** An order cancelled before notification-service reads the event shows CANCELLED in its notification.
 
