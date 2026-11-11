@@ -46,7 +46,7 @@ Deleting a connector with `DELETE /connectors/{name}` does not delete its offset
 
 A PostgreSQL connector has a second position that it does not own. The logical replication slot `edp_inventory` lives in the database and records `confirmed_flush_lsn`, the last position the connector acknowledged. The slot also decides which WAL the server keeps. The offset is where the connector asks to start; the slot is where the server is willing to start.
 
-When a client starts streaming from a slot, PostgreSQL begins at the requested position or at the slot's `confirmed_flush_lsn`, whichever is greater. Two consequences follow, and they are the whole of the behaviour:
+When a client starts streaming from a slot, PostgreSQL begins at the requested position or at the slot's `confirmed_flush_lsn`, whichever is greater. Two consequences follow:
 
 - **Altering forward skips changes.** Set the offset to the current end of the WAL and everything written in between is never published. The slot moves up to match once the connector acknowledges.
 - **Altering backward does not rewind.** An older offset is clamped to the slot's position, so nothing before `confirmed_flush_lsn` can be asked for again. It is not free of duplicates, though: the altered offset holds only an `lsn`, and the last transaction the connector delivered before the stop arrives a second time, even when the slot had acknowledged it.
