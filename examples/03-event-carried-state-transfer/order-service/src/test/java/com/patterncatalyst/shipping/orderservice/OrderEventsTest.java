@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map;
 import java.util.UUID;
 
+import jakarta.inject.Inject;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +24,8 @@ import io.restassured.http.ContentType;
 @QuarkusTest
 class OrderEventsTest {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    @Inject
+    ObjectMapper json;
 
     @ConfigProperty(name = "kafka.bootstrap.servers")
     String bootstrap;
@@ -41,7 +44,7 @@ class OrderEventsTest {
     private JsonNode only(String topic, String id) throws Exception {
         var records = TopicReader.keyed(bootstrap, topic, id);
         assertEquals(1, records.size(), "one record keyed " + id);
-        return JSON.readTree(records.get(0).value());
+        return json.readTree(records.get(0).value());
     }
 
     @Test
@@ -87,7 +90,7 @@ class OrderEventsTest {
         var records = TopicReader.keyed(bootstrap, Topics.ORDERS_PLACED, id);
         assertEquals(1, records.size());
         assertTrue(records.get(0).value().length() < 1024, "the event is small");
-        JsonNode claim = JSON.readTree(records.get(0).value()).get("claim");
+        JsonNode claim = json.readTree(records.get(0).value()).get("claim");
         assertEquals(100 * 1024, claim.get("size").asLong());
         assertFalse(records.get(0).value().contains("ggg"), "the content is not in the event");
         String content = given().get("/claims/" + claim.get("id").asText()).then().statusCode(200).extract().asString();
