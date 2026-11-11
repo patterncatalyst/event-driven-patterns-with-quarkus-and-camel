@@ -26,7 +26,7 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 00-04 | 00 | Versions are exact, newest stable that works, no licence | _plans/versions.md | _docs/00-prerequisites-and-stacks.md:36; survey 2026-11-10 | verified |
 | 00-05 | 00 | Temurin 25.0.5 LTS | api.adoptium.net | _docs/00-prerequisites-and-stacks.md:40; versions.md | verified |
 | 00-06 | 00 | Maven 3.10 released; Quarkus has an open issue against it | quarkusio/quarkus #57216 | _docs/00-prerequisites-and-stacks.md:41; versions.md | verified |
-| 00-07 | 00 | Quarkus 3.40.1.2 LTS with Camel Quarkus 3.40.0 and Camel 4.22.1 | code.quarkus.io streams; quarkus-camel-bom pom | _docs/00-prerequisites-and-stacks.md:42; versions.md | verified |
+| 00-07 | 00 | Quarkus 3.40.1.2 LTS with Camel Quarkus 3.40.0; Camel 4.22.2 LTS imported through camel-bom ahead of the platform's 4.22.1 (r04 G0) | code.quarkus.io streams; quarkus-camel-bom pom; camel.apache.org/download (4.22.2 LTS); G0 dependency:tree + mvn verify 00 to 07 | _docs/00-prerequisites-and-stacks.md:42-43; versions.md | verified |
 | 00-08 | 00 | Kafka 4.3.2 is the newest the latest Strimzi supports | Strimzi 1.3.1 kafka-versions.yaml; examples/_infra/compose-kafka.yaml image 4.3.2 | _docs/00-prerequisites-and-stacks.md:43; versions.md | verified |
 | 00-09 | 00 | PostgreSQL 18.6: CNPG operand on compose, same minor for Dev Services | compose-postgres.yaml image 18.6; mvn log postgres:18.6 | _docs/00-prerequisites-and-stacks.md:44; log r02 G1 2026-11-10 | verified |
 | 00-10 | 00 | Debezium Connect 3.7.1.Final has PostgresConnector and EventRouter | compose-connect.yaml image 3.7.1.Final; verify.sh 00 checks 11, 12 | _docs/00-prerequisites-and-stacks.md:46; log r02 G1 2026-11-10 | verified |

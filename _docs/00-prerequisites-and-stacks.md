@@ -39,7 +39,8 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 |-----------|---------|--------------|
 | JDK | Temurin 25.0.5 | Long-term-support line, the minimum for every example |
 | Maven | 3.9.16 | Maven 3.10 is released, but Quarkus has an open issue against it |
-| Quarkus platform | 3.40.1.2 | Long-term-support stream; includes Camel Quarkus 3.40.0 and Camel 4.22.1 |
+| Quarkus platform | 3.40.1.2 | Long-term-support stream; includes Camel Quarkus 3.40.0 |
+| Apache Camel | 4.22.2 | Long-term-support patch, imported through `camel-bom` ahead of the platform's 4.22.1 |
 | Apache Kafka | 4.3.2 | Newest version the latest Strimzi supports, so compose and Kubernetes match |
 | PostgreSQL | 18.6 | CloudNativePG operand image on compose, same minor for Dev Services |
 | Apicurio Registry | 3.3.4 | Schema registry |
