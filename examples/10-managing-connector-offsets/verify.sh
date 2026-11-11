@@ -89,6 +89,7 @@ patched_to() { # patched_to <lsn>: PATCH is accepted and GET returns the new lsn
     [[ "$(patch_offset "$1")" == 200 && "$(offset_lsn)" == "$1" ]]
 }
 reset_cleanly() { [[ "$(delete_offsets)" == 200 ]] && offsets_empty; }
+offset_is_stored() { [[ "$(offset_server)" == edp && -n "$(offset_lsn)" ]]; }
 offset_moved_past() { (( $(offset_lsn) > $1 )); }
 
 # --- PostgreSQL ---
@@ -167,9 +168,9 @@ echo "Snapshot and offsets"
 check "inventory-service is ready" curl -sf http://localhost:8080/q/health/ready
 check "the connector and its task are RUNNING" poll 60 state_is "RUNNING/RUNNING"
 check "the snapshot delivered 5 rows, all op r" poll 60 rows_are "op='r'" 5
-check "the offset partition is {\"server\":\"edp\"} and holds an lsn" \
-    expect "$(offset_server)/$([[ -n "$(offset_lsn)" ]] && echo yes)" "edp/yes"
+check "the offset partition is {\"server\":\"edp\"} and holds an lsn" poll 30 offset_is_stored
 SNAPSHOT_LSN=$(offset_lsn)
+[[ -n "$SNAPSHOT_LSN" ]] || fail_loudly "no offset lsn was stored after the snapshot"
 check "on an idle stream the offset lsn equals the slot's confirmed_flush_lsn" poll 30 offset_matches_slot
 check "the offsets topic holds the same key" offsets_topic_has_key
 
@@ -202,6 +203,9 @@ check "the 10 updates made before the alter are skipped" rows_stay "qty BETWEEN 
 check "exactly one change arrived since the stop" expect "$(rows)" $((BEFORE_ALTER + 1))
 
 echo "Backward alter"
+# Precondition: the slot has acknowledged everything already delivered. Without this wait the last
+# delivered change can come a second time after the resume, because the slot trails delivery.
+poll 30 offset_matches_slot || fail_loudly "the slot did not acknowledge the delivered changes"
 stopped_cleanly || fail_loudly "the connector did not stop"
 BEFORE_BACKWARD=$(rows)
 updates 6001 2

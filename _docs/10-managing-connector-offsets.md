@@ -49,7 +49,7 @@ A PostgreSQL connector has a second position that it does not own. The logical r
 When a client starts streaming from a slot, PostgreSQL begins at the requested position or at the slot's `confirmed_flush_lsn`, whichever is greater. Two consequences follow, and they are the whole of the behaviour:
 
 - **Altering forward skips changes.** Set the offset to the current end of the WAL and everything written in between is never published. The slot moves up to match once the connector acknowledges.
-- **Altering backward does nothing.** An older offset is clamped to the slot's position. History that the slot has already discarded cannot be asked for again, and the changes that were pending are delivered once, not twice.
+- **Altering backward does not rewind.** An older offset is clamped to the slot's position, so nothing before `confirmed_flush_lsn` can be asked for again. The slot only moves when the connector acknowledges a position, which trails delivery. A change delivered just before the stop and not yet acknowledged comes again after the resume, so a backward alter can still produce one duplicate.
 
 {% include excalidraw.html file="10-offset-vs-slot" alt="An offset altered ahead of the slot makes streaming start at the offset and skip the changes in between; an offset altered behind the slot is ignored and streaming starts at the slot" caption="Figure 10.2: The server streams from the greater of the two positions" %}
 
@@ -98,13 +98,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-`mvn verify` runs against Kafka and PostgreSQL from Dev Services and checks that envelopes become rows in order with their LSN, once each. `verify.sh` brings up Kafka, PostgreSQL, Connect and the LGTM stack, seeds five SKUs, registers the connector and finishes with TBD/39 checks passed. Checks 1 to 6 cover the snapshot, the offset shape and its relation to the slot. Check 7 is the refusal while running. Checks 8 to 14 stop the connector, grow the retained WAL and show the resume delivering every change. The forward alter (checks 15 to 18) skips ten updates and delivers the next; the backward alter (checks 19 to 22) replays nothing; the reset (checks 23 to 26) delivers five snapshot rows and no history. The dropped slot (checks 27 to 30) and the lost slot (checks 31 to 37) show the two failure shapes and recover from each. Check 38 re-reads the table with a signal instead of a reset.
+`mvn verify` runs against Kafka and PostgreSQL from Dev Services and checks that envelopes become rows in order with their LSN, once each. `verify.sh` brings up Kafka, PostgreSQL, Connect and the LGTM stack, seeds five SKUs, registers the connector and finishes with TBD/39 checks passed. Checks 1 to 6 cover the snapshot, the offset shape and its relation to the slot. Check 7 is the refusal while running. Checks 8 to 14 stop the connector, grow the retained WAL and show the resume delivering every change. The forward alter (checks 15 to 18) skips ten updates and delivers the next; the backward alter (checks 19 to 22) waits for the slot to acknowledge the last change, then replays nothing; the reset (checks 23 to 26) delivers five snapshot rows and no history. The dropped slot (checks 27 to 30) and the lost slot (checks 31 to 37) show the two failure shapes and recover from each. Check 38 re-reads the table with a signal instead of a reset.
 
 Change one thing and watch a guard fail:
 
-- Export `OFFSET_FLUSH_INTERVAL_MS=60000` before `./verify.sh`, Connect's default. A GET now lags the connector, and the check that the offset matches the slot fails until the first flush: TBD.
-- Kill Connect with `docker kill edp-connect` between flushes under the default interval and start it again. The changes written after the last flush are delivered a second time: TBD rows.
-- Stop the connector, replace its configuration with `connect/inventory-cdc-no-data.json`, make three updates, delete the offsets and resume. No snapshot row arrives, and the slot's unconfirmed backlog is replayed: TBD rows.
+- Export `OFFSET_FLUSH_INTERVAL_MS=60000` before `./verify.sh`, Connect's default. A GET now lags the connector: no offset is stored within 30 seconds of the snapshot, check 4 fails and the run stops at its precondition.
+- Kill Connect with `docker kill edp-connect` between flushes under the default interval and start it again. The changes written after the last flush are delivered a second time: 21 updates, 21 duplicates.
+- Stop the connector, replace its configuration with `connect/inventory-cdc-no-data.json`, make three updates, delete the offsets and resume. No snapshot row arrives, and the slot's unconfirmed backlog is replayed: 4 `u` rows, the three updates plus the last change delivered before the stop, which the slot had not yet acknowledged.
 - Alter the offset with the connector running. HTTP 400, and nothing changes.
 - Send the incremental snapshot signal instead of resetting. The connector stays running, the offsets are untouched and the five rows arrive again as `r` events: check 38.
 

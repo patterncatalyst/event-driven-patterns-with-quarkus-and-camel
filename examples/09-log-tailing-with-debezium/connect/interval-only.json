@@ -1,0 +1,22 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "tasks.max": "1",
+  "database.hostname": "postgres",
+  "database.port": "5432",
+  "database.user": "edp",
+  "database.password": "edp",
+  "database.dbname": "edp",
+  "topic.prefix": "edp",
+  "plugin.name": "pgoutput",
+  "slot.name": "edp_interval_only",
+  "publication.name": "edp_interval_only",
+  "publication.autocreate.mode": "filtered",
+  "table.include.list": "inventory.dbz_signal",
+  "snapshot.mode": "initial",
+  "heartbeat.interval.ms": "5000",
+  "topic.heartbeat.prefix": "edp.heartbeat",
+  "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "key.converter.schemas.enable": "false",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter.schemas.enable": "false"
+}
