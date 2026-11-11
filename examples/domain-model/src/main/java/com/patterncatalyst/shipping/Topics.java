@@ -18,6 +18,12 @@ public final class Topics {
     /** One ordered stream of shipment status changes, keyed by order id. */
     public static final String SHIPPING_SHIPMENTS = "edp.shipping.shipments";
 
+    /** Raw Debezium change envelopes of the legacy inventory_item table. */
+    public static final String INVENTORY_ITEM_CHANGES = "edp.inventory.item-changes";
+
+    /** Compacted InventoryItem state documents, keyed by sku. */
+    public static final String INVENTORY_ITEMS = "edp.inventory.items";
+
     /** The nine event catalog topics. */
     public static final List<String> ALL = List.of(
             ORDERS_PLACED, ORDERS_CANCELLED,
