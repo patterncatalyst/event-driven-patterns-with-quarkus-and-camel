@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="180" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">No If-Match: the server retries</text>
+<rect x="20" y="260" width="920" height="200" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="280" font-size="12" font-weight="700" fill="#888">If-Match: the caller decided from the version it read</text>
+<rect x="40" y="110" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="143.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">POST .../cancellation</text>
+<text x="140.0" y="160.0" font-size="11.5" fill="#555555" text-anchor="middle">no If-Match</text>
+<rect x="270" y="110" width="200" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="370.0" y="143.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">OrderCommands</text>
+<text x="370.0" y="160.0" font-size="11.5" fill="#555555" text-anchor="middle">@Retry on ConcurrencyConflict</text>
+<rect x="500" y="110" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="600.0" y="143.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">OrderTransaction</text>
+<text x="600.0" y="160.0" font-size="11.5" fill="#555555" text-anchor="middle">new transaction, reload</text>
+<rect x="730" y="110" width="190" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="825.0" y="143.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">200 at the next version</text>
+<text x="825.0" y="160.0" font-size="11.5" fill="#555555" text-anchor="middle">or 409 with the reason</text>
+<rect x="40" y="320" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">POST .../cancellation</text>
+<text x="140.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">If-Match: &quot;2&quot;</text>
+<rect x="270" y="320" width="200" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="370.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">evaluatePreconditions</text>
+<text x="370.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">current ETag is &quot;3&quot;</text>
+<rect x="500" y="320" width="200" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="600.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">no command runs</text>
+<text x="600.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">nothing is appended</text>
+<rect x="730" y="320" width="190" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="825.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">412 Precondition Failed</text>
+<text x="825.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">the caller reads and decides</text>
+<path d="M240,145 L270,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M470,145 L500,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M700,145 L730,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M240,355 L270,355" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M470,355 L500,355" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M700,355 L730,355" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Retry what does not depend on what the caller saw, report what does</text>
+</svg>

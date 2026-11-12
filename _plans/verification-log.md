@@ -210,3 +210,143 @@ Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp
 ## r05 validation round 2 (2026-11-12)
 
 Opus round 2: all 15 round-1 findings resolved; numbers match the r1 logs; figure 13.1 regenerates byte-identical; mvn 12 green (3 tests); word counts 2,222 / 2,181 / 2,491. Low fixes applied: claims 13-k (dead letter content, checks 9 to 16, 27, 28) and 13-b cleaned; 13-f and 13-g note samples n=1; ch12 listing shows `.bean(mapping, "toPayment")`, "same point in the batch", check 21 wording; ch13 table cell without self-reference; KIP-939 marked not cited in sources.md.
+
+## r06 spikes (step 1B, 2026-11-12)
+
+- S1 to S5 all pass (scratchpad r06-spikes/REPORT.md, not committed): S1 chapter 14 Quarkus path (constraint-name mapping, `@Retry` per attempt in a new transaction, DemoPause, `If-Match` with `Request.evaluatePreconditions`, two outbox events, SmallRye `@Incoming @Blocking`); S2 chapter 14 Camel path (redelivery re-decides, `CAMEL_REDELIVERIES=0` drops the command and commits the offset, group reset and replay); S3 chapter 15 measurement and heap (ratio 140 to 148 on 100,000 events in 3 of 3 runs, 57-byte state, entity `stream()` runs out of heap at 96 MB); S4 Camel snapshotter (burst, slow period, stale-take guard); S5 tooling (keyed console producer, connector registration, pause preconditions).
+- Eight corrections carried into 2A and 2B (G0 decisions in r06-plan.md): `DEMO_PAUSE_FOR` takes `orderId:Command`; `quarkus.hibernate-orm.mapping.format.global=ignore`; constraint mapping by walking the cause chain and `@Retry` around a separate `@Transactional` bean; `@Consumes(JSON)` only on POSTs with a body; Camel `logRetryAttempted(true)` with INFO and `commands.camel.*` properties; chapter 15 tail read through a Panache projection; `@Retry(maxRetries=30, jitter=30)` on the reserve path (8 retries lost 1 to 6 of 200 under 8 clients); seed with version 1 `StockReceived 100`; check 19 clears the inline snapshot first; check 10 ratio R=20 on SKU-1503 only.
+- Fallbacks: none needed. UBI openjdk-25 bumped repo-wide to 1.24-20 in the 1A re-survey (the spikes ran on 1.24-19).
+
+## r06 chapter 15 window (2026-11-12)
+
+- Three baseline runs from clean, 27/27 each (w15w-base1..3). Medians of the three run medians:
+
+  | Stream | Full load | Snapshot load | Per event (full) |
+  |---|---|---|---|
+  | SKU-1501 (1,000) | 1.4 ms | 0.30 ms | 1.4 us |
+  | SKU-1502 (10,000) | 12.2 ms | 0.41 ms | 1.2 us |
+  | SKU-1503 (100,000) | 126.1 ms | 0.63 ms | 1.3 us |
+
+- EXPLAIN (ANALYZE) of the full 100,000 event read: 40.9, 41.8, 40.9 ms, reported as 41 ms of 126. State 57 bytes of jsonb. Snapshot load 118 times faster than the full load in run 1 (check 10 requires 20).
+- Camel burst of 1,000 reservations, period 1 s, N=100: largest tail sampled 327, 350, 336 (median 336, range 327 to 350). Period 30 s: 989 and 997 (about 990), both 27/27.
+- Experiments: `SNAPSHOT_EVERY=0` fails 4, 5, 6, 7, 10, 11, 13, 15, 18 and stops at precondition 19 (run b); run a also failed check 17, so check 17 is unstable under `SNAPSHOT_EVERY=0` and the chapter does not name it. `SNAPSHOT_EVERY=10` and `1000` 27/27 (snapshot load 0.60 and 1.44 ms, one run each). `SNAPSHOT_GUARD=false` 26/27, only check 18 fails, in both runs. `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m`: OutOfMemoryError at the first load, precondition 3 fails; the projection at -Xmx96m passes 27/27. Manual: an altered snapshot `state` is believed (999999 against 9900 on a full replay); `SNAPSHOT_SCHEMA=2` replays the whole stream once and the next command writes schema 2.
+- Details: scratchpad w15w-*.log (not committed).
+
+## r06 chapter 14 builder runs (2026-11-12)
+
+- verify.sh 33/33 twice from clean (w14-verify7.log, w14-verify8.log); mvn verify 26 tests green (w14-mvn2.log).
+- Experiments (w14-exp-*.log): `RETRY_MODE=reappend` 29/33, checks 14, 15, 17, 30 fail (an earlier run also failed 29, 28/33); `RETRY_MAX=0` 27/33, checks 14, 19, 20, 21, 26, 30; constraint removed from the first migration 23/33, checks 14 to 17, 19, 20, 26, 29, 30, 31; `CAMEL_REDELIVERIES=0` 32/33, check 29 only.
+
+## r06 fixes in the builder and edit rounds (2026-11-12)
+
+- UBI openjdk-25 and openjdk-25-runtime bumped repo-wide to 1.24-20.
+- Chapter 08 sentence fixed (recommendation 9); claim 08-16 now cites the chapter 14 test `aFailureAfterTheAppendLeavesNeitherAnEventNorAnOutboxRow`.
+- Chapter 14 experiment bullet reworded to "the `CONSTRAINT events_stream_version` line and the comma before it" so the edited migration still parses.
+- Lessons: plain Panache entity `stream()` does not bound the heap (Hibernate keeps the entities in the persistence context); a `@Retry` must wrap a separate `@Transactional` bean, because on the transactional method itself the retry runs inside the aborted transaction; the direct endpoint's 30 s timeout raced the 30 s test HTTP timeout in example 02 and is fixed with `%test.camel.component.direct.timeout=2000`.
+
+## r06 final serial run (step 5)
+
+Script `final-r06.sh` (session scratchpad), one flock, every verify.sh from fresh containers (down -v, up --force-recreate --renew-anon-volumes); no `edp-*` containers left between runs (no LEFTOVER line). Logs `f6-*.log`.
+
+| Example | mvn tests | verify.sh |
+|---|---|---|
+| domain-model | BUILD SUCCESS | none |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7, 1 error (see below) | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 27/27 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 40/40 |
+| 11 | 7 | 29/29 |
+| 12 | 3 | 21/21 |
+| 13 | 7 | 31/31 |
+| 14 | 26 | 33/33 |
+| 15 | 11 | 27/27 |
+
+02: `OrderEventTest.failedPublishLeavesTheOrderWithoutAnEvent` raised `SocketTimeoutException: Read timed out` at 30.03 s. With the publishing route stopped, the `direct:` producer waits for a consumer for the component's default 30 s timeout, which races the 30 s test HTTP read timeout. Fix: `%test.camel.component.direct.timeout=2000` (test profile only, no prose impact); re-run twice, see below.
+
+Experiment re-runs (failing sets equal the prose in every case):
+
+| Run | Result | Failing checks |
+|---|---|---|
+| 14 `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 |
+| 14 `RETRY_MAX=0` | 27/33 | 14, 19, 20, 21, 26, 30 |
+| 14 constraint line and comma removed | 23/33 | 14 to 17, 19, 20, 26, 29, 30, 31 |
+| 14 `CAMEL_REDELIVERIES=0` | 32/33 | 29 |
+| 15 `SNAPSHOT_EVERY=0` | stops at the Camel precondition | 4 to 7, 10, 11, 13, 15, 18 (17 passed this time; unstable, not in prose) |
+| 15 `SNAPSHOT_GUARD=false` | 26/27 | 18 |
+| 15 `SNAPSHOT_EVERY=10` | 27/27 | none |
+| 15 `SNAPSHOT_EVERY=1000` | 27/27 | none |
+| 15 `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` | precondition 3 fails (service exits with OutOfMemoryError) | 3 |
+| 15 `EXTRA_JAVA_OPTS=-Xmx96m` | 27/27 | none |
+
+Cosmetic: with `SNAPSHOT_EVERY=0` the label of check 6 prints "after -1 more reservations" (N-1 with N=0); the check fails as intended.
+
+### Unbacked-claims pass (orchestrator, 2026-11-12)
+
+- Young's CQRS Documents PDF fetched and converted with pdftotext: Listing 5 (expected-version check and the Aggregates table) backs 14-p and 14-q; Rolling Snapshots p. 44 backs the snapshot-schema point (15-m, prose reworded to Young's two options: delete and recreate, or update).
+- Fowler DDD_Aggregate page fetched: backs 14-g; the Vernon content claim was cut, Vernon is cited by chapter title only.
+- Camel aggregate EIP catalog doc (4.22.2) backs 14-af and 15-u.
+- Run host class: lscpu shows 1 socket, 8 cores per socket, 2 threads per core (15-w). No model name recorded.
+- 15-ai reworded to what check 21 asserts (three periods); 15-ba reworded to the measured 1,000-event load.
+- Open: 15-ae (inline snapshot failure rolls the command back) and 15-af (a failed snapshotter tick leaves commands unaffected and the next tick retries) need Maven tests; added after the final run releases the lock.
+
+02 fix re-run: `mvn verify` on examples/02 twice after the final run (`f6-02-fix-mvn1.log`, `f6-02-fix-mvn2.log`): 7 + 4 tests, BUILD SUCCESS both times, no edp-* containers left.
+
+15 new tests (step 5 follow-up): `InlineSnapshotFailureTest` and `SnapshotterRetryTest` added; `mvn verify` on examples/15 twice (`w15t-mvn1.log`, `w15t-mvn2.log`): 13 tests, BUILD SUCCESS both. The final-run table row for 15 (11 tests) predates them.
+
+### Repair round 1 (2026-11-12)
+
+Validation round 1 found 3 High, 9 Medium and 10 Low findings in chapters 14 and 15; all were fixed. The final-run table above predates these changes (chapter 15 then ran 11 tests, one timing per stream before the checks had mutated snapshots, and the old numbers); the rows below replace it for chapters 14 and 15. Each run started from fresh containers. Claims rows 14-* and 15-* now cite these logs.
+
+Chapter 14 runs:
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| `mvn verify` | 27 tests, BUILD SUCCESS | none | `r1-14-mvn.log` |
+| `./verify.sh` (twice) | 33/33 | none | `r1-14-base1.log`, `r1-14-base2.log` |
+| `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 | `r1-14-x-reappend.log` |
+| `RETRY_MAX=0` | 27/33 | 14, 19, 20, 21, 26, 30 | `r1-14-x-retrymax0.log` |
+| `CAMEL_REDELIVERIES=0` | 32/33 | 29 | `r1-14-x-camel0.log` |
+| constraint line and comma removed | 23/33 | 14, 15, 16, 17, 19, 20, 26, 29, 30, 31 | `r1-14-x-constraint.log` |
+
+Chapter 14 failing sets equal the earlier ones. The test count is 27: `OrderAggregateTest` 11, `OrderAggregateServiceTest` 13 (adds `aWildcardIfMatchOnAnExistingOrderIsAMatch`), `ReappendTest` 1, `CamelCommandsTest` 1, `CamelNoRedeliveryTest` 1.
+
+Chapter 15 runs:
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| `mvn verify` | 13 tests, BUILD SUCCESS | none | `r1-15-mvn.log` |
+| `./verify.sh` (three times) | 27/27 each | none | `r1-15-base1.log`, `r1-15-base2.log`, `r1-15-base3.log` |
+| `SNAPSHOT_EVERY=10` | 27/27, exactly 9 events replayed | none | `r1-15-x-every10.log` |
+| `SNAPSHOT_EVERY=1000` | 27/27, exactly 999 events replayed | none | `r1-15-x-every1000.log` |
+| `SNAPSHOT_EVERY=0` | stops at a precondition before check 12 | 4, 5, 6, 7, 10, 11 | `r1-15-x-every0.log` |
+| `SNAPSHOT_GUARD=false` | 26/27 | 18 | `r1-15-x-guardoff.log` |
+| `SNAPSHOTTER_DELAY_MS=30000` with `verify.sh` | 27/27, largest tail 974 | none | `r1-15-x-delay30000-verify.log` |
+| `SNAPSHOTTER_DELAY_MS=30000` (second run) | largest tail 993, caught up after 21 s | | `r1-15-x-delay30000.log` |
+| snapshot state altered by hand | snapshot answers 999999, `ignoreSnapshot=true` answers 10100 | | `r1-15-x-altered.log` |
+| `SNAPSHOT_SCHEMA=2` | first load replays 100001 events, next command writes schema 2 | | `r1-15-x-schema2.log` |
+
+Baseline numbers (medians of the three run medians): full load 1.6, 11.6 and 127.7 ms for 1,100, 10,100 and 100,200 events; snapshot load (99 events replayed) 0.50, 0.63 and 0.95 ms; `EXPLAIN` 40.6 to 41.5 ms of the 127.7 ms; largest burst tail 350 (322 to 358); snapshot-load ratio 133 to 139.
+
+New `SNAPSHOT_EVERY=0` failing set: checks 4, 5, 6, 7, 10 and 11 fail, and the run stops with "PRECONDITION FAILED: no snapshot of SKU-1503 exists before the snapshots are deleted". Checks 12 and 14 gained preconditions (a snapshot must exist before every snapshot is deleted, and before one is set to schema version 0), so with N=0 the run no longer reports checks 13, 15 and 18 as failures and no longer reaches the Camel phase. The earlier set (4 to 7, 10, 11, 13, 15, 18) is superseded.
+
+Bench redesign: there is now one bench, run before any check mutates snapshots. Each stream receives 100 reservations first, so every snapshot load replays 99 events; five loads are discarded and 21 timed, alternating full and snapshot. The separate `snapshot_load_note` was removed.
+
+Period of 30 seconds: the largest tail sampled was 974 in the `verify.sh` run and 993 in the second run (baseline 350).
+
+Not repeated: the heap experiments (`INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` and `EXTRA_JAVA_OPTS=-Xmx96m`, claims 15-n and 15-az). Their logs (`w15w-x-entities.log`, `w15w-x-heap96.log`) predate this round and no chapter 15 number depends on them.
+
+Claims rows removed: 15-u (Camel Aggregator sentence in chapter 15), 15-bb (Microsoft "optimization" sentence); added: 15-bf, 15-bg, 15-bh.
+
+Heap experiments re-run after repair round 1 (orchestrator): `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` stops at precondition 3 (`r1-15-x-entities96.log`); a KEEP=1 repeat shows the container exited with code 3 and logged `Terminating due to java.lang.OutOfMemoryError: Java heap space` (`r1-15-x-entities96-evidence.log`). `EXTRA_JAVA_OPTS=-Xmx96m` with the projection: 27/27 (`r1-15-x-heap96.log`). No edp-* containers left.
+
+### Validation round 2 (Opus, 2026-11-12): SHIP
+
+No High. Live 4/4 green (`v7-*.log`: mvn 14 27 tests, mvn 15 13 tests, verify 14 33/33, verify 15 27/27); all gates green. Fixed before the PR: N table median-load column dropped (single noisy runs contradicted the N-1 cost statement); Figure 15.2 caption and spec docstring now "a snapshot load stays under 1 ms", snapshot labels printed with two decimals, subtitle names the median of three runs; the 30 s period bullet quotes the verify run only (974); "brought to a snapshot with 99 events after it" replaces "receives 100 reservations"; Young snapshot-schema sentence reworded (no shared 6-gram); verify.sh NOTE labels use the measured stream lengths; ch 14 wording (the two events other services act on; any `edp.orders` topic; Vernon reference items separated); ch 15 "Chapter 1"; ch 08 "Event sourcing keeps the outbox when only some events are public"; fully qualified `Function` and `Stream` replaced by imports. Kept: `StockLedger` counts replayed events with `peek` (shown in the chapter snippet; equivalent to version arithmetic only while versions stay contiguous).
+Re-run after these edits: `r2-15-mvn.log` 13 tests BUILD SUCCESS; `r2-15-verify.log` 27/27 (full 1.5/11.4/132.0 ms, ratio 134). No edp-* containers left.

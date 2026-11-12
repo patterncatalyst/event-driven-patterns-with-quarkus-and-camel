@@ -1,6 +1,6 @@
 # Build context is examples/ so the shared domain model can be installed first.
 #   docker build -f 03-event-carried-state-transfer/notification-service/Containerfile -t notification-service examples
-FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
+FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-20 AS build
 USER 185
 WORKDIR /build
 COPY --chown=185:0 domain-model/ domain-model/
@@ -11,7 +11,7 @@ COPY --chown=185:0 03-event-carried-state-transfer/notification-service/src 03-e
 RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
  && mvn -B -ntp -q -f 03-event-carried-state-transfer/pom.xml -pl notification-service package -DskipTests
 
-FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
+FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-20
 ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
     JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 COPY --from=build --chown=185 /build/03-event-carried-state-transfer/notification-service/target/quarkus-app/lib/ /deployments/lib/
