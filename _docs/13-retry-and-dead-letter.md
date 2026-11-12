@@ -25,9 +25,9 @@ Hohpe and Woolf name two of the cases. A message that makes no sense to the rece
 
 **A Dead Letter Channel sends a record the receiver cannot process to a separate topic with its original content, after retrying only the failures that can still succeed.**
 
-Three decisions make it work. Classify the failure: the consumer says which exceptions are final and which are worth another attempt. Bound the retries, so a failure that never clears ends up on the dead letter topic instead of holding the partition forever. Keep the original record, key and bytes, so that whoever repairs it, or the consumer after a fix, starts from what was sent and not from what the consumer made of it.
+Three decisions make it work. Classify the failure: the consumer says which exceptions are final and which are worth another attempt. Bound the retries, so a failure that never clears ends up on the dead letter topic instead of holding the partition forever. Keep the original record, key and bytes, so that whoever repairs it starts from what was sent and not from what the consumer made of it.
 
-The channel does not remove the failure. It moves it to a place with an owner. A dead letter topic that nobody reads is the unsound option again, with more steps.
+The channel moves the failure to a place with an owner. A dead letter topic nobody reads is the unsound option again.
 
 ### How Quarkus and Camel model it
 
@@ -74,15 +74,15 @@ public void reserve(OrderPlaced order) {
 }
 ```
 
-The lock hint matters. Without it a locked row makes the attempt wait for as long as the holder does, and a retry policy never gets to run. With it, PostgreSQL gives up after two seconds, Hibernate raises a `PessimisticLockException`, and the retry sees an ordinary failure.
+The lock hint matters. Without it the attempt waits until the holder releases the row, about ten seconds of the twelve here, and succeeds on its first and only attempt: the retry policy never runs and the record behind it waits that long. With it, PostgreSQL gives up after two seconds, Hibernate raises a `PessimisticLockException`, and the retry sees an ordinary failure.
 
 A retry in place has a price that the figure shows. The partition has one reader, and while it retries `O-7004` it reads nothing else. `O-7005` is a valid order for another SKU, and it waits for the whole retry.
 
 {% include excalidraw.html file="13-retry-blocks-partition" alt="While O-7004 is retried against a locked row, O-7005 behind it on the same partition is not read; after the lock is released O-7004 is reserved and O-7005 follows" caption="Figure 13.3: A retry in place holds back the records behind it" %}
 
-SmallRye has a retry that does not block, the `delayed-retry-topic` failure strategy, which republishes the record to topics with a delay. The documentation marks it experimental, and this example does not use it.
+SmallRye has a retry that does not block, the `delayed-retry-topic` failure strategy, which republishes the record to delay topics. The documentation marks it experimental, and this example does not use it.
 
-A retried effect must also survive being applied twice, because delivery is at least once. Here the failed attempt rolled back, so a retry decrements the stock once. A consumer that crashes after the commit and before the offset is stored reads the record again and decrements it again. Chapter 11 puts a key in the same transaction to stop that.
+A retried effect must also survive being applied twice. Here the failed attempt rolled back, so a retry decrements the stock once. A record that is delivered again after a commit is applied again, as the last experiment shows. Chapter 11 puts a key in the same transaction to stop that.
 
 The Camel route says the same things in the route's own terms. `DeadLetterRoute` is the comparison, started with the `camel` profile:
 
@@ -99,7 +99,7 @@ from("kafka:" + Topics.ORDERS_PLACED + "?groupId=inventory-camel&autoOffsetReset
         .bean(ReservationService.class, "reserve");
 ```
 
-The error handler redelivers every failure up to the limit. The `onException` clause overrides it for the two exceptions that cannot succeed, with no redelivery. `useOriginalBody` restores the body that entered the route before the dead letter is written. It has to be on the clause as well as on the error handler: without it the dead letter channel is handed the unmarshalled `OrderPlaced`, cannot serialize it as bytes, and the record is lost. Enriching dead letters with the failure, and the rest of the dead letter channel builder, is the subject of Enterprise Integration Patterns with Camel, chapter 5, and is not repeated here.
+The error handler redelivers every failure up to the limit. The `onException` clause overrides it for the two exceptions that cannot succeed, with no redelivery. `useOriginalBody` restores the body that entered the route before the dead letter is written. It has to be on the clause as well as on the error handler: without it the dead letter channel is handed the unmarshalled `OrderPlaced`, cannot serialize it as bytes, and the record is lost. Enriching dead letters and the rest of the builder are covered in Enterprise Integration Patterns with Camel, chapter 5.
 
 What Camel does not do is describe the failure. Its dead letter channel writes the original value and no reason, source topic, partition or offset. The two designs differ in other ways too:
 
@@ -110,10 +110,10 @@ What Camel does not do is describe the failure. Its dead letter channel writes t
 | Dead letter content | Key and original bytes; headers for exception, reason, source topic, partition and offset | Original value bytes only |
 | Parse failure | Parsed in the method, so it is classified like any exception | Parsed in the route, so it goes through the same handler |
 | Nothing configured | `fail`: the channel stops and readiness goes DOWN | The default error handler logs, skips the record after one attempt and commits |
-| Offset committed | After the record is written to the dead letter topic | After the exchange completes or the handler deals with it |
+| Offset committed | After the record is written to the dead letter topic | After the exchange completes; with the default error handler also for a record it gave up on |
 | Blocked while retrying | The partition | The partition |
-| Retry without blocking | `delayed-retry-topic`, experimental | Not used |
-| 20 s retry with `max.poll.interval.ms` at 10 s | Still a member of the group | Leaves the group and the record is delivered again |
+| Retry without blocking | `delayed-retry-topic`, experimental, not used here | Not used here |
+| 20 s hold with `max.poll.interval.ms` at 10 s | The record is not delivered again | The group rebalances and the batch is delivered again |
 
 ## Build, run, observe
 
@@ -124,7 +124,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services: TBD tests cover a truncated record that reaches the dead letter topic with its bytes, its source topic and its source offset, an invalid record attempted once, a locked row retried until it is free, `fail` stopping the channel, and the Camel route dead-lettering with the original body. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `TBD/TBD checks passed`.
+The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 7 tests cover a truncated record that reaches the dead letter topic with its bytes, its source topic and its source offset, an invalid record attempted once, a locked row retried until it is free, `fail` stopping the channel, and the Camel route dead-lettering with the original body. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `28/28 checks passed`.
 
 The checks read the effects:
 
@@ -136,20 +136,20 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `FAILURE_STRATEGY=fail ./verify.sh`. The channel stops at `O-7002`, readiness goes DOWN, `SKU-15` stays at 100 and the dead letter topic stays empty. The checks that need the records behind it (TBD of them) fail, and the lock precondition still holds.
-- Run `RETRY_MAX=0 ./verify.sh`. In both phases `O-7004` is dead-lettered at its first failure and `SKU-14` stays at 100. The precondition that the lock is held still passes, so the failure is the retry limit and not a missing lock.
-- Run `RETRY_MAX=2 ./verify.sh`. The lock outlasts three attempts, so `O-7004` is dead-lettered after the last one: a failure that was transient but did not clear within the limit. It is the same end as `RETRY_MAX=0`, reached after TBD attempts instead of one.
-- Run `CAMEL_DEAD_LETTER_CHANNEL=false ./verify.sh`. The SmallRye phase is unchanged; in the Camel phase the default error handler gives up on `O-7002`, `O-7003` and `O-7006` after one attempt and commits their offsets, the dead letter topic stays empty, and the lock timeout on `O-7004` is dropped the same way: `SKU-14` stays at 100.
-- Add `CAMEL_BREAK_ON_FIRST_ERROR=true` to that run. In the Camel phase the failed record is polled again, and the valid record before it is applied again each time: `O-7001` was applied TBD times in one run, and `SKU-15` stays at 100.
-- Run `HOLD=20 MAX_POLL_INTERVAL_MS=10000 ./verify.sh`. The SmallRye consumer keeps its place in the group through the retry and `SKU-14` ends at 99. In the Camel phase the consumer misses its poll deadline, the group rebalances, `O-7004` is delivered again and `SKU-14` ends at 98: reserved twice.
+- Run `FAILURE_STRATEGY=fail ./verify.sh`. The channel stops at `O-7002`, whose offset is never committed (the group stays at offset 1 with 5 records of lag), `SKU-15` stays at 100 and no dead letter is written. Readiness answers 503. 13 checks fail; the lock preconditions pass.
+- Run `RETRY_MAX=0 ./verify.sh`. In both phases `O-7004` is attempted once, dead-lettered, and `SKU-14` stays at 100, while `O-7005` is reserved at once. 9 checks fail. The lock preconditions pass, so the cause is the retry limit and not a missing lock.
+- Run `RETRY_MAX=2 ./verify.sh`. The lock outlasts three attempts, so `O-7004` is dead-lettered after the last one: a failure that was transient but did not clear within the limit. It is the same end as `RETRY_MAX=0`, reached after 3 attempts instead of one, in both phases; 5 checks fail.
+- Run `CAMEL_DEAD_LETTER_CHANNEL=false ./verify.sh`. The SmallRye phase is unchanged; in the Camel phase the default error handler gives up on `O-7002`, `O-7003` and `O-7006` after one attempt and commits their offsets, and the lock timeout on `O-7004` is dropped the same way: `SKU-14` stays at 100 while `O-7005` is reserved. The group ends with no lag: the offsets of the records it gave up on were committed. Nothing is dead-lettered in that phase, and 6 checks fail.
+- Add `CAMEL_BREAK_ON_FIRST_ERROR=true` to that run. In the Camel phase the failed record is polled again, and the valid record before it is applied again on every pass: `O-7001` was applied 100 times and `SKU-11` fell from 100 to 0 in under a minute, after which each pass fails the stock rule. `SKU-14` and `SKU-15` stay at 100, the group commits no offset (lag 6) and 7 checks fail.
+- Run `HOLD=20 MAX_POLL_INTERVAL_MS=10000 ./verify.sh`. The SmallRye consumer attempts `O-7004` seven times during the 20 second hold, is not rebalanced and `SKU-14` ends at 99. In the Camel phase the consumer misses its poll deadline, the group rebalances and the batch is delivered again: `SKU-11`, `SKU-14` and `SKU-15` all end at 98, each reserved twice. 6 checks fail.
 
 ## When not to use it
 
-A dead letter topic needs an owner. Someone has to watch its depth, read the reasons and decide whether a record is repaired and republished, discarded or a sign of a bug in the producer. Without that it is a slower way to lose records. This example builds no replay: moving a repaired record back to `edp.orders.placed` is a separate piece of work.
+A dead letter topic needs an owner. Someone has to watch its depth, read the reasons and decide whether a record is repaired and republished, discarded or a sign of a bug in the producer. Without one, records collect on the topic and nobody acts on them. This example builds no replay of repaired records.
 
 Skipping a record is a decision about ordering. The consumer carries on with the records behind it, so they are processed without the one that failed. When a later record depends on an earlier one, as in a ledger, stopping the channel with `fail` and fixing the cause is the correct behaviour, and the readiness probe is how it gets noticed.
 
-Retrying in place suits failures that clear in seconds. A dependency that is down for minutes holds the partition for as long, and a long retry also runs into the consumer's poll interval, as the last experiment shows. And a retry is only safe when the effect can be applied twice, which is the work of chapter 11.
+Retrying in place suits failures that clear in seconds. A dependency that is down for minutes holds the partition for as long, and a long retry runs into the consumer's poll interval, as the Camel route in the last experiment shows. A retry is only safe when the effect can be applied twice, which is the work of chapter 11.
 
 > **🤖 Explore with your agent**
 > "In examples/13-retry-and-dead-letter, lock SKU-14 for twelve seconds, produce a truncated record, an order with quantity 0 and a valid order for SKU-14 to edp.orders.placed, and compare what OrderPlacedConsumer and ReservationService do with each against DeadLetterRoute under the camel profile. State which exceptions OrderPlacedConsumer retries and which it dead-letters, and why."

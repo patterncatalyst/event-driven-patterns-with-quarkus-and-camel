@@ -188,3 +188,9 @@ Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp
 - Five runs from clean, 20/20 each (w12-run1..5). Check 10: 14 s from the restart, 28 to 33 s from crash detection; k=7 every run. verify.sh gained NOTE echo lines only (timing, Camel per-order counts); no check changed.
 - Experiments: PAYMENT_MODE=camel-transacted 13/20 (4, 5, 8, 9, 10, 12, 13 fail). TX_TIMEOUT_MS=10000, service left down: Ongoing at +11 s, CompleteAbort at +16 s, read_committed 0, read_uncommitted 7. Default isolation after restart: O-5101 to O-5107 twice. Camel phase: O-6001 to O-6007 two committed each, O-6008 to O-6010 one.
 - "Within about half a minute" replaced by the measured 16 s. Details: scratchpad w12-window.md (not committed).
+
+## r05 chapter 13 window (2026-11-11)
+
+- Three runs from clean, 28/28 each (w13-v1..3); mvn verify 7 tests. No example or verify.sh change.
+- Experiments: fail 15/28 (13 fail, offset 1 lag 5, readiness 503); RETRY_MAX=0 19/28; RETRY_MAX=2 23/28 (3 attempts); Camel DLC off 22/28 (offsets committed, lag 0); plus breakOnFirstError 21/28 (O-7001 applied 100 times, lag 6); HOLD=20 MAX_POLL_INTERVAL_MS=10000 22/28 (SmallRye no rebalance, Camel batch twice); lock hint removed 25/28 (one attempt, ~10 s wait), source restored.
+- Prose trimmed by 108 words to stay under 2,500. Details: scratchpad w13-window.md (not committed).
