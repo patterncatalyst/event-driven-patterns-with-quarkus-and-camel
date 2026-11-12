@@ -161,13 +161,13 @@ refused_reserve_changes_nothing() {
     expect "$(reserve SKU-1503 TOOMANY 1000000)" 409 && expect "$(event_count SKU-1503)/$(snap_print SKU-1503)" "$events/$snap"
 }
 hot_sku_burst() {
-    local before after report
-    before="$(sql_quantity SKU-1502)"
+    local before after report events
+    before="$(sql_quantity SKU-1502)"; events="$(event_count SKU-1502)"
     report="$(burst SKU-1502 200)"
     after="$(sql_quantity SKU-1502)"
     echo "$report" > "$WORK/burst17"
     [[ "$(awk '$2 == 201 {print $1}' "$WORK/burst17")" == 200 ]] && expect "$after" $((before - 200)) \
-        && expect "$(event_count SKU-1502)/$(head_version SKU-1502)/$(sql "SELECT count(DISTINCT version) FROM inventory.events WHERE stream_id = 'SKU-1502'")" "10200/10200/10200"
+        && expect "$(event_count SKU-1502)/$(head_version SKU-1502)/$(sql "SELECT count(DISTINCT version) FROM inventory.events WHERE stream_id = 'SKU-1502'")" "$((events + 200))/$((events + 200))/$((events + 200))"
 }
 guard_holds_against_stale_take() {
     local out
@@ -175,15 +175,6 @@ guard_holds_against_stale_take() {
     out="$(curl -sf -X POST "$BASE/demo/stale-take/SKU-1501?moves=$N")"
     echo "$out" > "$WORK/stale"
     expect "$(field rowsWritten <<<"$out")" 0 && (( $(field snapshotAfter <<<"$out") >= $(field snapshotBefore <<<"$out") ))
-}
-
-snapshot_load_note() { # snapshot_load_note <sku>: leave the largest tail the policy allows, then time the snapshot load
-    local sku=$1 tail need
-    tail=$(( $(head_version "$sku") - $(snap_version "$sku") ))
-    need=$(( N - 1 - tail ))
-    (( need > 0 )) && reserve_n "$sku" "$need" >/dev/null
-    local out; out="$(bench "$sku" true)"
-    note "$sku snapshot load: median $(field snapshotMedianUs <<<"$out") us replaying $(field snapshotEvents <<<"$out") events; full load of its $(field fullEvents <<<"$out") events $(field fullMedianUs <<<"$out") us"
 }
 
 # --- the Camel snapshotter -----------------------------------------------------------------------------------------
@@ -225,15 +216,32 @@ check "SKU-1501, SKU-1502 and SKU-1503 give the same quantity and version with a
 check "SKU-1501 and SKU-1502 have no snapshot and replay 1,000 and 10,000 events: only a command writes one" only_commands_write_snapshots
 
 echo "Measured"
-reserve_n SKU-1503 $((N - 1)) >/dev/null # leave the largest tail the policy allows, so the snapshot load is the worst case
-FULL_1501="$(bench SKU-1501 false | field fullMedianUs)"
-FULL_1502="$(bench SKU-1502 false | field fullMedianUs)"
+# Every stream is timed with the largest tail the policy allows (N-1 events after the snapshot), before any check
+# below deletes or outdates a snapshot. A stream nobody commanded gets its snapshot from the first reservation.
+ensure_stock() { (( $(get "$1" quantityOnHand) >= $2 )) || receive "$1" "$2" >/dev/null; } # ensure_stock <sku> <quantity>
+leave_max_tail() { # leave_max_tail <sku>: a snapshot exists and exactly N-1 events follow it
+    local sku=$1 need
+    (( $(snap_version "$sku") > 0 )) || reserve_n "$sku" 1 >/dev/null
+    need=$(( N - 1 - ($(head_version "$sku") - $(snap_version "$sku")) ))
+    (( need <= 0 )) || reserve_n "$sku" "$need" >/dev/null
+}
+ensure_stock SKU-1501 "$N"
+ensure_stock SKU-1502 $((N + 250)) # the 200 reservations of the hot SKU phase follow
+for sku in SKU-1501 SKU-1502 SKU-1503; do leave_max_tail "$sku"; done
+BENCH_1501="$(bench SKU-1501 true)"
+BENCH_1502="$(bench SKU-1502 true)"
 BENCH_1503="$(bench SKU-1503 true)"
+FULL_1501="$(field fullMedianUs <<<"$BENCH_1501")"
+FULL_1502="$(field fullMedianUs <<<"$BENCH_1502")"
 FULL_1503="$(field fullMedianUs <<<"$BENCH_1503")"
 SNAP_1503="$(field snapshotMedianUs <<<"$BENCH_1503")"
+for sku_bench in "SKU-1501:$BENCH_1501" "SKU-1502:$BENCH_1502" "SKU-1503:$BENCH_1503"; do
+    json="${sku_bench#*:}"
+    note "${sku_bench%%:*}: full load of $(field fullEvents <<<"$json") events median $(field fullMedianUs <<<"$json") us; snapshot load replaying $(field snapshotEvents <<<"$json") events median $(field snapshotMedianUs <<<"$json") us"
+done
 note "full replay medians over 21 loads: 1,000 events ${FULL_1501} us, 10,000 events ${FULL_1502} us, 100,000 events ${FULL_1503} us"
-note "SKU-1503 snapshot load: median ${SNAP_1503} us replaying $(field snapshotEvents <<<"$BENCH_1503") events; full load range $(field fullMinUs <<<"$BENCH_1503") to $(field fullMaxUs <<<"$BENCH_1503") us"
-note "full replay cost per event: $(python3 -I -c "print(round($FULL_1501 / 1000, 2), round($FULL_1502 / 10000, 2), round($FULL_1503 / 100000, 2))") us at 1,000 / 10,000 / 100,000 events"
+note "SKU-1503 full load range $(field fullMinUs <<<"$BENCH_1503") to $(field fullMaxUs <<<"$BENCH_1503") us"
+note "full replay cost per event: $(python3 -I -c "print(*(round(u / n, 2) for u, n in zip(map(int, '$FULL_1501 $FULL_1502 $FULL_1503'.split()), (int(e) for e in '$(field fullEvents <<<"$BENCH_1501") $(field fullEvents <<<"$BENCH_1502") $(field fullEvents <<<"$BENCH_1503")'.split()))))") us on the three streams"
 note "snapshot load is $(python3 -I -c "print(round($FULL_1503 / max($SNAP_1503, 1)))") times faster than the full load on 100,000 events (the check requires $R)"
 note "state size: $(sql "SELECT pg_column_size(state) FROM inventory.snapshots WHERE stream_id = 'SKU-1503'") bytes of jsonb at any version"
 EXPLAIN_FULL="$(sql "EXPLAIN (ANALYZE, BUFFERS) SELECT payload FROM inventory.events WHERE stream_id = 'SKU-1503' AND version > 0 ORDER BY version" || true)"
@@ -245,8 +253,10 @@ check "the snapshot load of the 100,000 event stream is at least $R times faster
 check "Prometheus holds the rehydrate timer for both sources of inventory-service" poll 90 metric_exported
 
 echo "The snapshot is a cache"
+(( $(snap_version SKU-1503) > 0 )) || fail_loudly "no snapshot of SKU-1503 exists before the snapshots are deleted"
 check "deleting every snapshot changes the cost and not the state: the same quantity and version, the whole stream replayed" deleted_snapshots_cost_only
 check "the next reservation writes a snapshot again at the head, taken inline" policy_recovers
+[[ "$(snap_version SKU-1503)" == "$(head_version SKU-1503)" ]] || fail_loudly "no snapshot of SKU-1503 at the head exists before its schema version is changed"
 check "a snapshot whose schema_version is 0 (set by hand) is ignored: the whole stream is replayed and the state is unchanged" stale_schema_replays_everything
 check "the service logs 'snapshot schema 0 ignored for SKU-1503'" app_logged "snapshot schema 0 ignored for SKU-1503"
 check "a reservation larger than the quantity on hand returns 409 and appends no event, and the snapshot row is unchanged" refused_reserve_changes_nothing
@@ -256,10 +266,6 @@ check "200 reservations from 8 parallel clients on SKU-1502 all return 201, the 
 cat "$WORK/burst17" | sed 's/^/NOTE: burst status /'
 check "a snapshot written late is refused by the guard: the stored version does not go down" guard_holds_against_stale_take
 note "stale take: $(tr -d '\n ' < "$WORK/stale")"
-receive SKU-1501 "$N" >/dev/null # stock for the reservations that follow
-snapshot_load_note SKU-1501
-snapshot_load_note SKU-1502
-snapshot_load_note SKU-1503
 
 echo "Out of band: the Camel snapshotter writes the snapshots"
 sql "DELETE FROM inventory.snapshots" >/dev/null
@@ -277,7 +283,7 @@ burst SKU-1502 "$BURST" > "$WORK/burst-camel"
 touch "$WORK/stop"; wait "$SAMPLER" || true
 note "burst of $BURST reservations: $(tr -s ' \n' ' ' < "$WORK/burst-camel"); $(wc -l < "$WORK/samples") samples; largest tail sampled $(awk '{ t = $3 - $1; if (t > m) m = t } END { print m + 0 }' "$WORK/samples") events (N = $N)"
 check "during the burst every sampled snapshot of SKU-1502 was taken by camel, none inline" never_inline
-check "within three scheduler periods after the burst the snapshot is within $N events of the head, taken by camel" poll $((3 * DELAY_MS / 1000 + 5)) snapshot_catches_up
+check "within $((3 * DELAY_MS / 1000 + 5)) seconds after the burst the snapshot is within $N events of the head, taken by camel" poll $((3 * DELAY_MS / 1000 + 5)) snapshot_catches_up
 check "the snapshot version sampled every 0.2 s during the burst never decreased" version_never_decreases
 check "SKU-1502 gives the same quantity and version with and without the snapshot" snapshot_equals_full SKU-1502
 check "the command path wrote no snapshot in this phase: no row was taken inline" no_inline_writes_in_phase

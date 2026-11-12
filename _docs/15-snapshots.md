@@ -15,9 +15,9 @@ duration: "50 minutes"
 
 ### The problem
 
-An aggregate's state is the fold of its events, so the work to load it is proportional to the length of its stream. Most streams stay short: an order has five events. A ledger does not. Stock, an account or a counter takes an event for every change, and the oldest events still count in the answer.
+An aggregate's state is the fold of its events, so the work to load it is proportional to the length of its stream. Most streams stay short: an order has a handful of events. A ledger does not. Stock, an account or a counter takes an event for every change, and the oldest events still count in the answer.
 
-The obvious fixes each give something up. Deleting old events destroys the history. A second table holding the current quantity is a dual write, because the quantity and the events can disagree. Caching the aggregate in memory loses it on restart and does not help a second instance.
+The obvious fixes each give something up. Deleting old events destroys the history. A second table holding the current quantity is a second source of truth: nothing marks it as derived, so once it disagrees with the events neither can be trusted. Caching the aggregate in memory loses it on restart and does not help a second instance.
 
 ### The solution
 
@@ -25,7 +25,7 @@ The obvious fixes each give something up. Deleting old events destroys the histo
 
 Greg Young calls this a rolling snapshot and describes it as a heuristic: the stream is still the record, and the snapshot only controls how many events a load reads. Martin Fowler's example is an overnight snapshot from which the day's events are replayed. Three decisions make it safe.
 
-A snapshot is a cache of the fold, never a source of truth. It can be deleted at any time and the events rebuild it, so a bug in how it was written costs time and not data. It is valid at the version it was taken at, a later one replaces it, and only the latest is kept. And the aggregate's own code writes it, never a person, because a load believes whatever the snapshot says.
+A snapshot is a cache of the fold, never a source of truth. It can be deleted at any time and the events rebuild it, so a bug in how it was written costs time and not data. It describes the aggregate at exactly one version, a newer snapshot replaces it, and only the newest is kept. And the aggregate's own code writes it, never a person, because a load believes whatever the snapshot says.
 
 ### How Quarkus and Camel model it
 
@@ -35,10 +35,12 @@ A snapshot is a cache of the fold, never a source of truth. It can be deleted at
 SnapshotRow snapshot = useSnapshot ? SnapshotRow.findById(sku) : null;
 if (snapshot != null && snapshot.schemaVersion != config.snapshot().schema()) {
     meters.counter("inventory.snapshot.ignored").increment();
+    LOG.infof("snapshot schema %d ignored for %s", snapshot.schemaVersion, sku);
     snapshot = null;
 }
 int from = snapshot == null ? 0 : snapshot.version;
-try (Stream<StockEvent> tail = tail(sku, from)) {
+long[] replayed = {0};
+try (Stream<StockEvent> tail = tail(sku, from).peek(event -> replayed[0]++)) {
     aggregate = snapshot == null
             ? InventoryItemAggregate.replay(sku, tail)
             : InventoryItemAggregate.from(snapshot.state, snapshot.version, tail);
@@ -92,23 +94,23 @@ from("scheduler:snapshotter?delay={{inventory.snapshotter.delay-ms}}")
 ```
 {% endraw %}
 
-`take` loads the stream through the same `StockLedger` and writes with the same guarded upsert in a transaction of its own. A Quarkus `@Scheduled` method would do the same job in less code; a query, a split and a call per item is what a route expresses well. The Camel Aggregator is unrelated to the aggregate of the previous chapter.
+`take` loads the stream through the same `StockLedger` and writes with the same guarded upsert in a transaction of its own. A Quarkus `@Scheduled` method would do the same job in less code; a query, a split and a call per item is what a route expresses well.
 
 ## What a rebuild costs
 
-The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Snapshot loads are timed with the longest tail the policy allows, 99 events. Each figure is the median of three runs, each in a new JVM.
+The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Before the timing each stream receives 100 reservations, so that it holds a snapshot with 99 events after it, the longest tail the policy allows. The streams then hold 1,100, 10,100 and 100,200 events. Each figure is the median of three runs, each in a new JVM.
 
-{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes 1.4 ms for 1,000 events, 12.2 ms for 10,000 and 126.1 ms for 100,000, and a snapshot load takes under 1 ms whatever the length" caption="Figure 15.2: A full load grows with the stream, a snapshot load does not" %}
+{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes 1.6 ms for 1,100 events, 11.6 ms for 10,100 and 127.7 ms for 100,200, and a snapshot load with 99 events after it takes 0.50 ms, 0.63 ms and 0.95 ms" caption="Figure 15.2: A full load grows with the stream, a snapshot load does not" %}
 
-| Stream | Events replayed with a snapshot | Median full load | Median snapshot load | Cost per event on a full load |
-|---|---|---|---|---|
-| `SKU-1501` | at most 99 | 1.4 ms | 0.30 ms | 1.4 us |
-| `SKU-1502` | at most 99 | 12.2 ms | 0.41 ms | 1.2 us |
-| `SKU-1503` | at most 99 | 126.1 ms | 0.63 ms | 1.3 us |
+| Stream | Events in the stream | Events replayed with a snapshot | Median full load | Median snapshot load | Cost per event on a full load |
+|---|---|---|---|---|---|
+| `SKU-1501` | 1,100 | 99 | 1.6 ms | 0.50 ms | 1.4 us |
+| `SKU-1502` | 10,100 | 99 | 11.6 ms | 0.63 ms | 1.2 us |
+| `SKU-1503` | 100,200 | 99 | 127.7 ms | 0.95 ms | 1.3 us |
 
-The full load is linear in the stream, and most of it is spent turning rows into events and folding them, not reading them: `EXPLAIN (ANALYZE)` puts the database read of the 100,000 event stream at 41 ms of the 126 ms. The snapshot load reads one row and at most 99 events, so it stays under 1 ms whether the stream has 1,000 events or 100,000, and rises only from 0.30 ms to 0.63 ms across that range. The state is 57 bytes of `jsonb` at any version, which is why the policy counts events and not bytes.
+The full load is linear in the stream, and most of it is spent turning rows into events and folding them, not reading them: `EXPLAIN (ANALYZE)` puts the database read of the 100,200 event stream at 41 ms of the 128 ms. The snapshot load reads one row and 99 events, so it stayed under 1 ms on every stream in all three runs, and it rises from 0.50 ms to 0.95 ms while the full load rises from 1.6 ms to 127.7 ms. The state is 57 bytes of `jsonb` at any version, which is why the policy counts events and not bytes.
 
-The cost per event gives the rule for N. A load replays at most N-1 events after a snapshot, so the worst case is N-1 times the per-event cost plus the fixed cost of reading the snapshot. Choose N so that this fits the read budget of the aggregate. A smaller N bounds the tail more tightly and writes more snapshots, each one a row version written inside a command.
+The cost per event gives the rule for N. A load replays at most N-1 events after a snapshot, so the worst case is N-1 times the per-event cost plus the fixed cost of reading the snapshot. A smaller N bounds the tail more tightly and writes more snapshots, each one a row version written inside a command.
 
 ## Inline or out of band
 
@@ -125,7 +127,7 @@ Where the snapshot is written decides how long the tail can get.
 | Streams nobody commands | Never snapshotted | Snapshotted when they pass N, bulk loads included |
 | Same row, same guard | Yes | Yes |
 
-During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached 336 events with N at 100 (327 to 350 over three runs). Within three periods after the burst the stored snapshot was again less than N events behind the head, and the version it stored never went down. With a period of 30 seconds the tail grew to about 990, almost the size of the burst.
+During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached 350 events with N at 100 (322 to 358 over three runs). Within eight seconds after the burst the stored snapshot was again less than N events behind the head, and the version it stored never went down. With a period of 30 seconds the tail grew to 974, almost the size of the burst.
 
 Young's snapshotter suits commands on a latency budget, or streams bulk-loaded without a snapshot. Inline is the default because it is the only arrangement that bounds the tail.
 
@@ -150,26 +152,26 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10, 11, 13, 15 and 18 fail, and the run stops at the start of the Camel phase, where the route has nothing to take.
-- Run `SNAPSHOT_EVERY=10 ./verify.sh` and then `SNAPSHOT_EVERY=1000 ./verify.sh`. Every check passes, and the tail and the writes move as N does:
+- Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10 and 11 fail, and the run stops before check 12, because no snapshot exists to delete.
+- Run `SNAPSHOT_EVERY=10 ./verify.sh` and then `SNAPSHOT_EVERY=1000 ./verify.sh`. Every check passes, and the tail and the writes follow N:
 
-  | N | Most events a load replays | Snapshots written by 1,000 reservations | Median snapshot load, `SKU-1503` |
+  | N | At most this many events replayed by a load | Snapshots per 1,000 reservations | Median snapshot load, `SKU-1503` |
   |---|---|---|---|
-  | 10 | 9 | 100 | 0.60 ms |
-  | 100 | 99 | 10 | 0.63 ms |
-  | 1000 | 999 | 1 | 1.44 ms |
+  | 10 | 9 | 100 | 1.19 ms |
+  | 100 | 99 | 10 | 0.95 ms |
+  | 1000 | 999 | 1 | 1.60 ms |
 
-  The loads for N of 10 and 1000 come from one run each.
+  The runs replayed exactly 9 and 999 events after the snapshot. The loads for N of 10 and 1000 come from one run each.
 
 - Run `SNAPSHOT_GUARD=false ./verify.sh`. The stale snapshot replaces a newer one, the stored version goes down, and check 18 is the only one that fails.
 - Change the quantity in the stored `state` of a snapshot and leave its schema version alone. The next `GET` answers with the wrong quantity, and the same `GET` with `ignoreSnapshot=true` does not. A snapshot is believed, and deleting it is the repair.
 - Restart the service with `SNAPSHOT_SCHEMA=2`. The first load replays the whole stream and the next command writes a snapshot of schema 2.
-- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 336 to about 990 events.
+- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 350 to between 970 and 1,000 events (974 and 993 in two runs).
 - Run `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh`. Replaying 100,000 events as managed entities exhausts a 96 MB heap and the service exits with `OutOfMemoryError` at the first load, so check 3 stops the run. With the projection the same heap passes 27 of 27.
 
 ## When not to use it
 
-Most streams do not need one. A stream of 1,000 events loads in 1.4 ms without one, and every snapshot is another thing to version, write and keep correct. Measure the load first. Microsoft's pattern note calls snapshots an optimisation: the event stream stays the record.
+Most streams do not need one. A stream of 1,100 events loads in 1.6 ms without one, and every snapshot is another thing to version, write and keep correct. Measure the load first.
 
 A snapshot cannot repair a wrong fold. If the aggregate's logic had a bug, the snapshot repeats it. Fix the logic, raise the schema version, and let the events rebuild every snapshot.
 

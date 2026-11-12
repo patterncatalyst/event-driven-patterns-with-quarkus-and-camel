@@ -1,6 +1,6 @@
 # 15 Snapshots
 
-`inventory-service` keeps the stock of a SKU as a stream of `StockReceived` and `StockReserved` events in PostgreSQL. A load folds the stream into an `InventoryItemAggregate`. A snapshot stores that state at one version, so a load reads the snapshot and replays only the events after it. A command writes a snapshot in its own transaction every N events. A Camel route that takes snapshots on a timer runs as a comparison.
+`inventory-service` keeps the stock of a SKU as a stream of `StockReceived` and `StockReserved` events in PostgreSQL. A load folds the stream into an `InventoryItemAggregate`. A snapshot stores that state at one version, so a load reads the snapshot and replays only the events after it. A command writes a snapshot in the command's transaction every N events. A Camel route that takes snapshots on a timer runs as a comparison.
 
 Quarkus, Hibernate ORM with Panache (a projection for the replay), Flyway, Quarkus REST, SmallRye Fault Tolerance (`@Retry`), Camel Scheduler and SQL for the comparison route, PostgreSQL, SmallRye Health, Micrometer and OpenTelemetry to the LGTM stack. There is no Kafka: the pattern needs a database and nothing else. The ledger events are internal and reach no topic.
 
@@ -38,7 +38,7 @@ docker compose down -v
 1. Starts PostgreSQL, LGTM and the service, then loads `seed.sql`: three streams of 1,000, 10,000 and 100,000 events, no snapshots. The quantity of the longest is computed in SQL from the payloads and compared with what the service answers.
 2. Reserves on `SKU-1503`: the first command writes a snapshot, a load then replays 0 events, the next N-1 commands leave the snapshot alone and a load replays N-1, the Nth moves it.
 3. Compares every stream with and without its snapshot, and checks that a stream nobody commanded has none.
-4. Times 21 full and 21 snapshot loads inside the service on each stream, after 5 warm-up loads, and requires the snapshot load on 100,000 events to be at least 20 times faster. The medians, the cost per event, the size of the state and the `EXPLAIN` row counts are printed as NOTE lines.
+4. Leaves each stream with a snapshot and N-1 events after it, then times 21 full and 21 snapshot loads inside the service on each stream, alternating, after 5 warm-up loads, and requires the snapshot load on 100,000 events to be at least 20 times faster. The medians, the cost per event, the size of the state and the `EXPLAIN` row counts are printed as NOTE lines.
 5. Deletes every snapshot (the state is the same, only the cost changes), outdates one with `schema_version = 0` (ignored and logged), and refuses a reservation larger than the stock (409, no event, snapshot untouched).
 6. Sends 200 reservations from 8 parallel clients to `SKU-1502` and checks the quantity and the version sequence, then writes a stale snapshot through the demo endpoint and checks that the guard refuses it.
 7. Restarts the service with `camel-snapshotter`, runs a burst of 10N reservations while sampling the snapshot every 0.2 seconds: only the route writes, the version never goes down and the snapshot catches up after the burst.
