@@ -176,3 +176,9 @@ Live after the fixes, each from clean: 08 27/27, 09 35/35, 10 40/40 (first ch 10
 
 Opus round 2: SHIP after one typo (ch 10 "`,:`"); all round-1 findings verified resolved; 9 regenerated figures byte-identical to specs; 7-gram overlap with EIP ch 15, appendix R, CNDP ch 4 is 0. Fixed anyway (fix-now): typo; checks 35 (09) and 40 (10) now fail when the topic listing fails and require the expected topics (09: item-changes, connector-heartbeats, interval-only-heartbeats, signals; 10: item-changes, signals); stale claims rows 09-06, 08-08, r04-r1-10; figure 9.3 update box; CrashSwitch Javadoc; ch 10 names check 39.
 Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp-* left.
+
+## r05 chapter 11 window (2026-11-11)
+
+- Three runs from clean: 28/28, 28/28, 28/28 (w11-verify1..3); mvn verify 7 tests green. No example or verify.sh change.
+- Experiments: INBOX_ENABLED=false 23/28 (5, 6, 7, 12, 13 fail; preconditions 3, 9, 10, 21 pass). CAMEL_TRANSACTED=false 26/28 (23, 25). session.timeout.ms removed: 28/28, crash exit to lag 0 49.2 s vs 19.0 and 19.1 s; application.properties restored.
+- TBDs filled; three untested claims cut (claims 11-l). Details: scratchpad w11-window.md (not committed).

@@ -15,7 +15,7 @@ duration: "45 minutes"
 
 ### The problem
 
-Kafka commits a consumer's position separately from the consumer's own writes. Acknowledge first and a crash loses the event; process first and a crash repeats it. Delivery is therefore at least once, and a duplicate record is a normal input, whether it came from a producer retry, a relay that read the log again, or a redelivery.
+Kafka commits a consumer's position separately from the consumer's own writes. Acknowledge first and a crash loses the event; process first and a crash repeats it. Delivery is therefore at least once, and a duplicate record is a normal input whether it came from a relay that read the log again or from a redelivery.
 
 Subtracting a quantity is not idempotent: the second application gives a different answer. Remembering ids in memory fails at the restart that causes the duplicate. Remembering them in another store has the dual-write problem of the outbox on the receiving side: the id and the stock are two writes with no shared transaction, so a crash between them either loses the reservation or applies it twice.
 
@@ -124,9 +124,9 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services, and `TBD` tests pass. The same event id twice leaves one decrement and one inbox row. An effect that fails after the inbox insert leaves no inbox row. Two threads released together with the same id apply it once, in each of 20 rounds. A duplicate record on the topic is applied once with the inbox and twice without it. The Camel route applies a duplicate once, and a failed effect rolls its key back.
+The Maven build runs the service against PostgreSQL and Kafka from Dev Services, and 7 tests pass. The same event id twice leaves one decrement and one inbox row. An effect that fails after the inbox insert leaves no inbox row. Two threads released together with the same id apply it once, in each of 20 rounds. A duplicate record on the topic is applied once with the inbox and twice without it. The Camel route applies a duplicate once, and a failed effect rolls its key back.
 
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `TBD/TBD checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
+`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `28/28 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
 
 - `O-1101` (id A, quantity 3) is produced twice and `O-1102` (id B, quantity 2) once. A precondition confirms the topic holds two records with id A before anything is asserted. The group reaches lag 0, `SKU-1` is 95, the inbox holds exactly A and B, and the log shows A skipped once.
 - The service is recreated with a crash switch for `O-1103` (id C, quantity 4). The container exits with code 137 after the reservation commits. Preconditions confirm that the group's committed offset is not past C's record and that the stock already dropped by 4. After a recreate without the switch the group reaches lag 0, `SKU-1` is 91 and the log shows C skipped.
@@ -137,15 +137,15 @@ The Maven build runs the service against PostgreSQL and Kafka from Dev Services,
 
 Change one thing and watch a guard fail:
 
-- Run `INBOX_ENABLED=false ./verify.sh`. Checks `TBD` fail: the duplicate and the redelivery are applied, the inbox stays empty and nothing is skipped. The preconditions pass first, which shows both the duplicate and the redelivery happened.
-- Run `CAMEL_TRANSACTED=false ./verify.sh`. Checks `TBD` fail: after the failed effect the repository holds the key of `O-1104` and `SKU-1` is still 91, and after the redelivery the stock stays 91. The reservation is lost.
-- Delete `session.timeout.ms` from the channel. The redelivery after the crash waits for the default session timeout of 45 seconds.
+- Run `INBOX_ENABLED=false ./verify.sh`. Checks 5, 6, 7, 12 and 13 fail (23 of 28 pass): the duplicate and the redelivery are applied, the inbox stays empty and nothing is skipped. The preconditions pass first, which shows both the duplicate and the redelivery happened.
+- Run `CAMEL_TRANSACTED=false ./verify.sh`. Checks 23 and 25 fail (26 of 28 pass): after the failed effect the repository holds the key of `O-1104` and `SKU-1` is still 91, and after the redelivery the stock stays 91. The reservation is lost.
+- Delete `session.timeout.ms` from the channel. All 28 checks still pass, but the group needs 49 seconds from the exit of the container to lag 0 instead of 19, because the replacement consumer waits for the broker to expire the dead member's session.
 
 ## When not to use it
 
-An inbox costs a table, an insert per event and a cleanup rule. The table gets one row per event, so it needs a retention rule that matches how far back the topic can redeliver; a row removed too early lets a very old duplicate through.
+An inbox costs a table, an insert per event and a cleanup job. The table gets one row per event and keeps growing until something deletes rows.
 
-The inbox protects effects that can join a database transaction. If the effect is a call to another system, such as an email or a payment provider, the id cannot commit with it, and the safer form is to pass the event id as the idempotency key of that call. If the effect is an upsert, natural idempotence needs no table. A consumer that only reads from Kafka and writes to Kafka belongs to Kafka's own transactions, which cover offsets and output together. And the pattern removes duplicates of one event id; two different events that mean the same thing, such as a user clicking twice, need a business key and a different rule.
+The inbox protects effects that can join a database transaction. If the effect is a call to another system, such as an email or a payment provider, the id cannot commit with it, and the inbox does not cover that case. If the effect is an upsert, natural idempotence needs no table. A consumer that only reads from Kafka and writes to Kafka belongs to Kafka's own transactions, which cover offsets and output together. And the pattern removes duplicates of one event id; two different events that mean the same thing, such as a user clicking twice, need a business key and a different rule.
 
 > **🤖 Explore with your agent**
 > "In examples/11-idempotent-consumer-and-inbox, set CRASH_AFTER_COMMIT_FOR=O-1103, send an OrderPlaced for O-1103 through OrderPlacedInbox and restart the service. From ReservationService.reserveOnce and the InboxEntry table, explain why the redelivery does not decrement again, then say what IdempotentRepositoryRoute loses if its route is not transacted."
