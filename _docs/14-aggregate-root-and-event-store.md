@@ -184,7 +184,7 @@ Change one thing and watch a guard fail:
 
 - Run `RETRY_MODE=reappend ./verify.sh`. The cancellation that lost the race is appended again at the new head without being decided: `O-1402` ends with `OrderCancelled` as version 4 after `OrderShipped`, and a cancelled record is published for an order that shipped. Checks 14, 15, 17 and 30 fail.
 - Run `RETRY_MAX=0 ./verify.sh`. A conflict is reported instead of decided again, so race 1 has no refusal reason, race 2 is rejected and race 3 does not decide the payment again. Checks 14, 19 to 21, 26 and 30 fail.
-- Delete the `CONSTRAINT events_stream_version` line from the first migration and run `./verify.sh`. Nothing detects the race: no conflict is logged and the history of `O-1402` is no longer a legal lifecycle. Checks 14 to 17, 19, 20, 26 and 29 to 31 fail.
+- Delete the `CONSTRAINT events_stream_version` line and the comma before it from the first migration and run `./verify.sh`. Nothing detects the race: no conflict is logged and the history of `O-1402` is no longer a legal lifecycle. Checks 14 to 17, 19, 20, 26 and 29 to 31 fail.
 - Run `CAMEL_REDELIVERIES=0 ./verify.sh`. The route drops the conflicting payment after one attempt and commits its offset. `O-1406` ends in the same stream, since the cancellation had already won, so only the redelivery and the refusal are missing: check 29 fails.
 
 ## When not to use it
