@@ -14,7 +14,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r02 | Order-to-delivery domain rework of 00 and 01; events between services | 02 to 04 (event notification, event-carried state transfer with claim check, ordering and partitioning with resequencer) | C | done (r02.0, 2026-11-10) |
 | r03 | Publishers, subscribers, queues | 05 to 07 (optimizing publishers, optimizing subscribers, queues for Kafka with share groups) | C | done (r03.0, 2026-11-11) |
 | r04 | Outbox, Debezium in depth, connector offsets on compose | 08 to 10 | C | done (r04.0, PR #4, 2026-11-11) |
-| r05 | Idempotency, exactly-once, retry and dead letter | 11 to 13 | C | in progress (plan approved 2026-11-11, `r05-plan.md`) |
+| r05 | Idempotency, exactly-once, retry and dead letter | 11 to 13 | C | done (r05.0, 2026-11-12) |
 | r06 | Aggregate root and the event store, snapshots | 14 to 15 | C | planned |
 | r07 | CQRS, replay vs projection, schema evolution | 16 to 18 | C | planned |
 | r08 | Enrich, join, aggregate | 19 to 21 | C | planned |
