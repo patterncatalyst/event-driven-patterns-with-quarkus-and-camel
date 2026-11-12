@@ -2,9 +2,9 @@
 
 from generate_diagram import emit
 
-# Medians in milliseconds of three runs; the step 3 measurement window replaces them.
-FULL_MS = {"1,000 events": 1.4, "10,000 events": 11.7, "100,000 events": 127.9}
-SNAPSHOT_MS = 1.1
+# Medians in milliseconds of three runs (median of the three run medians), from the verify.sh measurement.
+FULL_MS = {"1,000 events": 1.4, "10,000 events": 12.2, "100,000 events": 126.1}
+SNAPSHOT_MS = 0.63
 
 SCALE = 560 / max(FULL_MS.values())  # pixels per millisecond
 X0 = 220

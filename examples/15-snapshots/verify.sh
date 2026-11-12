@@ -177,6 +177,15 @@ guard_holds_against_stale_take() {
     expect "$(field rowsWritten <<<"$out")" 0 && (( $(field snapshotAfter <<<"$out") >= $(field snapshotBefore <<<"$out") ))
 }
 
+snapshot_load_note() { # snapshot_load_note <sku>: leave the largest tail the policy allows, then time the snapshot load
+    local sku=$1 tail need
+    tail=$(( $(head_version "$sku") - $(snap_version "$sku") ))
+    need=$(( N - 1 - tail ))
+    (( need > 0 )) && reserve_n "$sku" "$need" >/dev/null
+    local out; out="$(bench "$sku" true)"
+    note "$sku snapshot load: median $(field snapshotMedianUs <<<"$out") us replaying $(field snapshotEvents <<<"$out") events; full load of its $(field fullEvents <<<"$out") events $(field fullMedianUs <<<"$out") us"
+}
+
 # --- the Camel snapshotter -----------------------------------------------------------------------------------------
 route_started() { app_logged "Started snapshotter (scheduler://snapshotter)"; }
 sample_snapshot() { # sample_snapshot <sku> <file> <stop file>: every 0.2 s "<snapshot version> <taken_by> <head>"
@@ -247,6 +256,10 @@ check "200 reservations from 8 parallel clients on SKU-1502 all return 201, the 
 cat "$WORK/burst17" | sed 's/^/NOTE: burst status /'
 check "a snapshot written late is refused by the guard: the stored version does not go down" guard_holds_against_stale_take
 note "stale take: $(tr -d '\n ' < "$WORK/stale")"
+receive SKU-1501 "$N" >/dev/null # stock for the reservations that follow
+snapshot_load_note SKU-1501
+snapshot_load_note SKU-1502
+snapshot_load_note SKU-1503
 
 echo "Out of band: the Camel snapshotter writes the snapshots"
 sql "DELETE FROM inventory.snapshots" >/dev/null

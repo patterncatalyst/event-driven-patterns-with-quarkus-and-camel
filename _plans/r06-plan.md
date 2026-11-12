@@ -548,8 +548,8 @@ Chapter 15:
 | 1B | Spikes S1 to S5 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | done |
 | 1C | `_plans/domain-model.md` rows 14 and 15 rewritten (below); event-name note for StockReceived/StockReserved | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | done |
 | G0 | Gate: spikes pass or fallback chosen; G0 decisions section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | done |
-| 2A | Ch 14: code, tests, Containerfile, compose, connector JSON, README, example page, figure specs and outputs, chapter draft without numbers | `examples/14-*/**`, `_docs/14-*.md`, `_example_pages/14-*.md`, `diagrams/specs/14-*.py`, `diagrams/14-*.*` | exec 2A | G0 | with 2B | mvn under lock | pending |
-| 2B | Ch 15: same set | `examples/15-*/**`, `_docs/15-*.md`, `_example_pages/15-*.md`, `diagrams/specs/15-*.py`, `diagrams/15-*.*` | exec 2B | G0 | with 2A | mvn under lock | pending |
+| 2A | Ch 14: code, tests, Containerfile, compose, connector JSON, README, example page, figure specs and outputs, chapter draft without numbers | `examples/14-*/**`, `_docs/14-*.md`, `_example_pages/14-*.md`, `diagrams/specs/14-*.py`, `diagrams/14-*.*` | exec 2A | G0 | with 2B | mvn under lock | done |
+| 2B | Ch 15: same set | `examples/15-*/**`, `_docs/15-*.md`, `_example_pages/15-*.md`, `diagrams/specs/15-*.py`, `diagrams/15-*.*` | exec 2B | G0 | with 2A | mvn under lock | done |
 | 2C | Ch 08 sentence fix (recommendation 9) plus claim row | `_docs/08-transactional-outbox.md` | orchestrator | G0 | yes | no | done |
 | 3 | Runtime windows, serial, exclusive, 90 min cap, order 15 then 14: verify N/N twice from clean, every experiment once, measurement three times (ch 15), no `edp-*` left; fill numbers; write measured values into `15-rebuild-cost.py`; freeze numbering | as 2A/2B | orchestrator | 2A, 2B | serial | exclusive | pending |
 | 4 | Orchestrator re-run of every prose experiment, logged with failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | pending |

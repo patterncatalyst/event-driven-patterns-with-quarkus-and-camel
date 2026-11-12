@@ -96,17 +96,17 @@ from("scheduler:snapshotter?delay={{inventory.snapshotter.delay-ms}}")
 
 ## What a rebuild costs
 
-The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Each figure is the median of three runs, each in a new JVM.
+The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Snapshot loads are timed with the longest tail the policy allows, 99 events. Each figure is the median of three runs, each in a new JVM.
 
-{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes TODO(number) ms for 1,000 events, TODO(number) ms for 10,000 and TODO(number) ms for 100,000, and a snapshot load takes about TODO(number) ms whatever the length" caption="Figure 15.2: A full load grows with the stream, a snapshot load does not" %}
+{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes 1.4 ms for 1,000 events, 12.2 ms for 10,000 and 126.1 ms for 100,000, and a snapshot load takes under 1 ms whatever the length" caption="Figure 15.2: A full load grows with the stream, a snapshot load does not" %}
 
 | Stream | Events replayed with a snapshot | Median full load | Median snapshot load | Cost per event on a full load |
 |---|---|---|---|---|
-| `SKU-1501` | 0 | TODO(number) | TODO(number) | TODO(number) |
-| `SKU-1502` | 0 | TODO(number) | TODO(number) | TODO(number) |
-| `SKU-1503` | at most 99 | TODO(number) | TODO(number) | TODO(number) |
+| `SKU-1501` | at most 99 | 1.4 ms | 0.30 ms | 1.4 us |
+| `SKU-1502` | at most 99 | 12.2 ms | 0.41 ms | 1.2 us |
+| `SKU-1503` | at most 99 | 126.1 ms | 0.63 ms | 1.3 us |
 
-The full load is linear in the stream, and most of it is spent turning rows into events and folding them, not reading them: `EXPLAIN (ANALYZE)` puts the database read of 100,000 rows at TODO(number) ms of the TODO(number) ms. The snapshot load reads one row and a few events, so its time stays near TODO(number) ms whether the stream has 1,000 events or 100,000. The state is 57 bytes of `jsonb` at any version, which is why the policy counts events and not bytes.
+The full load is linear in the stream, and most of it is spent turning rows into events and folding them, not reading them: `EXPLAIN (ANALYZE)` puts the database read of the 100,000 event stream at 41 ms of the 126 ms. The snapshot load reads one row and at most 99 events, so it stays under 1 ms whether the stream has 1,000 events or 100,000, and rises only from 0.30 ms to 0.63 ms across that range. The state is 57 bytes of `jsonb` at any version, which is why the policy counts events and not bytes.
 
 The cost per event gives the rule for N. A load replays at most N-1 events after a snapshot, so the worst case is N-1 times the per-event cost plus the fixed cost of reading the snapshot. Choose N so that this fits the read budget of the aggregate. A smaller N bounds the tail more tightly and writes more snapshots, each one a row version written inside a command.
 
@@ -125,7 +125,7 @@ Where the snapshot is written decides how long the tail can get.
 | Streams nobody commands | Never snapshotted | Snapshotted when they pass N, bulk loads included |
 | Same row, same guard | Yes | Yes |
 
-During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached TODO(number) events with N at 100. After the burst the route caught up within the next period, and the version it stored never went down. With a period of 30 seconds the tail grew to TODO(number), almost the size of the burst.
+During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached 336 events with N at 100 (327 to 350 over three runs). After the burst the route caught up within the next period, and the version it stored never went down. With a period of 30 seconds the tail grew to about 990, almost the size of the burst.
 
 Young's snapshotter suits commands on a latency budget, or streams bulk-loaded without a snapshot. Inline is the default because it is the only arrangement that bounds the tail.
 
@@ -150,19 +150,21 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10, 11, 13 and 15 fail, and the run stops before the Camel phase.
+- Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10, 11, 13, 15 and 18 fail, and the run stops at the start of the Camel phase, where the route has nothing to take.
 - Run `SNAPSHOT_EVERY=10 ./verify.sh` and then `SNAPSHOT_EVERY=1000 ./verify.sh`. Every check passes, and the tail and the writes move as N does:
 
-  | N | Most events a load replays | Snapshots written by 1,000 reservations | Median snapshot load |
+  | N | Most events a load replays | Snapshots written by 1,000 reservations | Median snapshot load, `SKU-1503` |
   |---|---|---|---|
-  | 10 | 9 | 100 | TODO(number) |
-  | 100 | 99 | 10 | TODO(number) |
-  | 1000 | 999 | 1 | TODO(number) |
+  | 10 | 9 | 100 | 0.60 ms |
+  | 100 | 99 | 10 | 0.63 ms |
+  | 1000 | 999 | 1 | 1.44 ms |
 
-- Run `SNAPSHOT_GUARD=false ./verify.sh`. The stale snapshot replaces a newer one and the stored version goes down and check 18 fails.
+  The loads for N of 10 and 1000 come from one run each.
+
+- Run `SNAPSHOT_GUARD=false ./verify.sh`. The stale snapshot replaces a newer one, the stored version goes down, and check 18 is the only one that fails.
 - Change the quantity in the stored `state` of a snapshot and leave its schema version alone. The next `GET` answers with the wrong quantity, and the same `GET` with `ignoreSnapshot=true` does not. A snapshot is believed, and deleting it is the repair.
 - Restart the service with `SNAPSHOT_SCHEMA=2`. The first load replays the whole stream and the next command writes a snapshot of schema 2.
-- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from TODO(number) to TODO(number) events.
+- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 336 to about 990 events.
 - Run `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh`. Replaying 100,000 events as managed entities exhausts a 96 MB heap and the service exits with `OutOfMemoryError` at the first load, so check 3 stops the run. With the projection the same heap passes 27 of 27.
 
 ## When not to use it
