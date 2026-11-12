@@ -1,6 +1,6 @@
 # Build context is examples/ so the shared domain model can be installed first.
 #   docker build -f 12-exactly-once-with-kafka-transactions/payment-service/Containerfile -t payment-service examples
-FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
+FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-20 AS build
 USER 185
 WORKDIR /build
 COPY --chown=185:0 domain-model/ domain-model/
@@ -10,7 +10,7 @@ COPY --chown=185:0 12-exactly-once-with-kafka-transactions/payment-service/src 1
 RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
  && mvn -B -ntp -q -f 12-exactly-once-with-kafka-transactions/payment-service/pom.xml package -DskipTests
 
-FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
+FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-20
 ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
     JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 COPY --from=build --chown=185 /build/12-exactly-once-with-kafka-transactions/payment-service/target/quarkus-app/lib/ /deployments/lib/

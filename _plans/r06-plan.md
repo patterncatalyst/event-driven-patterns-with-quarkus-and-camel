@@ -544,7 +544,7 @@ Chapter 15:
 | Step | Work | Files | Owner | Depends | Parallel | Stack | Status |
 |---|---|---|---|---|---|---|---|
 | 0 | Preflight: branch, Docker clean, iteration-plan r06 in progress, save plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md` | orchestrator | owner OK | none | no | done |
-| 1A | Re-survey (complete the table above) and source fetches: Young (done here; record), Fowler bliki, Vernon TOC, RFC 9110, Microsoft snapshot paragraph, Quarkus/Camel/PostgreSQL pages; claim rows `*-src-*` | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | pending |
+| 1A | Re-survey (complete the table above) and source fetches: Young (done here; record), Fowler bliki, Vernon TOC, RFC 9110, Microsoft snapshot paragraph, Quarkus/Camel/PostgreSQL pages; claim rows `*-src-*` | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | done |
 | 1B | Spikes S1 to S5 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | pending |
 | 1C | `_plans/domain-model.md` rows 14 and 15 rewritten (below); event-name note for StockReceived/StockReserved | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | done |
 | G0 | Gate: spikes pass or fallback chosen; G0 decisions section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | pending |

@@ -1,6 +1,6 @@
 # Build context is examples/ so the shared domain model can be installed first.
 #   docker build -f 06-optimizing-subscribers/notification-service/Containerfile -t notification-service examples
-FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
+FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-20 AS build
 USER 185
 WORKDIR /build
 COPY --chown=185:0 domain-model/ domain-model/
@@ -10,7 +10,7 @@ COPY --chown=185:0 06-optimizing-subscribers/notification-service/src 06-optimiz
 RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
  && mvn -B -ntp -q -f 06-optimizing-subscribers/notification-service/pom.xml package -DskipTests
 
-FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
+FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-20
 ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
     JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 COPY --from=build --chown=185 /build/06-optimizing-subscribers/notification-service/target/quarkus-app/lib/ /deployments/lib/

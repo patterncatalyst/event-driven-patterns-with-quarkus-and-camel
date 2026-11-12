@@ -31,7 +31,7 @@ Evidence is a test, a run or a source. Ref is the chapter file and line of the c
 | 00-09 | 00 | PostgreSQL 18.6: CNPG operand on compose, same minor for Dev Services | compose-postgres.yaml image 18.6; mvn log postgres:18.6 | _docs/00-prerequisites-and-stacks.md:44; log r02 G1 2026-11-10 | verified |
 | 00-10 | 00 | Debezium Connect 3.7.1.Final has PostgresConnector and EventRouter | compose-connect.yaml image 3.7.1.Final; verify.sh 00 checks 11, 12 | _docs/00-prerequisites-and-stacks.md:46; log r02 G1 2026-11-10 | verified |
 | 00-11 | 00 | otel-lgtm: Loki, Grafana, Tempo, Prometheus behind one OTLP endpoint | compose-lgtm.yaml image 0.40.0; verify.sh 00 checks 13 to 15 | _docs/00-prerequisites-and-stacks.md:47; log r02 G1 2026-11-10 | verified |
-| 00-12 | 00 | UBI 10 OpenJDK 1.24-19 for build and runtime | Containerfiles; versions.md | _docs/00-prerequisites-and-stacks.md:48; versions.md | verified |
+| 00-12 | 00 | UBI 10 OpenJDK 1.24-20 for build and runtime | Containerfiles; versions.md | _docs/00-prerequisites-and-stacks.md:48; versions.md | pending (bumped r06 1A; re-verified by the r06 final serial run) |
 | 00-13 | 00 | Docker 29.9.3, Compose 5.7.0 on the reference host | docker version | _docs/00-prerequisites-and-stacks.md:49; versions.md | verified |
 | 00-14 | 00 | One compose file per service, included on network `edp` | _infra/*.yaml; example compose files | _docs/00-prerequisites-and-stacks.md:55; repo | verified |
 | 00-15 | 00 | Kafka host 9092, containers kafka:9094 | compose-kafka.yaml | _docs/00-prerequisites-and-stacks.md:59; repo | verified |

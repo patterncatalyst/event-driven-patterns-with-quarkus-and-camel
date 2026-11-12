@@ -392,3 +392,67 @@ Versioned 4.37.0 pages exist and were fetched (the `latest` alias is 5.0.0-RC1).
 - SmallRye 4.37.0 Receiving page omits `dead-letter-exception-class-name` and `dead-letter-cause-class-name` (in the jar) and documents `deserialization-failure-key-data`/`-value-data` rather than the single `deserialization-failure-data` the plan names (jar has all three).
 - Quarkus Fault Tolerance guide says nothing on `@Transactional` and `@Retry` ordering; Panache page has no lock-timeout hint or native-query text; Camel Quarkus JPA page does not say whether the id repository joins the JTA transaction.
 - Plan path for `KafkaTransactionSynchronization.java` was wrong (corrected above).
+
+## r06 sources (step 1A, fetched 2026-11-12)
+
+### Books
+
+| Source | Author, publisher | URL | Confirmed | Used for |
+|---|---|---|---|---|
+| Vernon, Implementing Domain-Driven Design | Vaughn Vernon, Addison-Wesley, 2013 (hub books.yml: print ISBN 9780133039894; O'Reilly catalog urn 9780133039900, 656 pages, published 2013-02-06) | https://www.informit.com/store/implementing-domain-driven-design-9780133039894 | Table of contents read from the InformIT page, 2026-11-12. The O'Reilly search tool returned catalog metadata only (title, author, date, pages), no chapter text, so the InformIT TOC is the confirmation. Chapters: 1 Getting Started with DDD; 2 Domains, Subdomains, and Bounded Contexts; 3 Context Maps; 4 Architecture; 5 Entities; 6 Value Objects; 7 Services; **8 Domain Events**; 9 Modules; **10 Aggregates**; 11 Factories; 12 Repositories; 13 Integrating Bounded Contexts; 14 Application. **Appendix A: Aggregates and Event Sourcing: A+ES** | 14 (Aggregates, Appendix A), 15 |
+| Kleppmann and Riccomini, Designing Data-Intensive Applications, 2nd ed. | Martin Kleppmann and Chris Riccomini, O'Reilly, 2026 (hub books.yml: print ISBN 9781098119065, URL carries ebook id 9781098119058; O'Reilly catalog urn 9781098119058, published 2026-02-18, 672 pages) | https://www.oreilly.com/library/view/designing-data-intensive-applications/9781098119058/ | Edition, ISBN and date confirmed (catalog search and hub). **Chapter title NOT confirmed**: the O'Reilly search tool returns no chapter text, oreilly.com answers 403 to scripts, dataintensive.net links to the O'Reilly TOC without listing it, and no sibling repo records a chapter title. Only chapter 1, "Trade-offs in Data Systems Architecture", appeared in a search result. Owner to paste the 2nd edition TOC; until then the bibliography row cites the book and no chapter | 14, 15 (book only) |
+
+### Greg Young, CQRS Documents
+
+- URL: https://cqrs.wordpress.com/wp-content/uploads/2010/11/cqrs_documents.pdf (HTTP 200, 1.5 MB PDF, title "CQRS Documents by Greg Young", footer cqrsinfo.com). Text extracted with pdftotext and read.
+- Contents entries with the page numbers printed in the document: "Events as a Storage Mechanism" 25; "Rolling Snapshots" 33 (inside that part) and 44 (inside "Building an Event Storage", which starts at 41); "Event Storage as a Queue" 46. The plan's page numbers all confirmed.
+- "Rolling Snapshots" (p. 33 part): called "a heuristic" and the event stream "is still viewed in its entirety". The tuning point is that the maximum number of events loaded can be controlled. Confirmed.
+- p. 44 part: a Snapshots table holds the serialized aggregate and a version number; a "[SnapShotter]" process runs outside the application server, asynchronously, and queries for aggregates "gone past the allowed number of events". Confirmed.
+- Status: confirmed.
+
+### Fowler
+
+| Source | URL | Confirmed |
+|---|---|---|
+| DDD Aggregate, Martin Fowler, 23 April 2013 | https://martinfowler.com/bliki/DDD_Aggregate.html | HTTP 200. Defines an aggregate as "a cluster of domain objects that can be treated as a single unit" |
+| Event Sourcing, Martin Fowler, 12 December 2005 | https://martinfowler.com/eaaDev/EventSourcing.html | HTTP 200. "Capture all changes to an application state as a sequence of events"; state can be rebuilt "by re-running the events from the event log"; an overnight snapshot is the example of a starting point |
+
+### Microsoft Azure Architecture Center, Event Sourcing pattern
+
+- URL: https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing (ms.date 2026-03-27, updated 2026-09-25).
+- Snapshot paragraph, under "Entity state re-creation", confirmed: snapshots at intervals such as every N events; rehydrate by loading the latest snapshot and replaying only later events; frequency trades snapshot storage against rehydration time; the note says snapshots are "an optimization, not a replacement for the eventstream" and can be regenerated from it. The same page says an event store rejects an append through optimistic concurrency control if the stream changed since it was read, and that a message broker such as Kafka is not a substitute for an event store.
+
+### RFC 9110 (HTTP Semantics, June 2022)
+
+- URL: https://www.rfc-editor.org/rfc/rfc9110.html (text read from https://www.rfc-editor.org/rfc/rfc9110.txt).
+- Section 13.1.1 "If-Match" confirmed: makes the method conditional on an entity tag match; the origin server "MUST use the strong comparison function".
+- Section 15.5.13 "412 Precondition Failed" confirmed: "one or more conditions given in the request header fields evaluated to false", preventing the method from being applied when the resource is in an unexpected state.
+
+### Quarkus, Camel and PostgreSQL pages (HTTP status and content checked 2026-11-12)
+
+| Page | URL | Result |
+|---|---|---|
+| Quarkus Hibernate ORM with Panache | https://quarkus.io/guides/hibernate-orm-panache | 200. `PanacheQuery` exposes `.stream()` (page example `Person.find(...).page(...).nextPage().stream()`). No native-query text on this page or on https://quarkus.io/guides/hibernate-orm: not confirmed there (Jakarta Persistence `EntityManager.createNativeQuery` is the API) |
+| Quarkus SmallRye Fault Tolerance | https://quarkus.io/guides/smallrye-fault-tolerance | 200. `@Retry` demonstrated on a resource method; `maxRetries` appears. `retryOn` is not on this page: it is in the MicroProfile Fault Tolerance specification, https://download.eclipse.org/microprofile/microprofile-fault-tolerance-4.1/microprofile-fault-tolerance-spec-4.1.html (200), which lists `Retry/maxRetries`, `Retry/maxDuration` and `retryOn`. The version of the spec the platform implements was not checked |
+| Quarkus Kafka guide | https://quarkus.io/guides/kafka | 200. `@Blocking` described for database work in message processing; acknowledgement covered |
+| Quarkus REST guide | https://quarkus.io/guides/rest | 200. Conditional-request example uses `jakarta.ws.rs.core.EntityTag`, `Request` and `request.evaluatePreconditions(...)` |
+| Camel exception clause | https://camel.apache.org/manual/exception-clause.html | 200. `onException` and redelivery covered. The `/components/4.22.x/eips/exception-clause.html` URL is 404; the manual URL (already in the bibliography) is the right one |
+| Camel Scheduler component 4.22.x | https://camel.apache.org/components/4.22.x/scheduler-component.html | 200. `delay` and `initialDelay` (default 1000 ms) options |
+| Camel SQL component 4.22.x | https://camel.apache.org/components/4.22.x/sql-component.html | 200. Named parameters with the `:#name` syntax |
+| Camel Split EIP 4.22.x | https://camel.apache.org/components/4.22.x/eips/split-eip.html | 200. `streaming` option present |
+| Camel Quarkus scheduler and SQL extensions 3.40.x | https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/scheduler.html ; https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/sql.html | 200 both |
+| PostgreSQL 18 INSERT | https://www.postgresql.org/docs/18/sql-insert.html | 200. `ON CONFLICT`, `DO UPDATE`, `conflict_target`; the `DO UPDATE ... WHERE` condition clause is part of the synopsis (the page has 18 `DO UPDATE` mentions) |
+| PostgreSQL 18 constraints | https://www.postgresql.org/docs/18/ddl-constraints.html | 200. Unique constraints, including multi-column |
+| PostgreSQL 18 set returning functions | https://www.postgresql.org/docs/18/functions-srf.html | 200. `generate_series` |
+| PostgreSQL 18 EXPLAIN | https://www.postgresql.org/docs/18/sql-explain.html | 200. `EXPLAIN` and `ANALYZE` |
+
+### Lawrence, Message- and Event-Driven Systems
+
+- Not re-fetched. Rows already above: 4 "Tactical Building Blocks", 5 "CQRS", 6 "Event Sourcing" (InformIT TOC, 2026-11-10). The plan's "ch 4 and ch 6" refer to these titles.
+
+### r06 facts that did not confirm
+
+- Kleppmann and Riccomini 2nd edition: no chapter title obtained (above). Do not cite a chapter until the owner pastes the TOC.
+- Native-query text is not in the Panache or Hibernate ORM guides.
+- `retryOn` is documented in the MicroProfile specification, not the Quarkus guide.
+- Evans, Domain-Driven Design: not fetched; the plan makes it conditional on the owner, who has not asked for it.
