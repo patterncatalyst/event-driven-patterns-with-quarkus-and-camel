@@ -68,5 +68,5 @@ Each one changes a single thing and names the checks that fail. The run records 
 |---|---|---|
 | `RETRY_MODE=reappend ./verify.sh` | Race 1 ends with `OrderCancelled` at version 4 after `OrderShipped`, and a cancelled record is published for it | 14, 15, 17 and 30 |
 | `RETRY_MAX=0 ./verify.sh` | A conflict is reported instead of decided again, so race 1 has no refusal reason, race 2 is rejected and race 3 does not decide the payment again | 14, 19 to 21, 26 and 30 |
-| Delete the `CONSTRAINT events_stream_version` line from `V1__orders.sql` | Nothing detects the race: no conflict is logged and the history of `O-1402` is no longer a legal lifecycle | 14 to 17, 19, 20, 26 and 29 to 31 |
+| Delete the `CONSTRAINT events_stream_version` line and the comma before it from `V1__orders.sql` | Nothing detects the race: no conflict is logged and the history of `O-1402` is no longer a legal lifecycle | 14 to 17, 19, 20, 26 and 29 to 31 |
 | `CAMEL_REDELIVERIES=0 ./verify.sh` | The Camel route drops the conflicting payment after one attempt and commits its offset | 29 |
