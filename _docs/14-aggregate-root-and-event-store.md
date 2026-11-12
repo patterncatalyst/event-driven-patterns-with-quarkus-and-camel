@@ -7,7 +7,7 @@ description: "An order is the stream of its own events. One object owns every ru
 duration: "55 minutes"
 ---
 
-Chapter 1 appends order events to a table and lets a unique version settle a race between two writers. It has no single place that owns every rule about an order, no policy for the writer that loses, and no way for the events to reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
+Chapter 1 appends order events to a table and lets a unique version settle a race between two writers. Its rules live in a service bean that checks a status change rather than in an object rebuilt from the stream, the losing writer gets 409 and nothing decides again, and the events never reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
 
 {% include excalidraw.html file="14-aggregate-command-cycle" alt="A command is loaded against the stream, the aggregate is rebuilt, the command is decided and the events are appended at the loaded version plus one in one transaction with an outbox row for OrderPlaced and OrderCancelled; Debezium carries those two to edp.orders.placed and edp.orders.cancelled" caption="Figure 14.1: One command, one transaction, and two public events out" %}
 
@@ -17,7 +17,7 @@ Chapter 1 appends order events to a table and lets a unique version settle a rac
 
 Three callers change an order. A REST request cancels it, a `PaymentProcessed` record marks it paid and a `ShipmentScheduled` record ships it. If each reads the status, checks the move and writes the result, the rules live in three places and drift apart. Two callers that act on the same status at the same moment also both pass their own check: a cancellation that read PAID and a shipment that read PAID are each correct against what they saw, and together they leave CANCELLED after SHIPPED.
 
-Fowler describes an aggregate as a cluster of domain objects treated as one unit and reached through a single root, which keeps the whole consistent, and says a transaction should not cross its boundary. Vernon's chapter "Aggregates" covers how to draw that boundary. With event sourcing the cluster is a stream: the state of an order is the fold of its events, and the only way to change it is to append.
+Fowler describes an aggregate as a cluster of domain objects treated as one unit and reached through a single root, which keeps the whole consistent, and says a transaction should not cross its boundary. Vernon gives aggregates a chapter of their own, "Aggregates". With event sourcing the cluster is a stream: the state of an order is the fold of its events, and the only way to change it is to append.
 
 ### The solution
 
@@ -69,9 +69,11 @@ Young's CQRS Documents describe the same two operations with an optimistic check
 public Result handle(Command command, OptionalInt clientVersion) {
     OrderAggregate order = load(command.orderId());
     int loaded = order.version();
-    List<OrderEvent> events = order.decide(command);
+    // ... a client version that differs from the loaded one is a conflict
+    List<OrderEvent> events = order.decide(command); // CommandRefused when the rules say no
+    // ... a hook that holds the command here
     int expected = clientVersion.orElse(loaded);
-    store.append(STREAM_TYPE, command.orderId(), expected, events);
+    store.append(STREAM_TYPE, command.orderId(), expected, events); // ConcurrencyConflict on a stale version
     events.forEach(event -> export(command.orderId(), event));
     return new Result(expected + events.size(), events);
 }
@@ -99,11 +101,12 @@ The retry wraps a call to another bean, so every attempt is a new transaction th
 A client that read version 2 and cancels because of what it saw has not asked for a cancellation at whatever version exists later. It sends the `ETag` it holds as `If-Match`, and RFC 9110 defines the answer when the precondition fails: 412 Precondition Failed. `OrderResource` compares the tag with the current version through `Request.evaluatePreconditions`, and passes the client's version to the append so that a race behind a matching tag is reported too:
 
 ```java
-Response.ResponseBuilder stale = request.evaluatePreconditions(tag(transaction.load(id).version()));
+int current = transaction.load(id).version();
+Response.ResponseBuilder stale = request.evaluatePreconditions(tag(current));
 if (stale != null) {
     return stale.build();
 }
-var result = transaction.handle(command, OptionalInt.of(Integer.parseInt(ifMatch.replace("\"", ""))));
+var result = transaction.handle(command, OptionalInt.of(current));
 ```
 
 {% include excalidraw.html file="14-retry-or-report" alt="Without If-Match the cancellation goes through OrderCommands, which retries in a new transaction and answers 200 or 409; with If-Match a stale tag runs no command and is answered 412, and the caller reads the order again and decides" caption="Figure 14.3: Retry what does not depend on what the caller saw, report what does" %}
@@ -119,14 +122,17 @@ A refused command is a business outcome. Over REST it is a 409 with the reason. 
 `PaymentConsumer` and `ShipmentConsumer` are `@Incoming` methods with `@Blocking` that build the command and call `OrderCommands`. `PaymentCommandRoute` is the comparison, started with the `camel-commands` profile in place of the payments channel:
 
 ```java
+// in PaymentCommandRoute.configure()
 onException(ConcurrencyConflict.class)
         .maximumRedeliveries(redeliveries).redeliveryDelay(50)
         .logRetryAttempted(true).retryAttemptedLogLevel(LoggingLevel.INFO);
-onException(CommandRefused.class).handled(true)
+onException(CommandRefused.class)
+        .handled(true)
         .log(LoggingLevel.INFO, "camel acknowledged a refused command: ${exception.message}");
 
-from("kafka:" + Topics.PAYMENTS_PROCESSED + "?groupId=order-payments-camel&autoOffsetReset=earliest")
+from("kafka:" + Topics.PAYMENTS_PROCESSED + "?groupId=order-payments-camel&autoOffsetReset=earliest&sessionTimeoutMs=10000")
         .routeId("payment-commands")
+        // ... autoStartup is read from configuration
         .unmarshal().json(JsonLibrary.Jackson, PaymentProcessed.class)
         .bean("orderTransaction", "markPaid");
 ```
@@ -168,7 +174,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 26 tests cover every aggregate rule without a database, a stale append that adds no row, both outcomes of the race, a stale `If-Match`, a failure after the append that leaves neither row, Kafka commands, the Camel route with and without redelivery, and the blind re-append as the negative witness. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, and prints `33/33 checks passed`.
+The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 27 tests cover every aggregate rule without a database, a stale append that adds no row, both outcomes of the race, a stale `If-Match`, a failure after the append that leaves neither row, Kafka commands, the Camel route with and without redelivery, and the blind re-append as the negative witness. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, and prints `33/33 checks passed`.
 
 The checks read the effects:
 

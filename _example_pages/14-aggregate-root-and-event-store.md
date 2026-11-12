@@ -26,7 +26,7 @@ mvn -B verify
 4. **A cancellation that loses to a payment is accepted.** The retry succeeds at the next version.
 5. **A stale `If-Match` is answered 412.** No command runs and nothing is retried.
 6. **Only two events reach Kafka.** `OrderPlaced` and `OrderCancelled` leave through the outbox in the same transaction as the append.
-7. **The Camel route behaves the same.** It redelivers a conflicting payment, which reloads and decides again.
+7. **The Camel route and the channel agree on a conflict.** Both run the transactional bean again, which reloads and decides again, and both acknowledge a refusal. They differ once retries are used up: the channel fails, the route drops the command and commits the offset.
 
 ## Infrastructure
 

@@ -140,13 +140,25 @@ for rec in re.split(r'(?m)^(?=Offset:[0-9]+\t)', text):
         print(rec.rstrip('\n').replace('\n', ' '))
 "
 }
-dump() { # dump <topic>: every record as "Offset:N<TAB>headers<TAB>key<TAB>value"
-    kafka kafka-console-consumer.sh --topic "$1" --from-beginning --timeout-ms 6000 \
+dump() { # dump <topic>: every record as "Offset:N<TAB>headers<TAB>key<TAB>value"; fails when the consumer fails
+    local out
+    out="$(kafka kafka-console-consumer.sh --topic "$1" --from-beginning --timeout-ms 6000 \
         --formatter-property print.key=true --formatter-property print.offset=true \
-        --formatter-property print.headers=true 2>/dev/null | normalise || true
+        --formatter-property print.headers=true 2>/dev/null)" || return 1
+    normalise <<<"$out"
 }
-records_for() { dump "$1" | awk -F'\t' -v k="$2" '$(NF - 1) == k' | wc -l; } # records_for <topic> <key>
-total_records() { dump "$1" | grep -c '^Offset:' || true; }
+records_line() { # records_line <topic> <key>: the matching records themselves
+    local out; out="$(dump "$1")" || return 1
+    awk -F'\t' -v k="$2" '$(NF - 1) == k' <<<"$out"
+}
+records_for() { # records_for <topic> <key>
+    local out; out="$(dump "$1")" || return 1
+    awk -F'\t' -v k="$2" '$(NF - 1) == k' <<<"$out" | wc -l
+}
+total_records() { # total_records <topic>
+    local out; out="$(dump "$1")" || return 1
+    grep -c '^Offset:' <<<"$out" || true
+}
 group_assigned() { kafka kafka-consumer-groups.sh --describe --group "$1" 2>/dev/null | awk -v t="$2" '$2 == t && $3 == 0 && $7 != "-" {f = 1} END {exit !f}'; }
 group_lag_zero() { # an inactive group prints "-" for its current offset: that is not lag 0
     kafka kafka-consumer-groups.sh --describe --group "$1" 2>/dev/null | awk -v t="$2" '
@@ -195,13 +207,18 @@ camel_race_settled() { # one redelivery: the payment is loaded at version 1, con
 
 # Predicates the checks poll.
 one_placed_record() { # edp.orders.placed holds one record keyed O-1401: id header, eventType OrderPlaced, amount 25
-    local line; line="$(dump $PLACED | awk -F'\t' '$(NF - 1) == "O-1401"')"
+    local line; line="$(records_line $PLACED O-1401)" || return 1
     [[ "$(printf '%s\n' "$line" | grep -c .)" == 1 && "$line" == *eventType:OrderPlaced* && "$line" == *id:* ]] &&
         printf '%s\n' "$line" | grep -E '"amount":25(\.0+)?[,}]' >/dev/null
 }
-payment_twice() { [[ "$(dump $PAYMENTS | awk -F'\t' '$(NF - 1) == "O-1401" && index($NF, "P-O-1401")' | wc -l)" == 2 ]]; }
+payment_twice() {
+    local out; out="$(dump $PAYMENTS)" || return 1
+    [[ "$(awk -F'\t' '$(NF - 1) == "O-1401" && index($NF, "P-O-1401")' <<<"$out" | wc -l)" == 2 ]]
+}
 no_paid_record_anywhere() {
-    ! { dump $PLACED; dump $CANCELLED; } | grep OrderPaid >/dev/null && ! kafka kafka-topics.sh --list | grep '^outbox\.event\.' >/dev/null
+    local placed cancelled topics
+    placed="$(dump $PLACED)" && cancelled="$(dump $CANCELLED)" && topics="$(kafka kafka-topics.sh --list)" || return 1
+    ! grep OrderPaid >/dev/null <<<"$placed$cancelled" && ! grep '^outbox\.event\.' >/dev/null <<<"$topics"
 }
 topics_have_one_partition() { [[ "$(for t in $PLACED $CANCELLED $PAYMENTS $SHIPMENTS; do partitions_of "$t"; done | tr '\n' ' ')" == "1 1 1 1 " ]]; }
 connector_and_topics() { connector_running && topics_have_one_partition; }

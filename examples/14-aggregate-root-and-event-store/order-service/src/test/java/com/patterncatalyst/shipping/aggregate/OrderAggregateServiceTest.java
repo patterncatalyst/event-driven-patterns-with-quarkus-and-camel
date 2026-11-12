@@ -135,6 +135,15 @@ class OrderAggregateServiceTest {
     }
 
     @Test
+    void aWildcardIfMatchOnAnExistingOrderIsAMatch() {
+        String id = id();
+        transaction.handle(Streams.place(id));
+        transaction.handle(Streams.pay(id));
+        given().header("If-Match", "*").post("/orders/{id}/cancellation", id).then().statusCode(200)
+                .header("ETag", "\"3\"");
+    }
+
+    @Test
     void aMatchingIfMatchCancelsAndReturnsTheNewVersion() {
         String id = id();
         transaction.handle(Streams.place(id));

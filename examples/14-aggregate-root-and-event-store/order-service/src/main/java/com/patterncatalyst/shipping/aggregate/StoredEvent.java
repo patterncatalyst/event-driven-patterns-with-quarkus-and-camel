@@ -7,7 +7,6 @@ import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -19,7 +18,7 @@ import jakarta.persistence.Table;
 @Entity
 @Immutable
 @Table(name = "events")
-public class StoredEvent extends PanacheEntityBase {
+public class StoredEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

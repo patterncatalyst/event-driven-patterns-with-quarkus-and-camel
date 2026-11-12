@@ -68,12 +68,13 @@ public class OrderResource {
         if (ifMatch == null) {
             return Response.ok().tag(tag(commands.handle(command).version())).build();
         }
-        Response.ResponseBuilder stale = request.evaluatePreconditions(tag(transaction.load(id).version()));
+        int current = transaction.load(id).version();
+        Response.ResponseBuilder stale = request.evaluatePreconditions(tag(current));
         if (stale != null) {
             return stale.build();
         }
         try {
-            var result = transaction.handle(command, OptionalInt.of(Integer.parseInt(ifMatch.replace("\"", ""))));
+            var result = transaction.handle(command, OptionalInt.of(current));
             return Response.ok().tag(tag(result.version())).build();
         } catch (ConcurrencyConflict conflict) {
             return Response.status(Response.Status.PRECONDITION_FAILED).entity(reason(conflict)).build();
