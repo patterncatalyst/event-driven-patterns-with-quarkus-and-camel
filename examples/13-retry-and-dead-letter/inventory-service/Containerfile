@@ -1,0 +1,21 @@
+# Build context is examples/ so the shared domain model can be installed first.
+#   docker build -f 13-retry-and-dead-letter/inventory-service/Containerfile -t inventory-service examples
+FROM registry.access.redhat.com/ubi10/openjdk-25:1.24-19 AS build
+USER 185
+WORKDIR /build
+COPY --chown=185:0 domain-model/ domain-model/
+COPY --chown=185:0 13-retry-and-dead-letter/pom.xml 13-retry-and-dead-letter/pom.xml
+COPY --chown=185:0 13-retry-and-dead-letter/inventory-service/pom.xml 13-retry-and-dead-letter/inventory-service/pom.xml
+COPY --chown=185:0 13-retry-and-dead-letter/inventory-service/src 13-retry-and-dead-letter/inventory-service/src
+RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
+ && mvn -B -ntp -q -f 13-retry-and-dead-letter/inventory-service/pom.xml package -DskipTests
+
+FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-19
+ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
+    JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+COPY --from=build --chown=185 /build/13-retry-and-dead-letter/inventory-service/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=185 /build/13-retry-and-dead-letter/inventory-service/target/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=185 /build/13-retry-and-dead-letter/inventory-service/target/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=185 /build/13-retry-and-dead-letter/inventory-service/target/quarkus-app/quarkus/ /deployments/quarkus/
+EXPOSE 8080
+USER 185
