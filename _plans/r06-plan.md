@@ -545,9 +545,9 @@ Chapter 15:
 |---|---|---|---|---|---|---|---|
 | 0 | Preflight: branch, Docker clean, iteration-plan r06 in progress, save plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md` | orchestrator | owner OK | none | no | done |
 | 1A | Re-survey (complete the table above) and source fetches: Young (done here; record), Fowler bliki, Vernon TOC, RFC 9110, Microsoft snapshot paragraph, Quarkus/Camel/PostgreSQL pages; claim rows `*-src-*` | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | done |
-| 1B | Spikes S1 to S5 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | pending |
+| 1B | Spikes S1 to S5 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | done |
 | 1C | `_plans/domain-model.md` rows 14 and 15 rewritten (below); event-name note for StockReceived/StockReserved | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | done |
-| G0 | Gate: spikes pass or fallback chosen; G0 decisions section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | pending |
+| G0 | Gate: spikes pass or fallback chosen; G0 decisions section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | done |
 | 2A | Ch 14: code, tests, Containerfile, compose, connector JSON, README, example page, figure specs and outputs, chapter draft without numbers | `examples/14-*/**`, `_docs/14-*.md`, `_example_pages/14-*.md`, `diagrams/specs/14-*.py`, `diagrams/14-*.*` | exec 2A | G0 | with 2B | mvn under lock | pending |
 | 2B | Ch 15: same set | `examples/15-*/**`, `_docs/15-*.md`, `_example_pages/15-*.md`, `diagrams/specs/15-*.py`, `diagrams/15-*.*` | exec 2B | G0 | with 2A | mvn under lock | pending |
 | 2C | Ch 08 sentence fix (recommendation 9) plus claim row | `_docs/08-transactional-outbox.md` | orchestrator | G0 | yes | no | pending |
@@ -687,3 +687,24 @@ Executors:
 
 ---
 
+
+## G0 decisions (orchestrator, 2026-11-12)
+
+Spikes S1 to S5 all passed (report and logs in the session scratchpad, `r06-spikes/REPORT.md`; not committed). 1A re-survey: UBI openjdk-25 bumped repo-wide to 1.24-20; everything else unchanged. Vernon chapter titles confirmed from InformIT (ch 8 "Domain Events", ch 10 "Aggregates", Appendix A "Aggregates and Event Sourcing: A+ES"). Kleppmann and Riccomini, DDIA 2nd ed., cited as a book; chapter title unconfirmed until the owner pastes the TOC, so no chapter-level citation.
+
+Corrections carried into 2A and 2B (they override the design sections above where they differ):
+
+1. `DEMO_PAUSE_FOR` takes `orderId:Command`; a bare order id pauses the first command.
+2. Both examples set `quarkus.hibernate-orm.mapping.format.global=ignore` (as example 01).
+3. Constraint mapping: catch `PersistenceException`, walk the cause chain for `ConstraintViolationException` with constraint name `events_stream_version` (no multi-catch). `@Retry` lives on `OrderCommands` around a separate `@Transactional` bean; `@Retry` on the transactional method itself fails deterministically (`current transaction is aborted`) and may stay as the optional experiment.
+4. `@Consumes(JSON)` only on POSTs with a body (class-level gives 415 on body-less POSTs). `Request.evaluatePreconditions(EntityTag)` gives the 412 path.
+5. Camel redelivery logs need `.logRetryAttempted(true).retryAttemptedLogLevel(LoggingLevel.INFO)` (check 29); route properties are `commands.camel.*`.
+6. Ch 15 replay reads through a Panache projection `.project(Row.class).stream()` (record `Row(StockEvent payload)`); plain entity `stream()` does not bound heap (Hibernate keeps entities in the persistence context; OOM at Xmx 96m), `list()` OOMs at 128m. This is a prose-worthy, tested fact (claim row).
+7. Ch 15 reserve path `@Retry(maxRetries=30, jitter=30)` (8 retries lost 1 to 6 of 200 under 8 clients). Config keys `<fqcn>/<method>/Retry/maxRetries`.
+8. Seed: version 1 is `StockReceived 100`, every tenth event `StockReceived 10`, the rest `StockReserved 1`; expected quantities 201, 1101, 10101 for 1k, 10k, 100k (+ the stated tails).
+9. Check 19 (Camel snapshotter phase) deletes the inline snapshot rows first (or uses a fresh SKU).
+10. Check 10 timing ratio: R=20 on SKU-1503 (100k) only; spike medians 267 ms full vs 1.9 ms snapshot, ratio 140 to 148 in 3/3 runs (7x margin). 1k and 10k ratios are reported, not checked.
+11. Metric names: `order_command_conflicts_total`, `order_command_refused_total`, `ft_retry_retries_total`; `inventory_rehydrate_milliseconds_*{source}`, `inventory_snapshot_write_milliseconds_*{writer}`, `inventory_snapshot_ignored_total` (exists only after first increment). Metric checks are live only (OTel SDK off in tests).
+12. Snapshot upsert through `EntityManager.createNativeQuery` with `cast(?4 as jsonb)`, guard `WHERE excluded.version > inventory.snapshots.version`; the stale-take guard experiment is live through a labelled demo endpoint.
+13. Outbox connector reuses chapter 08's config with slot and publication `edp_order_aggregate_outbox`.
+14. Console producer: `kafka-console-producer.sh --property parse.key=true --property key.separator=|`; the lag helper treats `-` offsets of an inactive group.
