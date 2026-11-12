@@ -45,7 +45,7 @@ try (Stream<StockEvent> tail = tail(sku, from)) {
 }
 ```
 
-The schema version, `inventory.snapshot.schema`, describes `InventorySnapshot`. When the record changes meaning the version is raised, and every stored snapshot with the old value is skipped and rebuilt from the events. Young makes the same point about serialised snapshots: when the structure changes, delete them and rebuild. Nothing upcasts a snapshot.
+The schema version, `inventory.snapshot.schema`, describes `InventorySnapshot`. When the record changes meaning the version is raised, and every stored snapshot with the old value is skipped and rebuilt from the events. Young notes that when the structure of serialised snapshots changes, the existing ones must be deleted and recreated or updated to the new schema. Nothing here updates a snapshot; it is rebuilt.
 
 The tail is read with a Panache projection, not entities:
 
@@ -125,7 +125,7 @@ Where the snapshot is written decides how long the tail can get.
 | Streams nobody commands | Never snapshotted | Snapshotted when they pass N, bulk loads included |
 | Same row, same guard | Yes | Yes |
 
-During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached 336 events with N at 100 (327 to 350 over three runs). After the burst the route caught up within the next period, and the version it stored never went down. With a period of 30 seconds the tail grew to about 990, almost the size of the burst.
+During a burst of 1,000 reservations with a route period of one second, the largest tail sampled reached 336 events with N at 100 (327 to 350 over three runs). Within three periods after the burst the stored snapshot was again less than N events behind the head, and the version it stored never went down. With a period of 30 seconds the tail grew to about 990, almost the size of the burst.
 
 Young's snapshotter suits commands on a latency budget, or streams bulk-loaded without a snapshot. Inline is the default because it is the only arrangement that bounds the tail.
 
@@ -169,7 +169,7 @@ Change one thing and watch a guard fail:
 
 ## When not to use it
 
-Most streams do not need one. A stream of ten events loads faster than a snapshot row is read, and every snapshot is another thing to version, write and keep correct. Measure the load first. Microsoft's pattern note calls snapshots an optimisation: the event stream stays the record.
+Most streams do not need one. A stream of 1,000 events loads in 1.4 ms without one, and every snapshot is another thing to version, write and keep correct. Measure the load first. Microsoft's pattern note calls snapshots an optimisation: the event stream stays the record.
 
 A snapshot cannot repair a wrong fold. If the aggregate's logic had a bug, the snapshot repeats it. Fix the logic, raise the schema version, and let the events rebuild every snapshot.
 
