@@ -246,7 +246,46 @@ Opus round 2: all 15 round-1 findings resolved; numbers match the r1 logs; figur
 
 ## r06 final serial run (step 5)
 
-TODO (orchestrator): per-example mvn tests and verify.sh checks (00 to 15, f6-*.log), experiment re-runs (f6-x14-*.log, f6-x15-*.log), no edp-* containers left between runs.
+Script `final-r06.sh` (session scratchpad), one flock, every verify.sh from fresh containers (down -v, up --force-recreate --renew-anon-volumes); no `edp-*` containers left between runs (no LEFTOVER line). Logs `f6-*.log`.
+
+| Example | mvn tests | verify.sh |
+|---|---|---|
+| domain-model | BUILD SUCCESS | none |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7, 1 error (see below) | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 27/27 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 40/40 |
+| 11 | 7 | 29/29 |
+| 12 | 3 | 21/21 |
+| 13 | 7 | 31/31 |
+| 14 | 26 | 33/33 |
+| 15 | 11 | 27/27 |
+
+02: `OrderEventTest.failedPublishLeavesTheOrderWithoutAnEvent` raised `SocketTimeoutException: Read timed out` at 30.03 s. With the publishing route stopped, the `direct:` producer waits for a consumer for the component's default 30 s timeout, which races the 30 s test HTTP read timeout. Fix: `%test.camel.component.direct.timeout=2000` (test profile only, no prose impact); re-run twice, see below.
+
+Experiment re-runs (failing sets equal the prose in every case):
+
+| Run | Result | Failing checks |
+|---|---|---|
+| 14 `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 |
+| 14 `RETRY_MAX=0` | 27/33 | 14, 19, 20, 21, 26, 30 |
+| 14 constraint line and comma removed | 23/33 | 14 to 17, 19, 20, 26, 29, 30, 31 |
+| 14 `CAMEL_REDELIVERIES=0` | 32/33 | 29 |
+| 15 `SNAPSHOT_EVERY=0` | stops at the Camel precondition | 4 to 7, 10, 11, 13, 15, 18 (17 passed this time; unstable, not in prose) |
+| 15 `SNAPSHOT_GUARD=false` | 26/27 | 18 |
+| 15 `SNAPSHOT_EVERY=10` | 27/27 | none |
+| 15 `SNAPSHOT_EVERY=1000` | 27/27 | none |
+| 15 `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` | precondition 3 fails (service exits with OutOfMemoryError) | 3 |
+| 15 `EXTRA_JAVA_OPTS=-Xmx96m` | 27/27 | none |
+
+Cosmetic: with `SNAPSHOT_EVERY=0` the label of check 6 prints "after -1 more reservations" (N-1 with N=0); the check fails as intended.
 
 ### Unbacked-claims pass (orchestrator, 2026-11-12)
 
