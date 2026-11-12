@@ -156,6 +156,14 @@ PRD §14, decided:
 - Chapter 03 adds Claim Check as a second pattern; chapter 04 adds Resequencer as a second pattern.
 - Book links (titles, ISBNs, URLs) come from the hub `_data/books.yml`.
 
+2026-11-12 (r06 plan approval, all 15 recommendations):
+
+- Event store stays plain PostgreSQL with Panache (per Q3); no event-store product. Expected version comes from the loaded aggregate.
+- Chapter 14: `Order` is the aggregate, no read table; conflict policy is retry by deciding again (SmallRye `@Retry` around a separate `@Transactional` bean) or `If-Match` reported as 412; only OrderPlaced and OrderCancelled leave, through the chapter 08 outbox; Camel at the edge.
+- Chapter 15: `InventoryItem` stock ledger (internal StockReceived, StockReserved); snapshot every N=100 in the command's transaction with a version-guarded upsert; a stale snapshot schema is discarded and rebuilt, never upcast; Camel scheduled snapshotter as the out-of-band comparison; the timing ratio is a check (R=20 on the 100k stream).
+- Kleppmann and Riccomini (DDIA 2nd ed.) cited at book level until the owner pastes the TOC; Vernon cited by chapter title only.
+- Demo switches (`DEMO_PAUSE_FOR=orderId:Command`, `RETRY_MODE=reappend`, `SNAPSHOT_GUARD`, `INVENTORY_FETCH`) are labelled demo code.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.
