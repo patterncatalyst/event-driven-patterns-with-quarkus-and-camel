@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r06 plan: chapters 14 and 15, aggregate root and the event store, snapshots (Opus planner, 2026-11-12)
 
-Status: **awaiting owner approval**. Branch `release/r06`, cut from main at a54ab4f.
+Status: **approved by the owner 2026-11-12, all 15 recommendations**; merge when validation and CI pass (owner). Vernon TOC not pasted: 1A confirms chapter titles through the O'Reilly catalog search; Kleppmann not cited. Branch `release/r06`, cut from main at a54ab4f.
 
 Planner note: this plan was made with read-only commands, web fetches of Maven Central metadata, the GitHub releases API, code.quarkus.io and Docker Hub, the Notion PRD, two O'Reilly catalog searches and one fetch of Greg Young's CQRS Documents PDF. No stack was started, no container was run, nothing was written and no git command changed state.
 
@@ -543,7 +543,7 @@ Chapter 15:
 
 | Step | Work | Files | Owner | Depends | Parallel | Stack | Status |
 |---|---|---|---|---|---|---|---|
-| 0 | Preflight: branch, Docker clean, iteration-plan r06 in progress, save plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md` | orchestrator | owner OK | none | no | pending |
+| 0 | Preflight: branch, Docker clean, iteration-plan r06 in progress, save plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md` | orchestrator | owner OK | none | no | done |
 | 1A | Re-survey (complete the table above) and source fetches: Young (done here; record), Fowler bliki, Vernon TOC, RFC 9110, Microsoft snapshot paragraph, Quarkus/Camel/PostgreSQL pages; claim rows `*-src-*` | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | pending |
 | 1B | Spikes S1 to S5 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | pending |
 | 1C | `_plans/domain-model.md` rows 14 and 15 rewritten (below); event-name note for StockReceived/StockReserved | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | pending |
