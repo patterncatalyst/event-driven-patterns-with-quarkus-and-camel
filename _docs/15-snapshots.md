@@ -137,7 +137,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 11 tests against PostgreSQL from Dev Services: a snapshot plus the tail equals the full replay at every split point for N of 1, 7 and 100, a snapshot with another schema is ignored, a read writes nothing, the guarded upsert never lowers the version, a refused reservation appends nothing, eight writers on one SKU lose no reservation, and the Camel route writes the snapshot of a stream past N. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three streams, and prints `27/27 checks passed`.
+The Maven build runs 13 tests against PostgreSQL from Dev Services: a snapshot plus the tail equals the full replay at every split point for N of 1, 7 and 100, a snapshot with another schema is ignored, a read writes nothing, the guarded upsert never lowers the version, a refused reservation appends nothing, eight writers on one SKU lose no reservation, the Camel route writes the snapshot of a stream past N, a failed inline snapshot rolls its reservation back, and a snapshotter tick that fails leaves reservations working and is repeated on the next tick. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three streams, and prints `27/27 checks passed`.
 
 The checks read the effects:
 
