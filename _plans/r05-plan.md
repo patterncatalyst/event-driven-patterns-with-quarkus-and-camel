@@ -643,3 +643,36 @@ Executors make no git writes and do not edit `claims.md`, `verification-log.md`,
 - examples/08-transactional-outbox/verify.sh (verify.sh, crash switch and recreate pattern to copy)
 - examples/07-queues-for-kafka/notification-service/src/main/resources/application.properties (SmallRye plus Camel profile switching)
 - examples/08-transactional-outbox/pom.xml (camel-bom 4.22.2 first, platform BOMs, domain-model version)
+
+## G0 decisions (2026-11-11, from spikes S1 to S6 and the 1A re-survey)
+
+These override the per-chapter design where they differ. Evidence: scratchpad spike report (orchestrator copy) and logs; summarised in `verification-log.md` at the windows.
+
+**All chapters**
+- No version changes (1A). KIP-939 client API is not public in kafka-clients 4.3.2: no qualifier in ch 08 or ch 12.
+- A restarted consumer waits for the dead member's session timeout (45 s default; redelivery 45 to 47 s, 3/3). Demo channels and Camel endpoints set `session.timeout.ms=10000` / `sessionTimeoutMs=10000`; checks after a restart poll up to 60 s.
+- Console tools (Kafka 4.3.2): producer `--reader-property parse.key=true --reader-property parse.headers=true`, lines `headers<TAB>key<TAB>value` (headerless: parse.key only); about 3 s per call; cannot send invalid UTF-8 (junk inputs are ASCII). Consumer `--isolation-level`, `--formatter-property print.key|print.headers|print.offset=true`, `2>/dev/null`, exit code ignored, match with `grep -aP '\t<key>'`. `kafka-consumer-groups --reset-offsets ... --execute` works on inactive and new groups.
+
+**11**
+- Camel alternative is a real same-transaction inbox: `JpaMessageIdRepository(emf, injected TransactionStrategy, name)` inside `.transacted()` (camel-quarkus-jta) joins the JTA transaction (key and effect roll back together). Phase "Camel repository" stays as designed; checks 17 to 20 unchanged.
+- New experiment: remove `.transacted()` and send an order whose effect fails after the key is stored: the key commits, the effect rolls back, a redelivery is skipped (reservation lost). Deterministic; kept. Requires a demo failure trigger on the Camel path (labelled demo code).
+- `JdbcMessageIdRepository` fails under JTA on every message (`Attempting to commit while taking part in a transaction`): one decision-table sentence, sourced from the run; EIP ch 15 linked for the JDBC repository.
+- Repository table DDL and sequence as in the spike (validate passes; no index-dependency). Camel Kafka headers are `CamelKafka*`; the Kafka `id` header is Camel header `id`.
+
+**12**
+- Batch consumer code and config as in the spike (Message<ConsumerRecords>, withTransactionAndAck, explicit `transactional.id=payment-service-tx`). Dev Services needs no extra env.
+- Each batch is produced in one console-producer call (separate calls become batches of 1). The committed phase produces O-5001..O-5005 in one call.
+- Crash switch: 500 ms between the last send and the halt (k=7, 3/3); never 0 ms or `Duration.ZERO`. Restart reaches exactly 10 within 5 to 6 s; check bound 30 s stays.
+- `markForAbort` and a poison record in a transactional batch loop forever (abort, seek back, same batch; a record behind it is never processed). Prose states it as a property of the pattern; the example feeds no poison. The mvn abort test uses a non-consuming trigger with `withTransactionAndAwait` + `markForAbort`, not the batch channel.
+- `transaction.timeout.ms=10000` experiment: abort observed at about 23 s; prose says "within about half a minute", re-measured in the window.
+- Camel comparison uses an explicit `transactionalId=camel-payment-tx` (the generated `endpoint2-camel-tx` depends on endpoint ordinal). Camel consumer defaults: read_uncommitted, auto-commit every 5 s; after the crash the group had no committed offset (precondition 16 holds). Duplicates 3/3 (O-6001..O-6007 twice).
+
+**13**
+- SmallRye path uses a byte channel (`ByteArrayDeserializer`), parses in an `@Blocking @Incoming` method with `@Retry(retryOn = Exception.class, abortOn = {IllegalArgumentException.class, JsonProcessingException.class})`, and calls a separate `@Transactional` bean. A typed channel does not keep the original bytes for a validation failure (null or re-serialized JSON). `maxRetries` from env via the config key `<fqcn>/<method>/Retry/maxRetries=${RETRY_MAX:8}`.
+- DLQ serializers set explicitly (String key, ByteArray value). SmallRye DLQ headers: dead-letter-exception-class-name, -reason, -topic, -partition, -offset; check 5 asserts topic and offset, check 6 the reason. Reasons may contain newlines.
+- Lock timeout via the Panache `withLock(PESSIMISTIC_WRITE).withHint("jakarta.persistence.lock.timeout", 2000)` query; retried exception is `jakarta.persistence.PessimisticLockException`. Lock hold 12 s; O-7004 and O-7005 in one producer call; `pg_stat_activity` precondition after the call.
+- Camel DLC: `useOriginalBody()` on the error handler AND on the `onException(...).maximumRedeliveries(0)` clause (without it the record is lost: DLC cannot serialize the unmarshalled body). Byte-identical DLQ values. **Camel's DLC adds no reason, source topic, partition or offset headers**: the comparison table states it; checks 16 and 17 assert value bytes only; the plan's "adds a reason header" is dropped. No onPrepareFailure (EIP ch 5 covers enrichment of dead letters; linked).
+- Default Camel error handler: bad records skipped after 1 attempt, offsets committed, lock timeout dropped (SKU-14 stays 100). breakOnFirstError=true: seek back loop re-applies the good record before the poison (O-7001 87 times). Both kept as experiments, re-run in the window (n=1 so far).
+- `max.poll.interval.ms=10000` with a 20 s lock: Camel rebalances and reserves twice (SKU-14 98, 3/3); SmallRye reserves once (3/3). The table row stays; the experiment is in "Build, run, observe".
+- Input O-7006 (junk ASCII) added beside O-7002 (truncated JSON); DLQ count checks adjust (3 SmallRye dead letters, 6 after the Camel phase).
+- FT metrics: `ft_retry_calls_total{retryResult}` and `ft_retry_retries_total` from `/q/metrics`; LGTM visibility checked in the window, claimed only if seen.
