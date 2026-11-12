@@ -110,6 +110,15 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://camel.apache.org/components/4.22.x/kafka-component.html" rel="noopener">Camel Kafka component</a></td><td>Transacted producers, isolationLevel, breakOnFirstError and pollOnError</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/dead-letter-channel.html" rel="noopener">Camel Dead Letter Channel</a></td><td>Redelivery and routing the original message to a dead letter endpoint</td></tr>
     <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/jpa.html" rel="noopener">Camel Quarkus JPA extension</a></td><td>The Quarkus transaction strategy and JpaMessageIdRepository</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/jpa-component.html" rel="noopener">Camel JPA component</a></td><td>JpaMessageIdRepository and the transacted consumer option</td></tr>
+    <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/jta.html" rel="noopener">Camel Quarkus JTA extension</a></td><td>Transacted routes on the Quarkus transaction manager</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/transactional-client.html" rel="noopener">Camel Transactional Client EIP</a></td><td>The transacted() route boundary</td></tr>
+    <tr><td><a href="https://camel.apache.org/manual/error-handler.html" rel="noopener">Camel error handler</a></td><td>The default error handler and redelivery</td></tr>
+    <tr><td><a href="https://camel.apache.org/manual/exception-clause.html" rel="noopener">Camel exception clause</a></td><td>onException overrides per exception type</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/transaction" rel="noopener">Quarkus transactions guide</a></td><td>@Transactional and the JTA transaction manager</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/hibernate-orm-panache" rel="noopener">Quarkus Hibernate ORM with Panache</a></td><td>Entities, queries and pessimistic locking</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/sql-select.html" rel="noopener">PostgreSQL SELECT</a></td><td>The locking clause, FOR UPDATE</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/runtime-config-client.html" rel="noopener">PostgreSQL client connection defaults</a></td><td>lock_timeout</td></tr>
     <tr><td><a href="https://www.postgresql.org/docs/18/sql-insert.html" rel="noopener">PostgreSQL INSERT</a></td><td>ON CONFLICT DO NOTHING</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/debezium-postgres-component.html" rel="noopener">Camel Debezium PostgreSQL component</a></td><td>The embedded change-data-capture consumer and its headers</td></tr>
     <tr><td><a href="https://www.apicur.io/registry/docs/" rel="noopener">Apicurio Registry</a></td><td>Schema registry and compatibility rules</td></tr>
