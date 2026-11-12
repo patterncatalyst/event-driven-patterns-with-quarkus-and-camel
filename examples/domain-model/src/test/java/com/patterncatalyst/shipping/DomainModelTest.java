@@ -281,6 +281,13 @@ class DomainModelTest {
         }
 
         @Test
+        void deadLetterTopicIsOutsideTheCatalog() {
+            assertEquals("edp.orders.placed-dlq", Topics.ORDERS_PLACED_DLQ);
+            assertTrue(Topics.ORDERS_PLACED_DLQ.matches("edp\\.[a-z]+\\.[a-z-]+"));
+            assertTrue(!Topics.ALL.contains(Topics.ORDERS_PLACED_DLQ));
+        }
+
+        @Test
         void inventoryCdcTopicsAreOutsideTheCatalog() {
             assertEquals("edp.inventory.item-changes", Topics.INVENTORY_ITEM_CHANGES);
             assertEquals("edp.inventory.items", Topics.INVENTORY_ITEMS);

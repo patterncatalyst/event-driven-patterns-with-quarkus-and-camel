@@ -39,6 +39,11 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html" rel="noopener">Polling Consumer</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A consumer that fetches when it is ready, as the Kafka poll loop does</td></tr>
     <tr><td><a href="https://microservices.io/patterns/data/transactional-outbox.html" rel="noopener">Pattern: Transactional outbox</a></td><td>Chris Richardson</td><td>Writing the message in the same transaction as the business change, and the message relay</td></tr>
     <tr><td><a href="https://microservices.io/patterns/data/transaction-log-tailing.html" rel="noopener">Pattern: Transaction log tailing</a></td><td>Chris Richardson</td><td>Publishing outbox rows by reading the database transaction log</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/IdempotentReceiver.html" rel="noopener">Idempotent Receiver</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A receiver that can safely receive the same message more than once</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/TransactionalClient.html" rel="noopener">Transactional Client</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Making the client's session with the messaging system transactional</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/DeadLetterChannel.html" rel="noopener">Dead Letter Channel</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Where a message goes when it cannot be delivered or processed</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/InvalidMessageChannel.html" rel="noopener">Invalid Message Channel</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Separating messages that make no sense from messages that failed</td></tr>
+    <tr><td><a href="https://microservices.io/patterns/communication-style/idempotent-consumer.html" rel="noopener">Pattern: Idempotent Consumer</a></td><td>Chris Richardson</td><td>Recording processed message ids in the database, in the handler's transaction</td></tr>
   </tbody>
 </table>
 
@@ -91,6 +96,29 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://www.postgresql.org/docs/18/logicaldecoding-explanation.html" rel="noopener">PostgreSQL logical decoding concepts</a></td><td>Replication slots and the WAL they retain</td></tr>
     <tr><td><a href="https://www.postgresql.org/docs/18/view-pg-replication-slots.html" rel="noopener">PostgreSQL pg_replication_slots</a></td><td>Slot positions, wal_status and safe_wal_size</td></tr>
     <tr><td><a href="https://www.postgresql.org/docs/18/protocol-replication.html" rel="noopener">PostgreSQL streaming replication protocol</a></td><td>Where START_REPLICATION begins streaming a logical slot</td></tr>
+    <tr><td><a href="https://kafka.apache.org/43/design/design/" rel="noopener">Kafka design: message delivery semantics and transactions</a></td><td>Exactly-once from a transactional producer and a read-committed consumer</td></tr>
+    <tr><td><a href="https://kafka.apache.org/43/configuration/consumer-configs/" rel="noopener">Kafka consumer configs</a></td><td>isolation.level and max.poll.interval.ms</td></tr>
+    <tr><td><a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging" rel="noopener">KIP-98: Exactly Once Delivery and Transactional Messaging</a></td><td>The transactional producer, the producer epoch and fencing</td></tr>
+    <tr><td><a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-447%3A+Producer+scalability+for+exactly+once+semantics" rel="noopener">KIP-447: Producer scalability for exactly once semantics</a></td><td>Sending consumer group metadata with the offsets of a transaction</td></tr>
+    <tr><td><a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-664%3A+Provide+tooling+to+detect+and+abort+hanging+transactions" rel="noopener">KIP-664: Provide tooling to detect and abort hanging transactions</a></td><td>kafka-transactions.sh</td></tr>
+    <tr><td><a href="https://smallrye.io/smallrye-reactive-messaging/4.37.0/kafka/transactions/" rel="noopener">SmallRye Kafka transactions and exactly-once processing</a></td><td>KafkaTransactions, offsets inside a transaction and the abort behaviour</td></tr>
+    <tr><td><a href="https://smallrye.io/smallrye-reactive-messaging/4.37.0/kafka/receiving-kafka-records/" rel="noopener">SmallRye receiving Kafka records</a></td><td>Failure strategies, the dead letter queue and deserialization failures</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/kafka" rel="noopener">Quarkus Apache Kafka guide</a></td><td>Blocking processing, error handling, transactions and chaining with Hibernate ORM</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/smallrye-fault-tolerance" rel="noopener">Quarkus SmallRye Fault Tolerance</a></td><td>Retrying work with @Retry</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/idempotentConsumer-eip.html" rel="noopener">Camel Idempotent Consumer EIP</a></td><td>The eager, removeOnFailure and skipDuplicate options and the key repositories</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/kafka-component.html" rel="noopener">Camel Kafka component</a></td><td>Transacted producers, isolationLevel, breakOnFirstError and pollOnError</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/dead-letter-channel.html" rel="noopener">Camel Dead Letter Channel</a></td><td>Redelivery and routing the original message to a dead letter endpoint</td></tr>
+    <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/jpa.html" rel="noopener">Camel Quarkus JPA extension</a></td><td>The Quarkus transaction strategy and JpaMessageIdRepository</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/jpa-component.html" rel="noopener">Camel JPA component</a></td><td>JpaMessageIdRepository and the transacted consumer option</td></tr>
+    <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/jta.html" rel="noopener">Camel Quarkus JTA extension</a></td><td>Transacted routes on the Quarkus transaction manager</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/transactional-client.html" rel="noopener">Camel Transactional Client EIP</a></td><td>The transacted() route boundary</td></tr>
+    <tr><td><a href="https://camel.apache.org/manual/error-handler.html" rel="noopener">Camel error handler</a></td><td>The default error handler and redelivery</td></tr>
+    <tr><td><a href="https://camel.apache.org/manual/exception-clause.html" rel="noopener">Camel exception clause</a></td><td>onException overrides per exception type</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/transaction" rel="noopener">Quarkus transactions guide</a></td><td>@Transactional and the JTA transaction manager</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/hibernate-orm-panache" rel="noopener">Quarkus Hibernate ORM with Panache</a></td><td>Entities, queries and pessimistic locking</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/sql-select.html" rel="noopener">PostgreSQL SELECT</a></td><td>The locking clause, FOR UPDATE</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/runtime-config-client.html" rel="noopener">PostgreSQL client connection defaults</a></td><td>lock_timeout</td></tr>
+    <tr><td><a href="https://www.postgresql.org/docs/18/sql-insert.html" rel="noopener">PostgreSQL INSERT</a></td><td>ON CONFLICT DO NOTHING</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/debezium-postgres-component.html" rel="noopener">Camel Debezium PostgreSQL component</a></td><td>The embedded change-data-capture consumer and its headers</td></tr>
     <tr><td><a href="https://www.apicur.io/registry/docs/" rel="noopener">Apicurio Registry</a></td><td>Schema registry and compatibility rules</td></tr>
     <tr><td><a href="https://quarkus.io/guides/" rel="noopener">Quarkus</a></td><td>The Quarkus runtime, Dev Services, messaging and Kafka Streams</td></tr>

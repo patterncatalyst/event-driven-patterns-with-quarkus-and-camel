@@ -24,6 +24,9 @@ public final class Topics {
     /** Compacted InventoryItem state documents, keyed by sku. */
     public static final String INVENTORY_ITEMS = "edp.inventory.items";
 
+    /** Dead letters of edp.orders.placed: records that cannot be parsed or are invalid. */
+    public static final String ORDERS_PLACED_DLQ = "edp.orders.placed-dlq";
+
     /** The nine event catalog topics. */
     public static final List<String> ALL = List.of(
             ORDERS_PLACED, ORDERS_CANCELLED,

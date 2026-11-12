@@ -176,3 +176,37 @@ Live after the fixes, each from clean: 08 27/27, 09 35/35, 10 40/40 (first ch 10
 
 Opus round 2: SHIP after one typo (ch 10 "`,:`"); all round-1 findings verified resolved; 9 regenerated figures byte-identical to specs; 7-gram overlap with EIP ch 15, appendix R, CNDP ch 4 is 0. Fixed anyway (fix-now): typo; checks 35 (09) and 40 (10) now fail when the topic listing fails and require the expected topics (09: item-changes, connector-heartbeats, interval-only-heartbeats, signals; 10: item-changes, signals); stale claims rows 09-06, 08-08, r04-r1-10; figure 9.3 update box; CrashSwitch Javadoc; ch 10 names check 39.
 Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp-* left.
+
+## r05 chapter 11 window (2026-11-11)
+
+- Three runs from clean: 28/28, 28/28, 28/28 (w11-verify1..3); mvn verify 7 tests green. No example or verify.sh change.
+- Experiments: INBOX_ENABLED=false 23/28 (5, 6, 7, 12, 13 fail; preconditions 3, 9, 10, 21 pass). CAMEL_TRANSACTED=false 26/28 (23, 25). session.timeout.ms removed: 28/28, crash exit to lag 0 49.2 s vs 19.0 and 19.1 s; application.properties restored.
+- TBDs filled; three untested claims cut (claims 11-l). Details: scratchpad w11-window.md (not committed).
+
+## r05 chapter 12 window (2026-11-11)
+
+- Five runs from clean, 20/20 each (w12-run1..5). Check 10: 14 s from the restart, 28 to 33 s from crash detection; k=7 every run. verify.sh gained NOTE echo lines only (timing, Camel per-order counts); no check changed.
+- Experiments: PAYMENT_MODE=camel-transacted 13/20 (4, 5, 8, 9, 10, 12, 13 fail). TX_TIMEOUT_MS=10000, service left down: Ongoing at +11 s, CompleteAbort at +16 s, read_committed 0, read_uncommitted 7. Default isolation after restart: O-5101 to O-5107 twice. Camel phase: O-6001 to O-6007 two committed each, O-6008 to O-6010 one.
+- "Within about half a minute" replaced by the measured 16 s. Details: scratchpad w12-window.md (not committed).
+
+## r05 chapter 13 window (2026-11-11)
+
+- Three runs from clean, 28/28 each (w13-v1..3); mvn verify 7 tests. No example or verify.sh change.
+- Experiments: fail 15/28 (13 fail, offset 1 lag 5, readiness 503); RETRY_MAX=0 19/28; RETRY_MAX=2 23/28 (3 attempts); Camel DLC off 22/28 (offsets committed, lag 0); plus breakOnFirstError 21/28 (O-7001 applied 100 times, lag 6); HOLD=20 MAX_POLL_INTERVAL_MS=10000 22/28 (SmallRye no rebalance, Camel batch twice); lock hint removed 25/28 (one attempt, ~10 s wait), source restored.
+- Prose trimmed by 108 words to stay under 2,500. Details: scratchpad w13-window.md (not committed).
+
+## r05 final serial run and experiment re-runs (2026-11-12, fresh containers per run)
+
+- domain-model install green. mvn verify and verify.sh, 00 to 13: 4/17, 11/19, 11/21, 15/30, 50/28, 6/24, 4/36, 10/27, 7/27, 8/35, 2/40, 7/28, 3/20, 7/28 (tests/checks); every verify N/N; no edp-* left between runs.
+- Experiment re-runs (orchestrator, scratchpad f5-x*.log): 11 inbox off 23/28 (5, 6, 7, 12, 13); 11 Camel untransacted 26/28 (23, 25); 11 no session.timeout.ms 28/28, crash exit to lag 0 49.3 s vs 19.2 s in the baseline run; 12 camel-transacted 13/20 (4, 5, 8, 9, 10, 12, 13); 13 fail 15/28; RETRY_MAX=0 19/28; RETRY_MAX=2 23/28; Camel DLC off 22/28; plus breakOnFirstError 21/28; HOLD=20 poll 10 s 22/28; lock hint removed 25/28 (4, 19, 20; the window had 4, 5, 19). Source edits restored by the script (git checkout).
+
+## r05 repair round 1 (2026-11-12, fresh containers per run)
+
+- Changes: a Prometheus check in verify.sh of 11, 12 and 13 (inventory_inbox_duplicates_total, kafka_producer_txn_commit_time_ns_total, kafka_consumer_fetch_manager_records_consumed_total, each with service_name); 13 checks the SmallRye dead letter of O-7003 for bytes, source topic and offset; 12 check 11 asserts read_committed 10 and read_uncommitted 10 + k; 11 precondition 9 fails on an empty group describe and check 20 asserts four records, three keys, empty inbox; the Camel route of 12 calls a mapping bean.
+- mvn verify: 11 7 tests, 12 3 tests, 13 7 tests, green. verify.sh N/N twice: 11 29/29 x2, 12 21/21 x2 (r1-t12, r1-v2-12; the earlier r1-v1-12 ran with the first form of the route change and failed precondition 15 and check 14, no exit 137 at O-6008 within 60 s, because the mapping bean was removed as unused; the route now injects it), 13 31/31 x2; no edp-* left between runs.
+- Experiments (scratchpad r1-x*.log): 11 inbox off 23/29 (5, 6, 7, 12, 13, 29); Camel untransacted 27/29 (23, 25); no session.timeout.ms 29/29, crash exit to lag 0 48.6 s vs 19.1 s; 12 camel-transacted 12/21 (4, 5, 8, 9, 10, 11, 12, 13, 21); 13 fail 16/31 (4, 6, 7, 9 to 14, 16, 24 to 28); RETRY_MAX=0 22/31 (4 to 6, 14, 15, 19 to 21, 26); RETRY_MAX=2 26/31 (6, 14, 15, 21, 26); Camel DLC off 25/31 (19 to 21, 24 to 26); plus breakOnFirstError 24/31 (19, 21 to 26); HOLD=20 poll 10 s 25/31 (21 to 26); lock hint removed 29/31 (4, 19).
+- Manual experiments of chapter 12: TX_TIMEOUT_MS=10000 left down, Ongoing then CompleteAbort at +16 s in both runs (r1-x12-txtimeout.log); default isolation after restart returns O-5101 to O-5107 twice (r1-x12-defaultiso.log).
+
+## r05 validation round 2 (2026-11-12)
+
+Opus round 2: all 15 round-1 findings resolved; numbers match the r1 logs; figure 13.1 regenerates byte-identical; mvn 12 green (3 tests); word counts 2,222 / 2,181 / 2,491. Low fixes applied: claims 13-k (dead letter content, checks 9 to 16, 27, 28) and 13-b cleaned; 13-f and 13-g note samples n=1; ch12 listing shows `.bean(mapping, "toPayment")`, "same point in the batch", check 21 wording; ch13 table cell without self-reference; KIP-939 marked not cited in sources.md.

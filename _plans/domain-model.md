@@ -33,7 +33,7 @@ A customer orders an item online. The order is recorded, stock is reserved, the 
 
 ## Records and enums
 
-`examples/domain-model` version 2.0.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
+`examples/domain-model` version 2.2.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
 
 | Type | Fields | Validation |
 |---|---|---|
@@ -73,6 +73,8 @@ Chapter 04 adds one ordered stream topic, `edp.shipping.shipments`, keyed by ord
 
 Chapter 09 adds two more non-catalog topics: `edp.inventory.item-changes` (raw Debezium change envelopes of the legacy `inventory_item` table) and `edp.inventory.items` (compacted `InventoryItem` state documents keyed by sku). Neither is in `Topics.ALL`.
 
+Chapter 13 adds `edp.orders.placed-dlq`, not in `Topics.ALL`.
+
 Chapter 09 also writes helper topics that no service reads: `edp.inventory.signals` (events of the Debezium signal table), `edp.inventory.heartbeats` (events of the heartbeat table the heartbeat query writes), `edp.inventory.interval-only-signals` (the interval-only witness connector's signal table) and the heartbeat record topics, set with `topic.heartbeat.name`: `edp.inventory.connector-heartbeats` (main connector) and `edp.inventory.interval-only-heartbeats` (witness). "heartbeat" is not a domain, so no topic is named `edp.heartbeat.*`.
 
 Chapter 10 reuses `edp.inventory.item-changes` and routes its signal table to `edp.inventory.signals`. It has no heartbeat.
@@ -92,6 +94,7 @@ FASTLINE (road) and AIRCO (air), both fictional.
 - Payment declined: PaymentFailed, stock is released, the order is cancelled, the customer is told.
 - Late delivery: no ShipmentDelivered in time, escalate.
 - The same event delivered twice: a consumer must not apply it twice.
+- A malformed event: dead letter topic.
 - A service down: its events wait in Kafka until it returns.
 
 ## Persistence
@@ -117,9 +120,9 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 08 | Transactional outbox | `Order` placed plus an outbox row (debezium-quarkus-outbox), then the Debezium Outbox Event Router, then `edp.orders.placed`, keyed by order id, with `id` and `eventType` headers |
 | 09 | Log tailing with Debezium | the legacy `inventory.inventory_item` table (`item_sku`, `qty_on_hand`, `last_changed`) tailed by Debezium to `edp.inventory.item-changes`; a Camel route maps the envelopes to `InventoryItem` documents on `edp.inventory.items` |
 | 10 | Managing connector offsets | stop, list, alter and reset the `inventory-cdc` connector offsets through Connect REST on compose (the Strimzi half arrives in r12) |
-| 11 | Idempotent consumer and inbox | inventory-service reserves stock once per OrderPlaced event id; a duplicate without the inbox double-decrements `quantityOnHand` |
-| 12 | Exactly-once with Kafka transactions | payment-service reads InventoryReserved, writes `Payment` and publishes PaymentProcessed in one transaction; `read_committed` |
-| 13 | Retry and dead letter | a malformed OrderPlaced goes to a DLQ topic; a transient payment-gateway failure is redelivered |
+| 11 | Idempotent consumer and inbox | inventory-service reserves stock once per OrderPlaced event id (the `id` header); the inbox row commits in the same transaction as the decrement; a duplicate without the inbox double-decrements `quantityOnHand`; Camel's idempotent consumer with a repository is the alternative |
+| 12 | Exactly-once with Kafka transactions | payment-service reads InventoryReserved and publishes PaymentProcessed (carrying the `Payment`) with its consumed offsets in one Kafka transaction; `read_committed` readers; no database write, because a Kafka transaction covers Kafka only (the database edges are chapters 08 and 11); a Camel transacted route is the comparison |
+| 13 | Retry and dead letter | a malformed or invalid OrderPlaced goes to `edp.orders.placed-dlq`; a transient failure (the stock row locked past the lock timeout) is retried and succeeds; SmallRye failure strategy versus Camel deadLetterChannel |
 | 14 | Aggregate root and the event store | the `Order` aggregate rebuilt from its stream; commands checked against state; optimistic concurrency on append |
 | 15 | Snapshots | an `InventoryItem` stock ledger for one popular SKU; snapshot every N events; rebuild cost measured |
 | 16 | CQRS and projections | an order-status read model per customer in PostgreSQL, projected from order and shipment events; read lag asserted |
@@ -148,4 +151,5 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | D | Pattern map, glossary, EIP Camel cross-reference | same domain as EIP Camel, so the cross-reference is by event |
 | E | Resequencing across partitions, in depth | shipment events from several partitions, producers and topics put back in per-order order: per-order buffer vs Camel Resequencer (batch and stream mode, global sequence, funnel topic), gap timeouts, lost events, restart, memory bounds |
 | F | Deploying event-driven services | on minikube: full-stop deployment, rolling update of a consumer group (rebalances, the cooperative protocol, in-flight records), a breaking schema change (new topic and a migration consumer, or a compatible v2 first), blue-green for consumers (offsets, a second group, cut-over and rollback); order-service and notification-service redeployed under load with nothing lost or applied twice (Bellemare ch 21). Figures: several per section, one per stage of each deployment pattern (before, during, after; for blue-green also cut-over and rollback), so every pattern can be followed from the figures alone |
-| G | OpenShift Local: outbox on CRC | the chapter 08 `Order` outbox |
+| G | Write-forward cache with an outbox and CDC (added 2026-11-11, owner) | order-service writes the order and an outbox row in one PostgreSQL transaction; a Redis cache on the read side (same image as the sibling books, re-surveyed at r13) is kept current from the outbox and change events, not by the service's own dual write; what the cache may show stale, how it is rebuilt after a loss, and the dual write it avoids (Kafka transactions stop at the cluster, chapter 12) |
+| H | OpenShift Local: outbox on CRC | the chapter 08 `Order` outbox |

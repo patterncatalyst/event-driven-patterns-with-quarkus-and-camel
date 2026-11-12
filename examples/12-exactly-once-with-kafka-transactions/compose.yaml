@@ -1,0 +1,56 @@
+name: edp-12
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+services:
+  # Creates the input and output topics with one partition each, so the order of the records is the order of the log, then exits.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.inventory.reserved --partitions 1 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.payments.processed --partitions 1 --replication-factor 1
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: 12-exactly-once-with-kafka-transactions/payment-service/Containerfile
+    container_name: edp-payment-service
+    ports:
+      - "8080:8080"
+    environment:
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      # smallrye (default) reads and writes through one Kafka transaction; camel-transacted is the Camel comparison route.
+      QUARKUS_PROFILE: ${PAYMENT_MODE:-smallrye}
+      TX_TIMEOUT_MS: ${TX_TIMEOUT_MS:-60000}
+      # Demo code: the order id at which the JVM stops inside a transaction.
+      DEMO_CRASH_MID_BATCH_AT: ${CRASH_MID_BATCH_AT:-}
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      lgtm:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
