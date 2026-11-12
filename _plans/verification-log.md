@@ -194,3 +194,8 @@ Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp
 - Three runs from clean, 28/28 each (w13-v1..3); mvn verify 7 tests. No example or verify.sh change.
 - Experiments: fail 15/28 (13 fail, offset 1 lag 5, readiness 503); RETRY_MAX=0 19/28; RETRY_MAX=2 23/28 (3 attempts); Camel DLC off 22/28 (offsets committed, lag 0); plus breakOnFirstError 21/28 (O-7001 applied 100 times, lag 6); HOLD=20 MAX_POLL_INTERVAL_MS=10000 22/28 (SmallRye no rebalance, Camel batch twice); lock hint removed 25/28 (one attempt, ~10 s wait), source restored.
 - Prose trimmed by 108 words to stay under 2,500. Details: scratchpad w13-window.md (not committed).
+
+## r05 final serial run and experiment re-runs (2026-11-12, fresh containers per run)
+
+- domain-model install green. mvn verify and verify.sh, 00 to 13: 4/17, 11/19, 11/21, 15/30, 50/28, 6/24, 4/36, 10/27, 7/27, 8/35, 2/40, 7/28, 3/20, 7/28 (tests/checks); every verify N/N; no edp-* left between runs.
+- Experiment re-runs (orchestrator, scratchpad f5-x*.log): 11 inbox off 23/28 (5, 6, 7, 12, 13); 11 Camel untransacted 26/28 (23, 25); 11 no session.timeout.ms 28/28, crash exit to lag 0 49.3 s vs 19.2 s in the baseline run; 12 camel-transacted 13/20 (4, 5, 8, 9, 10, 12, 13); 13 fail 15/28; RETRY_MAX=0 19/28; RETRY_MAX=2 23/28; Camel DLC off 22/28; plus breakOnFirstError 21/28; HOLD=20 poll 10 s 22/28; lock hint removed 25/28 (4, 19, 20; the window had 4, 5, 19). Source edits restored by the script (git checkout).
