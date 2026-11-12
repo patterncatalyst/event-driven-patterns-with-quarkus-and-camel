@@ -41,8 +41,8 @@ Checks 6, 7, 15 and 16 are preconditions: the run stops if the crash or the part
 
 ## Experiments
 
-- `PAYMENT_MODE=camel-transacted ./verify.sh` runs the first phases on the Camel route. Check 10 fails.
-- `TX_TIMEOUT_MS=10000`: start the stack with `CRASH_MID_BATCH_AT=O-5108`, produce the burst and leave the service down. Watch the transaction with `docker exec edp-kafka /opt/kafka/bin/kafka-transactions.sh --bootstrap-server localhost:9092 describe --transactional-id payment-service-tx`.
+- `PAYMENT_MODE=camel-transacted ./verify.sh` runs the first phases on the Camel route. Check 10 fails, with 4, 5, 8, 9, 12 and 13 (the Camel route uses another group and transactional id, and a read_committed reader sees seven payments while the service is down).
+- `TX_TIMEOUT_MS=10000`: start the stack with `CRASH_MID_BATCH_AT=O-5108`, produce the burst and leave the service down. The coordinator aborts it about 16 seconds after the crash; a read_committed reader sees none of the batch throughout. Watch the transaction with `docker exec edp-kafka /opt/kafka/bin/kafka-transactions.sh --bootstrap-server localhost:9092 describe --transactional-id payment-service-tx`.
 - Read the output with `kafka-console-consumer.sh` and no `--isolation-level` after the restart: the aborted copies appear.
 
 ## Layout

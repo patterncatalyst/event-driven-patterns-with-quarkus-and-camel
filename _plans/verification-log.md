@@ -182,3 +182,9 @@ Live from clean after the fixes: 10 40/40, 09 35/35; 08 mvn verify green. No edp
 - Three runs from clean: 28/28, 28/28, 28/28 (w11-verify1..3); mvn verify 7 tests green. No example or verify.sh change.
 - Experiments: INBOX_ENABLED=false 23/28 (5, 6, 7, 12, 13 fail; preconditions 3, 9, 10, 21 pass). CAMEL_TRANSACTED=false 26/28 (23, 25). session.timeout.ms removed: 28/28, crash exit to lag 0 49.2 s vs 19.0 and 19.1 s; application.properties restored.
 - TBDs filled; three untested claims cut (claims 11-l). Details: scratchpad w11-window.md (not committed).
+
+## r05 chapter 12 window (2026-11-11)
+
+- Five runs from clean, 20/20 each (w12-run1..5). Check 10: 14 s from the restart, 28 to 33 s from crash detection; k=7 every run. verify.sh gained NOTE echo lines only (timing, Camel per-order counts); no check changed.
+- Experiments: PAYMENT_MODE=camel-transacted 13/20 (4, 5, 8, 9, 10, 12, 13 fail). TX_TIMEOUT_MS=10000, service left down: Ongoing at +11 s, CompleteAbort at +16 s, read_committed 0, read_uncommitted 7. Default isolation after restart: O-5101 to O-5107 twice. Camel phase: O-6001 to O-6007 two committed each, O-6008 to O-6010 one.
+- "Within about half a minute" replaced by the measured 16 s. Details: scratchpad w12-window.md (not committed).

@@ -111,7 +111,7 @@ committed_batch_is_five() { [[ "$(count_matching read_committed '^O-500[1-5]$')"
 # the old transaction was aborted by the restarted producer, not by the coordinator's timer.
 batch_is_ten_once() {
     [[ "$(count_matching read_committed '^O-51(0[1-9]|10)$')" == 10 && "$(distinct_matching read_committed '^O-51(0[1-9]|10)$')" == 10 ]] \
-        && (( SECONDS - CRASH_AT < 55 ))
+        && { TEN_AT=$SECONDS; (( SECONDS - CRASH_AT < 55 )); }
 }
 uncommitted_is_ten_plus_k() { [[ "$(count_matching read_uncommitted '^O-51(0[1-9]|10)$')" == $((10 + K)) ]]; }
 camel_has_every_order() { [[ "$(distinct_matching read_committed '^O-60(0[1-9]|10)$')" == 10 ]]; }
@@ -155,7 +155,9 @@ check "the group payment-service is still at offset 5" group_is payment-service 
 echo "Restart without the switch"
 export CRASH_MID_BATCH_AT=
 "${COMPOSE[@]}" up -d --no-deps --force-recreate payment-service >/dev/null
+RESTART_AT=$SECONDS; TEN_AT=
 check "within 30 s a read_committed reader sees all ten orders, each exactly once" poll 30 batch_is_ten_once
+if [[ -n "$TEN_AT" ]]; then echo "NOTE: k=$K; ten orders once after $((TEN_AT - RESTART_AT)) s from restart, $((TEN_AT - CRASH_AT)) s from crash detection"; fi
 check "a read_uncommitted reader sees the ten orders plus the aborted copies" uncommitted_is_ten_plus_k
 check "the group payment-service is at offset 15" poll 30 group_is payment-service 15
 check "the transaction coordinator reports $TXID as CompleteCommit" poll 30 tx_is CompleteCommit
@@ -178,6 +180,7 @@ export CRASH_MID_BATCH_AT=
 check "after the restart every order O-6001 to O-6010 has a payment: nothing is lost" poll 60 camel_has_every_order
 check "at least one of O-6001 to O-6007 has more than one committed payment: the input was read again" camel_has_a_duplicate
 
+echo "NOTE: committed payments per order O-6001 to O-6010 (read_committed): $(keys_matching read_committed '^O-60(0[1-9]|10)$' | sort | uniq -c | awk '{printf "%s=%s ", $2, $1}')"
 echo "Observability"
 check "Tempo has a trace for payment-service" poll 90 tempo_has_trace payment-service
 check "Loki has logs for payment-service" poll 90 loki_has_log payment-service
