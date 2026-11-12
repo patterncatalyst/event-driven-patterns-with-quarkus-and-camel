@@ -122,7 +122,7 @@ Change one thing and watch a guard fail:
 
 An outbox costs a table, a connector and a replication slot to operate. A slot that nobody reads keeps the write-ahead log on disk, so a stopped connector is an alarm and not a harmless state. The event reaches Kafka after the commit, not with it, so a reader of the topic sees it a moment after a reader of the database does.
 
-If a lost or phantom event is acceptable, such as a metric or a cache hint, publishing from the request is simpler. If the service has no database transaction to join, for example because it only forwards messages, there is nothing to make atomic. When the events are the state itself, event sourcing removes the second write instead of making it safe. When the data is already in tables the service cannot change, Transaction Log Tailing reads those tables directly, with no outbox rows.
+If a lost or phantom event is acceptable, such as a metric or a cache hint, publishing from the request is simpler. If the service has no database transaction to join, for example because it only forwards messages, there is nothing to make atomic. When the events are the state itself, the event row is the state change, and the outbox row for a public event commits beside it in the same transaction. When the data is already in tables the service cannot change, Transaction Log Tailing reads those tables directly, with no outbox rows.
 
 > **🤖 Explore with your agent**
 > "In examples/08-transactional-outbox, set CRASH_AFTER_COMMIT_FOR for two order ids, place one through OrderService.place and one through DualWriteCommitFirstRoute, restart the service, and compare which of them has an event on edp.orders.placed. State the rule that makes the outbox side safe."
