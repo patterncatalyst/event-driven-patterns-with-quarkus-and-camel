@@ -297,3 +297,5 @@ Cosmetic: with `SNAPSHOT_EVERY=0` the label of check 6 prints "after -1 more res
 - Open: 15-ae (inline snapshot failure rolls the command back) and 15-af (a failed snapshotter tick leaves commands unaffected and the next tick retries) need Maven tests; added after the final run releases the lock.
 
 02 fix re-run: `mvn verify` on examples/02 twice after the final run (`f6-02-fix-mvn1.log`, `f6-02-fix-mvn2.log`): 7 + 4 tests, BUILD SUCCESS both times, no edp-* containers left.
+
+15 new tests (step 5 follow-up): `InlineSnapshotFailureTest` and `SnapshotterRetryTest` added; `mvn verify` on examples/15 twice (`w15t-mvn1.log`, `w15t-mvn2.log`): 13 tests, BUILD SUCCESS both. The final-run table row for 15 (11 tests) predates them.

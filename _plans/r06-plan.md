@@ -708,3 +708,9 @@ Corrections carried into 2A and 2B (they override the design sections above wher
 12. Snapshot upsert through `EntityManager.createNativeQuery` with `cast(?4 as jsonb)`, guard `WHERE excluded.version > inventory.snapshots.version`; the stale-take guard experiment is live through a labelled demo endpoint.
 13. Outbox connector reuses chapter 08's config with slot and publication `edp_order_aggregate_outbox`.
 14. Console producer: `kafka-console-producer.sh --property parse.key=true --property key.separator=|`; the lag helper treats `-` offsets of an inactive group.
+
+Note on G0-1 (validator L7): G0-1 records a spike finding, not a feature. `DEMO_PAUSE_FOR` accepts only `orderId:Command`; no bare-order-id form is implemented or documented.
+
+## Validation round 1 (Opus, 2026-11-12)
+
+3 High, 9 Medium, 10 Low. Live 4/4 green (14 33/33, 15 27/27, mvn 26 and 13), all gates green. High: ch 15 snapshot timings quoted from a second, inconsistent bench (H1); Figure 15.2 one constant for three lengths (H2); three ch 15 experiments cited as final-run evidence but never in the final run (H3). Repair round 1 split by file ownership: ch 15 executor; ch 14 + ch 08 + bibliography executor; orchestrator for claims, log and plan (M2, M6, L7).
