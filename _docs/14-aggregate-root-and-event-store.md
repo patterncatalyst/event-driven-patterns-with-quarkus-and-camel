@@ -148,7 +148,7 @@ The route decides nothing. It is an adapter from a topic to the same transaction
 
 ## Publishing from an event-sourced aggregate
 
-The events in the store are the service's own format. A Debezium connector that tailed `events` directly, the store used as a queue in Young's terms, would publish `OrderPaid` and `OrderShipped` too and make the schema of the table the contract with every consumer. The service publishes only `OrderPlaced` and `OrderCancelled`, the two other services act on.
+The events in the store are the service's own format. A Debezium connector that tailed `events` directly, the store used as a queue in Young's terms, would publish `OrderPaid` and `OrderShipped` too and make the schema of the table the contract with every consumer. The service publishes only `OrderPlaced` and `OrderCancelled`, the two events that other services act on.
 
 `OrderTransaction.export` fires an `ExportedEvent` for those two inside the same transaction as the append. The Debezium outbox extension from chapter 8 writes the row, and the connector and the Event Router carry it to `edp.orders.placed` or `edp.orders.cancelled`, keyed by order id. A command that fails after the append rolls back the event row and the outbox row together, so a record exists on a topic only for a stream that holds the event.
 
@@ -178,7 +178,7 @@ The Maven build runs the service against PostgreSQL and Kafka from Dev Services:
 
 The checks read the effects:
 
-- The schema holds no table of order state. `O-1401` is one row and one record on `edp.orders.placed`. The same `PaymentProcessed` produced twice gives one `OrderPaid`, and no `OrderPaid` is on any topic.
+- The schema holds no table of order state. `O-1401` is one row and one record on `edp.orders.placed`. The same `PaymentProcessed` produced twice gives one `OrderPaid`, and no `OrderPaid` is on any `edp.orders` topic.
 - Race 1: a cancellation for `O-1402` is held after it decided at version 2, and a shipment is appended as version 3 while the request is open. The cancellation answers 409 `SHIPPED to CANCELLED` after one logged conflict, the stream stays at three events and nothing is on `edp.orders.cancelled`. Every history in the table obeys the lifecycle.
 - Race 2: a cancellation for `O-1403` is held at version 1 and a payment is appended as version 2. The cancellation returns 200 with `ETag` `"3"` and one record reaches `edp.orders.cancelled`.
 - A cancellation of the paid `O-1404` with `If-Match` `"1"` returns 412 and runs no command. With `"2"` it returns 200.
@@ -212,7 +212,7 @@ Kafka is not an event store: the Azure Architecture Center's Event Sourcing patt
 ## References
 
 - Martin Fowler, [DDD Aggregate](https://martinfowler.com/bliki/DDD_Aggregate.html), 2013, and [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), 2005
-- Vaughn Vernon, *Implementing Domain-Driven Design*, Addison-Wesley, 2013, chapter 8: Domain Events, chapter 10: Aggregates and Appendix A: Aggregates and Event Sourcing
+- Vaughn Vernon, *Implementing Domain-Driven Design*, Addison-Wesley, 2013, chapter 8: Domain Events; chapter 10: Aggregates; Appendix A: Aggregates and Event Sourcing
 - Greg Young, [CQRS Documents](https://cqrs.wordpress.com/wp-content/uploads/2010/11/cqrs_documents.pdf), 2010: building an event storage, event storage as a queue
 - Microsoft Azure Architecture Center, [Event Sourcing pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 4: Tactical Building Blocks and chapter 6: Event Sourcing

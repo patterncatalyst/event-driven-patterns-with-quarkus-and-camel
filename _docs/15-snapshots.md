@@ -47,7 +47,7 @@ try (Stream<StockEvent> tail = tail(sku, from).peek(event -> replayed[0]++)) {
 }
 ```
 
-The schema version, `inventory.snapshot.schema`, describes `InventorySnapshot`. When the record changes meaning the version is raised, and every stored snapshot with the old value is skipped and rebuilt from the events. Young notes that when the structure of serialised snapshots changes, the existing ones must be deleted and recreated or updated to the new schema. Nothing here updates a snapshot; it is rebuilt.
+The schema version, `inventory.snapshot.schema`, describes `InventorySnapshot`. When the record changes meaning the version is raised, and every stored snapshot with the old value is skipped and rebuilt from the events. Young allows either rebuilding old snapshots after their structure changes or converting them; `inventory-service` only rebuilds.
 
 The tail is read with a Panache projection, not entities:
 
@@ -98,9 +98,9 @@ from("scheduler:snapshotter?delay={{inventory.snapshotter.delay-ms}}")
 
 ## What a rebuild costs
 
-The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Before the timing each stream receives 100 reservations, so that it holds a snapshot with 99 events after it, the longest tail the policy allows. The streams then hold 1,100, 10,100 and 100,200 events. Each figure is the median of three runs, each in a new JVM.
+The timing is taken inside the service, around the snapshot read, the event read, the JSON mapping and the fold. For each stream, five loads are discarded and 21 are timed, with the full load and the snapshot load alternating so that drift affects both. The median is reported. The database is PostgreSQL on the compose stack and the machine is an 8-core laptop. Before the timing each stream is brought to a snapshot with 99 events after it, the longest tail the policy allows. The streams then hold 1,100, 10,100 and 100,200 events. Each figure is the median of three runs, each in a new JVM.
 
-{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes 1.6 ms for 1,100 events, 11.6 ms for 10,100 and 127.7 ms for 100,200, and a snapshot load with 99 events after it takes 0.50 ms, 0.63 ms and 0.95 ms" caption="Figure 15.2: A full load grows with the stream, a snapshot load does not" %}
+{% include excalidraw.html file="15-rebuild-cost" alt="Median load times: a full replay takes 1.6 ms for 1,100 events, 11.6 ms for 10,100 and 127.7 ms for 100,200, and a snapshot load with 99 events after it takes 0.50 ms, 0.63 ms and 0.95 ms" caption="Figure 15.2: A full load grows with the stream; a snapshot load stays under 1 ms" %}
 
 | Stream | Events in the stream | Events replayed with a snapshot | Median full load | Median snapshot load | Cost per event on a full load |
 |---|---|---|---|---|---|
@@ -155,18 +155,18 @@ Change one thing and watch a guard fail:
 - Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10 and 11 fail, and the run stops before check 12, because no snapshot exists to delete.
 - Run `SNAPSHOT_EVERY=10 ./verify.sh` and then `SNAPSHOT_EVERY=1000 ./verify.sh`. Every check passes, and the tail and the writes follow N:
 
-  | N | At most this many events replayed by a load | Snapshots per 1,000 reservations | Median snapshot load, `SKU-1503` |
-  |---|---|---|---|
-  | 10 | 9 | 100 | 1.19 ms |
-  | 100 | 99 | 10 | 0.95 ms |
-  | 1000 | 999 | 1 | 1.60 ms |
+  | N | At most this many events replayed by a load | Snapshots per 1,000 reservations |
+  |---|---|---|
+  | 10 | 9 | 100 |
+  | 100 | 99 | 10 |
+  | 1000 | 999 | 1 |
 
-  The runs replayed exactly 9 and 999 events after the snapshot. The loads for N of 10 and 1000 come from one run each.
+  The runs replayed exactly 9 and 999 events after the snapshot.
 
 - Run `SNAPSHOT_GUARD=false ./verify.sh`. The stale snapshot replaces a newer one, the stored version goes down, and check 18 is the only one that fails.
 - Change the quantity in the stored `state` of a snapshot and leave its schema version alone. The next `GET` answers with the wrong quantity, and the same `GET` with `ignoreSnapshot=true` does not. A snapshot is believed, and deleting it is the repair.
 - Restart the service with `SNAPSHOT_SCHEMA=2`. The first load replays the whole stream and the next command writes a snapshot of schema 2.
-- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 350 to 974 and 993 events in two runs.
+- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 350 to 974 events.
 - Run `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh`. Replaying 100,000 events as managed entities exhausts a 96 MB heap and the service exits with `OutOfMemoryError` at the first load, so check 3 stops the run. With the projection the same heap passes 27 of 27.
 
 ## When not to use it
@@ -191,4 +191,4 @@ When the read side is hot, a projection is the better cache: a table kept up to 
 - Quarkus, [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) (`stream()` and projections) and [SmallRye Fault Tolerance](https://quarkus.io/guides/smallrye-fault-tolerance) (`@Retry`)
 - Apache Camel, [Scheduler](https://camel.apache.org/components/4.22.x/scheduler-component.html), [SQL](https://camel.apache.org/components/4.22.x/sql-component.html) and [Split](https://camel.apache.org/components/4.22.x/eips/split-eip.html)
 - PostgreSQL documentation, [INSERT](https://www.postgresql.org/docs/18/sql-insert.html) (`ON CONFLICT DO UPDATE ... WHERE`), [EXPLAIN](https://www.postgresql.org/docs/18/sql-explain.html) and [Set Returning Functions](https://www.postgresql.org/docs/18/functions-srf.html) (`generate_series`)
-- Chapter 01: Events, commands and documents, for the event table and the left fold, and chapter 14 for the aggregate and its optimistic append
+- Chapter 1: Events, commands and documents, for the event table and the left fold, and chapter 14 for the aggregate and its optimistic append

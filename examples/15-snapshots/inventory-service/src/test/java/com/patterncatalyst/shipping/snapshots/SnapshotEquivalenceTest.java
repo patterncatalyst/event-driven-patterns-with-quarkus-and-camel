@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +54,7 @@ class SnapshotEquivalenceTest {
     void aSnapshotAtTheHeadHasNothingToReplay() {
         var events = randomStream(7, 50);
         var whole = InventoryItemAggregate.replay("SKU-1", events.stream());
-        var rebuilt = InventoryItemAggregate.from(whole.snapshot(), whole.version(), java.util.stream.Stream.empty());
+        var rebuilt = InventoryItemAggregate.from(whole.snapshot(), whole.version(), Stream.empty());
         assertEquals(whole.quantityOnHand(), rebuilt.quantityOnHand());
         assertEquals(whole.version(), rebuilt.version());
     }

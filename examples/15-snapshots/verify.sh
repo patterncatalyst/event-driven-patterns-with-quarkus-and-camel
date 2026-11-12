@@ -239,10 +239,10 @@ for sku_bench in "SKU-1501:$BENCH_1501" "SKU-1502:$BENCH_1502" "SKU-1503:$BENCH_
     json="${sku_bench#*:}"
     note "${sku_bench%%:*}: full load of $(field fullEvents <<<"$json") events median $(field fullMedianUs <<<"$json") us; snapshot load replaying $(field snapshotEvents <<<"$json") events median $(field snapshotMedianUs <<<"$json") us"
 done
-note "full replay medians over 21 loads: 1,000 events ${FULL_1501} us, 10,000 events ${FULL_1502} us, 100,000 events ${FULL_1503} us"
+note "full replay medians over 21 loads: $(field fullEvents <<<"$BENCH_1501") events ${FULL_1501} us, $(field fullEvents <<<"$BENCH_1502") events ${FULL_1502} us, $(field fullEvents <<<"$BENCH_1503") events ${FULL_1503} us"
 note "SKU-1503 full load range $(field fullMinUs <<<"$BENCH_1503") to $(field fullMaxUs <<<"$BENCH_1503") us"
 note "full replay cost per event: $(python3 -I -c "print(*(round(u / n, 2) for u, n in zip(map(int, '$FULL_1501 $FULL_1502 $FULL_1503'.split()), (int(e) for e in '$(field fullEvents <<<"$BENCH_1501") $(field fullEvents <<<"$BENCH_1502") $(field fullEvents <<<"$BENCH_1503")'.split()))))") us on the three streams"
-note "snapshot load is $(python3 -I -c "print(round($FULL_1503 / max($SNAP_1503, 1)))") times faster than the full load on 100,000 events (the check requires $R)"
+note "snapshot load is $(python3 -I -c "print(round($FULL_1503 / max($SNAP_1503, 1)))") times faster than the full load on $(field fullEvents <<<"$BENCH_1503") events (the check requires $R)"
 note "state size: $(sql "SELECT pg_column_size(state) FROM inventory.snapshots WHERE stream_id = 'SKU-1503'") bytes of jsonb at any version"
 EXPLAIN_FULL="$(sql "EXPLAIN (ANALYZE, BUFFERS) SELECT payload FROM inventory.events WHERE stream_id = 'SKU-1503' AND version > 0 ORDER BY version" || true)"
 EXPLAIN_TAIL="$(sql "EXPLAIN (ANALYZE, BUFFERS) SELECT payload FROM inventory.events WHERE stream_id = 'SKU-1503' AND version > $(snap_version SKU-1503) ORDER BY version" || true)"

@@ -551,10 +551,10 @@ Chapter 15:
 | 2A | Ch 14: code, tests, Containerfile, compose, connector JSON, README, example page, figure specs and outputs, chapter draft without numbers | `examples/14-*/**`, `_docs/14-*.md`, `_example_pages/14-*.md`, `diagrams/specs/14-*.py`, `diagrams/14-*.*` | exec 2A | G0 | with 2B | mvn under lock | done |
 | 2B | Ch 15: same set | `examples/15-*/**`, `_docs/15-*.md`, `_example_pages/15-*.md`, `diagrams/specs/15-*.py`, `diagrams/15-*.*` | exec 2B | G0 | with 2A | mvn under lock | done |
 | 2C | Ch 08 sentence fix (recommendation 9) plus claim row | `_docs/08-transactional-outbox.md` | orchestrator | G0 | yes | no | done |
-| 3 | Runtime windows, serial, exclusive, 90 min cap, order 15 then 14: verify N/N twice from clean, every experiment once, measurement three times (ch 15), no `edp-*` left; fill numbers; write measured values into `15-rebuild-cost.py`; freeze numbering | as 2A/2B | orchestrator | 2A, 2B | serial | exclusive | pending |
-| 4 | Orchestrator re-run of every prose experiment, logged with failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | pending |
-| 5 | Final serial run 00 to 15 (fresh containers each); static gates; claims and log; per-chapter commits with host_ids before each | claims, log | orchestrator | 4 | serial | yes | pending |
-| 6 | Opus validation (max 2 repair rounds): claims audit, check-bite audit, 7-gram originality vs Young's PDF text and chapter 01, fresh clone, word counts, figures byte-identical | none | validator | 5 | none | yes | pending |
+| 3 | Runtime windows, serial, exclusive, 90 min cap, order 15 then 14: verify N/N twice from clean, every experiment once, measurement three times (ch 15), no `edp-*` left; fill numbers; write measured values into `15-rebuild-cost.py`; freeze numbering | as 2A/2B | orchestrator | 2A, 2B | serial | exclusive | done |
+| 4 | Orchestrator re-run of every prose experiment, logged with failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | done |
+| 5 | Final serial run 00 to 15 (fresh containers each); static gates; claims and log; per-chapter commits with host_ids before each | claims, log | orchestrator | 4 | serial | yes | done |
+| 6 | Opus validation (max 2 repair rounds): claims audit, check-bite audit, 7-gram originality vs Young's PDF text and chapter 01, fresh clone, word counts, figures byte-identical | none | validator | 5 | none | yes | done (round 2: SHIP) |
 | 7 | Ship: PR, CI green, squash on owner OK, tag r06.0, notes-only release, delete branch; PRD rows 14 and 15 rewritten to the domain (freight names removed) and roadmap; iteration-plan done; CLAUDE.md decisions log entry | as listed | orchestrator | 6 | none | no | pending |
 
 Executors:

@@ -1,4 +1,4 @@
-"""Median load times from the verify.sh measurement: a full replay grows with the stream, a snapshot load does not."""
+"""Median load times from the verify.sh measurement: a full replay grows with the stream; a snapshot load stays under 1 ms."""
 
 from generate_diagram import emit
 
@@ -26,10 +26,10 @@ for label, ms in FULL_MS.items():
     snap = SNAPSHOT_MS[label]
     nodes.append({"x": 20, "y": y, "w": 180, "h": 44, "style": "box", "lines": ["with a snapshot"]})
     nodes.append({"x": X0, "y": y, "w": bar_width(snap), "h": 44, "style": "ink", "lines": [""]})
-    notes.append({"x": X0 + bar_width(snap) + 10, "y": y + 28, "color": "#444444", "size": 13, "text": f"{snap} ms snapshot load"})
+    notes.append({"x": X0 + bar_width(snap) + 10, "y": y + 28, "color": "#444444", "size": 13, "text": f"{snap:.2f} ms snapshot load"})
     y += 70
 notes.append({"x": 480, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-              "text": "Median load time inside the service, 21 loads per bar, 99 events after the snapshot"})
+              "text": "Median load time inside the service, 21 loads per bar, median of three runs, 99 events after the snapshot"})
 notes.append({"x": 480, "y": y + 90, "anchor": "middle", "size": 11, "color": "#555555",
               "text": "Bar length is proportional to time. 8-core laptop CPU, PostgreSQL on the compose stack."})
 

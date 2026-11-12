@@ -1,5 +1,7 @@
 package com.patterncatalyst.shipping.snapshots;
 
+import java.util.function.Function;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -33,7 +35,7 @@ public class ReservationTransaction {
         return run(sku, aggregate -> aggregate.receive(quantity));
     }
 
-    private Result run(String sku, java.util.function.Function<InventoryItemAggregate, StockEvent> decide) {
+    private Result run(String sku, Function<InventoryItemAggregate, StockEvent> decide) {
         var loaded = ledger.load(sku, true);
         var aggregate = loaded.aggregate();
         var event = decide.apply(aggregate);
