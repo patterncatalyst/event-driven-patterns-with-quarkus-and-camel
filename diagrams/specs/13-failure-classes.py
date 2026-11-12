@@ -19,7 +19,7 @@ emit(
         {"x": 365, "y": 240, "w": 230, "h": 76, "style": "accent", "lines": ["PessimisticLockException", "retry after 1 s, new transaction", "each time"]},
         {"x": 690, "y": 250, "w": 230, "h": 56, "style": "box", "lines": ["stock reserved", "offset committed"]},
         {"x": 40, "y": 420, "w": 230, "h": 56, "style": "box", "lines": ["edp.orders.placed", "row locked for too long"]},
-        {"x": 365, "y": 410, "w": 230, "h": 76, "style": "accent", "lines": ["retried until the", "limit is reached", "(RETRY_MAX attempts)"]},
+        {"x": 365, "y": 410, "w": 230, "h": 76, "style": "accent", "lines": ["retried until the", "limit is reached", "(1 + RETRY_MAX attempts)"]},
         {"x": 690, "y": 420, "w": 230, "h": 56, "style": "ink", "lines": ["edp.orders.placed-dlq", "original bytes"]},
     ],
     edges=[

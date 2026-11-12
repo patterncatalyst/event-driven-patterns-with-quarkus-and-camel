@@ -37,9 +37,9 @@ docker compose down -v
 2. Produces id A (`O-1101`, quantity 3) twice and id B (`O-1102`, quantity 2): stock, inbox and the skip in the log (3 to 7).
 3. Recreates the service with the crash switch for `O-1103` (id C, quantity 4): exit 137, offset not past C, effect committed, then restart and redelivery skipped (8 to 13).
 4. Resets the data and reads the same records with the inbox off: the duplicate is applied twice (14 to 16).
-5. Resets the data and reads them through the Camel route: stock, repository keys and the untouched inbox (17 to 20).
+5. Resets the data and reads them through the Camel route: stock, repository keys, four records against three keys, and the untouched inbox (17 to 20).
 6. Fails `O-1104` after its decrement: effect and key roll back together, and a redelivery reserves it (21 to 26).
-7. A trace in Tempo and logs in Loki (27, 28).
+7. A trace in Tempo, logs in Loki and the `inventory.inbox.duplicates` counter in Prometheus (27 to 29).
 
 ## Layout
 

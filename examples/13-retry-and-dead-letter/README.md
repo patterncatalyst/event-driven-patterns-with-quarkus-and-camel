@@ -38,7 +38,8 @@ docker compose down -v
 2. Holds a row lock on `SKU-14` in a background session for 12 seconds and produces six records in one call: `O-7001` (valid), `O-7002` (truncated JSON), `O-7006` (not JSON), `O-7003` (quantity 0), `O-7004` (valid, on the locked SKU) and `O-7005` (valid). While the lock is held, `O-7004` is retried and `O-7005` has not been reserved. After it is released both are reserved.
 3. Reads the dead letter topic: the original bytes of `O-7002` and `O-7006`, the source topic and offset of `O-7002`, the reason of `O-7003`, exactly 3 records, and no lag on the group.
 4. Resets the stock, restarts the service with `CONSUMER_PROFILE=camel`, locks `SKU-14` again and produces the same six records. The route redelivers `O-7004`, and the dead letter topic gains the same three records, 6 in all.
-5. A trace in Tempo and logs in Loki.
+5. Reads the `O-7003` dead letter again from the copy taken before the Camel phase: its original bytes, its source topic and its offset.
+6. A trace in Tempo, logs in Loki and the records consumed by the Kafka consumer in Prometheus.
 
 ## Layout
 

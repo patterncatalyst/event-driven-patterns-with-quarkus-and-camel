@@ -39,9 +39,4 @@ public class PaymentProcessor {
             return Uni.createFrom().voidItem();
         });
     }
-
-    /** The producer side of the channel, for a test that opens a transaction without a consumed batch. */
-    KafkaTransactions<PaymentProcessed> transactions() {
-        return transactions;
-    }
 }

@@ -31,7 +31,7 @@
 <rect x="365" y="410" width="230" height="76" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
 <text x="480.0" y="438.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">retried until the</text>
 <text x="480.0" y="455.5" font-size="11.5" fill="#555555" text-anchor="middle">limit is reached</text>
-<text x="480.0" y="470.5" font-size="11.5" fill="#555555" text-anchor="middle">(RETRY_MAX attempts)</text>
+<text x="480.0" y="470.5" font-size="11.5" fill="#555555" text-anchor="middle">(1 + RETRY_MAX attempts)</text>
 <rect x="690" y="420" width="230" height="56" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
 <text x="805.0" y="446.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed-dlq</text>
 <text x="805.0" y="463.0" font-size="11.5" fill="#555555" text-anchor="middle">original bytes</text>

@@ -18,7 +18,7 @@ import jakarta.inject.Inject;
 public class CamelTransactedPaymentRoute extends RouteBuilder {
 
     @Inject
-    CrashSwitch crash;
+    PaymentMapping mapping;
 
     @Override
     public void configure() {
@@ -26,13 +26,7 @@ public class CamelTransactedPaymentRoute extends RouteBuilder {
                 .routeId("camel-transacted-payment")
                 .autoStartup("{{camel.route.enabled}}")
                 .unmarshal().json(JsonLibrary.Jackson, InventoryReserved.class)
-                .process(exchange -> {
-                    InventoryReserved reserved = exchange.getMessage().getBody(InventoryReserved.class);
-                    if (crash.armedFor(reserved.orderId())) {
-                        crash.halt().await().indefinitely();
-                    }
-                    exchange.getMessage().setBody(PaymentProcessed.of(reserved));
-                })
+                .bean(mapping, "toPayment")
                 .marshal().json(JsonLibrary.Jackson)
                 .to("kafka:" + Topics.PAYMENTS_PROCESSED + "?transacted=true&transactionalId=camel-payment-tx");
     }

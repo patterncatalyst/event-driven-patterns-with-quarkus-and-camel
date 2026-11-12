@@ -107,6 +107,7 @@ group_lag_zero() {
     kafka kafka-consumer-groups.sh --describe --group "$1" 2>/dev/null | awk -v t="$TOPIC" '
         $2 == t && $3 == 0 {seen = 1; if ($4 == "-" || $6 != 0) bad = 1} END {exit !(seen && !bad)}'
 }
+prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 
@@ -133,6 +134,9 @@ position_kept() { # position_kept <id>: the dead letter names the source topic a
     [[ "$line" == *"dead-letter-topic:$TOPIC"* && "$line" =~ dead-letter-offset:${off}[,[:space:]] ]]
 }
 reason_names_quantity() { [[ "$(dlq_lines_for O-7003 | head -1)" == *"dead-letter-reason:quantity must be positive: 0"* ]]; }
+# O-7003 as the SmallRye consumer dead-lettered it, read before the Camel phase added its own copy.
+o7003_bytes_kept() { local DLQ="$DLQ_SMALLRYE"; [[ "$(copies_with_value O-7003 "$(order O-7003 SKU-13 0)")" == 1 ]]; }
+o7003_position_kept() { local DLQ="$DLQ_SMALLRYE"; position_kept O-7003; }
 none_of_the_good_ones() { # none of the three valid orders is on the dead letter topic
     local id
     for id in O-7001 O-7004 O-7005; do [[ -z "$(dlq_lines_for "$id")" ]] || return 1; done
@@ -163,6 +167,7 @@ check "O-7001 is reserved: SKU-11 = 99" poll 20 stock_is SKU-11 99
 
 # The dead letter topic and the source topic are read once; the checks below read these copies.
 DLQ="$(dlq_dump)"
+DLQ_SMALLRYE="$DLQ"
 SRC="$(dump "$TOPIC")"
 
 echo "SmallRye: dead letters"
@@ -202,9 +207,15 @@ check "the dead letter topic gained O-7003, attempted once by the route" \
     expect "$(dlq_lines_for O-7003 | wc -l)/$(attempts O-7003)" "2/1"
 check "the dead letter topic holds exactly 6 records" expect "$(dlq_count)" 6
 
+echo "SmallRye: O-7003 on the dead letter topic, from the copy read before the Camel phase"
+check "O-7003 is on the dead letter topic with its original bytes" o7003_bytes_kept
+check "O-7003 names its source topic and the offset it had there" o7003_position_kept
+
 echo "Observability"
 check "Tempo has a trace for inventory-service" poll 90 tempo_has_trace inventory-service
 check "Loki has logs for inventory-service" poll 90 loki_has_log inventory-service
+check "Prometheus holds the records consumed by the Kafka consumer of inventory-service above 0" \
+    poll 90 prom_holds 'max_over_time(kafka_consumer_fetch_manager_records_consumed_total{service_name="inventory-service"}[1h]) > 0'
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]

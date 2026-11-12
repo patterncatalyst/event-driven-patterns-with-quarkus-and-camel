@@ -27,8 +27,6 @@ Hohpe and Woolf name two of the cases. A message that makes no sense to the rece
 
 Three decisions make it work. Classify the failure: the consumer says which exceptions are final and which are worth another attempt. Bound the retries, so a failure that never clears ends up on the dead letter topic instead of holding the partition forever. Keep the original record, key and bytes, so that whoever repairs it starts from what was sent and not from what the consumer made of it.
 
-The channel moves the failure to a place with an owner. A dead letter topic nobody reads is the unsound option again.
-
 ### How Quarkus and Camel model it
 
 The SmallRye path declares the retry on the method and the dead letter on the channel. The channel reads the value as bytes and the method parses it:
@@ -58,7 +56,7 @@ mp.messaging.incoming.orders-placed.dead-letter-queue.value.serializer=org.apach
 
 Reading bytes is the point. A channel with a typed deserializer hands the method an `OrderPlaced`, and when validation fails afterwards the dead letter carries either nothing or the object serialized again, not the record that arrived. With bytes, the value written to `edp.orders.placed-dlq` is the value read, and the key is kept. SmallRye adds headers that say what happened: the exception class, the reason, and the source topic, partition and offset. The offset header is the position of the record in `edp.orders.placed`, which is where to look for it after the dead letter has been repaired. When the failure strategy is `dead-letter-queue`, the consumer's offset is committed once the record is on the dead letter topic, so the consumer moves on.
 
-`@Blocking` puts the method on a worker thread, which a blocking database call needs. The method calls `ReservationService`, a separate `@Transactional` bean, and that is deliberate. The retry wraps the method and each attempt calls the bean again, so every attempt is a new transaction: a failed attempt has rolled back and left nothing behind.
+`@Blocking` puts the method on a worker thread, which a blocking database call needs. The method calls `ReservationService`, a separate `@Transactional` bean. The retry wraps the method and each attempt calls the bean again, so every attempt is a new transaction: a failed attempt has rolled back and left nothing behind.
 
 ```java
 @Transactional
@@ -80,7 +78,7 @@ A retry in place has a price that the figure shows. The partition has one reader
 
 {% include excalidraw.html file="13-retry-blocks-partition" alt="While O-7004 is retried against a locked row, O-7005 behind it on the same partition is not read; after the lock is released O-7004 is reserved and O-7005 follows" caption="Figure 13.3: A retry in place holds back the records behind it" %}
 
-SmallRye has a retry that does not block, the `delayed-retry-topic` failure strategy, which republishes the record to delay topics. The documentation marks it experimental, and this example does not use it.
+SmallRye has a retry that does not block, the `delayed-retry-topic` failure strategy, which republishes the record to delay topics. The documentation marks it experimental.
 
 A retried effect must also survive being applied twice. Here the failed attempt rolled back, so a retry decrements the stock once. A record that is delivered again after a commit is applied again, as the last experiment shows. Chapter 11 puts a key in the same transaction to stop that.
 
@@ -110,7 +108,7 @@ What Camel does not do is describe the failure. Its dead letter channel writes t
 | Dead letter content | Key and original bytes; headers for exception, reason, source topic, partition and offset | Original value bytes only |
 | Parse failure | Parsed in the method, so it is classified like any exception | Parsed in the route, so it goes through the same handler |
 | Nothing configured | `fail`: the channel stops and readiness goes DOWN | The default error handler logs, skips the record after one attempt and commits |
-| Offset committed | After the record is written to the dead letter topic | After the exchange completes; with the default error handler also for a record it gave up on |
+| Offset committed | After the record is written to the dead letter topic | On the consumer's auto-commit timer, after the exchange; with the default error handler also for a record it gave up on |
 | Blocked while retrying | The partition | The partition |
 | Retry without blocking | `delayed-retry-topic`, experimental, not used here | Not used here |
 | 20 s hold with `max.poll.interval.ms` at 10 s | The record is not delivered again | The group rebalances and the batch is delivered again |
@@ -124,28 +122,28 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 7 tests cover a truncated record that reaches the dead letter topic with its bytes, its source topic and its source offset, an invalid record attempted once, a locked row retried until it is free, `fail` stopping the channel, and the Camel route dead-lettering with the original body. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `28/28 checks passed`.
+The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 7 tests cover a truncated record that reaches the dead letter topic with its bytes, its source topic and its source offset, an invalid record attempted once, a locked row retried until it is free, `fail` stopping the channel, and the Camel route dead-lettering with the original body. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `31/31 checks passed`.
 
 The checks read the effects:
 
 - With `SKU-14` locked for twelve seconds and the six records produced in one batch, `O-7004` is attempted more than once while the lock is held, and `SKU-14` and `SKU-15` both still hold 100: `O-7005` waits. After the lock is released `SKU-14` and `SKU-15` hold 99, and `SKU-11` holds 99 for `O-7001`.
-- The dead letter topic holds `O-7002` and `O-7006` with exactly the bytes that were sent. `O-7002` names `edp.orders.placed` and the offset it had there. `O-7003` names the quantity rule in its reason and was attempted once. Three records are on the topic, none of them a valid order.
+- The dead letter topic holds `O-7002` and `O-7006` with exactly the bytes that were sent. `O-7002` names `edp.orders.placed` and the offset it had there. `O-7003` carries its original bytes, source topic and offset, names the quantity rule in its reason and was attempted once. Three records are on the topic, none a valid order.
 - The consumer group has no lag, so the offsets of the dead-lettered records were committed.
 - The service restarts with the `camel` profile, `SKU-14` is locked again and the same six records are produced. The route redelivers `O-7004` while the lock is held, the stock ends as before, and the dead letter topic gains the same three records.
-- A trace and logs for `inventory-service` reach Tempo and Loki.
+- A trace and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds the records consumed by its Kafka consumer.
 
 Change one thing and watch a guard fail:
 
-- Run `FAILURE_STRATEGY=fail ./verify.sh`. The channel stops at `O-7002`, whose offset is never committed (the group stays at offset 1 with 5 records of lag), `SKU-15` stays at 100 and no dead letter is written. Readiness answers 503. 13 checks fail; the lock preconditions pass.
-- Run `RETRY_MAX=0 ./verify.sh`. In both phases `O-7004` is attempted once, dead-lettered, and `SKU-14` stays at 100, while `O-7005` is reserved at once. 9 checks fail. The lock preconditions pass, so the cause is the retry limit and not a missing lock.
-- Run `RETRY_MAX=2 ./verify.sh`. The lock outlasts three attempts, so `O-7004` is dead-lettered after the last one: a failure that was transient but did not clear within the limit. It is the same end as `RETRY_MAX=0`, reached after 3 attempts instead of one, in both phases; 5 checks fail.
-- Run `CAMEL_DEAD_LETTER_CHANNEL=false ./verify.sh`. The SmallRye phase is unchanged; in the Camel phase the default error handler gives up on `O-7002`, `O-7003` and `O-7006` after one attempt and commits their offsets, and the lock timeout on `O-7004` is dropped the same way: `SKU-14` stays at 100 while `O-7005` is reserved. The group ends with no lag: the offsets of the records it gave up on were committed. Nothing is dead-lettered in that phase, and 6 checks fail.
-- Add `CAMEL_BREAK_ON_FIRST_ERROR=true` to that run. In the Camel phase the failed record is polled again, and the valid record before it is applied again on every pass: `O-7001` was applied 100 times and `SKU-11` fell from 100 to 0 in under a minute, after which each pass fails the stock rule. `SKU-14` and `SKU-15` stay at 100, the group commits no offset (lag 6) and 7 checks fail.
-- Run `HOLD=20 MAX_POLL_INTERVAL_MS=10000 ./verify.sh`. The SmallRye consumer attempts `O-7004` seven times during the 20 second hold, is not rebalanced and `SKU-14` ends at 99. In the Camel phase the consumer misses its poll deadline, the group rebalances and the batch is delivered again: `SKU-11`, `SKU-14` and `SKU-15` all end at 98, each reserved twice. 6 checks fail.
+- Run `FAILURE_STRATEGY=fail ./verify.sh`. The channel stops at `O-7002`, whose offset is never committed (the group stays at offset 1 with 5 records of lag), `SKU-15` stays at 100 and no dead letter is written. Readiness answers 503. Checks 4, 6, 7, 9 to 14, 16 and 24 to 28 fail; the lock preconditions pass.
+- Run `RETRY_MAX=0 ./verify.sh`. In both phases `O-7004` is attempted once, dead-lettered, and `SKU-14` stays at 100, while `O-7005` is reserved at once. Checks 4 to 6, 14, 15, 19 to 21 and 26 fail. The lock preconditions pass, so the retry limit is the cause.
+- Run `RETRY_MAX=2 ./verify.sh`. The lock outlasts three attempts, so `O-7004` is dead-lettered after the last one: a failure that was transient but did not clear within the limit. The end matches `RETRY_MAX=0`, after 3 attempts instead of one, in both phases; checks 6, 14, 15, 21 and 26 fail.
+- Run `CAMEL_DEAD_LETTER_CHANNEL=false ./verify.sh`. The SmallRye phase is unchanged; in the Camel phase the default error handler gives up on `O-7002`, `O-7003` and `O-7006` after one attempt and commits their offsets, and the lock timeout on `O-7004` is dropped the same way: `SKU-14` stays at 100 while `O-7005` is reserved. The group ends with no lag, because the offsets of the records it gave up on were committed. Nothing is dead-lettered in that phase, and checks 19 to 21 and 24 to 26 fail.
+- Add `CAMEL_BREAK_ON_FIRST_ERROR=true` to that run. In the Camel phase the failed record is polled again, and the valid record before it is applied again on every pass: `O-7001` was applied 100 times and `SKU-11` fell from 100 to 0 in under a minute. `SKU-14` and `SKU-15` stay at 100, the group commits no offset (lag 6) and checks 19 and 21 to 26 fail.
+- Run `HOLD=20 MAX_POLL_INTERVAL_MS=10000 ./verify.sh`. The SmallRye consumer attempts `O-7004` seven times during the 20 second hold, is not rebalanced and `SKU-14` ends at 99. In the Camel phase the consumer misses its poll deadline, the group rebalances and the batch is delivered again: `SKU-11`, `SKU-14` and `SKU-15` all end at 98, each reserved twice. Checks 21 to 26 fail.
 
 ## When not to use it
 
-A dead letter topic needs an owner. Someone has to watch its depth, read the reasons and decide whether a record is repaired and republished, discarded or a sign of a bug in the producer. Without one, records collect on the topic and nobody acts on them. This example builds no replay of repaired records.
+A dead letter topic needs an owner. Someone has to watch its depth, read the reasons and decide whether a record is repaired and republished, discarded or a sign of a bug in the producer. Without one, records collect on the topic and nobody acts on them.
 
 Skipping a record is a decision about ordering. The consumer carries on with the records behind it, so they are processed without the one that failed. When a later record depends on an earlier one, as in a ledger, stopping the channel with `fail` and fixing the cause is the correct behaviour, and the readiness probe is how it gets noticed.
 

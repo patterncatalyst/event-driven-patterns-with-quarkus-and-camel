@@ -78,7 +78,7 @@ public void on(ConsumerRecord<String, OrderPlaced> record) {
 
 SmallRye acknowledges the record when the method returns, and with the default commit strategy the offset follows shortly after. The transaction therefore commits before the acknowledgement, which is the order that makes a crash between them harmless: the stock and the id are durable, the offset is not, and the next delivery meets the inbox row. `inventory.inbox.duplicates` is a Micrometer counter and reaches the LGTM stack over OpenTelemetry with the rest of the service's metrics.
 
-The channel's settings sit in `application.properties`: the topic, the group `inventory-inbox`, `auto.offset.reset=earliest` and the two deserializers. After a crash the replacement consumer has to wait until the broker expires the dead member's session, which is 45 seconds by default. The demo sets `session.timeout.ms=10000` so a run does not spend most of its time waiting.
+The channel's settings sit in `application.properties`: the topic, the group `inventory-inbox`, `auto.offset.reset=earliest` and the two deserializers. After a crash the replacement consumer has to wait until the broker expires the dead member's session, which is 45 seconds by default. The channel sets `session.timeout.ms=10000`, so a run does not spend most of its time waiting.
 
 #### The Camel form
 
@@ -96,7 +96,7 @@ from("kafka:" + Topics.ORDERS_PLACED + "?groupId=inventory-camel&autoOffsetReset
 
 The repository is `JpaMessageIdRepository`, built from the CDI `EntityManagerFactory` and the CDI `TransactionStrategy` that the Camel Quarkus JPA extension provides. Inside a `.transacted()` route (the JTA extension) it joins the route's transaction, so the key row and the decrement are again one commit, and a rollback removes both. That is why `removeOnFailure(false)` is enough: nothing needs to be removed by hand. The two-argument constructor, which creates its own transaction strategy, fails when the application starts, so the strategy is injected. The key table is a Flyway migration like the others, and Hibernate only validates it.
 
-Two other repositories do not fit. `JdbcMessageIdRepository` builds its own Spring transaction manager over the data source, and under the JTA transaction of a transacted route it fails on every message with a commit error. `KafkaIdempotentRepository` keeps keys in a Kafka topic, so it can never share a transaction with a database and has the gap described next. The Enterprise Integration Patterns with Camel book walks through the JDBC repository.
+Two other repositories do not fit. `JdbcMessageIdRepository` fails on every message under the JTA transaction of a transacted route, with a commit error. `KafkaIdempotentRepository` keeps keys in a Kafka topic, so it can never share a transaction with a database and has the gap described next. The Enterprise Integration Patterns with Camel book walks through the JDBC repository.
 
 #### Where the key lives
 
@@ -126,20 +126,20 @@ mvn -B verify
 
 The Maven build runs the service against PostgreSQL and Kafka from Dev Services, and 7 tests pass. The same event id twice leaves one decrement and one inbox row. An effect that fails after the inbox insert leaves no inbox row. Two threads released together with the same id apply it once, in each of 20 rounds. A duplicate record on the topic is applied once with the inbox and twice without it. The Camel route applies a duplicate once, and a failed effect rolls its key back.
 
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `28/28 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
+`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `29/29 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
 
 - `O-1101` (id A, quantity 3) is produced twice and `O-1102` (id B, quantity 2) once. A precondition confirms the topic holds two records with id A before anything is asserted. The group reaches lag 0, `SKU-1` is 95, the inbox holds exactly A and B, and the log shows A skipped once.
 - The service is recreated with a crash switch for `O-1103` (id C, quantity 4). The container exits with code 137 after the reservation commits. Preconditions confirm that the group's committed offset is not past C's record and that the stock already dropped by 4. After a recreate without the switch the group reaches lag 0, `SKU-1` is 91 and the log shows C skipped.
 - With the inbox off, stock reset and a new group over the same four records, `SKU-1` is 88: A was applied twice, and the inbox stays empty.
-- With the Camel route, `SKU-1` is 91 and the repository table holds exactly A, B and C. The inbox table is untouched.
+- With the Camel route, `SKU-1` is 91 and the repository table holds exactly A, B and C. The topic holds four records against three keys, and the inbox table is untouched.
 - `O-1104` fails after its decrement. `SKU-1` stays 91 and the repository does not hold its key. After the offsets are reset and the failure switch is off, the redelivery reserves it: `SKU-1` is 86.
-- Traces and logs for `inventory-service` reach Tempo and Loki.
+- Traces and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds `inventory.inbox.duplicates` above 0.
 
 Change one thing and watch a guard fail:
 
-- Run `INBOX_ENABLED=false ./verify.sh`. Checks 5, 6, 7, 12 and 13 fail (23 of 28 pass): the duplicate and the redelivery are applied, the inbox stays empty and nothing is skipped. The preconditions pass first, which shows both the duplicate and the redelivery happened.
-- Run `CAMEL_TRANSACTED=false ./verify.sh`. Checks 23 and 25 fail (26 of 28 pass): after the failed effect the repository holds the key of `O-1104` and `SKU-1` is still 91, and after the redelivery the stock stays 91. The reservation is lost.
-- Delete `session.timeout.ms` from the channel. All 28 checks still pass, but the group needs 49 seconds from the exit of the container to lag 0 instead of 19, because the replacement consumer waits for the broker to expire the dead member's session.
+- Run `INBOX_ENABLED=false ./verify.sh`. Checks 5, 6, 7, 12, 13 and 29 fail (23 of 29 pass): the duplicate and the redelivery are applied, the inbox stays empty, nothing is skipped and the duplicates counter stays at 0. The preconditions pass first, which shows both the duplicate and the redelivery happened.
+- Run `CAMEL_TRANSACTED=false ./verify.sh`. Checks 23 and 25 fail (27 of 29 pass): after the failed effect the repository holds the key of `O-1104` and `SKU-1` is still 91, and after the redelivery the stock stays 91. The reservation is lost.
+- Delete `session.timeout.ms` from the channel. All 29 checks still pass, but the group needs 49 seconds from the exit of the container to lag 0 instead of 19, because the replacement consumer waits for the broker to expire the dead member's session.
 
 ## When not to use it
 

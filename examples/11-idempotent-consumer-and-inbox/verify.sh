@@ -75,6 +75,7 @@ ready() { curl -sf http://localhost:8080/q/health/ready >/dev/null; }
 stock() { sql "SELECT quantity_on_hand FROM inventory.inventory_item WHERE sku='SKU-1'"; }
 inbox_ids() { sql "SELECT coalesce(string_agg(event_id::text, ',' ORDER BY event_id), '') FROM inventory.inbox"; }
 repository_ids() { sql "SELECT coalesce(string_agg(messageid, ',' ORDER BY messageid), '') FROM inventory.camel_messageprocessed WHERE processorname='inventory-reservations'"; }
+repository_count() { sql "SELECT count(*) FROM inventory.camel_messageprocessed WHERE processorname='inventory-reservations'"; }
 reset_data() { sql "UPDATE inventory.inventory_item SET quantity_on_hand=100 WHERE sku='SKU-1'; TRUNCATE inventory.inbox, inventory.camel_messageprocessed" >/dev/null; }
 
 # Start (or restart) the service with the current environment and wait until it is ready.
@@ -108,7 +109,7 @@ group_lag() { group_row "$1" | awk '{ print $6 }'; }
 group_committed() { group_row "$1" | awk '{ print $4 }'; }
 lag_is_zero() { [[ "$(group_lag "$1")" == "0" ]]; }
 member_assigned() { local c; c="$(group_row "$1" | awk '{ print $7 }')"; [[ -n "$c" && "$c" != "-" ]]; }
-committed_at_most() { local c; c="$(group_committed "$1")"; [[ "$c" == "-" || -z "$c" ]] && return 0; (( c <= $2 )); }
+committed_at_most() { local c; c="$(group_committed "$1")"; [[ "$c" =~ ^[0-9]+$ ]] && (( c <= $2 )); } # an empty or "-" describe output fails
 
 exited_by_halt() { [[ "$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$SERVICE")" == "exited 137" ]]; }
 stock_is() { [[ "$(stock)" == "$1" ]]; }
@@ -121,6 +122,7 @@ reset_camel_offsets() {
 log_count() { docker logs "$SERVICE" 2>&1 | awk -v p="$1" 'index($0, p) { n++ } END { print n + 0 }'; }
 
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
+prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 
 echo "Starting the stack"
@@ -174,7 +176,8 @@ restart_service
 check "group inventory-camel has no lag" poll 90 lag_is_zero inventory-camel
 check "SKU-1 is 91: A was applied once" expect "$(stock)" 91
 check "the repository holds exactly A, B and C for the route" expect "$(repository_ids)" "$A,$B,$C"
-check "the inbox table is untouched" expect "$(inbox_ids)" ""
+check "the topic holds four records and the repository three keys: the duplicate of A was skipped; the inbox is untouched" \
+    expect "$(dump | wc -l)/$(repository_count)/$(inbox_ids)" "4/3/"
 
 echo "Camel: a reservation that fails after the decrement"
 export FAIL_AFTER_EFFECT_FOR=O-1104
@@ -194,6 +197,8 @@ check "the repository holds A, B, C and D" expect "$(repository_ids)" "$A,$B,$C,
 echo "Observability"
 check "Tempo has a trace for inventory-service" poll 90 tempo_has_trace inventory-service
 check "Loki has logs for inventory-service" poll 90 loki_has_log inventory-service
+check "Prometheus holds inventory.inbox.duplicates above 0 for inventory-service" \
+    poll 90 prom_holds 'max_over_time(inventory_inbox_duplicates_total{service_name="inventory-service"}[1h]) > 0'
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]

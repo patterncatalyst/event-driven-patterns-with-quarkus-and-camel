@@ -12,6 +12,7 @@ import java.util.stream.IntStream;
 
 import org.apache.kafka.common.errors.TransactionAbortedException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +21,7 @@ import com.patterncatalyst.shipping.PaymentStatus;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.reactive.messaging.kafka.KafkaRecord;
+import io.smallrye.reactive.messaging.kafka.transactions.KafkaTransactions;
 import jakarta.inject.Inject;
 
 /** The read-process-write loop against the Kafka broker of Dev Services. */
@@ -36,7 +38,8 @@ class PaymentProcessorTest {
     ObjectMapper mapper;
 
     @Inject
-    PaymentProcessor processor;
+    @Channel("payments-processed")
+    KafkaTransactions<PaymentProcessed> transactions;
 
     @Test
     void aBatchOfFiveGivesExactlyFivePaymentsToAReadCommittedReader() throws Exception {
@@ -57,12 +60,12 @@ class PaymentProcessorTest {
 
     @Test
     void anAbortedTransactionIsInvisibleToAReadCommittedReaderAndStillInTheLog() {
-        assertThrows(TransactionAbortedException.class, () -> processor.transactions().withTransactionAndAwait(tx -> {
+        assertThrows(TransactionAbortedException.class, () -> transactions.withTransactionAndAwait(tx -> {
             tx.send(KafkaRecord.of("O-9001", payment("O-9001")));
             tx.markForAbort();
             return Uni.createFrom().voidItem();
         }));
-        processor.transactions().withTransactionAndAwait(tx -> {
+        transactions.withTransactionAndAwait(tx -> {
             tx.send(KafkaRecord.of("O-9002", payment("O-9002")));
             return Uni.createFrom().voidItem();
         });

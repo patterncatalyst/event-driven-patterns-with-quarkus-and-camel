@@ -113,7 +113,11 @@ batch_is_ten_once() {
     [[ "$(count_matching read_committed '^O-51(0[1-9]|10)$')" == 10 && "$(distinct_matching read_committed '^O-51(0[1-9]|10)$')" == 10 ]] \
         && { TEN_AT=$SECONDS; (( SECONDS - CRASH_AT < 55 )); }
 }
-uncommitted_is_ten_plus_k() { [[ "$(count_matching read_uncommitted '^O-51(0[1-9]|10)$')" == $((10 + K)) ]]; }
+# The ten orders are committed once each, and the K payments the aborted transaction wrote are the only extra records
+# a read_uncommitted reader returns.
+uncommitted_is_ten_plus_k() {
+    [[ "$(count_matching read_committed '^O-51(0[1-9]|10)$')" == 10 && "$(count_matching read_uncommitted '^O-51(0[1-9]|10)$')" == $((10 + K)) ]]
+}
 camel_has_every_order() { [[ "$(distinct_matching read_committed '^O-60(0[1-9]|10)$')" == 10 ]]; }
 camel_has_a_duplicate() { [[ -n "$(keys_matching read_committed '^O-600[1-7]$' | sort | uniq -d)" ]]; }
 camel_wrote_before_the_crash() { [[ "$(count_matching read_committed '^O-600[1-7]$')" -ge 1 ]]; }
@@ -122,6 +126,7 @@ group_is() { [[ "$(group_offset "$1")" == "$2" ]]; } # group_is <group> <offset>
 tx_is() { [[ "$(tx_state "$TXID")" == "$1" ]]; }
 
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
+prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 
 echo "Starting the stack"
@@ -158,7 +163,7 @@ export CRASH_MID_BATCH_AT=
 RESTART_AT=$SECONDS; TEN_AT=
 check "within 30 s a read_committed reader sees all ten orders, each exactly once" poll 30 batch_is_ten_once
 if [[ -n "$TEN_AT" ]]; then echo "NOTE: k=$K; ten orders once after $((TEN_AT - RESTART_AT)) s from restart, $((TEN_AT - CRASH_AT)) s from crash detection"; fi
-check "a read_uncommitted reader sees the ten orders plus the aborted copies" uncommitted_is_ten_plus_k
+check "a read_committed reader sees the ten orders and a read_uncommitted reader the ten plus $K aborted copies" uncommitted_is_ten_plus_k
 check "the group payment-service is at offset 15" poll 30 group_is payment-service 15
 check "the transaction coordinator reports $TXID as CompleteCommit" poll 30 tx_is CompleteCommit
 
@@ -184,6 +189,8 @@ echo "NOTE: committed payments per order O-6001 to O-6010 (read_committed): $(ke
 echo "Observability"
 check "Tempo has a trace for payment-service" poll 90 tempo_has_trace payment-service
 check "Loki has logs for payment-service" poll 90 loki_has_log payment-service
+check "Prometheus holds the transaction commit time of the producer of payment-service above 0" \
+    poll 90 prom_holds 'max_over_time(kafka_producer_txn_commit_time_ns_total{service_name="payment-service"}[1h]) > 0'
 
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]
