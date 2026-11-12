@@ -110,7 +110,7 @@ What Camel does not do is describe the failure. Its dead letter channel writes t
 | Nothing configured | `fail`: the channel stops and readiness goes DOWN | The default error handler logs, skips the record after one attempt and commits |
 | Offset committed | After the record is written to the dead letter topic | On the consumer's auto-commit timer, after the exchange; with the default error handler also for a record it gave up on |
 | Blocked while retrying | The partition | The partition |
-| Retry without blocking | `delayed-retry-topic`, experimental, not used here | Not used here |
+| Retry without blocking | `delayed-retry-topic`, experimental | None in the component |
 | 20 s hold with `max.poll.interval.ms` at 10 s | The record is not delivered again | The group rebalances and the batch is delivered again |
 
 ## Build, run, observe

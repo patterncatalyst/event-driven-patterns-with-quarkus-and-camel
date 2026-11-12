@@ -69,12 +69,12 @@ The Camel Kafka component has a transactional producer too. A producer endpoint 
 ```java
 from("kafka:" + Topics.INVENTORY_RESERVED + "?groupId=payment-camel&autoOffsetReset=earliest")
         .unmarshal().json(JsonLibrary.Jackson, InventoryReserved.class)
-        // map each InventoryReserved to a PaymentProcessed
+        .bean(mapping, "toPayment")
         .marshal().json(JsonLibrary.Jackson)
         .to("kafka:" + Topics.PAYMENTS_PROCESSED + "?transacted=true&transactionalId=camel-payment-tx");
 ```
 
-Every output is atomic. The consumer is an ordinary one, though: it commits its offsets on a timer, outside any transaction, and the component source never sends offsets to a transaction. Without an explicit `transactionalId`, the id is made from the endpoint and route ids, which is a name nobody chose. `CamelTransactedPaymentRoute` runs under the `camel-transacted` profile as the comparison. The two routes read the same input, apply the same mapping and crash at the same record; the offsets are the only difference.
+Every output is atomic. The consumer is an ordinary one, though: it commits its offsets on a timer, outside any transaction, and the component source never sends offsets to a transaction. Without an explicit `transactionalId`, the id is made from the endpoint and route ids, which is a name nobody chose. `CamelTransactedPaymentRoute` runs under the `camel-transacted` profile as the comparison. The two routes read the same input, apply the same mapping and crash at the same point in the batch; the offsets are the only difference.
 
 {% include excalidraw.html file="12-camel-transacted-vs-eos" alt="The same crash with and without the offsets in the transaction: SmallRye aborts the whole batch and the restart produces ten outputs once each; the Camel route has committed seven outputs and not the offset, so the restart produces seven of them twice" caption="Figure 12.3: The same crash, with and without the offsets in the transaction" %}
 
@@ -103,7 +103,7 @@ The checks read the effects, not the exit codes:
 
 Change one thing and watch a guard fail:
 
-- Run `PAYMENT_MODE=camel-transacted ./verify.sh`. The main phase runs on the Camel route. Checks 6 and 7 still pass, proving the crash and the partial write, and check 10 fails, with checks 4, 5, 8, 9, 11, 12, 13 and 21 failing beside it (12 of 21 pass): the Camel route uses a different group and transactional id, and each exchange commits on its own, so a `read_committed` reader already sees the first seven payments while the service is down. Check 21 fails because the transaction commit time it reads belongs to the producer of the channel, which is off in that mode.
+- Run `PAYMENT_MODE=camel-transacted ./verify.sh`. The main phase runs on the Camel route. Checks 6 and 7 still pass, proving the crash and the partial write, and check 10 fails, with checks 4, 5, 8, 9, 11, 12, 13 and 21 failing beside it (12 of 21 pass): the Camel route uses a different group and transactional id, and each exchange commits on its own, so a `read_committed` reader already sees the first seven payments while the service is down. Check 21 fails because the transaction commit time it reads belongs to the transactional producer of the SmallRye channel, which commits no transaction in that mode.
 - Run the stack with `TX_TIMEOUT_MS=10000` and the crash switch set, produce the burst, and leave the service down. `kafka-transactions.sh describe` shows the transaction `Ongoing`, and the coordinator aborts it 16 seconds after the crash was detected, in each of two runs. A `read_committed` reader sees nothing of the batch before or after, and a `read_uncommitted` reader still sees the seven written records.
 - Read the output with the console consumer's default isolation level after the restart. The seven orders written before the crash then appear twice: aborted records are in the log, and the default reader returns them.
 
