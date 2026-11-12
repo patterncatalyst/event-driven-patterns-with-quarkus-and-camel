@@ -79,6 +79,8 @@ Chapter 09 also writes helper topics that no service reads: `edp.inventory.signa
 
 Chapter 10 reuses `edp.inventory.item-changes` and routes its signal table to `edp.inventory.signals`. It has no heartbeat.
 
+Chapter 15 note: StockReceived and StockReserved are internal ledger events of the `InventoryItem` aggregate, messages about an existing entity and not new entities. They are named apart from the public catalog event InventoryReserved (`edp.inventory.reserved`) and reach no topic. No domain-model code change; the version stays 2.2.0.
+
 ## Lifecycles
 
 - Order: PLACED to PAID to SHIPPED to DELIVERED, one step forward at a time. CANCELLED is allowed from PLACED or PAID only. DELIVERED and CANCELLED are terminal.
@@ -123,8 +125,8 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 11 | Idempotent consumer and inbox | inventory-service reserves stock once per OrderPlaced event id (the `id` header); the inbox row commits in the same transaction as the decrement; a duplicate without the inbox double-decrements `quantityOnHand`; Camel's idempotent consumer with a repository is the alternative |
 | 12 | Exactly-once with Kafka transactions | payment-service reads InventoryReserved and publishes PaymentProcessed (carrying the `Payment`) with its consumed offsets in one Kafka transaction; `read_committed` readers; no database write, because a Kafka transaction covers Kafka only (the database edges are chapters 08 and 11); a Camel transacted route is the comparison |
 | 13 | Retry and dead letter | a malformed or invalid OrderPlaced goes to `edp.orders.placed-dlq`; a transient failure (the stock row locked past the lock timeout) is retried and succeeds; SmallRye failure strategy versus Camel deadLetterChannel |
-| 14 | Aggregate root and the event store | the `Order` aggregate rebuilt from its stream; commands checked against state; optimistic concurrency on append |
-| 15 | Snapshots | an `InventoryItem` stock ledger for one popular SKU; snapshot every N events; rebuild cost measured |
+| 14 | Aggregate root and the event store | the `Order` aggregate rebuilt from its own stream in an append-only `events` table; commands from REST and from PaymentProcessed and ShipmentScheduled are checked against the replayed state; optimistic concurrency on `(stream_id, version)` with retry by re-deciding or `If-Match` reported to the caller; OrderPlaced and OrderCancelled published through the chapter 08 outbox in the same transaction, OrderPaid and OrderShipped stay internal; a Camel route delivering PaymentProcessed as the comparison |
+| 15 | Snapshots | an `InventoryItem` stock ledger (StockReceived, StockReserved) for one popular SKU with 100,000 events; a snapshot every N events in the command's transaction; rebuild cost measured with and without; a stale snapshot schema is discarded; a Camel scheduled snapshotter as the out-of-band comparison |
 | 16 | CQRS and projections | an order-status read model per customer in PostgreSQL, projected from order and shipment events; read lag asserted |
 | 17 | Aggregate replay or CQRS projection | shipments per carrier per day (FASTLINE vs AIRCO) by aggregate replay and by a new projection; decision table |
 | 18 | Schema evolution and upcasting | OrderPlaced v1 to v2 (adds a `shippingPriority` field with a default); Apicurio compatibility rule; upcaster on read |
