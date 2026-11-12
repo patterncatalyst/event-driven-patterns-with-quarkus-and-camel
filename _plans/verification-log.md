@@ -343,3 +343,5 @@ Period of 30 seconds: the largest tail sampled was 974 in the `verify.sh` run an
 Not repeated: the heap experiments (`INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` and `EXTRA_JAVA_OPTS=-Xmx96m`, claims 15-n and 15-az). Their logs (`w15w-x-entities.log`, `w15w-x-heap96.log`) predate this round and no chapter 15 number depends on them.
 
 Claims rows removed: 15-u (Camel Aggregator sentence in chapter 15), 15-bb (Microsoft "optimization" sentence); added: 15-bf, 15-bg, 15-bh.
+
+Heap experiments re-run after repair round 1 (orchestrator): `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` stops at precondition 3 (`r1-15-x-entities96.log`); a KEEP=1 repeat shows the container exited with code 3 and logged `Terminating due to java.lang.OutOfMemoryError: Java heap space` (`r1-15-x-entities96-evidence.log`). `EXTRA_JAVA_OPTS=-Xmx96m` with the projection: 27/27 (`r1-15-x-heap96.log`). No edp-* containers left.
