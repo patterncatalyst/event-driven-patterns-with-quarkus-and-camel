@@ -299,3 +299,47 @@ Cosmetic: with `SNAPSHOT_EVERY=0` the label of check 6 prints "after -1 more res
 02 fix re-run: `mvn verify` on examples/02 twice after the final run (`f6-02-fix-mvn1.log`, `f6-02-fix-mvn2.log`): 7 + 4 tests, BUILD SUCCESS both times, no edp-* containers left.
 
 15 new tests (step 5 follow-up): `InlineSnapshotFailureTest` and `SnapshotterRetryTest` added; `mvn verify` on examples/15 twice (`w15t-mvn1.log`, `w15t-mvn2.log`): 13 tests, BUILD SUCCESS both. The final-run table row for 15 (11 tests) predates them.
+
+### Repair round 1 (2026-11-12)
+
+Validation round 1 found 3 High, 9 Medium and 10 Low findings in chapters 14 and 15; all were fixed. The final-run table above predates these changes (chapter 15 then ran 11 tests, one timing per stream before the checks had mutated snapshots, and the old numbers); the rows below replace it for chapters 14 and 15. Each run started from fresh containers. Claims rows 14-* and 15-* now cite these logs.
+
+Chapter 14 runs:
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| `mvn verify` | 27 tests, BUILD SUCCESS | none | `r1-14-mvn.log` |
+| `./verify.sh` (twice) | 33/33 | none | `r1-14-base1.log`, `r1-14-base2.log` |
+| `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 | `r1-14-x-reappend.log` |
+| `RETRY_MAX=0` | 27/33 | 14, 19, 20, 21, 26, 30 | `r1-14-x-retrymax0.log` |
+| `CAMEL_REDELIVERIES=0` | 32/33 | 29 | `r1-14-x-camel0.log` |
+| constraint line and comma removed | 23/33 | 14, 15, 16, 17, 19, 20, 26, 29, 30, 31 | `r1-14-x-constraint.log` |
+
+Chapter 14 failing sets equal the earlier ones. The test count is 27: `OrderAggregateTest` 11, `OrderAggregateServiceTest` 13 (adds `aWildcardIfMatchOnAnExistingOrderIsAMatch`), `ReappendTest` 1, `CamelCommandsTest` 1, `CamelNoRedeliveryTest` 1.
+
+Chapter 15 runs:
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| `mvn verify` | 13 tests, BUILD SUCCESS | none | `r1-15-mvn.log` |
+| `./verify.sh` (three times) | 27/27 each | none | `r1-15-base1.log`, `r1-15-base2.log`, `r1-15-base3.log` |
+| `SNAPSHOT_EVERY=10` | 27/27, exactly 9 events replayed | none | `r1-15-x-every10.log` |
+| `SNAPSHOT_EVERY=1000` | 27/27, exactly 999 events replayed | none | `r1-15-x-every1000.log` |
+| `SNAPSHOT_EVERY=0` | stops at a precondition before check 12 | 4, 5, 6, 7, 10, 11 | `r1-15-x-every0.log` |
+| `SNAPSHOT_GUARD=false` | 26/27 | 18 | `r1-15-x-guardoff.log` |
+| `SNAPSHOTTER_DELAY_MS=30000` with `verify.sh` | 27/27, largest tail 974 | none | `r1-15-x-delay30000-verify.log` |
+| `SNAPSHOTTER_DELAY_MS=30000` (second run) | largest tail 993, caught up after 21 s | | `r1-15-x-delay30000.log` |
+| snapshot state altered by hand | snapshot answers 999999, `ignoreSnapshot=true` answers 10100 | | `r1-15-x-altered.log` |
+| `SNAPSHOT_SCHEMA=2` | first load replays 100001 events, next command writes schema 2 | | `r1-15-x-schema2.log` |
+
+Baseline numbers (medians of the three run medians): full load 1.6, 11.6 and 127.7 ms for 1,100, 10,100 and 100,200 events; snapshot load (99 events replayed) 0.50, 0.63 and 0.95 ms; `EXPLAIN` 40.6 to 41.5 ms of the 127.7 ms; largest burst tail 350 (322 to 358); snapshot-load ratio 133 to 139.
+
+New `SNAPSHOT_EVERY=0` failing set: checks 4, 5, 6, 7, 10 and 11 fail, and the run stops with "PRECONDITION FAILED: no snapshot of SKU-1503 exists before the snapshots are deleted". Checks 12 and 14 gained preconditions (a snapshot must exist before every snapshot is deleted, and before one is set to schema version 0), so with N=0 the run no longer reports checks 13, 15 and 18 as failures and no longer reaches the Camel phase. The earlier set (4 to 7, 10, 11, 13, 15, 18) is superseded.
+
+Bench redesign: there is now one bench, run before any check mutates snapshots. Each stream receives 100 reservations first, so every snapshot load replays 99 events; five loads are discarded and 21 timed, alternating full and snapshot. The separate `snapshot_load_note` was removed.
+
+Period of 30 seconds: the largest tail sampled was 974 in the `verify.sh` run and 993 in the second run (baseline 350).
+
+Not repeated: the heap experiments (`INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m` and `EXTRA_JAVA_OPTS=-Xmx96m`, claims 15-n and 15-az). Their logs (`w15w-x-entities.log`, `w15w-x-heap96.log`) predate this round and no chapter 15 number depends on them.
+
+Claims rows removed: 15-u (Camel Aggregator sentence in chapter 15), 15-bb (Microsoft "optimization" sentence); added: 15-bf, 15-bg, 15-bh.
