@@ -2,10 +2,10 @@
 
 from generate_diagram import emit
 
-# Milliseconds: the median of the three run medians of the verify.sh measurement (w17 runs 1 to 3).
-REPLAY_MS = {"1,000 orders": 14, "10,000 orders": 76, "100,000 orders": 581}
-PROJECTION_MS = {"1,000 orders": 0.67, "10,000 orders": 0.61, "100,000 orders": 0.48}
-REBUILD_MS = {"1,000 orders": 1022, "10,000 orders": 1016, "100,000 orders": 26585}
+# Milliseconds: the median of the three run medians of the verify.sh measurement (repair round 1 runs 1 to 3).
+REPLAY_MS = {"1,000 orders": 15, "10,000 orders": 77, "100,000 orders": 586}
+PROJECTION_MS = {"1,000 orders": 0.78, "10,000 orders": 0.61, "100,000 orders": 0.46}
+REBUILD_MS = {"1,000 orders": 781, "10,000 orders": 766, "100,000 orders": 1766}
 
 X0 = 220
 WIDTH = 520
@@ -16,7 +16,10 @@ def bar(ms, top):
 
 
 def fmt(ms):
-    return f"{ms:.2f} ms" if ms < 10 and ms != int(ms) else (f"{ms / 1000:.1f} s" if ms >= 10000 else f"{ms:,.0f} ms")
+    """The one rounding the chapter table uses: seconds with one decimal from 1 s, whole ms from 10 ms, else two decimals."""
+    if ms >= 1000:
+        return f"{ms / 1000:.1f} s"
+    return f"{ms:.0f} ms" if ms >= 10 else f"{ms:.2f} ms"
 
 
 nodes = []
@@ -44,7 +47,7 @@ for label in REBUILD_MS:
                   "text": f"{fmt(REBUILD_MS[label])} to catch up"})
     y += 52
 notes.append({"x": 480, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-              "text": "Median of three runs, inside the service. Bar length is proportional to time within each group."})
+              "text": "Median of three runs, inside the service. Bars are proportional to time within each group; none is drawn narrower than 6 px."})
 notes.append({"x": 480, "y": y + 20, "anchor": "middle", "size": 11, "color": "#555555",
               "text": "8-core laptop CPU, PostgreSQL on the compose stack. A projection read is a scan of the same few dozen rows at every size."})
 

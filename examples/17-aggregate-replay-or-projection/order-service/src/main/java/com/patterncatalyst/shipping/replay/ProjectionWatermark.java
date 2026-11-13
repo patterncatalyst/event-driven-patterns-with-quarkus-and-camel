@@ -26,14 +26,14 @@ public class ProjectionWatermark {
     }
 
     private static final String SELECT = """
-            SELECT position, tx_id::text::bigint, type, payload->>'carrier', (occurred_at AT TIME ZONE 'UTC')::date
+            SELECT position, tx_id::text::bigint AS tx, type, payload->>'carrier', (occurred_at AT TIME ZONE 'UTC')::date
             FROM orders.events
             """;
 
     private static final String BELOW_THE_WATERMARK = SELECT + """
             WHERE (tx_id, position) > (CAST(CAST(:t AS text) AS xid8), :p)
               AND tx_id < pg_snapshot_xmin(pg_current_snapshot())
-            ORDER BY tx_id, position LIMIT :lim
+            ORDER BY events.tx_id, events.position LIMIT :lim
             """;
 
     private static final String BY_POSITION = SELECT + """

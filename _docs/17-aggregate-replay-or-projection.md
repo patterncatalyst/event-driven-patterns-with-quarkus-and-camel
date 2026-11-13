@@ -25,11 +25,11 @@ The other answer is a second model for reading. Greg Young splits a service into
 
 **A projection is a read model built by folding the event history in order, kept current by applying each new event once, and discarded and rebuilt from the first event when its logic or its question changes.**
 
-Three decisions make it safe. The events stay the only record: a projection is a cache of a fold, so losing it costs time and never data, and the Azure Architecture Center calls a materialized view completely disposable for that reason. The projector keeps a checkpoint, committed with the rows it produced, so a crash repeats nothing and loses nothing. And the checkpoint advances only past events that no late commit can precede, which has its own section below.
+Three decisions make it safe. The events stay the only record: a projection is a cache of a fold, so losing it costs time and never data, and the Azure Architecture Center calls a materialized view completely disposable for that reason. The projector keeps a checkpoint, committed with the rows it produced, so a crash repeats nothing and loses nothing. And the checkpoint advances only past events that no late commit can precede.
 
 ### How Quarkus models it
 
-`OrderAggregate` is chapter 14's, reduced: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
+`OrderAggregate` is chapter 14's with smaller payloads and an `OrderDelivered` event: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
 
 `ReplayReport` reads every event stream by stream and folds one aggregate at a time:
 
@@ -66,11 +66,11 @@ void tick() {
 The read is native SQL, because the `xid8` comparison and `pg_snapshot_xmin` are not mapped by the entity:
 
 ```sql
-SELECT position, tx_id::text::bigint, type, payload->>'carrier', (occurred_at AT TIME ZONE 'UTC')::date
+SELECT position, tx_id::text::bigint AS tx, type, payload->>'carrier', (occurred_at AT TIME ZONE 'UTC')::date
 FROM orders.events
 WHERE (tx_id, position) > (CAST(CAST(:t AS text) AS xid8), :p)
   AND tx_id < pg_snapshot_xmin(pg_current_snapshot())
-ORDER BY tx_id, position
+ORDER BY events.tx_id, events.position
 LIMIT :lim
 ```
 
@@ -84,21 +84,21 @@ A new question differs between them. A new replay is code, and the answer is exa
 
 ## What each answer costs
 
-Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; at the two smaller sizes it is bounded by the one-second tick, and three runs gave 0.5 to 1.3 s. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
+Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; at the two smaller sizes it is bounded by the one-second tick, and three runs gave 0.8 to 1.0 s, and 1.3 to 2.0 s at 100,000 orders. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
 
-{% include excalidraw.html file="17-cost-by-size" alt="Median read times: a replay takes 14 ms at 1,000 orders, 76 ms at 10,000 and 581 ms at 100,000; a projection read takes 0.67, 0.61 and 0.48 ms; a rebuild takes 1.0 s, 1.0 s and 27 s" caption="Figure 17.2: A replay grows with the store, a projection read does not" %}
+{% include excalidraw.html file="17-cost-by-size" alt="Median read times: a replay takes 15 ms at 1,000 orders, 77 ms at 10,000 and 586 ms at 100,000; a projection read takes 0.78, 0.61 and 0.46 ms; a rebuild takes 781 ms, 766 ms and 1.8 s" caption="Figure 17.2: A replay grows with the store, a projection read does not" %}
 
 | | Replay every aggregate | Projection |
 |---|---|---|
-| Read at 1,000 / 10,000 / 100,000 orders | 14 / 76 / 581 ms | 0.67 / 0.61 / 0.48 ms |
+| Read at 1,000 / 10,000 / 100,000 orders | 15 / 77 / 586 ms | 0.78 / 0.61 / 0.46 ms |
 | Freshness | The committed state at the read | One scheduler tick, about 1 s at the default |
-| A new question | Code only, exact at once | Code plus a rebuild: 1.0 / 1.0 / 27 s |
+| A new question | Code only, exact at once | Code plus a rebuild: 781 ms / 766 ms / 1.8 s |
 | Storage | None | 27 rows at every size, against an events table of 1.1 / 10 / 103 MB |
 | What can go wrong | The read cost grows with the store | Lag, a commit-order gap, a projector bug repeated until a rebuild |
 
-The replay grows in step with the store, at about 1.6 microseconds per event at 100,000 orders, while the projection read scans the same 27 rows at every size. At 1,000 orders the difference is 13 ms and a replay is the better choice, because there is nothing to keep correct. At 100,000 a dashboard that refreshes every few seconds pays more than half a second of database and CPU each time for an answer that changed by a handful of rows. The projection read is about 1,200 times faster.
+The replay grows in step with the store, at about 1.6 microseconds per event at 100,000 orders, while the projection read scans the same 27 rows at every size. At 1,000 orders the difference is 14 ms and a replay is the better choice, because there is nothing to keep correct. At 100,000 a dashboard that refreshes every few seconds pays more than half a second of database and CPU each time for an answer that changed by a handful of rows. The projection read is about 1,300 times faster.
 
-Freshness is the projection's price. A command reaches the projection within a tick, and a run of 50 commands at the one-second default gave a median of 993 ms. A question that must see the command it just committed belongs to the replay or to the aggregate.
+Freshness is the projection's price. A command reaches the projection within a tick, and a run of 50 commands at the one-second default gave a median of 994 ms. A question that must see the command it just committed belongs to the replay or to the aggregate.
 
 ## Commit order is not position order
 
@@ -124,11 +124,11 @@ The Maven build runs 16 tests against PostgreSQL from Dev Services: a replay aga
 
 The checks read the effects:
 
-- At each size the replay equals the SQL oracle, the projection reaches `lagEvents=0` within 10 seconds (60 at 100,000 orders) and equals the replay. NOTE lines print the medians, the rebuild time and the sizes.
-- At 100,000 orders a projection read is at least 250 times faster than a replay (1,218 times in the measured runs). A rebuild starts with work left and a count below the replay, then catches up and equals it.
-- A shipment is in the next replay at once and in the projection within 2 seconds. The median over 50 commands is 993 ms.
+- At each size the replay equals the SQL oracle, the projection reaches `lagEvents=0` within 10 seconds and equals the replay. NOTE lines print the medians, the rebuild time and the sizes.
+- At 100,000 orders a projection read is at least 250 times faster than a replay (1,277 times by the medians of three runs). A rebuild starts with work left and a count below the replay, then catches up and equals it.
+- A shipment is in the next replay at once and in the projection within 2 seconds. The median over 50 commands is 994 ms.
 - `ShipOrder` for `O-1701` is held after its append with its transaction open. `O-1702` ships and commits, and the projection counts neither: `lagEvents` is at least 1, the total has not moved, and a replay already counts `O-1702`. When the hold ends the projection equals the replay with both counted.
-- After a restart the projection resumes from its checkpoint and counts nothing twice. It holds at most 60 rows at every size.
+- After a restart the projection resumes from its checkpoint and counts nothing twice. It stays keyed by carrier and day, so it holds at most 60 rows at every size.
 - Prometheus holds `projection_lag_events`, and Tempo and Loki hold a trace and logs of `order-service`.
 
 Change one thing and watch a check fail:
@@ -139,7 +139,7 @@ Change one thing and watch a check fail:
 
 ## When not to use it
 
-When the question is rare or the history is small, replay. A report that runs once a day over 10,000 orders costs 76 ms, and a projection for it adds a table, a checkpoint, a timer and a rebuild to keep correct. Measure the replay against the budget of the read before building anything.
+When the question is rare or the history is small, replay. A report that runs once a day over 10,000 orders costs 77 ms, and a projection for it adds a table, a checkpoint, a timer and a rebuild to keep correct. Measure the replay against the budget of the read before building anything.
 
 A projection serves the questions it was built for. A new question needs a new fold and a rebuild from the first event, so the store must keep that history for as long as such questions can arrive. A bug in the fold is repeated into the rows until the rebuild. The Azure Architecture Center advises serving the last complete view while a new one is built; here the projection undercounts for the length of the rebuild.
 

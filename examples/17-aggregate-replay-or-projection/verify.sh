@@ -12,7 +12,7 @@ COMPOSE=(docker compose -f compose.yaml)
 APP=edp-order-service
 R=250      # the projection read must be at least R times faster than the replay at 100,000 orders
 T_SMALL=10 # seconds for the projection to catch up on 1,000 and 10,000 orders
-T_LARGE=60 # and on 100,000 orders
+T_LARGE=10 # and on 100,000 orders (a rebuild takes under 2 s there)
 BASE=http://localhost:8080
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
 TOTAL=0
@@ -136,8 +136,15 @@ rebuild_catches_up() {
 }
 
 # --- a command on a large store ------------------------------------------------------------------------------------
+# One command, counted by the projection: the tick that counts it has just run, so the next one is a full poll away.
+sync_to_tick() {
+    expect "$(command_code O-17S001)/$(command_code O-17S001 payment)/$(command_code O-17S001 shipment carrier=AIRCO)" "201/201/201" || return 1
+    poll 30 expect_totals_equal
+}
+expect_totals_equal() { expect "$(total projection)" "$(total replay)"; }
 live_command_counts() {
     local before
+    sync_to_tick || return 1
     before="$(total replay)"
     expect "$(command_code O-17L001)/$(command_code O-17L001 payment)/$(command_code O-17L001 shipment carrier=AIRCO)" "201/201/201" || return 1
     expect "$(total replay)" $((before + 1)) || return 1
@@ -257,7 +264,7 @@ echo "A restart"
 check "after a restart the projection resumes from its checkpoint: lagEvents=0, equal to the replay, nothing counted twice" survives_a_restart
 
 echo "Size"
-check "the projection holds at most 60 rows (2 carriers x 30 days) at every size" few_rows_at_every_size
+check "the projection stays keyed by carrier and day: at most 60 rows (2 carriers x 30 days of the seed) at every size, not a row per order" few_rows_at_every_size
 note "events table $(sql "SELECT pg_size_pretty(pg_total_relation_size('orders.events'))"), projection $(sql "SELECT pg_size_pretty(pg_total_relation_size('orders.carrier_daily_shipments'))")"
 
 echo "Observability"

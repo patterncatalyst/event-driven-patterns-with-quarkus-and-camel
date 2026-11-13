@@ -400,6 +400,8 @@ Re-run after these edits: `r2-15-mvn.log` 13 tests BUILD SUCCESS; `r2-15-verify.
 
 ## Step 4 and 5: final run
 
+Final serial run 2026-11-12/13 (`<scratchpad>/final-r07.log`, `f7-*.log`), one `flock`, fresh containers per run, no `edp-*` left between runs: domain-model and every example 00 to 18 `mvn verify` BUILD SUCCESS (20 builds); verify.sh 00 17/17, 01 19/19, 02 21/21, 03 30/30, 04 28/28, 05 24/24, 06 36/36, 07 27/27, 08 27/27, 09 35/35, 10 40/40, 11 29/29, 12 21/21, 13 31/31, 14 33/33, 15 27/27, 16 29/29, 17 22/22, 18 21/21. Experiments: 16 guard-off 26/29 (18, 26, 27; check 24 passed this time, so the chapter states three of four runs for 24); 16 delay 50 ms 28/29 (23); 17 watermark off 19/22 (16, 17, 18); 17 poll 5 s 21/22 (14); 18 upcasters off 18/21 (8, 10, 19); 18 BACKWARD 18/21 (14, 15, 16). Validation round 1 then found the chapter 17 batch query sorting (H1); chapters 16 to 18 were re-run after repair round 1 (see the rerun entry below).
+
 (Orchestrator: final serial run, repair rounds and validation rounds are recorded here.)
 
 ## Repair round 1, chapters 16 and 18
@@ -408,3 +410,26 @@ Re-run after these edits: `r2-15-mvn.log` 13 tests BUILD SUCCESS; `r2-15-verify.
 - Claims 16-* and 18-* re-mapped to current line numbers after the final prose edits. Claim 16-ah now cites checks 11 to 15 for the pause. Claim 16-bo restated.
 - Camel route in chapter 16 now uses `KafkaConstants.TOPIC` and `KafkaConstants.TIMESTAMP`; chapter 18 routes had no string headers. Chapter 18 check 4 now asserts `version_count == 1` as well as the first version lacking `shippingPriority`. Figures 16.1 and 18.2 regenerated from their specs.
 - Re-runs from clean under the stack lock: mvn verify chapter 16, 14 tests (`r1-16-mvn.log`); chapter 18, 19 plus 3 = 22 tests (`r1-18-mvn.log`); verify.sh chapter 16, 29/29 twice (`r1-16-run1.log`, `r1-16-run2.log`); chapter 18, 21/21 twice (`r1-18-run1.log`, `r1-18-run2.log`). No failing check; test counts unchanged.
+
+### r07 repair round 1, chapter 17 (2026-11-13)
+
+- Defect (finding H1): the projection's batch query selected `tx_id::text::bigint` with the output column named `tx_id`, so `ORDER BY tx_id, position` sorted by the bigint expression: `Sort Key: (((tx_id)::text)::bigint), "position"` over an index scan that read 159,999 rows for a 1,000-row batch (3,945 buffers, 77.1 ms). Fix: alias the column (`AS tx`) and order by `events.tx_id, events.position`; the mapping reads columns by index, so no mapping change. Proof (`r1-17-explain.log`, throwaway PostgreSQL 18.6 container `edp-val-pg`, started with the example's `_infra/postgres/start.sh`, the example's `V1__orders.sql` and `seed.sql` loaded in three cumulative loads to 100,000 orders = 360,000 events, removed afterwards):
+
+  | Batch of 1,000 | Old query | Fixed query |
+  |---|---|---|
+  | Checkpoint mid third load (tx 768, position 200,001) | Sort (top-N heapsort), index scan reads 159,999 rows, 3,945 buffers, 77.1 ms | Index Scan using events_tx_position, no Sort, 1,000 rows, 28 buffers, 0.50 ms |
+  | Checkpoint 0/0 (a rebuild's first batch) | Parallel Seq Scan of 360,000 rows plus Sort, 65.3 ms | Index Scan using events_tx_position, no Sort, 27 buffers, 0.47 ms |
+
+- `mvn -B verify`: BUILD SUCCESS, 16 tests, 0 failures (`r1-17-mvn.log`).
+- Also changed: `EventStore` uses `HibernateHints.HINT_FETCH_SIZE` (finding L9; the constant exists in `org.hibernate.jpa.HibernateHints` and is the same string). `verify.sh`: check 19 description now says what it guards (L7); `T_LARGE` lowered from 60 to 10 s because the slowest 100,000 order rebuild including catch-up was 2,010 ms (5x margin); check 14 first syncs to a tick (one extra order O-17S001 shipped and counted) so the `PROJECTION_POLL=5s` witness fails deterministically. A first r1 poll5s run on the old check 14 passed 22/22 because the shipment landed within 2 s of a tick; it was discarded with the first three runs (`r1-17-old/`, which had replay 15 / 76 to 77 / 557 to 601 ms and the same 22/22 on three clean runs).
+- Final runs, from fresh containers, all with the final `verify.sh` (`r1-17-run1.log` to `r1-17-run3.log`), each 22/22:
+
+  | Run | Replay 1k / 10k / 100k (ms) | Projection read (ms) | Rebuild (ms) | Freshness median |
+  |---|---|---|---|---|
+  | 1 | 15 / 77 / 576 | 0.78166 / 0.591664 / 0.447141 | 1,027 / 765 / 2,010 | 994 ms |
+  | 2 | 16 / 77 / 593 | 0.627132 / 0.611365 / 0.458881 | 778 / 766 / 1,263 | 994 ms |
+  | 3 | 14 / 75 / 586 | 0.811441 / 0.611822 / 0.467469 | 781 / 766 / 1,766 | 995 ms |
+
+  Medians of the three: replay 15 / 77 / 586 ms, projection read 0.78 / 0.61 / 0.46 ms, rebuild 781 / 766 / 1,766 ms, freshness 994 ms. Ratio at 100,000 orders 586 / 0.458881 = 1,277 (per run 1,288, 1,292, 1,254). Replay per event 586 ms / 360,000 = 1.63 microseconds. Rebuild at 100,000 orders was 26.6 s before the fix and 1.3 to 2.0 s after (watermark off was 1.3 to 1.8 s earlier). Events table 1.1 / 10 / 103 MB; projection 27 rows at every size.
+- Experiments from clean: `PROJECTION_WATERMARK=off` (`r1-17-wmoff.log`) 19/22, FAIL 16, 17, 18. `PROJECTION_POLL=5s` (`r1-17-poll5s.log`) 21/22, FAIL 14 only; freshness median 4,994 ms (min 524, max 5,003).
+- Gates: validate.py ok, voice-scan 0 ban-tier, idiomatic-scan 0 ban-tier, host_ids check 0 hits. No edp-* containers left after any run.

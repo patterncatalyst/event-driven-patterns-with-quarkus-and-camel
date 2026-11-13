@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.jpa.HibernateHints;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -59,7 +60,7 @@ public class EventStore implements PanacheRepositoryBase<StoredEvent, Long> {
      */
     public Stream<Row> replayStream() {
         return find("select e.streamId, e.version, e.payload, e.occurredAt from StoredEvent e order by e.streamId, e.version")
-                .project(Row.class).withHint("org.hibernate.fetchSize", 1000).stream();
+                .project(Row.class).withHint(HibernateHints.HINT_FETCH_SIZE, 1000).stream();
     }
 
     private static boolean violatesVersionConstraint(Throwable failure) {
