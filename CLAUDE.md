@@ -164,6 +164,14 @@ PRD §14, decided:
 - Kleppmann and Riccomini (DDIA 2nd ed.) cited at book level until the owner pastes the TOC; Vernon cited by chapter title only.
 - Demo switches (`DEMO_PAUSE_FOR=orderId:Command`, `RETRY_MODE=reappend`, `SNAPSHOT_GUARD`, `INVENTORY_FETCH`) are labelled demo code.
 
+2026-11-12 (r07 plan approval, all 19 recommendations):
+
+- Chapter 16: the read model is projected from the public Kafka topics with SmallRye Reactive Messaging (six channels into one transactional projector); a forward-only guarded upsert (native `ON CONFLICT ... WHERE` with an immutable rank function) handles cross-topic order; lag shown with pausable channels and a Micrometer timer; one Camel route over six topics as the comparison.
+- Chapter 17: a fresh example with a minimal event store; the projection tails the store with Quarkus `@Scheduled(concurrentExecution = SKIP)` and an `xid8` + `pg_snapshot_xmin` watermark (order the batch by the table columns, never by a cast alias); one bench at 1k, 10k and 100k orders feeds the table and figure.
+- Chapter 18: stored v1 events upcast on read (`JsonNode` chain keyed by `schema_version`), never rewritten; the wire uses Avro with Apicurio through the chapter 08 outbox (`bytea` payload, BinaryDataConverter); global BACKWARD_TRANSITIVE rule refuses a v3 that drops the default (HTTP 400).
+- Apicurio serdes overridden to 3.3.4 to match the server; Dev Services image pinned to 3.3.4. PostgreSQL held at 18.6 (owner). Young's versioning book cited by chapter titles only.
+- An experiment whose failing set varies between runs is stated with its measured rate, never as deterministic.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.
