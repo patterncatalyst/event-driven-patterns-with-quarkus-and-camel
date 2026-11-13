@@ -4,7 +4,7 @@
     bench.py gen        one ShipmentScheduled per line as "key|json" for the console producer
     bench.py oracle IN  the expected count per carrier and slot, computed from the input alone
 
-1,000 shipments over four 15-minute slots from 11:00 UTC of the day in BENCH_DAY (an ISO date, yesterday in
+1,000 shipments over four 15-minute slots from BENCH_BASE (an ISO instant on a 15-minute boundary, set by
 verify.sh), both carriers, 60 percent FASTLINE. Event times are shuffled inside runs of 20 shipments, about 72 s of
 event time, so the disorder stays well inside the 5-minute grace. The seed is fixed: the input is the same every run.
 """
@@ -15,8 +15,7 @@ import os
 import random
 import sys
 
-DAY = os.environ["BENCH_DAY"]
-BASE = dt.datetime.fromisoformat(DAY + "T11:00:00+00:00")
+BASE = dt.datetime.strptime(os.environ["BENCH_BASE"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
 SLOT_SECONDS = 15 * 60
 SHIPMENTS = 1000
 SEED = 21

@@ -16,9 +16,12 @@ SCHEDULED=edp.shipping.scheduled
 LISTS=edp.shipping.pickup-lists
 LISTS_CAMEL=edp.shipping.pickup-lists-camel
 CHANGELOG=shipping-pickups-pickup-lists-changelog
-# Event times are yesterday's date: Kafka Streams forwards event time as the record timestamp, and the broker refuses
-# a timestamp more than an hour ahead of its clock. Nothing here is later than yesterday evening.
-D=$(date -u -d yesterday +%F)
+# Event times are in the recent past: Kafka Streams forwards event time as the record timestamp, the broker refuses a
+# timestamp more than an hour ahead of its clock, and the changelog topic of a window store keeps records for a day and
+# the window size and grace after their timestamp, then deletes them. The scenario therefore runs from a base 20 hours
+# before now, on a 15-minute boundary; its label 09:00 is that base and the last label (19:51) is 9 hours before now.
+BASE_AGE_HOURS=${BASE_AGE_HOURS:-20} # demo setting: 44 puts the restart slot beyond the changelog retention (see the README)
+BASE_EPOCH=$(( ($(date +%s) - BASE_AGE_HOURS * 3600) / 900 * 900 ))
 REPEAT=${REPEAT:-0}
 TOTAL=0
 PASSED=0
@@ -84,7 +87,7 @@ camel_group_assigned() { # the Camel consumer owns its partition
         | awk '$3 ~ /^[0-9]+$/ && $7 != "-" {f = 1} END {exit !f}'
 }
 running() { live && camel_group_assigned; } # Kafka Streams RUNNING (liveness) and the route has its partition
-changelog_end() { kafka kafka-get-offsets.sh --topic "$CHANGELOG" 2>/dev/null | awk -F: '{n += $3} END {print n + 0}'; }
+changelog_end() { { kafka kafka-get-offsets.sh --topic "$CHANGELOG" 2>/dev/null || true; } | awk -F: '{n += $3} END {print n + 0}'; } # 0 when the topic does not exist (PICKUP_CHANGELOG=off)
 open_batches() { sql "SELECT count(*) FROM shipping.pickups"; }
 no_open_batches() { [[ "$(open_batches)" == 0 ]]; }
 one_open_batch() { [[ "$(open_batches)" == 1 ]]; }
@@ -92,7 +95,7 @@ tables() { sql "SELECT string_agg(table_name, ',' ORDER BY table_name) FROM info
 
 # --- input: ShipmentScheduled with an event time in the payload. The console producer cannot set a record
 # timestamp, so event time can only come from the payload.
-at() { printf '%sT%s:00Z' "$D" "$1"; }
+at() { date -u -d "@$((BASE_EPOCH + (10#${1%%:*} * 60 + 10#${1##*:} - 540) * 60))" +%Y-%m-%dT%H:%M:00Z; } # at <hh:mm>: the label's instant
 sched() { # sched <id> <carrier> <hh:mm>: one "key|json" line
     printf 'O-%s|{"shipment":{"id":"%s","orderId":"O-%s","carrier":"%s","trackingNumber":"TRK-%s","status":"SCHEDULED"},"occurredAt":"%s"}\n' \
         "$1" "$1" "$1" "$2" "$1" "$(at "$3")"
@@ -190,15 +193,15 @@ live_without_errors() { live && no_error_logged; }
 check "the dropped record is not a failure: liveness is UP and the service log holds no ERROR" live_without_errors
 
 echo "Bench: 1,000 shipments over four slots, one producer call, then a tick"
-BENCH_DAY="$D" python3 -I bench.py gen > "$WORK/bench.txt"
-BENCH_DAY="$D" python3 -I bench.py oracle "$WORK/bench.txt" > "$WORK/oracle.txt"
+BENCH_BASE="$(at 11:00)" python3 -I bench.py gen > "$WORK/bench.txt"
+BENCH_BASE="$(at 11:00)" python3 -I bench.py oracle "$WORK/bench.txt" > "$WORK/oracle.txt"
 BENCH_START_MS="$(now_ms)"
 produce < "$WORK/bench.txt"
-sched BTICK AIRCO 12:10 | produce
 BENCH_TICK_MS="$(now_ms)"
+sched BTICK AIRCO 12:10 | produce
 bench_streams_matches_oracle() { # eight lists for the bench hour, each carrier and slot with the oracle's count
     local got want
-    got="$(summary streams | grep -F "|${D}T11:" | cut -d'|' -f1-3 | sort)"
+    got="$(summary streams | awk -F'|' -v a="$(at 11:00)" -v b="$(at 12:00)" '$2 >= a && $2 < b' | cut -d'|' -f1-3 | sort)"
     want="$(awk '{printf "%s|%s|%s\n", $1, $2, $3}' "$WORK/oracle.txt" | sort)"
     [[ -n "$got" && "$got" == "$want" && "$(printf '%s\n' "$got" | wc -l)" == 8 ]]
 }
@@ -229,7 +232,7 @@ t0, tick = int(sys.argv[3]), int(sys.argv[4])
 lists = []
 for line in open(sys.argv[1], errors="replace"):
     p = line.rstrip("\n").split("\t", 2)
-    if len(p) == 3 and "T11:" in p[2]:
+    if len(p) == 3 and sys.argv[5] <= json.loads(p[2])["from"] < sys.argv[6]:
         lists.append(int(p[0]) // 1000)
 size = timeout = last = 0
 for line in open(sys.argv[2], errors="replace"):
@@ -243,7 +246,7 @@ for line in open(sys.argv[2], errors="replace"):
         last = max(last, int(p[0]) // 1000)
 print("NOTE: bench: Kafka Streams %d lists, last %d ms after the tick; Camel %d batches (%d by size, %d by timeout), last %d ms after the producer call" % (
     len(lists), max(lists) - tick if lists else -1, size + timeout, size, timeout, last - t0 if last else -1))
-' "$WORK/streams.tsv" "$WORK/camel.tsv" "$BENCH_START_MS" "$BENCH_TICK_MS"
+' "$WORK/streams.tsv" "$WORK/camel.tsv" "$BENCH_START_MS" "$BENCH_TICK_MS" "$(at 11:00)" "$(at 12:00)"
 }
 bench_note
 
@@ -284,6 +287,8 @@ check "Kafka Streams: after the recreate and two more records the list for FASTL
 check "Camel: the restored batch of 3 and the two new records close one batch of 5 by size" \
     poll 60 has_line camel 'FASTLINE|-|5|size|RS1,RS2,RS3,RS4,RS5'
 
+echo "NOTE: the Kafka Streams lists of slot 19:30: $(summary streams | grep -F "|$(at 19:30)|" | tr '\n' ' ')"
+
 echo "Observability"
 check "Tempo has a trace for shipping-service" poll 90 tempo_has_trace shipping-service
 check "Loki has logs for shipping-service" poll 90 loki_has_log shipping-service
@@ -291,6 +296,8 @@ check "Loki has logs for shipping-service" poll 90 loki_has_log shipping-service
 if [[ "$PASSED" != "$TOTAL" ]]; then
     echo "shipping-service log, last lines:" >&2
     logs | tail -40 | cut -c1-260 >&2 || true
+    echo "shipping-service log, Kafka Streams restore and state lines:" >&2
+    logs | grep -E 'StoreChangelogReader|StateUpdater|task \[|State transition|Suppress|dropped|late|Skipping' | tail -60 | cut -c1-420 >&2 || true
 fi
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" && "$REPEAT_FAILED" == 0 ]]

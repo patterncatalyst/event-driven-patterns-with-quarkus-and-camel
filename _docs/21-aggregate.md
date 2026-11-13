@@ -56,7 +56,7 @@ Re-keying by carrier makes Kafka Streams write the records to an internal repart
 
 The topics are created with one partition, so one task owns the whole input and a single record with a later event time moves stream time for both carriers. `quarkus.kafka-streams.topics` lists the input, so readiness waits for it. Two pass-through settings make results prompt: `commit.interval.ms=1000` and `statestore.cache.max.bytes=0`. With the defaults, a 30-second commit interval and a 10 MiB record cache, the updates of an aggregate wait for the next commit.
 
-Event time may lag the wall clock by any amount, but it may not lead the broker's clock by more than an hour. Kafka Streams forwards event time as the timestamp of every record it writes, the broker refuses a timestamp that far ahead, and the instance stops. A payload dated tomorrow is a fault.
+Event time may lag the wall clock, but it may not lead the broker's clock by more than an hour. Kafka Streams forwards event time as the timestamp of every record it writes, the broker refuses a timestamp that far ahead, and the instance stops. A payload dated tomorrow is a fault. Event time may not lag by much more than a day either: the changelog topic of the window store keeps records for about a day after their timestamp, and a new instance that restores a slot older than that finds nothing to restore.
 
 Camel takes the batch route in the next section; the two meet in a table after it.
 
@@ -110,10 +110,10 @@ Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each
 | A late record | Dropped and counted | Joins the open batch |
 | Partial results | Suppressed: one final list | Never; a batch leaves when complete |
 | State | Window store and suppress buffer, with changelog topics | Rows in `shipping.pickups` |
-| 1,000 shipments, tick to last list | TBD | |
-| 1,000 shipments, producer call to last batch | | TBD |
-| Matches the oracle count per slot | TBD | |
-| Batch scenario as expected, repeated runs | | TBD(spike: 15 of 15) |
+| 1,000 shipments, tick to last list | 1.3 s (1.25 to 1.33) | |
+| 1,000 shipments, producer call to last batch | | 13.7 s (12.8 to 13.8), 201 batches |
+| Matches the oracle count per slot | 8 lists, every count equal | |
+| Batch scenario as expected, repeated runs | | 15 of 15 |
 
 The two forms answer different questions. Kafka Streams answers what was scheduled in this slot. Camel answers how to send fewer, fuller messages. In the bench, the time to the last Camel batch includes the 10-second timeout of the final partial batch, so it is not a throughput figure.
 
@@ -126,7 +126,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` sends the same shipments to both forms, closes a window with a later event time, sends a late record and recreates the service while a window and a batch are open. It prints `TBD/TBD checks passed`. Watch the Kafka Streams list leave once and the Camel batches follow the arrival order.
+`verify.sh` sends the same shipments to both forms, closes a window with a later event time, sends a late record and recreates the service while a window and a batch are open. It prints `22/22 checks passed`. Watch the Kafka Streams list leave once and the Camel batches follow the arrival order.
 
 Try one change and rerun:
 
