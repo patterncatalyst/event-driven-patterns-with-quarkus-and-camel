@@ -19,10 +19,9 @@ CAMEL_OUT=edp.shipping.order-readiness-camel
 CHANGELOG=shipping-readiness-readiness-this-join-store-changelog
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
 # Event times are in the recent past: Kafka Streams forwards event time as the record timestamp, the broker refuses a
-# timestamp more than an hour ahead of its clock, and the changelog topic of the join store keeps records for a day and
-# the window size and grace after their timestamp, then deletes them. The scenario therefore runs from a base 20 hours
-# before now, on a 15-minute boundary; its label 09:00 is that base and the last label (14:01) is 15 hours before now.
-BASE_AGE_HOURS=${BASE_AGE_HOURS:-20} # demo setting: 44 hours old event times, all checks still pass (see the README)
+# timestamp more than an hour ahead of its clock. The scenario therefore runs from a base 20 hours before now, on a
+# 15-minute boundary; its label 09:00 is that base and the last label (14:01) is 15 hours before now.
+BASE_AGE_HOURS=${BASE_AGE_HOURS:-20} # demo setting: 44 hours old event times, all 24 checks pass (see the README)
 BASE_EPOCH=$(( ($(date +%s) - BASE_AGE_HOURS * 3600) / 900 * 900 ))
 TOTAL=0
 PASSED=0

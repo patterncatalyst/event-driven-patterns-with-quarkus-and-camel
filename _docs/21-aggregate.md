@@ -66,7 +66,7 @@ An aggregation's output is a table. Each record that lands in a window emits the
 
 `suppress(untilWindowCloses(...))` holds the updates in a buffer and emits only the last value for each window, when the window closes. The warehouse sees one list per carrier per slot, marked `closedBy: window`. With `PICKUP_EMIT=updates` (demo code) the suppression is removed and every update leaves.
 
-The buffer is unbounded and in memory, so it holds every open window until it closes; one list per carrier per slot is small, and its own changelog topic restores it after a restart. The cost is the latency already named: nothing leaves before the slot's end plus the grace.
+The buffer is unbounded and in memory, so it holds every open window until it closes; one list per carrier per slot is small, and a changelog topic of its own backs it. The cost is the latency already named: nothing leaves before the slot's end plus the grace.
 
 ## Late records
 
@@ -101,7 +101,7 @@ A batch per carrier closes at 5 shipments or after 10 seconds without a new one,
 
 A late record is no special case. It joins whatever batch is open when it arrives, so the shipment stamped 09:05 that Kafka Streams dropped leaves on a batch of its own. An out-of-order shipment sits in the batch with its neighbours in arrival order, with shipments from the next slot.
 
-Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and rearms their timeouts counted from the restart. The in-memory default would lose them, as chapter 20 showed. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
+Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and their timeouts. The in-memory default would lose them, as chapter 20 showed. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
 
 | | Kafka Streams | Camel Aggregator |
 |---|---|---|
@@ -151,7 +151,7 @@ Neither form fits a count or a sum that a reader may poll at any moment. That is
 
 - Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html), Addison-Wesley, 2003: Aggregator
 - Apache Kafka, [Kafka Streams core concepts](https://kafka.apache.org/42/streams/core-concepts/) (event time, stream time, grace and out-of-order records), [DSL API](https://kafka.apache.org/42/streams/developer-guide/dsl-api/) (windowing and suppression), [configuration](https://kafka.apache.org/42/streams/developer-guide/config-streams/) (`commit.interval.ms`, `statestore.cache.max.bytes`) and [monitoring](https://kafka.apache.org/42/operations/monitoring/) (`dropped-records-total`)
-- Apache Kafka, [Kafka Streams Javadoc](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/TimeWindows.html): `TimeWindows.ofSizeAndGrace` and `Suppressed.untilWindowCloses`
+- Apache Kafka, [Kafka Streams Javadoc](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/TimeWindows.html) for `TimeWindows.ofSizeAndGrace` and [Suppressed](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/Suppressed.html) for `untilWindowCloses`
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/guides/kafka-streams)
 - Apache Camel, [Aggregate EIP](https://camel.apache.org/components/4.22.x/eips/aggregate-eip.html) and [SQL component](https://camel.apache.org/components/4.22.x/sql-component.html) (the aggregation repository)
 - Apache Camel Quarkus, [SQL extension](https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/sql.html)

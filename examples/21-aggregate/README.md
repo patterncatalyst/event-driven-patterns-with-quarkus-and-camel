@@ -77,7 +77,7 @@ Each row changes a single thing and names the checks that fail.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `PICKUP_EMIT=updates ./verify.sh` (demo code) | Every update of a list leaves, so the output holds partial lists with `closedBy` set to `update` | 5, 7, 8, 9, 10, 13 and 15 (14 of 22 pass) | The slot 19:30 holds three partial lists, with 1, 2 and 3 shipments, and the bench hour emits 1,000 lists instead of 8. Check 19 passes: the last update still has all five |
+| `PICKUP_EMIT=updates ./verify.sh` (demo code) | Every update of a list leaves, so the output holds partial lists with `closedBy` set to `update` | 5, 7, 8, 9, 10, 13, 15 and 19 (14 of 22 pass) | After the recreate the slot 19:30 holds five partial lists, with 1 to 5 shipments, and the bench hour emits 1,000 lists instead of 8. Check 19 fails: the list with count 5 is there, but it is not the only list for the slot |
 | `PICKUP_CHANGELOG=off ./verify.sh` (demo code) | The window store has no changelog, so the recreate loses the three shipments of the open window and the list holds the two that came after | 17 and 19 (20 of 22 pass) | The only list of slot 19:30 is FASTLINE with count 2, RS4 and RS5 |
 | `BASE_AGE_HOURS=44 ./verify.sh` (demo setting) | The scenario's event times are 44 hours old, beyond what the changelog topic keeps | 19 (21 of 22 pass) | The changelog topic has nothing to restore, and the only list of slot 19:30 holds RS4 and RS5 |
 
@@ -86,48 +86,3 @@ Timing witnesses. Check 4 (the Camel batches of 5, 2 and 3) passed in every fres
 Bench (1,000 shipments, 17 fresh runs): Kafka Streams emitted exactly 8 lists, last one a median of 1.3 s after the tick (range 1.25 to 1.33 s); Camel emitted 201 batches in every run, 200 by size and 1 by timeout, the last a median of 13.7 s after the producer call (range 12.8 to 13.8 s), which includes the 10 s timeout of the last partial batch.
 
 `REPEAT=n`, the 7 + 3 scenario of step 2 repeats n times (n up to 15) at later event times after the bench, and one extra line `PASS R` or `FAIL R` reports how many runs gave the expected batches. It is outside the numbered checks.
-
-## Layout
-
-| Path | Purpose |
-|---|---|
-| `shipping-service/.../ShipmentScheduled`, `HasEventTime`, `PayloadTimestampExtractor` | The input record and the event-time extractor |
-| `shipping-service/.../PickupTopology` | The Kafka Streams topology: tumbling window with grace, suppression, one list per carrier per slot |
-| `shipping-service/.../PickupBatchRoute` | The Camel route: aggregate per carrier, size or timeout, open batches in PostgreSQL |
-| `shipping-service/.../PickupRepository` | The `PostgresAggregationRepository` bean over the Agroal datasource |
-| `shipping-service/.../PickupList` | The output record both forms write |
-| `shipping-service/src/main/resources/db/migration/V1__pickups.sql` | The two tables of the Camel aggregation repository |
-| `bench.py` | The 1,000-shipment input and its oracle (the expected count per carrier and slot) |
-| `compose.yaml` | Topics and the service |
-
-## Tests and checks in detail
-
-The Maven build runs 15 tests. Ten use the Kafka Streams test driver, with no broker: one final list per carrier per slot once the window closes, the window staying open through the grace and closing after it, an out-of-order record inside the grace landing in its own slot, a record after the close dropped and counted, every update leaving without the suppression, an idle stream emitting nothing however long the wall clock runs, the slot following the payload and not the record timestamp, one list per carrier, the names of the stores and the repartition topic, and hopping windows counting each shipment three times (comparison code). Five run the service against PostgreSQL and Kafka from Dev Services: a batch of 5 by size and the remainder by timeout, a batch never mixing carriers, the batch key being the carrier, the open batch being a row in PostgreSQL until it closes, and both forms on the same input.
-
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the shipments in the owners' record format, and prints `22/22 checks passed`.
-
-The checks read the effects:
-
-- Both outputs are read as one line per record: carrier, slot, count, what closed it and the sorted ids, so a second list for the same slot shows up as a second line.
-- Before the tick, the Kafka Streams output is empty. After it, it holds exactly the two lists of slot 09:00 and nothing else.
-- The dropped record is proved by the Prometheus counter, not only by its absence from the output. The Micrometer binder rebinds the Kafka Streams meters about once a minute, so the check polls for up to 90 seconds.
-- The restart scenario uses the changelog end offset and the row in `shipping.pickups` as preconditions, so a result is never an effect of nothing having been stored.
-- Every recreate waits for liveness and for the Camel partition before the next record, and the outputs are polled, never slept on. The Kafka Streams consumer and the Camel consumer use a 10-second session timeout and a 3-second heartbeat, so a recreated instance takes its partitions back in seconds.
-
-## Experiments
-
-Each row changes a single thing and names the checks that fail.
-
-| Switch | Effect | Failing checks | Measured result |
-|---|---|---|---|
-| `PICKUP_EMIT=updates ./verify.sh` (demo code) | Every update of a list leaves, so the output holds partial lists with `closedBy` set to `update` | 5, 7, 8, 9, 10, 13 and 15 (14 of 22 pass) | The slot 19:30 holds three partial lists, with 1, 2 and 3 shipments, and the bench hour emits 1,000 lists instead of 8. Check 19 passes: the last update still has all five |
-| `PICKUP_CHANGELOG=off ./verify.sh` (demo code) | The window store has no changelog, so the recreate loses the three shipments of the open window and the list holds the two that came after | 17 and 19 (20 of 22 pass) | The only list of slot 19:30 is FASTLINE with count 2, RS4 and RS5 |
-| `BASE_AGE_HOURS=44 ./verify.sh` (demo setting) | The scenario's event times are 44 hours old, beyond what the changelog topic keeps | 19 (21 of 22 pass) | The changelog topic has nothing to restore, and the only list of slot 19:30 holds RS4 and RS5 |
-
-Timing witnesses. Check 4 (the Camel batches of 5, 2 and 3) passed in every fresh run: 23 normal runs from fresh containers, each with all of its checks run.
-
-Bench (1,000 shipments, 17 fresh runs): Kafka Streams emitted exactly 8 lists, last one a median of 1.3 s after the tick (range 1.25 to 1.33 s); Camel emitted 201 batches in every run, 200 by size and 1 by timeout, the last a median of 13.7 s after the producer call (range 12.8 to 13.8 s), which includes the 10 s timeout of the last partial batch.
-
-Defect found and fixed in the window: the first version of `verify.sh` used yesterday's date. From 19:50 UTC the slot 19:30 of that day was more than a day old, the changelog topic had dropped it, and check 19 failed in 2 of 4 runs made after that hour (count 2). The scenario now runs from a base 20 hours before now. Fifteen runs before that hour had passed, which is why the rate looked like 100 percent.
-
-`REPEAT=n` repeats the 7 + 3 scenario n times inside one run and reports `PASS R` or `FAIL R`; it was not used in the runs above.

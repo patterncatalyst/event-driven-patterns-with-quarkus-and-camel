@@ -38,7 +38,7 @@ reserved.leftJoin(paid, Readiness::of,
 
 A payment within 30 minutes of the reservation, in either direction, matches and gives `ReadyToShip`. The five minutes of grace admit a record that is late in event time. A reservation that finds no payment leaves as `PaymentOverdue`, with a null payment passed to the join function. Both source streams read their timestamp from the payload with a `PayloadTimestampExtractor`, so the window is measured on when the facts happened.
 
-Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). Streams does not check this for a stream-stream join. With three partitions on reservations and two on payments the instance starts, reports healthy and matches only the orders whose two records happen to share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
+Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway, reported healthy and matched only the orders whose two records happen to share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
 
 Camel has no join. It has the Aggregator, correlated here on the record key:
 
@@ -72,7 +72,7 @@ A real service runs one of the two. The example runs both on the same input, eac
 
 ## Event time and arrival time
 
-Kafka Streams orders by the timestamp its extractor returns. A record's own timestamp is the time it reached Kafka. A record that went through an outbox (chapter 8) or a replay carries the time it was published, not the time its fact happened, so the extractor reads `occurredAt` from the payload and falls back to the record timestamp when there is none.
+Kafka Streams orders by the timestamp its extractor returns. The record timestamp is whatever the producer set, by default the time it created the record, so a record that went through an outbox (chapter 8) or a replay can carry a time later than its fact. The extractor reads `occurredAt` from the payload and falls back to the record timestamp when there is none.
 
 Camel never reads `occurredAt`. The completion timeout is the time a group has been inactive, counted on the clock of the service. **The Camel form approximates the window by arrival time, not event time.** Where records arrive close to when they happened, the two clocks agree and the aggregator is the smaller piece of code. Where they do not, the forms disagree, and two crafted pairs show it in opposite directions.
 

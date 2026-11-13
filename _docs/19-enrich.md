@@ -44,9 +44,9 @@ from("kafka:" + Topics.SHIPPING_SCHEDULED + "?groupId=notification-enricher-came
 ```
 {% endraw %}
 
-`enrich` calls the endpoint and hands the original message and the answer to an `AggregationStrategy`. `CarrierEnrichment` reads the answer as a `CarrierReference` and calls `Enrichment.merge`, the one function both forms use, which fills the carrier mode and replaces `{trackingNumber}` in the template. The key is set through a header; a `key` option written with a header expression on the producer URI would write the expression text as the key.
+`enrich` calls the endpoint and hands the original message and the answer to an `AggregationStrategy`. `CarrierEnrichment` reads the answer as a `CarrierReference` and calls `Enrichment.merge`, the one function both forms use, which fills the carrier mode and replaces `{trackingNumber}` in the template. The key is set through the `CamelKafkaKey` header (`KafkaConstants.KEY`); a `key` option on the endpoint would take precedence over the header.
 
-A failed call is retried three times, and then the exchange fails. With `breakOnFirstError` the consumer seeks back to the failed record and reads it again, so the offset stays where it was until the call succeeds. The record is neither lost nor skipped, and the records behind it wait.
+A failed call is retried three times, and then the exchange fails. With `breakOnFirstError` the consumer retries the failed record instead of polling the next one, so the group's offset stays on it until the call succeeds. The record is neither lost nor skipped, and the records behind it wait.
 
 ## The same enrichment as a stream-table join
 
@@ -81,7 +81,7 @@ Neither form revises an earlier output. A message already written holds the link
 
 ## When the owner is down
 
-With `shipping-service` stopped, the lookup cannot answer. The route retries, the consumer seeks back to the failed record, the offset stays put and the group shows a lag of one. Nothing is lost, nothing behind it moves, and when the owner returns the record is enriched about three seconds after the owner was started again. The join does not notice. It enriches from the local copy and goes on, with data as old as the last record it read.
+With `shipping-service` stopped, the lookup cannot answer. The route retries, the consumer stays on the failed record, the offset stays put and the group shows a lag of one. Nothing is lost, nothing behind it moves, and when the owner returns the record is enriched about three seconds after the owner was started again. The join does not notice. It enriches from the local copy and goes on, with data as old as the last record it read.
 
 `breakOnFirstError=false` removes the guard. The consumer commits past the failed record and carries on, and the record is never enriched. The failure is silent and permanent, which is why the guard is the first thing to check in an enricher that calls out.
 
