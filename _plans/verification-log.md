@@ -443,3 +443,67 @@ Final serial run 2026-11-12/13 (`<scratchpad>/final-r07.log`, `f7-*.log`), one `
 - Guard-off now has five runs: checks 18, 26 and 27 failed in all five, check 24 in four; four runs 25/29, one 26/29 (`w16-guardoff1.log` to `w16-guardoff3.log`, `f7-x16-guardoff.log`, `f7b-x16-guardoff.log`). Chapter 16, its README and claim 16-bo updated.
 - Claims repointed: 16-ax (:116), 16-bn (:143), 16-z (KafkaConstants.TOPIC, OrderViewRoute.java:19-54), 16-p (OrderViewProjector.java:29-104), 17-e (r1-17 replay medians 15, 77, 586 ms), 17-bu (994 ms; r1 runs 994, 994, 995). Chapter 17 rebuild sentence and README line reworded.
 - Figure 18.2 (`18-outbox-avro-bytes`): Router box narrowed and the dashed registry edge moved to x=890, clear of the box; only that spec regenerated.
+
+## r08 final serial run (2026-11-13)
+
+Steps 4 and 5 combined: one serial pass over domain-model and examples 00 to 21, each `mvn -B verify` and each `./verify.sh` as its own hold of the stack lock, fresh containers per run (`verify.sh` starts with `down -v` and `up --force-recreate --renew-anon-volumes`), no `edp-*` container left after any run. Logs are `<scratchpad>/f8-NN-mvn.log` and `<scratchpad>/f8-NN-run.log`; experiments are `<scratchpad>/f8-NN-exp-<name>.log`. Image `grafana/otel-lgtm` is 0.41.0 in every run. No failure, so no re-run was needed.
+
+| Example | mvn verify tests (BUILD SUCCESS) | verify.sh |
+|---|---|---|
+| domain-model | install, BUILD SUCCESS | |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7 + 4 | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 27/27 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 40/40 |
+| 11 | 7 | 29/29 |
+| 12 | 3 | 21/21 |
+| 13 | 7 | 31/31 |
+| 14 | 27 | 33/33 |
+| 15 | 13 | 27/27 |
+| 16 | 14 | 29/29 |
+| 17 | 16 | 22/22 |
+| 18 | 19 + 3 | 21/21 |
+| 19 | 3 + 10 | 20/20 |
+| 20 | 18 | 24/24 |
+| 21 | 15 | 22/22 |
+
+Experiments of chapters 19 to 21, each once from clean on the final scripts; the failing sets equal the chapter and README statements:
+
+| Experiment | Result | Failing checks | Log |
+|---|---|---|---|
+| 19 `CAMEL_BREAK_ON_FIRST_ERROR=false` | 18/20 | 12, 13 | `f8-19-exp-break-false.log` |
+| 20 `AGGREGATION_REPOSITORY=memory` | 21/24 | 18, 20, 21 | `f8-20-exp-repo-memory.log` |
+| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (O-2005 overdue after 15,080 ms) | `f8-20-exp-timeout-30000.log` |
+| 20 `BASE_AGE_HOURS=44` | 24/24 | none | `f8-20-exp-base-age-44.log` |
+| 21 `PICKUP_EMIT=updates` | 14/22 | 5, 7, 8, 9, 10, 13, 15, 19 (bench 1,000 lists) | `f8-21-exp-emit-updates.log` |
+| 21 `PICKUP_CHANGELOG=off` | 20/22 | 17, 19 (slot 19:30 holds RS4, RS5) | `f8-21-exp-changelog-off.log` |
+| 21 `BASE_AGE_HOURS=44` | 21/22 | 19 (slot 19:30 holds RS4, RS5) | `f8-21-exp-base-age-44.log` |
+
+Try bullets of earlier chapters that no earlier log backed, run once from clean:
+
+| Experiment | Result | Failing checks | Log |
+|---|---|---|---|
+| 03 `ORDER_EVENTS_ATTACHMENT=inline` | 22/30 | 2, 7, 9, 10, 19, 21, 22, 23 | `f8-03-exp-attachment-inline.log` |
+| 05 `PUBLISHER_LINGER_MS=0 PUBLISHER_BATCH_SIZE=0 PUBLISHER_COMPRESSION=none` | 20/24 | 14, 15, 16, 20 | `f8-05-exp-tuning-off.log` |
+| 11 `CAMEL_TRANSACTED=false` | 27/29 | 23, 25 | `f8-11-exp-camel-transacted-false.log` |
+| 12 `PAYMENT_MODE=camel-transacted` | 12/21 | 4, 5, 8 to 13, 21 | `f8-12-exp-camel-transacted.log` |
+| 13 `FAILURE_STRATEGY=fail` | 16/31 | 4, 6, 7, 9 to 14, 16, 24 to 28 | `f8-13-exp-failure-fail.log` |
+| 14 `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 | `f8-14-exp-reappend.log` |
+
+Bench values (one run each; the chapter tables carry the medians of 15 or 17 earlier runs):
+
+| Chapter | Final run | Stated |
+|---|---|---|
+| 19 burst of 500, producer call to last record | Streams 2,535 ms, Camel 6,354 ms, 500 lookups | 2.5 s (2,496 to 2,560 ms), 6.4 s (6,365 to 6,441 ms); Camel 11 ms below the stated range, rounds to 6.4 s |
+| 20 time to 200 ReadyToShip | Streams 2,590 ms, Camel 3,111 ms, 200 records each, peak 40 open groups | about 2.6 s, about 3.1 s, peak 25 to 50 |
+| 20 O-2005 Camel PaymentOverdue | 11,049 ms | 10.05 to 11.07 s |
+| 21 1,000 shipments | Streams 8 lists, last 1,302 ms after the tick; Camel 201 batches (200 by size, 1 by timeout), last 12,825 ms | 1.3 s (1.25 to 1.33); 13.7 s (12.8 to 13.8), 201 batches |
+
+Claims: 52 of the 53 pending `NN-r08-*` rows are verified against these logs; 08-r08-c (remove the Debezium routing lines) stays pending because its experiment needs a source edit and was not run.
