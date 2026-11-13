@@ -23,7 +23,7 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 MAX_WORDS = 2500
-MAX_BRO_WORDS = 150
+MAX_BRO_WORDS = 250  # soft cap (warning), owner 2026-11-13
 MAX_BRO_BULLETS = 3
 BRO_HEAD = "## Build, run, observe"
 CHECKNUM_RE = re.compile(r"\bchecks? \d+|\b\d+ of \d+ runs\b|\bin \d+ runs\b", re.I)
@@ -253,10 +253,10 @@ def check_bro(rep: Report, p: Path, plines, off: int):
         return
     words = len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(t for _, t in sec)))
     if words > MAX_BRO_WORDS:
-        rep.err(p, start + off, f"'{BRO_HEAD}' has {words} prose words, limit {MAX_BRO_WORDS}")
+        rep.warn(f"{p.relative_to(rep.root)}:{start + off}: '{BRO_HEAD}' has {words} prose words, soft cap {MAX_BRO_WORDS}")
     bullets = [i for i, t in sec if re.match(r"\s*[-*] ", t)]
     if len(bullets) > MAX_BRO_BULLETS:
-        rep.err(p, start + off, f"'{BRO_HEAD}' has {len(bullets)} bullets, limit {MAX_BRO_BULLETS}")
+        rep.warn(f"{p.relative_to(rep.root)}:{start + off}: '{BRO_HEAD}' has {len(bullets)} bullets, soft cap {MAX_BRO_BULLETS}")
     for i, t in sec:
         m = CHECKNUM_RE.search(t)
         if m:
@@ -541,17 +541,19 @@ def self_test() -> int:
         results.append(("second callout caught", any("exactly one" in x for x in e), e))
 
         r = build("bro")
-        long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 151) + "\n"
+        long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 251) + "\n"
         (r / "_docs/01-demo.md").write_text(good_doc + long_bro)
-        e = run(r).errors
-        results.append(("151-word build section caught", any("prose words, limit 150" in x for x in e), e))
+        rr = run(r)
+        results.append(("251-word build section warned, not failed",
+                        any("soft cap 250" in x for x in rr.warnings) and not any("Build, run" in x for x in rr.errors),
+                        rr.errors + rr.warnings))
 
         r = build("bro-ok")
-        ok_bro = ("\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 144)
+        ok_bro = ("\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 244)
                   + "\n\n- Try one.\n- Try two.\n- Try three.\n")
         (r / "_docs/01-demo.md").write_text(good_doc + ok_bro)
         e = run(r).errors
-        results.append(("150-word build section with three bullets allowed", not any("Build, run" in x for x in e), e))
+        results.append(("250-word build section with three bullets allowed", not any("Build, run" in x for x in e), e))
 
         r = build("bro-check")
         (r / "_docs/01-demo.md").write_text(good_doc + "\n## Build, run, observe\n\nOnly check 12 fails.\n")
