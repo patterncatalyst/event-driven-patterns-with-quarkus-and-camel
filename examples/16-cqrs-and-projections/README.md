@@ -57,11 +57,26 @@ The hash covers every row except `O-1604`, whose final state is what checks 18 a
 | `order-service/src/main/resources/db/migration/V1__order_view.sql` | The view table, its customer index and the shipment rank function |
 | `compose.yaml` | Topics and the service |
 
+## Tests and checks in detail
+
+The Maven build runs 14 tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived from the facts a row holds, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `29/29 checks passed`.
+
+The checks read the effects:
+
+- One order moves through PLACED, PAID, SHIPPED and DELIVERED as its five events are produced one at a time, with its customer, amount, carrier and tracking number; the customer's list holds that order and no one else's.
+- With the delivered channel paused, the group has lag 1, five reads over five seconds all return SHIPPED with an `asOf` older than the delivered record, and after resume the order is DELIVERED and the lag is 0. Prometheus holds `order_view_lag_max_milliseconds`, at least as large as the pause.
+- With the in-transit channel paused, `ShipmentDelivered` is applied first and `ShipmentInTransit` last, and the order stays DELIVERED.
+- A shipment for an order with no row creates a partial row with no customer, and the later `OrderPlaced` lists it under its customer.
+- 1,250 records converge, and the 95th percentile of `order.view.lag` is below 2 s.
+- Stopping the service, resetting all six groups to the earliest offset and starting it again leaves the view's hash unchanged.
+- With the view emptied and the `camel-projector` profile, one group owns the six partitions and builds the same hash.
+
 ## Experiments
 
-Each one changes a single thing and names the checks that fail. The run records are in `_plans/verification-log.md`.
+Each row changes a single thing and names the checks that fail.
 
-| Change | What it shows | Checks that fail |
-|---|---|---|
-| `PROJECTION_GUARD=off ./verify.sh` | `ShipmentInTransit` applied after `ShipmentDelivered` moves `O-1604` back to IN_TRANSIT, and SHIPPED is what a reader sees. The replay and the Camel route also land on a different view, because without the guard the last shipment event applied wins and a second reader of the three shipment topics applies them in a different interleaving (in a recorded run, 252 of the 254 other orders went from DELIVERED back to SCHEDULED) | 18, 26 and 27 in all five runs, 24 in four of the five (four runs ended 25 of 29, one ended 26 of 29) |
-| `PROJECTOR_DELAY_MS=50 ./verify.sh` | The burst arrives faster than the projector applies it, so lag grows with the backlog. The 95th percentile of lag is 12,881 ms against 318 to 334 ms without the delay, and the burst still converges within 60 s | 23 (28 of 29 pass) |
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `PROJECTION_GUARD=off ./verify.sh` (demo code) | The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. `ShipmentInTransit` applied after `ShipmentDelivered` moves `O-1604` back to IN_TRANSIT. The replay and the Camel route also land on a different view | 18, 26 and 27 in all five runs, 24 in four of the five | In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Four runs ended 25 of 29 and one ended 26 of 29 |
+| `PROJECTOR_DELAY_MS=50 ./verify.sh` (demo code) | The burst outruns the projector, so lag grows with the backlog; the burst still converges within 60 s | 23 | 95th percentile of lag 12,881 ms against 318 to 334 ms without the delay; 28 of 29 pass |
+

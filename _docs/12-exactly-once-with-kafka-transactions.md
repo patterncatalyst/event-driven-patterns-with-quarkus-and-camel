@@ -91,21 +91,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against a Kafka broker from Dev Services: five inputs give exactly five payments to a `read_committed` reader, an aborted transaction leaves its record in the log and out of the `read_committed` view, and the input offset is committed together with the output. `verify.sh` starts Kafka, the LGTM stack and the service, and prints `21/21 checks passed`.
+`verify.sh` crashes the service in the middle of a burst of orders and reads the output with `read_committed` and `read_uncommitted` readers. It prints `21/21 checks passed`. Watch the committed view hide the open transaction, and show each order once after the restart.
 
-The checks read the effects, not the exit codes:
+Try one change and rerun:
 
-- Five orders `O-5001` to `O-5005` produce exactly five payments for a `read_committed` reader, one per order, keyed by the order id, with payment id `P-O-5001` and so on, status `COMPLETED` and the amount of the input. The group `payment-service` has committed offset 5, and `kafka-transactions.sh describe` shows `payment-service-tx` as `CompleteCommit`.
-- With the crash switch set for `O-5108`, ten orders `O-5101` to `O-5110` are produced in one burst. The container exits with 137, and a `read_uncommitted` reader sees the seven payments written before the crash in the recorded runs: the open transaction wrote them. A `read_committed` reader sees none of the ten, and the group is still at offset 5.
-- After a restart without the switch, a `read_committed` reader sees all ten orders, each exactly once, within 30 seconds of the restart, and under 55 seconds after the crash was detected, so the transaction timeout of 60 seconds had not run out. In the recorded runs it took 14 seconds from the restart and 28 to 33 from the crash. The restarted producer fenced the old one and aborted its transaction, so nothing waited for the timer. A `read_uncommitted` reader sees the ten plus the seven aborted copies, and the group is at offset 15.
-- The comparison runs the Camel route with the crash at `O-6008`. After the crash a `read_committed` reader already sees payments for some of `O-6001` to `O-6007`, and the group has not committed past `O-6008`. After the restart every order has a payment and at least one of the first seven has two committed; in the recorded run each of the seven had two.
-- A trace and logs for `payment-service` reach Tempo and Loki, and Prometheus holds the transaction commit time of its producer.
-
-Change one thing and watch a guard fail:
-
-- Run `PAYMENT_MODE=camel-transacted ./verify.sh`. The main phase runs on the Camel route. Checks 6 and 7 still pass, proving the crash and the partial write, and check 10 fails, with checks 4, 5, 8, 9, 11, 12, 13 and 21 failing beside it (12 of 21 pass): the Camel route uses a different group and transactional id, and each exchange commits on its own, so a `read_committed` reader already sees the first seven payments while the service is down. Check 21 fails because the transaction commit time it reads belongs to the transactional producer of the SmallRye channel, which commits no transaction in that mode.
-- Run the stack with `TX_TIMEOUT_MS=10000` and the crash switch set, produce the burst, and leave the service down. `kafka-transactions.sh describe` shows the transaction `Ongoing`, and the coordinator aborts it 16 seconds after the crash was detected, in each of two runs. A `read_committed` reader sees nothing of the batch before or after, and a `read_uncommitted` reader still sees the seven written records.
-- Read the output with the console consumer's default isolation level after the restart. The seven orders written before the crash then appear twice: aborted records are in the log, and the default reader returns them.
+- `PAYMENT_MODE=camel-transacted ./verify.sh`: each exchange commits on its own, so a `read_committed` reader sees part of the batch while the service is down.
+- `TX_TIMEOUT_MS=10000` with the crash switch set and the service left down: the coordinator aborts the open transaction and a `read_committed` reader sees none of the batch.
+- Read the output with the console consumer's default isolation level after the restart: the orders written before the crash appear twice.
 
 ## When not to use it
 

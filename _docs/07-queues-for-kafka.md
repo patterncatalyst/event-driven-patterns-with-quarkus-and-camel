@@ -102,23 +102,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `27/27 checks passed`.
+`verify.sh` runs four workers on a share group and publishes 30 jobs, then runs the same jobs through a consumer group. It prints `27/27 checks passed`. Watch later jobs finish while the slow job is still running on the share group and wait behind it on the consumer group.
 
-The jobs are published with producer batching turned off, so every job is its own record batch. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 16 run on the share group's rows, which come from four workers sharing three partitions:
+Try one change and rerun:
 
-- Twenty-nine jobs are sent, once each, and the bounce job is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
-- The slow job took at least the gateway's slow time, at least half of the later jobs of its partition finished before it, and the last of them finished no more than 3 seconds after it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
-- The bounce job is not delivered again after the lock duration has passed, and `kafka-share-groups.sh --describe` lists four members.
-
-Checks 18 to 27 run the same jobs through the consumer group. The workers are replaced with `DELIVERY_MODE=group`, and once the four members hold their partitions the same 30 jobs are published again. The retry and bounce outcomes are the same. The control relation is the opposite of check 9: no later job of the slow job's partition finishes before the slow job, each partition was delivered by one worker, and exactly three of the four workers delivered, because the fourth owns no partition.
-
-Change one thing and watch a guard fail:
-
-- Export `DELIVERY_MODE=group` before `./verify.sh`. The first run now delivers through the consumer group, so the share relations have nothing to hold on: check 9 fails because no later job finishes before the slow one, and check 16 fails because the share group has no members. Checks 4 to 8 and 10 to 15, which read the share rows, fail with it, and checks 20 to 22 fail because both runs wrote group rows. Check 12 is the share-only counterpart of check 26: it asks for a partition delivered by two or more workers, and a consumer group has none.
-- Export `SEED_LINGER_MS=500` before `./verify.sh`. The jobs of each partition are now written as one producer batch. Checks 9 and 12 fail: the worker that receives the slow job's batch acquires all twelve jobs behind it and runs them after the slow one, and every partition is delivered by a single worker.
-- Export `RETRY_MAX_WAIT=30` and `POLL_TIMEOUT_MS=1000`, the connector's defaults. Checks 9 and 10 fail: workers wait longer and longer between jobs, so few later jobs finish before the slow one and its partition is done more than a minute after it.
-- Export `SHARE_RECORD_LOCK_MS=15000` and `GATEWAY_SLOW_MS=20000`. The slow job now runs longer than the lock, and every check still passes: the connector renews the lock while the job runs, and the job is delivered once, with delivery count 1.
-- Export `SHARE_ACQUIRE_MODE=record_limit`. Each worker then acquires at most one record per fetch, whatever the batch. Every check still passes, because with one job per batch the default mode acquires one record as well.
+- `DELIVERY_MODE=group ./verify.sh`: the first run delivers through the consumer group, so the share relations have nothing to hold on and the share group has no members.
+- `SEED_LINGER_MS=500 ./verify.sh`: each partition's jobs are one producer batch, and the worker that receives the slow job's batch runs the jobs behind it afterwards.
+- `SHARE_RECORD_LOCK_MS=15000 GATEWAY_SLOW_MS=20000 ./verify.sh`: the slow job outlasts the lock, the connector renews it and the job is delivered once.
 
 ## When not to use it
 

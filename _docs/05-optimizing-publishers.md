@@ -116,17 +116,13 @@ mvn -B verify
 ./bench.sh
 ```
 
-The Maven build runs six tests against Kafka from Dev Services with three partitions: every profile publishes every order exactly once, the tuned route sends more records per request than the unbatched route, one caller never fills a batch, each producer is metered under its own client id, an unknown profile is rejected, and latency is recorded per profile. `verify.sh` starts Kafka, the LGTM stack and `order-service`, bursts 20,000 orders through each route, and prints `24/24 checks passed`. Checks 1 and 2 confirm the partitions and the health of `order-service`. Checks 3 to 11 confirm that each route's burst reached the topic exactly once and that the producer's own counters agree. Checks 12 to 22 are the relations and their preconditions, and checks 23 and 24 find a trace in Tempo and a log line in Loki. `bench.sh` writes `results/bench-<date>.csv` and a summary of medians and ranges.
+`verify.sh` bursts 20,000 orders through each publisher route and prints `24/24 checks passed`; `bench.sh` writes the timings to `results/`. Watch the tuned route send more records per request than the unbatched one.
 
-Change one thing and watch a guard fail:
+Try one change and rerun:
 
-- Remove `&producerBatchSize=0` from `UnbatchedPublishRoute`. Check 12 fails: the control now sends about ten times as many records per request, and every other check still passes.
-- Set `PUBLISHER_LINGER_MS=0`, `PUBLISHER_BATCH_SIZE=0` and `PUBLISHER_COMPRESSION=none`, so the tuned route has no tuning. Checks 14, 15, 16 and 20 fail: records per request, bytes per record, the `lz4` batches in the broker's log, and the 100 callers on the same route.
-- Add `&lingerMs=0&producerBatchSize=0` to `DefaultPublishRoute`. Check 13 fails.
-- Run the one-caller step with 100 callers instead of one. Check 19 fails.
-- Start with `REQUIRED_ACKS=1 ENABLE_IDEMPOTENCE=false`. Check 17 fails, because batches without a producer id appear before the recreate.
-- Make the recreate keep `acks=all` and idempotence. Check 22 fails, because no batch lacks a producer id.
-- Start with `REQUIRED_ACKS=1` alone. `order-service` does not start: the route fails with `Must set acks to all in order to use the idempotent producer`.
+- Remove `&producerBatchSize=0` from `UnbatchedPublishRoute`: the control sends about ten times as many records per request.
+- `PUBLISHER_LINGER_MS=0 PUBLISHER_BATCH_SIZE=0 PUBLISHER_COMPRESSION=none ./verify.sh`: the tuned route has no tuning left and loses its batches and compression.
+- `REQUIRED_ACKS=1 ./verify.sh`: `order-service` does not start, because the idempotent producer needs `acks=all`.
 
 ## When not to tune
 

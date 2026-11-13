@@ -36,6 +36,20 @@ docker compose down -v
 
 The event-type runs fail loudly, before asserting anything else, if the `Scheduled` and `Delivered` partitions are owned by the same replica.
 
+## Tests and checks in detail
+
+The Maven build runs twelve tests across both services against Kafka and PostgreSQL from Dev Services, with three partitions. Four of them compute the expected partition of every key with Kafka's own murmur2 and compare it with the placement the broker reports, for all three strategies; the others cover arrival order and the buffer, including two replicas that handle the same order at the same moment, repeated 20 times. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack, `shipping-service` and two `order-service` replicas, runs the stalled-replica order under four configurations and prints `28/28 checks passed`. When the Scheduled and Delivered partitions of an event-type run belong to the same replica, the pause cannot change the order in which events are applied, so the script stops with an error instead of reporting a pass. It also records how long each replica was paused and checks that every pause stayed under the 45 second session timeout.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `SHIPPING_PARTITION_KEY=event-type ./verify.sh` | The first run spreads the order across partitions: the three events no longer share the key's partition, and the unpaused replica applies events while the other is paused | 3 and 5; 6, 7 and 9 may fail as well, depending on which replica owns the partition of the order id | - |
+| Compare the third and fourth runs | They differ only in `RESEQUENCE=true`: the third ends SHIPPED with Delivered applied first, the fourth ends DELIVERED in lifecycle order | - | - |
+| `RESEQUENCE=true ./verify.sh` | The buffer is on in the event-type run as well, so the negative witness stops failing: the order no longer ends SHIPPED | 14, 15 and 16 | - |
+
 ## Layout
 
 | Path | Purpose |

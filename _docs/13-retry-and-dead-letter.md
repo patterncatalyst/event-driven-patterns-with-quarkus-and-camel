@@ -122,24 +122,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 7 tests cover a truncated record that reaches the dead letter topic with its bytes, its source topic and its source offset, an invalid record attempted once, a locked row retried until it is free, `fail` stopping the channel, and the Camel route dead-lettering with the original body. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `31/31 checks passed`.
+`verify.sh` produces six records, some of them malformed, while one SKU is locked, then repeats the run on the Camel route. It prints `31/31 checks passed`. Watch the dead letter topic gain the malformed records with their original bytes, and the order on the locked SKU retried until the lock is released.
 
-The checks read the effects:
+Try one change and rerun:
 
-- With `SKU-14` locked for twelve seconds and the six records produced in one batch, `O-7004` is attempted more than once while the lock is held, and `SKU-14` and `SKU-15` both still hold 100: `O-7005` waits. After the lock is released `SKU-14` and `SKU-15` hold 99, and `SKU-11` holds 99 for `O-7001`.
-- The dead letter topic holds `O-7002` and `O-7006` with exactly the bytes that were sent. `O-7002` names `edp.orders.placed` and the offset it had there. `O-7003` carries its original bytes, source topic and offset, names the quantity rule in its reason and was attempted once. Three records are on the topic, none a valid order.
-- The consumer group has no lag, so the offsets of the dead-lettered records were committed.
-- The service restarts with the `camel` profile, `SKU-14` is locked again and the same six records are produced. The route redelivers `O-7004` while the lock is held, the stock ends as before, and the dead letter topic gains the same three records.
-- A trace and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds the records consumed by its Kafka consumer.
-
-Change one thing and watch a guard fail:
-
-- Run `FAILURE_STRATEGY=fail ./verify.sh`. The channel stops at `O-7002`, whose offset is never committed (the group stays at offset 1 with 5 records of lag), `SKU-15` stays at 100 and no dead letter is written. Readiness answers 503. Checks 4, 6, 7, 9 to 14, 16 and 24 to 28 fail; the lock preconditions pass.
-- Run `RETRY_MAX=0 ./verify.sh`. In both phases `O-7004` is attempted once, dead-lettered, and `SKU-14` stays at 100, while `O-7005` is reserved at once. Checks 4 to 6, 14, 15, 19 to 21 and 26 fail. The lock preconditions pass, so the retry limit is the cause.
-- Run `RETRY_MAX=2 ./verify.sh`. The lock outlasts three attempts, so `O-7004` is dead-lettered after the last one: a failure that was transient but did not clear within the limit. The end matches `RETRY_MAX=0`, after 3 attempts instead of one, in both phases; checks 6, 14, 15, 21 and 26 fail.
-- Run `CAMEL_DEAD_LETTER_CHANNEL=false ./verify.sh`. The SmallRye phase is unchanged; in the Camel phase the default error handler gives up on `O-7002`, `O-7003` and `O-7006` after one attempt and commits their offsets, and the lock timeout on `O-7004` is dropped the same way: `SKU-14` stays at 100 while `O-7005` is reserved. The group ends with no lag, because the offsets of the records it gave up on were committed. Nothing is dead-lettered in that phase, and checks 19 to 21 and 24 to 26 fail.
-- Add `CAMEL_BREAK_ON_FIRST_ERROR=true` to that run. In the Camel phase the failed record is polled again, and the valid record before it is applied again on every pass: `O-7001` was applied 100 times and `SKU-11` fell from 100 to 0 in under a minute. `SKU-14` and `SKU-15` stay at 100, the group commits no offset (lag 6) and checks 19 and 21 to 26 fail.
-- Run `HOLD=20 MAX_POLL_INTERVAL_MS=10000 ./verify.sh`. The SmallRye consumer attempts `O-7004` seven times during the 20 second hold, is not rebalanced and `SKU-14` ends at 99. In the Camel phase the consumer misses its poll deadline, the group rebalances and the batch is delivered again: `SKU-11`, `SKU-14` and `SKU-15` all end at 98, each reserved twice. Checks 21 to 26 fail.
+- `FAILURE_STRATEGY=fail ./verify.sh`: the channel stops at the first malformed record, its offset is never committed and no dead letter is written.
+- `RETRY_MAX=0 ./verify.sh`: the order on the locked SKU is attempted once and dead-lettered.
+- `CAMEL_DEAD_LETTER_CHANNEL=false CAMEL_BREAK_ON_FIRST_ERROR=true ./verify.sh`: the Camel route polls the failed record again and applies the valid record before it on every pass.
 
 ## When not to use it
 

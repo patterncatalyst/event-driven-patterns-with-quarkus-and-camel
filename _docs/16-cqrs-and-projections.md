@@ -126,22 +126,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 14 tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived from the facts a row holds, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `29/29 checks passed`.
+`verify.sh` pauses one of the six topics, resets the consumer groups to the earliest offset and rebuilds the view through a Camel route. It prints `29/29 checks passed`. Watch a paused topic leave the order stale, with an `asOf` that says so, until the topic resumes.
 
-The checks read the effects:
+Try one change and rerun:
 
-- One order moves through PLACED, PAID, SHIPPED and DELIVERED as its five events are produced one at a time, with its customer, amount, carrier and tracking number; the customer's list holds that order and no one else's.
-- With the delivered channel paused, the group has lag 1, five reads over five seconds all return SHIPPED with an `asOf` older than the delivered record, and after resume the order is DELIVERED and the lag is 0. Prometheus holds `order_view_lag_max_milliseconds`, at least as large as the pause.
-- With the in-transit channel paused, `ShipmentDelivered` is applied first and `ShipmentInTransit` last, and the order stays DELIVERED.
-- A shipment for an order with no row creates a partial row with no customer, and the later `OrderPlaced` lists it under its customer.
-- 1,250 records converge, and the 95th percentile of `order.view.lag` is below 2 s.
-- Stopping the service, resetting all six groups to the earliest offset and starting it again leaves the view's hash unchanged.
-- With the view emptied and the `camel-projector` profile, one group owns the six partitions and builds the same hash.
-
-Change one thing and watch a guard fail:
-
-- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Across five runs, checks 18, 26 and 27 failed every time and check 24 failed in four of them; four runs ended 25 of 29 and one ended 26 of 29.
-- Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is 12,881 ms. Only check 23 fails; the burst still converges, so 28 of 29 pass.
+- `PROJECTION_GUARD=off ./verify.sh` (demo code): a late `ShipmentInTransit` replaces DELIVERED and the reader sees SHIPPED.
+- `PROJECTOR_DELAY_MS=50 ./verify.sh` (demo code): the burst outruns the projector and the lag grows with the backlog.
 
 ## When not to use it
 

@@ -98,14 +98,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` seeds 200 records into each of the three topics with the stock Kafka performance tool, drains them under different settings, one consumer group per run, and prints `36/36 checks passed`. It asserts relations, never durations, and every relation has a control run: eviction is checked against a run that is not evicted, the fetch ratio against a run with the default settings, the idle members of the default assignor against the round-robin assignor, and the revoked partitions of the new protocol against the classic protocol's nine. `bench.sh` repeats the profiles five times, interleaved, and writes the timings to `results/`.
+`verify.sh` drains 200 records from each of three topics under different consumer settings and prints `36/36 checks passed`. It asserts relations between runs, never durations. `bench.sh` repeats the profiles five times and writes the timings to `results/`.
 
-Change one thing and watch a guard fail:
+Try one change and rerun:
 
-- Set `FIXED_MAX_POLL_RECORDS=500`. The run that should not be evicted is now evicted like the failing one: it never stores all 600 records within four minutes (check 21), records are delivered again (check 22) and the client leaves the group (check 23).
-- Set `CLASSIC_ASSIGNOR=org.apache.kafka.clients.consumer.CooperativeStickyAssignor`. Replica 1 gives up 4 partitions under the classic protocol instead of 9, and check 29 fails.
-- Set `TRICKLE_MIN_BYTES=1`. The run that was meant to send fewer fetch requests sends as many as the default (about 2,400 requests in both runs against 60), and check 26 fails.
-- Set `SECOND_PROTOCOL=classic`. The group type is Classic instead of Consumer, and replica 1 gives up all nine partitions, so checks 30 and 33 fail.
+- `FIXED_MAX_POLL_RECORDS=500 ./verify.sh`: the run that should not be evicted is evicted like the failing one and the client leaves the group.
+- `CLASSIC_ASSIGNOR=org.apache.kafka.clients.consumer.CooperativeStickyAssignor ./verify.sh`: replica 1 gives up 4 partitions under the classic protocol instead of 9.
+- `TRICKLE_MIN_BYTES=1 ./verify.sh`: the run meant to send fewer fetch requests sends as many as the default.
 
 ## When not to tune
 

@@ -149,7 +149,7 @@ examples/NN-slug/
 
 Each `verify.sh` includes a negative witness: a check that fails when the pattern's guard is removed. Without it, a script could still pass after the guard it checks has been removed.
 
-## Build, run, observe: the stack check
+## The stack check service
 
 The first example is the smallest service that touches every piece. `POST /orders` takes an `Order`, rejects an invalid one with 400 and publishes a valid one to the `edp.orders.placed` topic keyed by its id. A second route consumes the topic and logs each record.
 
@@ -168,7 +168,7 @@ The `Order` record validates itself in its constructor, so a zero quantity or a 
 
 Telemetry comes from the framework. `camel-quarkus-opentelemetry2` creates a span per route and processor; the older `camel-quarkus-opentelemetry` extension is deprecated. `quarkus-micrometer-opentelemetry` exports the Micrometer meters over OTLP, so metrics take the same path as traces and no Prometheus scrape is configured. The same extension turns on OpenTelemetry tracing, metrics and logs by default, so the log records reach Loki with no extra setting. SmallRye Health serves `/q/health`.
 
-Run it:
+## Build, run, observe
 
 ```bash
 (cd examples/domain-model && mvn -B -q install)
@@ -177,27 +177,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-The tests pass on a Dev Services Kafka running the pinned broker image. `verify.sh` then prints:
+`verify.sh` starts the full stack and prints `17/17 checks passed`. Watch an invalid Order get 400 while the record count on the topic stays unchanged.
 
-```
-PASS 1: edp-kafka is healthy
-...
-PASS 7: valid Order accepted with 2xx
-PASS 8: the record keyed O-1794344257 arrives on the edp.orders.placed topic
-PASS 9: PostgreSQL wal_level is logical
-...
-PASS 13: Tempo has a trace for service stack-check
-PASS 14: Prometheus has a metric from stack-check
-PASS 15: Loki has a log line from stack-check
-PASS 16: negative witness: invalid Order (quantity 0) gets 400
-PASS 17: negative witness: record count unchanged (1)
-17/17 checks passed
-```
+Try one change and rerun:
 
-Try each of these and rerun `./verify.sh`:
-
-- Remove the `onException` clause. An invalid Order gets 500 instead of 400, so check 16 fails; check 17 still passes because nothing reached the topic.
-- Change `Topics.ORDERS_PLACED` in the intake route to `"edp.orders.placed-v2"`. Check 8 fails because no record arrives on `edp.orders.placed`, and check 15 fails because the consumer route has nothing to log.
+- Remove the `onException` clause: an invalid Order gets 500 instead of 400.
+- Change `Topics.ORDERS_PLACED` in the intake route to `"edp.orders.placed-v2"`: no record arrives on `edp.orders.placed` and the consumer route has nothing to log.
 
 ## Part 6 runs on Kubernetes
 

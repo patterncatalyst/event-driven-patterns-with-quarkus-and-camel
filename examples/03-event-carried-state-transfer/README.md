@@ -40,6 +40,26 @@ docker compose down -v
 
 `verify.sh` refuses to start while another stack is running, and stops this one on exit unless `KEEP=1`.
 
+## Tests and checks in detail
+
+The Maven build runs the order-service tests and the notification-service tests, which need no order-service at all. `verify.sh` starts Kafka, PostgreSQL, LGTM and both services with Docker Compose and prints `30/30 checks passed`:
+
+- The copy of a placed order has every field, the copy of a cancelled order shows CANCELLED, and the event for the order with the 100 KB attachment is under 1 KB and holds the claim size.
+- Prometheus has no `GET /orders/{id}` series for order-service and Tempo has no HTTP client span from notification-service, while both can see other series and spans.
+- With order-service stopped, the copy still answers 200 with the customer, item and amount, and the attachment returns 503. With it back, the attachment is fetched, byte for byte, and the first HTTP client span appears.
+- With `ORDER_EVENTS_ATTACHMENT=inline`, the 100 KB attachment is refused with 502 and the topic does not grow.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `ORDER_EVENTS_CARRY_STATE=false ./verify.sh` | The event holds only the order id, notification-service logs it as skipped and every copy answers 404 | 5 to 10, 16 to 19 and 21 to 26 | 14 of 30 pass |
+| `ORDER_EVENTS_ATTACHMENT=inline ./verify.sh` | The 100 KB attachment goes inside the event, the producer refuses it, and the order with the attachment is never placed on the topic | 2, 7, 9, 10, 19 and 21 to 23 | - |
+| `camel.component.kafka.max-request-size` set to 1048576, then `ORDER_EVENTS_ATTACHMENT=inline ./verify.sh` | The inline event is accepted, so the topic carries 100 KB for one order and the negative witness disappears | 9, 10, 19 and 21 to 27 | - |
+| Remove the status guard from `OrderCopies.apply` | A late `OrderPlaced` turns a cancelled copy back into PLACED | none in `verify.sh`; the Maven test for it fails | - |
+
 ## Layout
 
 | Path | Purpose |
