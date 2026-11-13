@@ -45,7 +45,7 @@ docker compose down -v
 
 | Path | Purpose |
 |---|---|
-| `order-service/.../OrderAggregate`, `OrderEvent`, `Command`, `OrderCommands` | The aggregate of chapter 14, reduced, and its transactional command |
+| `order-service/.../OrderAggregate`, `OrderEvent`, `Command`, `OrderCommands` | The aggregate of chapter 14 with smaller payloads and an `OrderDelivered` event, and its transactional command |
 | `order-service/.../EventStore` | `load`, `append` and `replayStream`, a Panache projection that folds one stream at a time |
 | `order-service/.../ReplayReport` | The replay: every stream, one aggregate at a time |
 | `order-service/.../CarrierDailyProjector`, `ProjectionBatch` | The timer and the transactional batch with the locked checkpoint |

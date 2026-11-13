@@ -624,7 +624,7 @@
    "type": "rectangle",
    "x": 540,
    "y": 285,
-   "width": 380,
+   "width": 300,
    "height": 56,
    "angle": 0,
    "strokeColor": "#64748b",
@@ -1033,7 +1033,7 @@
   {
    "id": "a1264892037",
    "type": "arrow",
-   "x": 730,
+   "x": 690,
    "y": 341,
    "width": 0,
    "height": 29,
@@ -1076,7 +1076,7 @@
   {
    "id": "a1217274392",
    "type": "arrow",
-   "x": 810,
+   "x": 890,
    "y": 370,
    "width": 0,
    "height": 200,

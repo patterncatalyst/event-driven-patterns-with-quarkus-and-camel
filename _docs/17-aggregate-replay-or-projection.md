@@ -84,7 +84,7 @@ A new question differs between them. A new replay is code, and the answer is exa
 
 ## What each answer costs
 
-Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; at the two smaller sizes it is bounded by the one-second tick, and three runs gave 0.8 to 1.0 s, and 1.3 to 2.0 s at 100,000 orders. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
+Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; at the two smaller sizes it is bounded by the one-second tick, and three runs gave 0.8 to 1.0 s at the two smaller sizes and 1.3 to 2.0 s at 100,000 orders. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
 
 {% include excalidraw.html file="17-cost-by-size" alt="Median read times: a replay takes 15 ms at 1,000 orders, 77 ms at 10,000 and 586 ms at 100,000; a projection read takes 0.78, 0.61 and 0.46 ms; a rebuild takes 781 ms, 766 ms and 1.8 s" caption="Figure 17.2: A replay grows with the store, a projection read does not" %}
 
@@ -134,7 +134,7 @@ The checks read the effects:
 Change one thing and watch a check fail:
 
 - Run `PROJECTION_WATERMARK=off ./verify.sh`. This is demo code: the batch reads by position alone. The projection moves past `O-1701`, counts `O-1702` and never counts `O-1701`. Check 16 fails, because the projection counted `O-1702` while `O-1701` was still open, and checks 17 and 18 fail because the projection stays one order short after the hold and after a restart. No other check fails.
-- Run `PROJECTION_POLL=5s ./verify.sh`. A command reaches the projection within a tick, now 5 seconds, and check 14 fails and no other. The freshness median is 4,994 ms.
+- Run `PROJECTION_POLL=5s ./verify.sh`. A command reaches the projection within a tick, now 5 seconds, so check 14 fails and no other. The check sends its command right after a tick, so it fails every time and passes every time at the default. The freshness median is 4,994 ms.
 - With the stack up, `POST /demo/projection/rebuild` (demo code) empties the projection and rewinds the checkpoint. The projection report then shows a count below the replay and a `lagEvents` that falls to 0.
 
 ## When not to use it

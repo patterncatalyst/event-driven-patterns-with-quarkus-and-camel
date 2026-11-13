@@ -140,7 +140,7 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Across four runs, checks 18, 26 and 27 failed every time and check 24 failed in three of them; three runs ended 25 of 29 and one ended 26 of 29.
+- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Across five runs, checks 18, 26 and 27 failed every time and check 24 failed in four of them; four runs ended 25 of 29 and one ended 26 of 29.
 - Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is 12,881 ms. Only check 23 fails; the burst still converges, so 28 of 29 pass.
 
 ## When not to use it

@@ -19,9 +19,9 @@
 <rect x="700" y="100" width="220" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="810.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Apicurio Registry</text>
 <text x="810.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">edp.orders.placed-value</text>
-<rect x="540" y="285" width="380" height="56" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-<text x="730.0" y="311.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Debezium Event Router</text>
-<text x="730.0" y="328.0" font-size="11.5" fill="#555555" text-anchor="middle">BinaryDataConverter, bytes unchanged</text>
+<rect x="540" y="285" width="300" height="56" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="690.0" y="311.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Debezium Event Router</text>
+<text x="690.0" y="328.0" font-size="11.5" fill="#555555" text-anchor="middle">BinaryDataConverter, bytes unchanged</text>
 <rect x="540" y="370" width="380" height="56" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
 <text x="730.0" y="396.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
 <text x="730.0" y="413.0" font-size="11.5" fill="#555555" text-anchor="middle">a consumer resolves the schema id in the registry</text>
@@ -30,8 +30,8 @@
 <path d="M260,255 L260,285" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M260,341 L260,370" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M480,398 L540,313" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
-<path d="M730,341 L730,370" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
-<path d="M810,370 L810,170" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M690,341 L690,370" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M890,370 L890,170" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The schema is checked where the event is written, inside the transaction</text>
 <text x="480" y="485" font-size="11" fill="#555555" text-anchor="middle">The schema id travels in the payload, so a consumer resolves it from the registry.</text>
 </svg>

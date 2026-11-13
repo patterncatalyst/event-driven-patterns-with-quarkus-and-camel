@@ -16,7 +16,7 @@ emit(
         {"x": 40, "y": 285, "w": 440, "h": 56, "style": "kernel", "lines": ["orders.outboxevent row", "payload bytea: 0, schema id, Avro bytes"]},
         {"x": 40, "y": 370, "w": 440, "h": 56, "style": "box", "lines": ["commit", "event and outbox row together, or neither"]},
         {"x": 700, "y": 100, "w": 220, "h": 70, "style": "ghost", "lines": ["Apicurio Registry", "edp.orders.placed-value"]},
-        {"x": 540, "y": 285, "w": 380, "h": 56, "style": "ink", "lines": ["Debezium Event Router", "BinaryDataConverter, bytes unchanged"]},
+        {"x": 540, "y": 285, "w": 300, "h": 56, "style": "ink", "lines": ["Debezium Event Router", "BinaryDataConverter, bytes unchanged"]},
         {"x": 540, "y": 370, "w": 380, "h": 56, "style": "ink", "lines": ["edp.orders.placed", "a consumer resolves the schema id in the registry"]},
     ],
     edges=[
@@ -25,8 +25,8 @@ emit(
         {"x1": 260, "y1": 255, "x2": 260, "y2": 285},
         {"x1": 260, "y1": 341, "x2": 260, "y2": 370},
         {"x1": 480, "y1": 398, "x2": 540, "y2": 313, "amber": True},
-        {"x1": 730, "y1": 341, "x2": 730, "y2": 370},
-        {"x1": 810, "y1": 370, "x2": 810, "y2": 170, "dashed": True},
+        {"x1": 690, "y1": 341, "x2": 690, "y2": 370},
+        {"x1": 890, "y1": 370, "x2": 890, "y2": 170, "dashed": True},
     ],
     notes=[
         {"x": 480, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",

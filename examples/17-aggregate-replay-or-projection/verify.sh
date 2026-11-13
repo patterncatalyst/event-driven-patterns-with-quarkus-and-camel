@@ -12,7 +12,7 @@ COMPOSE=(docker compose -f compose.yaml)
 APP=edp-order-service
 R=250      # the projection read must be at least R times faster than the replay at 100,000 orders
 T_SMALL=10 # seconds for the projection to catch up on 1,000 and 10,000 orders
-T_LARGE=10 # and on 100,000 orders (a rebuild takes under 2 s there)
+T_LARGE=10 # and on 100,000 orders (a rebuild takes about 2 s at the default tick, about 5 s at a 5 s tick)
 BASE=http://localhost:8080
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
 TOTAL=0
@@ -137,18 +137,24 @@ rebuild_catches_up() {
 
 # --- a command on a large store ------------------------------------------------------------------------------------
 # One command, counted by the projection: the tick that counts it has just run, so the next one is a full poll away.
-sync_to_tick() {
+# The projection total alone is read every 50 ms, so the measured command is sent within about 0.1 s of that tick.
+sync_to_tick() { # sync_to_tick <projection total before the command>
     expect "$(command_code O-17S001)/$(command_code O-17S001 payment)/$(command_code O-17S001 shipment carrier=AIRCO)" "201/201/201" || return 1
-    poll 30 expect_totals_equal
+    local end=$(( ${EPOCHREALTIME/./} + 30000000 )) # microseconds
+    until [[ "$(total projection)" == "$(($1 + 1))" ]]; do
+        (( ${EPOCHREALTIME/./} < end )) || return 1
+        sleep 0.05
+    done
 }
-expect_totals_equal() { expect "$(total projection)" "$(total replay)"; }
 live_command_counts() {
     local before
-    sync_to_tick || return 1
-    before="$(total replay)"
+    before="$(total projection)"
+    sync_to_tick "$before" || return 1
+    before=$((before + 1))
     expect "$(command_code O-17L001)/$(command_code O-17L001 payment)/$(command_code O-17L001 shipment carrier=AIRCO)" "201/201/201" || return 1
-    expect "$(total replay)" $((before + 1)) || return 1
-    poll_total_within_two_seconds $((before + 1))
+    local counted=0
+    poll_total_within_two_seconds $((before + 1)) && counted=1
+    expect "$(total replay)" $((before + 1)) && (( counted ))
 }
 poll_total_within_two_seconds() { # poll_total_within_two_seconds <expected total>
     local end=$(( ${EPOCHREALTIME/./} + 2000000 )) # microseconds
@@ -204,7 +210,11 @@ survives_a_restart() {
     docker restart "$APP" >/dev/null
     poll 60 ready && poll "$T_SMALL" lag_zero && projection_equals_replay && expect "$(total projection)" $((BEFORE + 2))
 }
-few_rows_at_every_size() { local n; while read -r n; do (( n <= 60 )) || return 1; done < "$WORK/rows"; }
+few_rows_at_every_size() {
+    local n
+    (( $(wc -l < "$WORK/rows") == 3 )) || return 1
+    while read -r n; do (( n <= 60 )) || return 1; done < "$WORK/rows"
+}
 
 echo "Starting the stack"
 # Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),
