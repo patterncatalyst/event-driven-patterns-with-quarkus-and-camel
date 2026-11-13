@@ -40,7 +40,7 @@ docker compose down -v
 7. Recreate: the service is recreated with a 60 s timeout, `O-2006` is reserved (an open row in `shipping.readiness`, and the join store's changelog grows), the service is recreated again with an empty state directory, and the payment arrives. Both outputs hold `ReadyToShip`, and the log shows the join store and the Camel timeouts restored.
 8. Prometheus holds `order_readiness_total` for the Camel path, a trace is in Tempo and logs are in Loki.
 
-Event times are yesterday's date from the clock. The broker refuses a record timestamp more than an hour ahead, and Kafka Streams forwards the event time as the timestamp of its output.
+Event times are computed from the clock: the label 09:00 of the scenario is a 15-minute boundary 20 hours before now, and the last label (14:01) is 15 hours before now. Kafka Streams forwards event time as the timestamp of every record it writes, so a date in the future would stop the instance (the broker refuses a timestamp more than an hour ahead of its clock). A date too far in the past loses the open join state on a recreate: the changelog topic of the join store keeps records for about a day after their timestamp. A fixed date, or the same time of day on yesterday's date, fails one way or the other at some hour. `BASE_AGE_HOURS=44 ./verify.sh` (demo setting) makes the event times 44 hours old; all 24 checks still pass in that run.
 
 ## Layout
 

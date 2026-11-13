@@ -18,9 +18,12 @@ CAMEL_OUT=edp.shipping.order-readiness-camel
 # The Streams group is the application id; the changelog of the reservation side of the join store is named after it.
 CHANGELOG=shipping-readiness-readiness-this-join-store-changelog
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
-# Event times are yesterday, from the clock: the broker refuses a record timestamp more than an hour ahead, and Kafka
-# Streams forwards the event time as the timestamp of its output.
-D="$(date -u -d yesterday +%F)"
+# Event times are in the recent past: Kafka Streams forwards event time as the record timestamp, the broker refuses a
+# timestamp more than an hour ahead of its clock, and the changelog topic of the join store keeps records for a day and
+# the window size and grace after their timestamp, then deletes them. The scenario therefore runs from a base 20 hours
+# before now, on a 15-minute boundary; its label 09:00 is that base and the last label (14:01) is 15 hours before now.
+BASE_AGE_HOURS=${BASE_AGE_HOURS:-20} # demo setting: 44 hours old event times, all checks still pass (see the README)
+BASE_EPOCH=$(( ($(date +%s) - BASE_AGE_HOURS * 3600) / 900 * 900 ))
 TOTAL=0
 PASSED=0
 WORK="$(mktemp -d)"
@@ -100,19 +103,20 @@ produce() { # produce <topic>: lines "<key>|<json>" on stdin, one producer call
     docker exec -i edp-kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic "$1" \
         --reader-property parse.key=true --reader-property 'key.separator=|' >/dev/null 2>&1
 }
-reserve() { printf '%s|{"orderId":"%s","sku":"SKU-20","quantity":1,"occurredAt":"%sT%s:00Z"}\n' "$1" "$1" "$D" "$2" | produce $RESERVED; } # reserve <order> <hh:mm>
-pay() { printf '%s|{"payment":{"id":"P-%s","orderId":"%s","amount":25.00,"status":"COMPLETED"},"occurredAt":"%sT%s:00Z"}\n' "$1" "$1" "$1" "$D" "$2" | produce $PAID; }
+at() { date -u -d "@$((BASE_EPOCH + (10#${1%%:*} * 60 + 10#${1##*:} - 540) * 60))" +%Y-%m-%dT%H:%M:00Z; } # at <hh:mm>: the label's instant
+reserve() { printf '%s|{"orderId":"%s","sku":"SKU-20","quantity":1,"occurredAt":"%s"}\n' "$1" "$1" "$(at "$2")" | produce $RESERVED; } # reserve <order> <hh:mm>
+pay() { printf '%s|{"payment":{"id":"P-%s","orderId":"%s","amount":25.00,"status":"COMPLETED"},"occurredAt":"%s"}\n' "$1" "$1" "$1" "$(at "$2")" | produce $PAID; }
 bench_records() { # bench_records <reserved|paid> <hh:mm>: orders O-2100 to O-2299
     python3 -I -c '
 import sys
-kind, hhmm, day = sys.argv[1], sys.argv[2], sys.argv[3]
+kind, at = sys.argv[1], sys.argv[2]
 for i in range(2100, 2300):
     o = "O-%d" % i
     if kind == "reserved":
-        print("%s|{\"orderId\":\"%s\",\"sku\":\"SKU-20\",\"quantity\":1,\"occurredAt\":\"%sT%s:00Z\"}" % (o, o, day, hhmm))
+        print("%s|{\"orderId\":\"%s\",\"sku\":\"SKU-20\",\"quantity\":1,\"occurredAt\":\"%s\"}" % (o, o, at))
     else:
-        print("%s|{\"payment\":{\"id\":\"P-%s\",\"orderId\":\"%s\",\"amount\":25.00,\"status\":\"COMPLETED\"},\"occurredAt\":\"%sT%s:00Z\"}" % (o, o, o, day, hhmm))
-' "$1" "$2" "$D"
+        print("%s|{\"payment\":{\"id\":\"P-%s\",\"orderId\":\"%s\",\"amount\":25.00,\"status\":\"COMPLETED\"},\"occurredAt\":\"%s\"}" % (o, o, o, at))
+' "$1" "$(at "$2")"
 }
 
 # --- the outputs: one background reader per output topic, so every check reads a file

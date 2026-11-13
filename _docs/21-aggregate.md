@@ -56,7 +56,7 @@ Re-keying by carrier makes Kafka Streams write the records to an internal repart
 
 The topics are created with one partition, so one task owns the whole input and a single record with a later event time moves stream time for both carriers. `quarkus.kafka-streams.topics` lists the input, so readiness waits for it. Two pass-through settings make results prompt: `commit.interval.ms=1000` and `statestore.cache.max.bytes=0`. With the defaults, a 30-second commit interval and a 10 MiB record cache, the updates of an aggregate wait for the next commit.
 
-Event time may lag the wall clock, but it may not lead the broker's clock by more than an hour. Kafka Streams forwards event time as the timestamp of every record it writes, the broker refuses a timestamp that far ahead, and the instance stops. A payload dated tomorrow is a fault. Event time may not lag by much more than a day either: the changelog topic of the window store keeps records for about a day after their timestamp, and a new instance that restores a slot older than that finds nothing to restore.
+Event time may lag the wall clock, but it may not lead the broker's clock by more than an hour. Kafka Streams forwards event time as the timestamp of every record it writes, the broker refuses a timestamp that far ahead, and the instance stops. A payload dated tomorrow is a fault. Event time may not lag by much more than a day either: the changelog topic of the window store keeps records for the store's retention plus `windowstore.changelog.additional.retention.ms`, which defaults to one day, after their timestamp, and a new instance that restores a slot older than that finds nothing to restore.
 
 Camel takes the batch route in the next section; the two meet in a table after it.
 
