@@ -1,0 +1,23 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "tasks.max": "1",
+  "database.hostname": "postgres",
+  "database.port": "5432",
+  "database.user": "edp",
+  "database.password": "edp",
+  "database.dbname": "edp",
+  "topic.prefix": "edp",
+  "plugin.name": "pgoutput",
+  "slot.name": "edp_order_schema_outbox",
+  "publication.name": "edp_order_schema_outbox",
+  "publication.autocreate.mode": "filtered",
+  "table.include.list": "orders.outboxevent",
+  "tombstones.on.delete": "false",
+  "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+  "value.converter": "io.debezium.converters.BinaryDataConverter",
+  "transforms": "outbox",
+  "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+  "transforms.outbox.route.by.field": "topic",
+  "transforms.outbox.route.topic.replacement": "${routedByValue}",
+  "transforms.outbox.table.fields.additional.placement": "type:header:eventType"
+}

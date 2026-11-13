@@ -1,0 +1,65 @@
+name: edp-16
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-lgtm.yaml
+
+services:
+  # Creates the six topics the view is built from, one partition each, then exits. No Connect and no registry: the
+  # events arrive on the public topics as the owning services publish them.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for t in edp.orders.placed edp.orders.cancelled edp.payments.processed edp.shipping.scheduled edp.shipping.in-transit edp.shipping.delivered; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1
+        done
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: 16-cqrs-and-projections/order-service/Containerfile
+    container_name: edp-order-service
+    ports:
+      - "8080:8080"
+    environment:
+      CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+      QUARKUS_DATASOURCE_USERNAME: edp
+      QUARKUS_DATASOURCE_PASSWORD: edp
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      # prod (default) projects through six SmallRye channels; camel-projector projects through one Camel route.
+      QUARKUS_PROFILE: ${PROJECTOR_PROFILE:-prod}
+      # Demo code: PROJECTION_GUARD=off drops the forward-only guard of the shipment upsert.
+      PROJECTION_GUARD: ${PROJECTION_GUARD:-on}
+      # Demo code: every event takes this long to apply.
+      PROJECTOR_DELAY_MS: ${PROJECTOR_DELAY_MS:-0}
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
