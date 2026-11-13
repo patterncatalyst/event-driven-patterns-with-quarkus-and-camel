@@ -562,7 +562,7 @@ Executors:
 - verify N/N, N >= 18, from clean twice; mvn green with >= 10 tests across both modules, including the TTD inner-join and key-mismatch tests asserting the bad outcome.
 - Checks 6 and 7 show the lookup and the table join disagreeing on O-1903 and agreeing on O-1904, each after a sync read.
 - With the owner stopped, the Streams output grows and the Camel group shows lag 1 for 20 s; after the owner returns, the Camel output holds O-1905 and lag is 0.
-- `CAMEL_BREAK_ON_FIRST_ERROR=false` fails check 12 and no other, in step 3 and step 4.
+- `CAMEL_BREAK_ON_FIRST_ERROR=false` fails the Camel outage checks (absent with lag 1, and the catch-up after the owner returns) and no other, in step 3 and step 4 (orchestrator 2026-11-13: with `false` the lag drops to 0 once the failed record is committed, so both outage checks fail by design).
 - Check 11 green in 15 of 15 runs, or the README states the measured rate.
 
 **20**:
