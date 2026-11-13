@@ -666,9 +666,9 @@ Chapter 18:
 |---|---|---|---|---|---|---|---|
 | 0 | Preflight: branch, Docker clean, iteration-plan r07 in progress, r06-plan step 7 set to done, save this plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md`, `_plans/r07-plan.md` | orchestrator | owner OK | none | no | done |
 | 1A | Re-survey (complete the table) and source fetches: Fowler CQRS, Microsoft CQRS and Materialized View, Young CQRS Documents CQRS pages, Avro schema resolution, Apicurio 3.3.x rules, REST and serde pages, PostgreSQL xid functions, SmallRye pausable channels, Quarkus scheduler; bibliography rows (Young versioning, Fowler CQRS, Microsoft CQRS and Materialized View, Avro spec); `*-src-*` rows | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | done |
-| 1B | Spikes S1 to S6 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | pending |
+| 1B | Spikes S1 to S6 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | done |
 | 1C | `_plans/domain-model.md` rows 16 to 18 rewritten (below); note on `shippingPriority` values and customer ids `C-16xx` | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | done |
-| G0 | Gate: spikes pass or a fallback is chosen; serde pin decided; "G0 decisions" section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | pending |
+| G0 | Gate: spikes pass or a fallback is chosen; serde pin decided; "G0 decisions" section appended to this plan | this plan | orchestrator | 1A to 1C | none | no | done |
 | 2A | Ch 16: code, tests, Containerfile, compose, README, example page, figure specs and outputs, chapter draft without numbers | `examples/16-*/**`, `_docs/16-*.md`, `_example_pages/16-*.md`, `diagrams/specs/16-*.py`, `diagrams/16-*.*` | exec 2A | G0 | with 2B, 2C | mvn under lock | pending |
 | 2B | Ch 17: same set, plus `seed.sql` | `examples/17-*/**`, `_docs/17-*.md`, `_example_pages/17-*.md`, `diagrams/specs/17-*.py`, `diagrams/17-*.*` | exec 2B | G0 | with 2A, 2C | mvn under lock | pending |
 | 2C | Ch 18: same set, two modules, connector JSON, `.avsc` v1/v2/v3 | `examples/18-*/**`, `_docs/18-*.md`, `_example_pages/18-*.md`, `diagrams/specs/18-*.py`, `diagrams/18-*.*` | exec 2C | G0 | with 2A, 2B | mvn under lock | pending |
@@ -869,3 +869,82 @@ Executors:
 - `<repo>/examples/08-transactional-outbox/connect/order-outbox.json` (outbox connector for 18, with BinaryDataConverter)
 - `<repo>/examples/_infra/compose-apicurio.yaml` (registry service, ports 8081 and 19000, in-memory)
 - `<repo>/_plans/domain-model.md` (rows 16 to 18) and `<repo>/scripts/validate.py` (`BANNED_DOMAIN`, word limit, fresh-start rule)
+
+## G0 decisions (orchestrator, 2026-11-12, after 1A and 1B)
+
+All six spikes passed. Spike code and logs: scratchpad `r07-spikes/` (s16, s17, s18, live16, live17, live18, logs/). Every fallback was unused. The facts below bind the executors and override the plan text where they differ.
+
+**Pins.** Apicurio serde **overridden to 3.3.4**: a `dependencyManagement` block ahead of the platform import, `io.apicurio` 3.3.4 for `apicurio-registry-avro-serde-kafka`, `-java-sdk`, `-serde-common`, `-serde-common-avro`, `-serde-kafka-common`, `-schema-resolver`, `-common`, `-client`. The spike was green on 3.1.7 and 3.3.4 in Dev Services. The live compose window in step 3 must run with the override, because the spike's live run used 3.1.7. Every example using Apicurio Dev Services sets `quarkus.apicurio-registry.devservices.image-name=quay.io/apicurio/apicurio-registry:3.3.4`, because the platform default is 3.1.7. PostgreSQL is held at 18.6 by the owner. Kafka stays at 4.3.2 (Strimzi).
+
+**Shared tooling (S6).**
+- Kafka 4.3 console tools: use `--reader-property` and `--formatter-property`. `--property` prints a deprecation line to stdout, and that line corrupted a decode.
+- Producer with headers: `--reader-property parse.key=true --reader-property 'key.separator=|' --reader-property parse.headers=true`, one line per record as `id:<uuid>,eventType:<Type>\tkey|json`.
+- Group lag: a group that never committed prints `-`. Compute `LOG-END-OFFSET - (CURRENT-OFFSET or 0)` from a single `--describe --all-groups` call.
+- Group reset: stop the app, wait about 12 s (session timeout 10 s), then `--reset-offsets --to-earliest --execute`.
+- Topics: app services `depends_on: topics-init: condition: service_completed_successfully`. `up --wait` can return before topics-init exits, which leaves auto-created 3-partition topics. A host-side helper must wait for that container to exit.
+- Binary records: `--formatter-property line.separator='@@EOR@@'`, with the record count taken from `kafka-get-offsets.sh`.
+- Live metric checks: set `quarkus.otel.metric.export.interval=5s`.
+- Timers export in **milliseconds**: `<name>_milliseconds_bucket/_count/_sum` and `<name>_max_milliseconds`. Do not use `histogram_quantile` over a short burst (NaN). `max_over_time` keeps the max.
+
+**16 (S1).**
+- Pause: `mp.messaging.incoming.<ch>.pausable=true`, with the injected `ChannelRegistry.getPausable(name)` returning `PausableChannel` `pause()`/`resume()`.
+- Channels: six `@Incoming @Blocking CompletionStage<Void>` methods with `Message<T>`, one group per channel, `session.timeout.ms=10000`, ack after the `@Transactional` projector, and `ObjectMapperDeserializer` subclasses.
+- Guarded upsert: native `ON CONFLICT ... DO UPDATE ... WHERE orders.shipment_rank(EXCLUDED.shipment_status) > orders.shipment_rank(order_view.shipment_status)`, with an immutable SQL rank function and CANCELLED terminal. Reads go through a read-only Panache entity.
+- Timestamp: `IncomingKafkaRecordMetadata.getTimestamp()`.
+- Lag metric: `order_view_lag_milliseconds_*`. **B = 2 s** for check 22: burst p99 was at most 490 ms over 3 runs, a 4x margin.
+- Group assignment takes 4 to 5 s after ready; precondition polls up to 60 s.
+- Replay: the view hash is unchanged after resetting all six groups to earliest.
+- Camel: `kafka:t1,...,t6?groupId=order-view-camel&autoOffsetReset=earliest&sessionTimeoutMs=10000`, `choice()` on header `CamelKafkaTopic`, timestamp `CamelKafkaTimestamp`. A Camel profile needs its own `%camel-projector.` properties, because `%test.` does not apply in a named profile.
+- Poll lag after convergence; do not read it once.
+- `PROJECTOR_DELAY_MS` was not spiked, so step 3 measures it first.
+
+**17 (S2).**
+- `tx_id xid8 NOT NULL DEFAULT pg_current_xact_id()`, index `(tx_id, position)`, and a `bigint` checkpoint. The batch query is `WHERE (tx_id, position) > (CAST(CAST(:t AS text) AS xid8), :p) AND tx_id < pg_snapshot_xmin(pg_current_snapshot()) ORDER BY tx_id, position LIMIT :lim`, selecting `tx_id::text::bigint`. The entity does not map `tx_id`.
+- The gap test is deterministic with two JDBC connections:
+  - watermark on: 0 counted while A is open, 2 after A commits;
+  - watermark off: 1, and A is never counted.
+- During a live hold `lagEvents` is **1**. Assert `>= 1`, not `>= 2`.
+- `@Scheduled(every=..., concurrentExecution=SKIP)` has about **1 s resolution**: `0.2s` is not honoured and freshness has a median of about 1 s. The prose states that, and the `PROJECTION_POLL=5s` experiment remains valid.
+- SQL day grouping uses `(occurred_at AT TIME ZONE 'UTC')::date`.
+- Do not name a repository method `streamAll()`, because it clashes with Panache.
+- Streaming replay: a projection `.project(Row.class).withHint("org.hibernate.fetchSize",1000).stream()` in a `@Transactional` method. No OOM down to `-Xmx64m` on 360k events.
+- Seed for 100k orders is about 3 s.
+- Bench, 3 runs, median of run medians:
+
+  | size | replay | projection read |
+  |---|---|---|
+  | 1k | 9 ms | 1.25 ms |
+  | 10k | 67 ms | 0.89 ms |
+  | 100k | 510 ms | 0.50 ms |
+
+  The ratio check is **R = 250** at 100k (observed at least 998). The 1k and 10k ratios are NOTE only. The step 3 runs replace these numbers.
+- Catch-up **T = 60 s** at 100k (observed 12.4 to 13.5 s) and 10 s at smaller sizes.
+- Rebuild: poll the checkpoint row, not `count(*)`. The count poll doubled the 100k rebuild to about 28 s.
+- Projection size is 27 rows at every size. Events table: 1.1, 9.8, 99 MB.
+- Metric `projection_lag_events{service_name="order-service"}` comes from a gauge refreshed per tick.
+
+**18 (S3, S4, S5).**
+- Store: a `JsonNode` upcaster chain keyed by `schema_version smallint`, applied to a `deepCopy` before `convertValue`, counting `order.upcasts{from}` (exported as `order_upcasts_total`). Add `requireNonNull` in the v2 record, so `UPCASTERS=off` fails with a clear message instead of an NPE in `Map.of`.
+- Only v2 `.avsc` goes in `src/main/avro`. v1 and v3 go in resources.
+- Outbox: `ExportedEvent<String, byte[]>` with:
+  - `quarkus.debezium-outbox.payload.type=binary`
+  - `quarkus.debezium-outbox.payload.column-definition=bytea`
+  - `quarkus.debezium-outbox.additional-fields=topic:string`
+
+  The serializer is a standalone `AvroKafkaSerializer`, configured with `apicurio.registry.url`, `auto-register=true` and `headers.enabled=false`, and called as `serialize(topic, record)`. The wire format is magic `0`, a 4-byte content id, then Avro binary.
+- Connector: `value.converter=io.debezium.converters.BinaryDataConverter`, `key.converter` StringConverter, EventRouter `route.by.field=topic`, `route.topic.replacement=${routedByValue}`, `table.fields.additional.placement=type:header:eventType`. Slot and publication are `edp_order_schema_outbox`.
+- Consumer: a plain `@Incoming void on(OrderPlaced p)` autodetects the Avro deserializer and specific reader. v1 bytes yield STANDARD.
+- Rule: global `POST /apis/registry/v3/admin/rules` (204), or on a re-POST `PUT /admin/rules/COMPATIBILITY`. An artifact rule overrides the global rule, which makes `REGISTRY_RULE=BACKWARD` an artifact or global rule set by verify.sh.
+- v3 refusal at REST is **HTTP 400**. The body names the field (`shippingPriority`) and "Incompatible artifact" but **not the rule**, so check 14 matches those two strings.
+- v3 refusal at command time: 503, root cause `RuleViolationProblemDetails` with a null message (use `getDetail()`). It leaves 0 event rows, 0 outbox rows, the end offset unchanged and 2 versions.
+- The refusal needs v1 and v2 registered first, because a first-ever v3 is accepted. verify.sh registers v1 and v2 before the rule checks.
+- A v3 reader on v1 bytes throws `AvroTypeException ... missing required field shippingPriority`.
+- Camel reader: `valueDeserializer=io.apicurio.registry.serde.avro.AvroKafkaDeserializer&additionalProperties.apicurio.registry.url=...&additionalProperties.apicurio.registry.use-specific-avro-reader=true`. Disable the SmallRye channel in that profile.
+- Memory: the ch 18 stack peaked at 2.6 to 3.2 GiB; apps about 250 MiB under a 384m cap.
+
+**Plan text corrected by G0:**
+- Camel header `CamelKafkaTopic`.
+- Rule violation 400, not 409.
+- 17 `lagEvents >= 1`.
+- 17 poll resolution about 1 s.
+- Lag timer in milliseconds.
