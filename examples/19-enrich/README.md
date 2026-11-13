@@ -27,7 +27,7 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `TBD/TBD checks passed`.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `20/20 checks passed`.
 
 ## What verify.sh does
 
@@ -57,7 +57,7 @@ docker compose down -v
 
 The Maven build runs 13 tests across the two modules. In `shipping-service` they cover the seeded references, an unknown carrier and a changed template. In `notification-service`, five run the topology in `TopologyTestDriver` with no broker: the left join enriching both carriers, a reference change applying only to later shipments, a missing reference keeping the record, an inner join dropping it, and a table join on the record key matching nothing. Four more run against Kafka from Dev Services with both forms in one application: both forms producing the same record, the lookup seeing a change before the join does, a deleted reference, and a stopped owner leaving the Camel offset uncommitted until it returns. The last starts the application with `CAMEL_BREAK_ON_FIRST_ERROR=false` and shows the failed record committed and never enriched.
 
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and both services and prints `TBD/TBD checks passed`. The checks read the effects:
+`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and both services and prints `20/20 checks passed`. The checks read the effects:
 
 - Both forms write the same record for the same shipment.
 - A shipment scheduled between the owner's change and its publication differs between the forms; the next one agrees; the earlier output is not revised.
@@ -73,6 +73,8 @@ Each row changes a single thing and names the checks that fail.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `CAMEL_BREAK_ON_FIRST_ERROR=false ./verify.sh` (demo code) | The record that arrives while the owner is down is committed after the redeliveries and never enriched | TBD(expected: 12 and 13, the 20 s wait that expects lag 1 and the catch-up) | TBD(spike: the record was lost in 3 of 3 runs) |
+| `CAMEL_BREAK_ON_FIRST_ERROR=false ./verify.sh` (demo code) | The record that arrives while the owner is down is committed after the redeliveries and never enriched | 12 and 13 (the 20 s wait that expects lag 1, and the catch-up) | The record was committed and never enriched in 3 of 3 runs; checks 12 and 13 failed in each and no other (18/20) |
 
-Timing notes from the spikes, re-measured in the final run: a reference record reaches the local copy TBD(spike: 6 to 17 ms) after the produce call returns; with the owner down, a waiting record is enriched TBD(spike: 1.8 to 2.7 s) after the owner returns; Kafka Streams output arrives about TBD(spike: 128 ms) after the input with a one-second commit interval and no record cache.
+Timing notes, measured on the final stack: `verify.sh` passed 20/20 in 15 of 15 consecutive runs from fresh containers, including the 20 s wait of check 12 and the catch-up of check 13. A reference record reached the local copy 7 to 13 ms after the produce call returned (6 samples). With the owner down, a waiting record appeared on the Camel output 2.8 to 3.2 s after `docker start` returned and 0.7 to 1.1 s after the owner's readiness endpoint answered (5 samples). A record reached the consumer of the Streams output 124 to 150 ms after the producer created it, with a one-second commit interval and no record cache, and the consumer of the Camel output 8 to 18 ms after (6 samples each, same stack).
+
+The burst of 500 shipments, producer call to last output record, polled about once a second: Streams 2.5 s (median 2535 ms, range 2496 to 2560 ms over 15 runs), Camel 6.4 s (median 6393 ms, range 6365 to 6441 ms over 15 runs). `shipping-service` served 500 lookups in every run.

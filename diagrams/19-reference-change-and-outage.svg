@@ -7,7 +7,7 @@
 <rect x="20" y="350" width="940" height="150" rx="12" fill="#fff8ef" stroke="#ddd"/>
 <text x="32" y="370" font-size="12" font-weight="700" fill="#888">Kafka Streams left join</text>
 <rect x="40" y="92" width="170" height="40" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-<text x="125.0" y="117.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">template changed at the owner</text>
+<text x="125.0" y="117.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">template changed</text>
 <rect x="250" y="92" width="190" height="40" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
 <text x="345.0" y="117.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">new template on the topic</text>
 <rect x="560" y="92" width="170" height="40" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
@@ -38,11 +38,11 @@
 <text x="855.0" y="418.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">carries on</text>
 <path d="M210,112 L250,112" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M730,112 L770,112" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
-<path d="M125,132 L125,205" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M190,132 L190,205" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
 <path d="M345,132 L345,205" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <path d="M645,132 L645,205" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <path d="M855,132 L855,205" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
-<path d="M125,320 L125,385" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M190,320 L190,385" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <path d="M345,320 L345,385" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <path d="M645,320 L645,385" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
 <text x="490" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The lookup is current and depends on the owner; the join is as fresh as the topic and does not</text>

@@ -12,7 +12,7 @@ emit(
         {"x": 20, "y": 350, "w": 940, "h": 150, "fill": "#fff8ef", "label": "Kafka Streams left join"},
     ],
     nodes=[
-        {"x": 40, "y": 92, "w": 170, "h": 40, "style": "ink", "lines": ["template changed at the owner"]},
+        {"x": 40, "y": 92, "w": 170, "h": 40, "style": "ink", "lines": ["template changed"]},
         {"x": 250, "y": 92, "w": 190, "h": 40, "style": "box", "lines": ["new template on the topic"]},
         {"x": 560, "y": 92, "w": 170, "h": 40, "style": "ghost", "lines": ["owner stops"]},
         {"x": 770, "y": 92, "w": 170, "h": 40, "style": "box", "lines": ["owner returns"]},
@@ -28,11 +28,11 @@ emit(
     edges=[
         {"x1": 210, "y1": 112, "x2": 250, "y2": 112},
         {"x1": 730, "y1": 112, "x2": 770, "y2": 112},
-        {"x1": 125, "y1": 132, "x2": 125, "y2": 205, "amber": True},
+        {"x1": 190, "y1": 132, "x2": 190, "y2": 205, "amber": True},
         {"x1": 345, "y1": 132, "x2": 345, "y2": 205},
         {"x1": 645, "y1": 132, "x2": 645, "y2": 205, "dashed": True},
         {"x1": 855, "y1": 132, "x2": 855, "y2": 205},
-        {"x1": 125, "y1": 320, "x2": 125, "y2": 385, "dashed": True},
+        {"x1": 190, "y1": 320, "x2": 190, "y2": 385, "dashed": True},
         {"x1": 345, "y1": 320, "x2": 345, "y2": 385, "dashed": True},
         {"x1": 645, "y1": 320, "x2": 645, "y2": 385, "dashed": True},
     ],
