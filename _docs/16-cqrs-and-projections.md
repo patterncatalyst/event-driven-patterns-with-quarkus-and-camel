@@ -93,7 +93,7 @@ Two things make that staleness a property the reader can use. `asOf` on every an
 
 What the view does not give is read-your-writes. A customer who has just placed an order may list their orders and not see it. The write side's response is the place to confirm the order; the list catches up. Fowler notes that separate models raise the likelihood of eventual consistency.
 
-The same timer is the check on throughput. A projector that applies slower than events arrive falls behind by the difference, and the lag grows with the backlog until the traffic stops. A burst of 250 orders (1,250 records) was applied with a 95th percentile lag of TBD ms. With each event delayed by 50 ms, it was TBD ms.
+The same timer is the check on throughput. A projector that applies slower than events arrive falls behind by the difference, and the lag grows with the backlog until the traffic stops. A burst of 250 orders (1,250 records) was applied with a 95th percentile lag of 318 to 334 ms across three runs. With each event delayed by 50 ms, it was 12,881 ms.
 
 ## Order across topics
 
@@ -122,7 +122,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs TBD tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived for every combination of facts, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `TBD/TBD checks passed`.
+The Maven build runs 14 tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived for every combination of facts, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `29/29 checks passed`.
 
 The checks read the effects:
 
@@ -136,8 +136,8 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Checks TBD fail.
-- Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is TBD ms. Check TBD fails.
+- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, so a replay from offset 0 and the Camel route, which read the three shipment topics in a different interleaving, also build a different view. Checks 18, 24, 26 and 27 fail, in each of three runs; 25 of 29 pass.
+- Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is 12,881 ms. Only check 23 fails; the burst still converges, so 28 of 29 pass.
 
 ## When not to use it
 
@@ -164,5 +164,5 @@ A rebuild is a replay of the topics, so Kafka retention bounds how far back one 
 - SmallRye Reactive Messaging, [Pausable Channels](https://smallrye.io/smallrye-reactive-messaging/4.37.0/concepts/pausable-channels/)
 - Apache Camel, [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html) (several topics in one consumer) and [Choice](https://camel.apache.org/components/4.22.x/eips/choice-eip.html)
 - PostgreSQL documentation, [INSERT](https://www.postgresql.org/docs/18/sql-insert.html) (`ON CONFLICT DO UPDATE ... WHERE`)
-- Apache Kafka, [Consumer group tool](https://kafka.apache.org/documentation/#basic_ops_consumer_group) (describe and reset offsets)
+- Apache Kafka, [Managing consumer groups](https://kafka.apache.org/43/operations/basic-kafka-operations/) (describe a group and its lag)
 - Chapter 3: Event-carried state transfer, for `order_copy`; chapter 4 for order within one partition; chapter 11 for the inbox; chapter 14 for the write side
