@@ -98,7 +98,7 @@ load_history() { # load_history <from> <to> <expected events in total>
     expect "$(events_count)" "$3" || fail_loudly "expected $3 events after loading orders $1 to $2, found $(events_count)"
 }
 store_is_empty() {
-    expect "$(events_count)/$(sql "SELECT count(*) FROM pg_trigger WHERE tgrelid = 'orders.events'::regclass AND NOT tgisinternal")/$(sql 'SELECT count(*) FROM orders.carrier_daily_shipments')/$(sql 'SELECT last_tx_id || '/' || last_position FROM orders.projection_checkpoint')" "0/2/0/0/0"
+    expect "$(events_count)/$(sql "SELECT count(*) FROM pg_trigger WHERE tgrelid = 'orders.events'::regclass AND NOT tgisinternal")/$(sql 'SELECT count(*) FROM orders.carrier_daily_shipments')/$(sql "SELECT last_tx_id || '/' || last_position FROM orders.projection_checkpoint")" "0/2/0/0/0"
 }
 replay_equals_oracle() { expect "$(lines replay)" "$(oracle)"; }
 projection_equals_replay() { expect "$(lines projection)" "$(lines replay)" && expect "$(lines projection)" "$(oracle)"; }

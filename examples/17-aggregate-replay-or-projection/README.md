@@ -14,7 +14,7 @@ Quarkus, Hibernate ORM with Panache (a projection for the replay), Flyway, Quark
 
 | Setting | Default | Effect |
 |---|---|---|
-| `PROJECTION_POLL` | `1s` | Period of the projector's tick; the scheduler resolves to about a second |
+| `PROJECTION_POLL` | `1s` | Period of the projector's tick |
 | `PROJECTION_BATCH` | `1000` | Events per batch |
 | `PROJECTION_WATERMARK` | `on` | `off` reads by position alone and skips a late commit (demo) |
 | `DEMO_HOLD_FOR` | empty | `<orderId>:<Command>` entries whose transaction stays open after the append (demo) |

@@ -2,11 +2,10 @@
 
 from generate_diagram import emit
 
-# Milliseconds, median of three runs of the verify.sh measurement. These are the values of the first measurement and
-# are replaced by the final runs; the prose table quotes the same constants.
-REPLAY_MS = {"1,000 orders": 9, "10,000 orders": 67, "100,000 orders": 510}
-PROJECTION_MS = {"1,000 orders": 1.25, "10,000 orders": 0.89, "100,000 orders": 0.50}
-REBUILD_MS = {"1,000 orders": 254, "10,000 orders": 770, "100,000 orders": 12964}
+# Milliseconds: the median of the three run medians of the verify.sh measurement (w17 runs 1 to 3).
+REPLAY_MS = {"1,000 orders": 14, "10,000 orders": 76, "100,000 orders": 581}
+PROJECTION_MS = {"1,000 orders": 0.67, "10,000 orders": 0.61, "100,000 orders": 0.48}
+REBUILD_MS = {"1,000 orders": 1022, "10,000 orders": 1016, "100,000 orders": 26585}
 
 X0 = 220
 WIDTH = 520
@@ -45,7 +44,7 @@ for label in REBUILD_MS:
                   "text": f"{fmt(REBUILD_MS[label])} to catch up"})
     y += 52
 notes.append({"x": 480, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-              "text": "Median over runs, inside the service. Bar length is proportional to time within each group."})
+              "text": "Median of three runs, inside the service. Bar length is proportional to time within each group."})
 notes.append({"x": 480, "y": y + 20, "anchor": "middle", "size": 11, "color": "#555555",
               "text": "8-core laptop CPU, PostgreSQL on the compose stack. A projection read is a scan of the same few dozen rows at every size."})
 
