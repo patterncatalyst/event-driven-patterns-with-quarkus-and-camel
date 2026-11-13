@@ -63,5 +63,5 @@ Each one changes a single thing and names the checks that fail. The run records 
 
 | Change | What it shows | Checks that fail |
 |---|---|---|
-| `PROJECTION_GUARD=off ./verify.sh` | `ShipmentInTransit` applied after `ShipmentDelivered` moves `O-1604` back to IN_TRANSIT, and SHIPPED is what a reader sees. The replay and the Camel route also land on a different view, because without the guard the last shipment event applied wins and a second reader of the three shipment topics applies them in a different interleaving | 18, 24, 26, 27 (25 of 29 pass, in each of three runs) |
+| `PROJECTION_GUARD=off ./verify.sh` | `ShipmentInTransit` applied after `ShipmentDelivered` moves `O-1604` back to IN_TRANSIT, and SHIPPED is what a reader sees. The replay and the Camel route also land on a different view, because without the guard the last shipment event applied wins and a second reader of the three shipment topics applies them in a different interleaving (in a recorded run, 252 of the 254 other orders went from DELIVERED back to SCHEDULED) | 18, 24, 26, 27 (25 of 29 pass, in each of three runs) |
 | `PROJECTOR_DELAY_MS=50 ./verify.sh` | The burst arrives faster than the projector applies it, so lag grows with the backlog. The 95th percentile of lag is 12,881 ms against 318 to 334 ms without the delay, and the burst still converges within 60 s | 23 (28 of 29 pass) |
