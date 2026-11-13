@@ -27,6 +27,27 @@ public final class Topics {
     /** Dead letters of edp.orders.placed: records that cannot be parsed or are invalid. */
     public static final String ORDERS_PLACED_DLQ = "edp.orders.placed-dlq";
 
+    /** Compacted carrier reference records keyed by carrier, published by shipping-service. */
+    public static final String SHIPPING_CARRIERS = "edp.shipping.carriers";
+
+    /** ShipmentScheduled enriched with carrier mode and tracking URL (Kafka Streams output). */
+    public static final String SHIPPING_SCHEDULED_ENRICHED = "edp.shipping.scheduled-enriched";
+
+    /** ShipmentScheduled enriched with carrier mode and tracking URL (Camel output). */
+    public static final String SHIPPING_SCHEDULED_ENRICHED_CAMEL = "edp.shipping.scheduled-enriched-camel";
+
+    /** ReadyToShip and PaymentOverdue results of the order join (Kafka Streams output). */
+    public static final String SHIPPING_ORDER_READINESS = "edp.shipping.order-readiness";
+
+    /** ReadyToShip and PaymentOverdue results of the order join (Camel output). */
+    public static final String SHIPPING_ORDER_READINESS_CAMEL = "edp.shipping.order-readiness-camel";
+
+    /** Per-carrier pickup lists (Kafka Streams output). */
+    public static final String SHIPPING_PICKUP_LISTS = "edp.shipping.pickup-lists";
+
+    /** Per-carrier pickup lists (Camel output). */
+    public static final String SHIPPING_PICKUP_LISTS_CAMEL = "edp.shipping.pickup-lists-camel";
+
     /** The nine event catalog topics. */
     public static final List<String> ALL = List.of(
             ORDERS_PLACED, ORDERS_CANCELLED,

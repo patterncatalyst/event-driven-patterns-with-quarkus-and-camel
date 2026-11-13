@@ -299,6 +299,27 @@ class DomainModelTest {
         }
 
         @Test
+        void streamOutputTopicsAreOutsideTheCatalog() {
+            List<String> topics = List.of(
+                    Topics.SHIPPING_CARRIERS,
+                    Topics.SHIPPING_SCHEDULED_ENRICHED, Topics.SHIPPING_SCHEDULED_ENRICHED_CAMEL,
+                    Topics.SHIPPING_ORDER_READINESS, Topics.SHIPPING_ORDER_READINESS_CAMEL,
+                    Topics.SHIPPING_PICKUP_LISTS, Topics.SHIPPING_PICKUP_LISTS_CAMEL);
+            assertEquals(7, new HashSet<>(topics).size());
+            assertEquals("edp.shipping.carriers", Topics.SHIPPING_CARRIERS);
+            assertEquals("edp.shipping.scheduled-enriched", Topics.SHIPPING_SCHEDULED_ENRICHED);
+            assertEquals("edp.shipping.scheduled-enriched-camel", Topics.SHIPPING_SCHEDULED_ENRICHED_CAMEL);
+            assertEquals("edp.shipping.order-readiness", Topics.SHIPPING_ORDER_READINESS);
+            assertEquals("edp.shipping.order-readiness-camel", Topics.SHIPPING_ORDER_READINESS_CAMEL);
+            assertEquals("edp.shipping.pickup-lists", Topics.SHIPPING_PICKUP_LISTS);
+            assertEquals("edp.shipping.pickup-lists-camel", Topics.SHIPPING_PICKUP_LISTS_CAMEL);
+            for (String topic : topics) {
+                assertTrue(topic.matches("edp\\.[a-z]+\\.[a-z-]+"), topic);
+                assertTrue(!Topics.ALL.contains(topic), topic);
+            }
+        }
+
+        @Test
         void catalogIsUnmodifiable() {
             assertThrows(UnsupportedOperationException.class, () -> Topics.ALL.add("edp.x"));
         }
