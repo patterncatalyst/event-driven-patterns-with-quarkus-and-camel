@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r07 plan: chapters 16 to 18, CQRS and projections, aggregate replay or projection, schema evolution and upcasting (Opus planner, 2026-11-12)
 
-Status: **draft for owner review (G0 decisions below)**. Branch `release/r07`, cut from main at 0a54b1f (r06.0).
+Status: **approved by the owner 2026-11-12, all 19 recommendations**; merge when validation and CI pass (owner). Branch `release/r07`, cut from main at 0a54b1f (r06.0).
 
 Planner note: this plan was made with read-only commands, Maven Central metadata, the quay.io and Red Hat catalog APIs, the GitHub releases API, code.quarkus.io, the Notion PRD and web fetches of the Leanpub page for Young's versioning book, the Apicurio 3.1.x rule reference, the Debezium Outbox Event Router page and the Quarkus Schema Registry and Avro guide. No stack was started, no container was run, nothing was written and no git command changed state.
 
@@ -664,7 +664,7 @@ Chapter 18:
 
 | Step | Work | Files | Owner | Depends | Parallel | Stack | Status |
 |---|---|---|---|---|---|---|---|
-| 0 | Preflight: branch, Docker clean, iteration-plan r07 in progress, r06-plan step 7 set to done, save this plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md`, `_plans/r07-plan.md` | orchestrator | owner OK | none | no | pending |
+| 0 | Preflight: branch, Docker clean, iteration-plan r07 in progress, r06-plan step 7 set to done, save this plan | `_plans/iteration-plan.md`, `_plans/r06-plan.md`, `_plans/r07-plan.md` | orchestrator | owner OK | none | no | done |
 | 1A | Re-survey (complete the table) and source fetches: Fowler CQRS, Microsoft CQRS and Materialized View, Young CQRS Documents CQRS pages, Avro schema resolution, Apicurio 3.3.x rules, REST and serde pages, PostgreSQL xid functions, SmallRye pausable channels, Quarkus scheduler; bibliography rows (Young versioning, Fowler CQRS, Microsoft CQRS and Materialized View, Avro spec); `*-src-*` rows | `_plans/versions.md`, `_plans/sources.md`, `bibliography.md` | exec 1A | 0 | 1B, 1C | no | pending |
 | 1B | Spikes S1 to S6 | scratchpad | exec 1B | 0 | 1A, 1C | lock, serial | pending |
 | 1C | `_plans/domain-model.md` rows 16 to 18 rewritten (below); note on `shippingPriority` values and customer ids `C-16xx` | `_plans/domain-model.md` | exec 1C | 0 | 1A, 1B | no | pending |
