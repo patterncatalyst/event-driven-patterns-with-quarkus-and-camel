@@ -15,7 +15,7 @@ Quarkus, Kafka Streams, Camel Kafka and Camel SQL with the PostgreSQL aggregatio
 | `AGGREGATION_REPOSITORY` | `postgres` | Demo code. `memory` keeps the Camel aggregator's open groups in the JVM, so a recreate loses them |
 | `READINESS_TIMEOUT_MS` | `10000` | Demo code. How long a Camel group waits for its other fact, counted on the service's clock |
 
-The Streams window is 30 minutes with 5 minutes of grace. `kafka-streams.commit.interval.ms=1000` and `kafka-streams.statestore.cache.max.bytes=0` make a result leave within about a second. The session timeout of both consumers is 10 s, so a recreated service takes its partitions back within seconds.
+The Streams window is 30 minutes with 5 minutes of grace. `kafka-streams.commit.interval.ms=1000` and `kafka-streams.statestore.cache.max.bytes=0` make a result leave within about a second. The session timeout of both consumers is 10 s. A recreate of the service is live again after about 13 s (three recreates, 13.45 to 13.47 s).
 
 ## Run
 
@@ -27,7 +27,7 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `TBD checks passed`.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `24/24 checks passed`.
 
 ## What verify.sh does
 
@@ -35,7 +35,7 @@ docker compose down -v
 2. Happy path: `O-2001` (reservation, then payment) and `O-2002` (payment first) give `ReadyToShip` on both outputs.
 3. Bench: 200 orders, all reservations in one producer call and then all payments, event times inside the window. Both outputs hold 200 `ReadyToShip` and no `PaymentOverdue`.
 4. `O-2003`: event times two minutes apart. The reservation is produced first and the payment only after the Camel output holds `PaymentOverdue`, so the records are further apart than the timeout. The Streams output holds `ReadyToShip`. The late payment on the Camel path emits nothing and leaves no open group.
-5. `O-2004`: event times 90 minutes apart, produced back to back. The Camel output holds `ReadyToShip`; the Streams output holds `PaymentOverdue` once stream time has moved on, and never `ReadyToShip`.
+5. `O-2004`: event times 90 minutes apart, produced back to back. The Camel output holds `ReadyToShip`; the Streams output holds `PaymentOverdue`, because the payment's own event time moves stream time past the window, and never `ReadyToShip`.
 6. `O-2005`, reserved and never paid: Camel emits `PaymentOverdue` after the timeout and not before. Streams stays silent for 15 s because no record moves stream time, and emits `PaymentOverdue` after a later record does.
 7. Recreate: the service is recreated with a 60 s timeout, `O-2006` is reserved (an open row in `shipping.readiness`, and the join store's changelog grows), the service is recreated again with an empty state directory, and the payment arrives. Both outputs hold `ReadyToShip`, and the log shows the join store and the Camel timeouts restored.
 8. Prometheus holds `order_readiness_total` for the Camel path, a trace is in Tempo and logs are in Loki.
@@ -57,9 +57,9 @@ Event times are yesterday's date from the clock. The broker refuses a record tim
 
 ## Tests and checks in detail
 
-The Maven build runs TBD tests. They cover the join in event time with the topology test driver (a match in either order, a payment 31 minutes later, an unmatched reservation leaving only after the window and the grace, the wall clock not closing a window, an out-of-order payment inside the grace, a late payment after `PaymentOverdue`, and the two crafted pairs), the timestamp extractor, the Camel aggregator on Dev Services Kafka and PostgreSQL (both facts in either order, the timeout, a duplicate reservation, the open row, a lone payment), the count-of-two aggregator that completes on a duplicate reservation, the in-memory repository leaving no row, and the mismatched partition counts, where Streams matches some orders and Camel all of them. `verify.sh` prints `TBD checks passed`.
+The Maven build runs 18 tests. They cover the join in event time with the topology test driver (a match in either order, a payment 31 minutes later, an unmatched reservation leaving only after the window and the grace, the wall clock not closing a window, an out-of-order payment inside the grace, a late payment after `PaymentOverdue`, and the two crafted pairs), the timestamp extractor, the Camel aggregator on Dev Services Kafka and PostgreSQL (both facts in either order, the timeout, a duplicate reservation, the open row, a lone payment), the count-of-two aggregator that completes on a duplicate reservation, the in-memory repository leaving no row, and the mismatched partition counts, where Streams matches some orders and Camel all of them. `verify.sh` prints `24/24 checks passed`. The timing witnesses (the `O-2003` and `O-2005` Camel checks, and the late payment that emits nothing) were green in 15 of 15 consecutive runs from fresh containers. The mismatched-partition test matched 14 of 30 orders on the Streams output and 30 of 30 on the Camel output, in each of three runs.
 
-Notes the script prints: the time to the last `ReadyToShip` of the bench on both outputs, the peak number of open groups in `shipping.readiness`, the records added to each output, and when the Camel `PaymentOverdue` for `O-2005` was seen. Measured values, in the final run: TBD.
+Notes the script prints: the time to the last `ReadyToShip` of the bench on each output, the peak number of open groups in `shipping.readiness`, the records added to each output, and when the Camel `PaymentOverdue` for `O-2005` was seen. Medians of 15 runs: 2.58 s on the Streams output and 3.10 s on the Camel output for the 200 bench orders (polled every 0.5 s), the Camel `PaymentOverdue` for `O-2005` seen 10.05 to 11.07 s after the reservation was produced (polled every second), 200 records added to each output, and a peak of 25 to 50 open groups in `shipping.readiness` (sampled every 0.5 s, so it depends on timing).
 
 ## Experiments
 
@@ -67,5 +67,5 @@ Each row changes a single thing and names the checks that fail.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code) | The group open at the recreate is lost on the Camel path, and the Camel consumer had already committed the reservation. The Streams side restores its store from the changelog | The open-row check and the `O-2006` ReadyToShip check: TBD | TBD |
-| `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code) | `O-2003` now matches on the Camel path, because the payment arrives inside the longer timeout | The `O-2003` PaymentOverdue check: TBD | TBD |
+| `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code) | The group open at the recreate is lost on the Camel path, and the Camel consumer had already committed the reservation. The Streams side restores its store from the changelog | Checks 18, 20 and 21 (the open row, `ReadyToShip` after the recreate, the restore log line); 21 of 24 pass | The Camel side loses `O-2006`; the Streams changelog check (19) still passes |
+| `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code) | The payment for `O-2003` arrives inside the longer timeout, so the Camel path no longer reports it overdue | Checks 9, 11 and 15 (`O-2003` overdue, the late payment silent, `O-2005` overdue within 15 s); 21 of 24 pass | `O-2003` is no longer overdue within 20 s, and `O-2005` is not reported within 15 s |

@@ -184,14 +184,19 @@ BEFORE_STREAMS="$(end_offset $STREAMS_OUT)"; BEFORE_CAMEL="$(end_offset $CAMEL_O
 BENCH_START="$(now_ms)"
 bench_records reserved 09:04 | produce $RESERVED
 bench_records paid 09:05 | produce $PAID
-PEAK=0
+PEAK=0; STREAMS_MS=""; CAMEL_MS=""
 until bench_done || (( $(now_ms) - BENCH_START > 60000 )); do
     OPEN="$(sql 'SELECT count(*) FROM shipping.readiness' || echo 0)"; (( OPEN > PEAK )) && PEAK="$OPEN"
+    if [[ -z "$STREAMS_MS" && "$(emitted_count streams ReadyToShip '"orderId":"O-2[12][0-9][0-9]"')" == 200 ]]; then STREAMS_MS=$(( $(now_ms) - BENCH_START )); fi
+    if [[ -z "$CAMEL_MS" && "$(emitted_count camel ReadyToShip '"orderId":"O-2[12][0-9][0-9]"')" == 200 ]]; then CAMEL_MS=$(( $(now_ms) - BENCH_START )); fi
     sleep 0.5
 done
+if [[ -z "$STREAMS_MS" && "$(emitted_count streams ReadyToShip '"orderId":"O-2[12][0-9][0-9]"')" == 200 ]]; then STREAMS_MS=$(( $(now_ms) - BENCH_START )); fi
+if [[ -z "$CAMEL_MS" && "$(emitted_count camel ReadyToShip '"orderId":"O-2[12][0-9][0-9]"')" == 200 ]]; then CAMEL_MS=$(( $(now_ms) - BENCH_START )); fi
 check "all 200 bench orders are ReadyToShip on both outputs within 60 s" bench_done
 check "no bench order is PaymentOverdue on either output" no_bench_overdue
 echo "NOTE: bench, time to the last ReadyToShip on both outputs: $(( $(now_ms) - BENCH_START )) ms (both together, polled every 0.5 s)"
+echo "NOTE: bench, time to 200 ReadyToShip per output (polled): streams ${STREAMS_MS:-none} ms, camel ${CAMEL_MS:-none} ms"
 echo "NOTE: bench, peak open groups in shipping.readiness: $PEAK"
 echo "NOTE: bench, records added to the outputs: streams $(( $(end_offset $STREAMS_OUT) - BEFORE_STREAMS )), camel $(( $(end_offset $CAMEL_OUT) - BEFORE_CAMEL ))"
 
@@ -206,8 +211,7 @@ check "O-2003: the late payment on the Camel path emits nothing and leaves no op
 echo "Divergence 2: O-2004 is far apart in event time and together in arrival"
 reserve O-2004 09:20; pay O-2004 10:50
 check "O-2004: the Camel output holds ReadyToShip at once" poll 15 emitted camel ReadyToShip O-2004
-reserve O-2099 11:30
-check "O-2004: after a record moves stream time on, the Streams output holds PaymentOverdue" poll 30 emitted streams PaymentOverdue O-2004
+check "O-2004: the Streams output holds PaymentOverdue, because the payment itself moves stream time past the window" poll 30 emitted streams PaymentOverdue O-2004
 check "O-2004: the Streams output holds no ReadyToShip" streams_never_ready_2004
 
 echo "A reservation that is never paid (O-2005)"

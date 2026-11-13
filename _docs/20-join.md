@@ -38,7 +38,7 @@ reserved.leftJoin(paid, Readiness::of,
 
 A payment within 30 minutes of the reservation, in either direction, matches and gives `ReadyToShip`. The five minutes of grace admit a record that is late in event time. A reservation that finds no payment leaves as `PaymentOverdue`, with a null payment passed to the join function. Both source streams read their timestamp from the payload with a `PayloadTimestampExtractor`, so the window is measured on when the facts happened.
 
-Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). Streams does not check this for a stream-stream join. With three partitions on reservations and two on payments the instance starts, reports healthy and matches only the orders whose two records happen to share a partition number: TBD(spike: 12) of 30 in a recorded run, while the Camel route, which reads both topics in one consumer, matched all 30.
+Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). Streams does not check this for a stream-stream join. With three partitions on reservations and two on payments the instance starts, reports healthy and matches only the orders whose two records happen to share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
 
 Camel has no join. It has the Aggregator, correlated here on the record key:
 
@@ -66,7 +66,7 @@ The two forms in one place:
 | Late or replayed records | Placed by event time; accepted within the grace | Placed by arrival; a replay looks like a burst |
 | State | Local store plus a changelog topic | A PostgreSQL row per open group |
 | Partitioning | Both topics need the same partition count | None; one consumer reads both topics |
-| Time to match 200 orders | TBD | TBD |
+| Time to match 200 orders | About 2.6 s | About 3.1 s |
 
 A real service runs one of the two. The example runs both on the same input, each with its own consumer group and its own output topic, so every difference is visible in one run.
 
@@ -90,7 +90,7 @@ The window does not retract. A payment that arrives after `PaymentOverdue` has b
 
 An inner join would leave an order that is never paid with no trace. The left join emits `PaymentOverdue` after the window and the grace have passed, but only when stream time passes them, and stream time advances only with records. An idle stream never closes its windows, so a reservation with no further traffic behind it waits in silence until some record, from any order, arrives with a later event time. A wall clock does not move it.
 
-Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: TBD(spike: 10.05 to 11.03 s) with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why `O-2004` slips through.
+Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: between 10.05 and 11.07 seconds in 15 runs with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why `O-2004` slips through.
 
 A payment that arrives first and alone forms a group with no reservation. By timeout it would be reported as overdue with nothing reserved, so the route filters it: a group without a reservation completes silently and leaves no row behind.
 
@@ -108,7 +108,7 @@ new PostgresAggregationRepository(new DataSourceTransactionManager(dataSource), 
 
 The in-memory repository is the contrast, and it is demo code: `AGGREGATION_REPOSITORY=memory` keeps groups in the JVM. The Camel consumer has already committed the reservation's offset, so after a recreate the group is gone and nothing will replay it.
 
-Two details of the restart are worth knowing. A restored group's timeout starts again from the restart, so its `PaymentOverdue` arrives one timeout after the service is back, not one timeout after the reservation. And a recreated Streams instance reaches RUNNING only once the broker has expired the old member's session, TBD(spike: 30 to 37 s) with the default timeout, so the example lowers `session.timeout.ms` to 10 seconds. The Quarkus readiness check covers the input topics and does not wait for RUNNING. The liveness check reports the Streams state, and a deployment that routes traffic by what the stream needs waits for that one.
+Two details of the restart are worth knowing. A restored group's timeout starts again from the restart, so its `PaymentOverdue` arrives one timeout after the service is back, not one timeout after the reservation. And a recreated Streams instance reports RUNNING on the liveness check about 13 seconds after the recreate. The Quarkus readiness check covers the input topics and does not wait for RUNNING. The liveness check reports the Streams state, and a deployment that routes traffic by what the stream needs waits for that one.
 
 ## Build, run, observe
 
@@ -119,12 +119,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. It prints `TBD checks passed`. Watch `O-2003` and `O-2004` get opposite answers from the two forms.
+`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. It prints `24/24 checks passed`. Watch `O-2003` and `O-2004` get opposite answers from the two forms.
 
 Try one change and rerun:
 
 - `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code): the reservation open at the recreate is lost on the Camel path and never becomes `ReadyToShip` there.
-- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` now matches on the Camel path too.
+- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and `O-2005` is reported later than 15 seconds after it arrived.
 
 ## When not to use it
 
