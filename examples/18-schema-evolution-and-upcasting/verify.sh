@@ -115,6 +115,7 @@ first_version_lacks_priority() { # the schema of version 1 has no shippingPriori
     schema="$(curl -sf "$REG/groups/default/artifacts/$ARTIFACT/versions/1/content")" || return 1
     [[ "$schema" == *'"orderId"'* && "$schema" != *shippingPriority* ]]
 }
+one_version_without_priority() { [[ "$(version_count)" == 1 ]] && first_version_lacks_priority; }
 rule_reads_back() {
     [[ "$(curl -sf "$REG/admin/rules/COMPATIBILITY" | python3 -I -c "import json,sys; print(json.load(sys.stdin)['config'])")" == "$RULE" ]]
 }
@@ -219,7 +220,7 @@ echo "The previous release"
 check "POST O-1801 and O-1802 return 201; both rows are stored at schema_version 1 and carry no shippingPriority" \
     expect "$(place O-1801)/$(place O-1802)/$(stored_shapes)/$(v1_rows_without_priority)" "201/201/O-1801:1,O-1802:1/2"
 check "the artifact $ARTIFACT has exactly one version, without shippingPriority" \
-    poll 30 first_version_lacks_priority
+    poll 30 one_version_without_priority
 check "the topic holds two records, both written with registry version 1" poll 60 versions_on_topic_are "1,1"
 
 echo "The current release"

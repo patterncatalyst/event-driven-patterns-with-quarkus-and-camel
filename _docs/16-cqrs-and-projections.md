@@ -62,14 +62,14 @@ The projector runs in its own transaction, and the record is acknowledged after 
 
 `mp.messaging.incoming.<channel>.pausable=true` makes each channel stoppable by name through the injected `ChannelRegistry`. Production code has no use for that. The demo endpoints do, and they are labelled as demo code.
 
-Camel takes the other shape. `OrderViewRoute` is one consumer on all six topics, with `choice()` on the `CamelKafkaTopic` header, `unmarshal().json(...)` and a call to the same projector bean:
+Camel takes the other shape. `OrderViewRoute` is one consumer on all six topics, with `choice()` on the `KafkaConstants.TOPIC` header, `unmarshal().json(...)` and a call to the same projector bean:
 
 ```java
 from("kafka:" + String.join(",", Topics.ORDERS_PLACED, Topics.ORDERS_CANCELLED, Topics.PAYMENTS_PROCESSED,
         Topics.SHIPPING_SCHEDULED, Topics.SHIPPING_IN_TRANSIT, Topics.SHIPPING_DELIVERED)
         + "?groupId=order-view-camel&autoOffsetReset=earliest&sessionTimeoutMs=10000")
     .choice()
-        .when(header("CamelKafkaTopic").isEqualTo(Topics.ORDERS_PLACED))
+        .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.ORDERS_PLACED))
             .unmarshal().json(JsonLibrary.Jackson, Events.OrderPlaced.class)
             .bean(projector, "placed(${body}, ${exchangeProperty.at})")
         // four more when() branches, one per topic
@@ -85,7 +85,7 @@ from("kafka:" + String.join(",", Topics.ORDERS_PLACED, Topics.ORDERS_CANCELLED, 
 | Holding one topic back | Pause that channel | Stop the route, which reads all six topics |
 | Projector | Shared | Shared |
 
-The route is the smaller configuration and the channels are the finer control. Both write through the same guarded projector, so the view is identical (checked below).
+The route is the smaller configuration and the channels are the finer control. Both write through the same guarded projector, so the view is identical.
 
 ## Read lag
 
@@ -93,7 +93,7 @@ The view is behind its sources by the time an event takes to travel: producer, t
 
 {% include excalidraw.html file="16-read-lag-window" alt="ShipmentDelivered is produced while the delivered channel is paused; reads at one second and at four seconds return SHIPPED with the same asOf; after resume the view returns DELIVERED and the lag timer records the time from the record timestamp to the acknowledgement" caption="Figure 16.2: A paused topic leaves the view stale, and asOf shows it" %}
 
-Two things make that staleness a property the reader can use. `asOf` on every answer is the record timestamp of the last event applied. A reader that sees SHIPPED with an `asOf` from yesterday knows something is behind; one that sees it from a second ago knows the order was shipped a second ago. And `order.view.lag` is a timer of the time from each record's timestamp to its acknowledgement, exported as a metric, so the lag is a number to alert on and not a feeling.
+Two things make that staleness a property the reader can use. `asOf` on every answer is the record timestamp of the last event applied. A reader that sees SHIPPED with an `asOf` from yesterday knows something is behind; one that sees it from a second ago knows the order was shipped a second ago. And `order.view.lag` is a timer of the time from each record's timestamp to its acknowledgement, exported as a metric, so the lag can be graphed and alerted on.
 
 What the view does not give is read-your-writes. A customer who has just placed an order may list their orders and not see it. The write side's response is the place to confirm the order; the list catches up. Fowler notes that separate models raise the likelihood of eventual consistency.
 
@@ -113,7 +113,7 @@ ON CONFLICT (order_id) DO UPDATE SET shipment_status = EXCLUDED.shipment_status,
 WHERE orders.shipment_rank(EXCLUDED.shipment_status) > orders.shipment_rank(order_view.shipment_status)
 ```
 
-`shipment_rank` is an immutable SQL function that numbers the lifecycle. The `WHERE` makes the statement a no-op for an event that does not advance the row, which also makes a redelivered record harmless. It lives in the database statement, not in Java, so that the check and the write are one step and the five other channels cannot interleave between them.
+`shipment_rank` is an immutable SQL function that numbers the lifecycle. The `WHERE` makes the statement a no-op for an event that does not advance the row, which also makes a redelivered record harmless. It lives in the database statement, not in Java, so that the check and the write are one step and no other channel can write the row between them.
 
 The guard fits this view because the facts are a lifecycle, where "further" is defined. For a column with no order, such as an address that can be changed twice, arrival order does not decide the answer and the event needs a version or a timestamp from its owner. Where the order of events matters, the owner keys them to one partition (chapter 4).
 
@@ -126,7 +126,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 14 tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived for every combination of facts, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `29/29 checks passed`.
+The Maven build runs 14 tests against PostgreSQL and Kafka from Dev Services. They cover the guarded upsert, the same event applied twice, an event before its order, CANCELLED as terminal, the status derived from the facts a row holds, each topic moving an order forward, a paused topic leaving the row stale until it resumes, the lag timer, and the Camel route building the same view. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, produces the events in each owner's record format, and prints `29/29 checks passed`.
 
 The checks read the effects:
 
@@ -140,7 +140,7 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Checks 18, 24, 26 and 27 fail, in each of three runs; 25 of 29 pass.
+- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Across four runs, checks 18, 26 and 27 failed every time and check 24 failed in three of them; three runs ended 25 of 29 and one ended 26 of 29.
 - Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is 12,881 ms. Only check 23 fails; the burst still converges, so 28 of 29 pass.
 
 ## When not to use it

@@ -17,7 +17,7 @@ Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPr
 
 The event store of chapter 14 is append-only. A trigger refuses `UPDATE` and `DELETE`, because an event is a fact that happened and the history is only worth keeping while nobody edits it. A new field is then a problem with no obvious place to fix it.
 
-Each way out gives something up. Rewriting the old rows with a migration breaks the rule that made the store trustworthy, and it cannot be undone. Teaching the aggregate every shape, one branch per version in every decision, spreads the history of the schema through code that should only know the order. Making every field optional and defaulting it where it is used scatters the same default across the code base. Young's *Versioning in an Event Sourced System* names these options and more in its chapter titles: type based versioning, a weak schema, copy and replace.
+Each way out gives something up. Rewriting the old rows with a migration breaks the rule that made the store trustworthy, and it cannot be undone. Teaching the aggregate every shape, one branch per version in every decision, spreads the history of the schema through code that should only know the order. Making every field optional and defaulting it where it is used scatters the same default across the code base. Chapter titles in Young's *Versioning in an Event Sourced System* include "Basic Type Based Versioning", "Weak Schema" and "Copy and Replace".
 
 ### The solution
 
@@ -57,7 +57,7 @@ record OrderPlaced(Order order, String shippingPriority) implements OrderEvent {
 
 That constructor is what fails when the chain is skipped, with a message that names the cause. `append` always writes the current `schema_version`, and a command on a stream that starts with a version 1 row appends version 2 events behind it. A stream can hold both shapes for as long as it lives.
 
-The step is plain Java in the store and no Camel type appears in it. Camel belongs to the wire, covered next.
+The step is plain Java in the store and no Camel type appears in it. Camel belongs to the wire.
 
 ## Pattern: Compatible schema evolution
 
@@ -143,7 +143,7 @@ The refusal happens in two places. A direct registration of the version answers 
 POST /orders  ->  503  {"reason": "Incompatible artifact: edp.orders.placed-value [AVRO] ..."}
 ```
 
-The order has no event row, there is no outbox row, nothing reaches the topic and the artifact has no new version. A rule set on one artifact overrides the global rule, so the example sets a global rule from `REGISTRY_RULE`, and the demo that relaxes it changes that value only.
+The order has no event row, there is no outbox row, nothing reaches the topic and the artifact has no new version. A rule set on one artifact overrides the global rule, so `verify.sh` sets a global rule from `REGISTRY_RULE` (demo code), and `REGISTRY_RULE=BACKWARD` changes only that value.
 
 Accepting the broken version has a cost that only shows later. A consumer built on version 3 that rebuilds from the start of the topic meets version 1 records with no `shippingPriority` and nothing to fill in, and Avro fails with `AvroTypeException`. A rebuild that reads every record, as in chapter 17, is where it surfaces.
 
@@ -186,7 +186,7 @@ Change one thing and watch a guard fail:
 
 ## When not to use it
 
-An upcaster cannot invent a fact. When a change alters what an event means, not only what it carries, a default would state something that was never recorded, and a new event type is the correct answer. A chain that grows a step per release is also a cost, because every load runs every step. Young's *Versioning in an Event Sourced System* has a chapter titled "Copy and Replace" for that case.
+An upcaster cannot invent a fact. When a change alters what an event means, not only what it carries, a default would state something that was never recorded, and a new event type is the correct answer. A chain that grows a step per release is also a cost, because every load runs every step.
 
 Skip the work where nothing is read back. A snapshot from chapter 15 holds derived state and is discarded and rebuilt when its schema changes, so it needs no upcaster.
 

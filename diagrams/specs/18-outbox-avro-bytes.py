@@ -13,7 +13,7 @@ emit(
     nodes=[
         {"x": 40, "y": 100, "w": 440, "h": 56, "style": "box", "lines": ["place order", "append OrderPlaced, schema_version 2, as JSON"]},
         {"x": 40, "y": 185, "w": 440, "h": 70, "style": "accent", "lines": ["AvroKafkaSerializer, topic edp.orders.placed", "registers the schema, or the registry refuses and everything rolls back"]},
-        {"x": 40, "y": 285, "w": 440, "h": 56, "style": "kernel", "lines": ["orders.events row, JSON", "orders.outboxevent row, bytea: 0, schema id, Avro bytes"]},
+        {"x": 40, "y": 285, "w": 440, "h": 56, "style": "kernel", "lines": ["orders.outboxevent row", "payload bytea: 0, schema id, Avro bytes"]},
         {"x": 40, "y": 370, "w": 440, "h": 56, "style": "box", "lines": ["commit", "event and outbox row together, or neither"]},
         {"x": 700, "y": 100, "w": 220, "h": 70, "style": "ghost", "lines": ["Apicurio Registry", "edp.orders.placed-value"]},
         {"x": 540, "y": 285, "w": 380, "h": 56, "style": "ink", "lines": ["Debezium Event Router", "BinaryDataConverter, bytes unchanged"]},

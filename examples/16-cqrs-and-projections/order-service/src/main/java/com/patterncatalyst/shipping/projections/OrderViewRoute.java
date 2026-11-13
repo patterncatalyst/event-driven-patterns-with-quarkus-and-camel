@@ -3,6 +3,7 @@ package com.patterncatalyst.shipping.projections;
 import java.time.Instant;
 
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.kafka.KafkaConstants;
 import org.apache.camel.model.dataformat.JsonLibrary;
 
 import com.patterncatalyst.shipping.Topics;
@@ -28,21 +29,21 @@ public class OrderViewRoute extends RouteBuilder {
                 .routeId("order-view-camel")
                 .autoStartup("{{projection.camel.enabled}}")
                 .process(exchange -> exchange.setProperty("at",
-                        Instant.ofEpochMilli(exchange.getIn().getHeader("CamelKafkaTimestamp", Long.class))))
+                        Instant.ofEpochMilli(exchange.getIn().getHeader(KafkaConstants.TIMESTAMP, Long.class))))
                 .choice()
-                    .when(header("CamelKafkaTopic").isEqualTo(Topics.ORDERS_PLACED))
+                    .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.ORDERS_PLACED))
                         .unmarshal().json(JsonLibrary.Jackson, Events.OrderPlaced.class)
                         .bean(projector, "placed(${body}, ${exchangeProperty.at})")
-                    .when(header("CamelKafkaTopic").isEqualTo(Topics.ORDERS_CANCELLED))
+                    .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.ORDERS_CANCELLED))
                         .unmarshal().json(JsonLibrary.Jackson, Events.OrderCancelled.class)
                         .bean(projector, "cancelled(${body}, ${exchangeProperty.at})")
-                    .when(header("CamelKafkaTopic").isEqualTo(Topics.PAYMENTS_PROCESSED))
+                    .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.PAYMENTS_PROCESSED))
                         .unmarshal().json(JsonLibrary.Jackson, Events.PaymentProcessed.class)
                         .bean(projector, "paid(${body}, ${exchangeProperty.at})")
-                    .when(header("CamelKafkaTopic").isEqualTo(Topics.SHIPPING_SCHEDULED))
+                    .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.SHIPPING_SCHEDULED))
                         .unmarshal().json(JsonLibrary.Jackson, Events.ShipmentScheduled.class)
                         .bean(projector, "scheduled(${body}, ${exchangeProperty.at})")
-                    .when(header("CamelKafkaTopic").isEqualTo(Topics.SHIPPING_IN_TRANSIT))
+                    .when(header(KafkaConstants.TOPIC).isEqualTo(Topics.SHIPPING_IN_TRANSIT))
                         .unmarshal().json(JsonLibrary.Jackson, Events.ShipmentInTransit.class)
                         .bean(projector, "inTransit(${body}, ${exchangeProperty.at})")
                     .otherwise()

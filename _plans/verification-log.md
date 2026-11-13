@@ -401,3 +401,10 @@ Re-run after these edits: `r2-15-mvn.log` 13 tests BUILD SUCCESS; `r2-15-verify.
 ## Step 4 and 5: final run
 
 (Orchestrator: final serial run, repair rounds and validation rounds are recorded here.)
+
+## Repair round 1, chapters 16 and 18
+
+- Chapter 16 guard-off wording corrected to the four recorded runs: checks 18, 26 and 27 failed in every run, check 24 failed in three of four (`w16-guardoff1.log` to `w16-guardoff3.log`: 25/29 each; `f7-x16-guardoff.log`: 26/29, check 24 passed). The earlier "deterministic" statement for check 24 was wrong. The 252 of 254 sentence stays, backed by `w16-dump-*.txt`. No check was changed.
+- Claims 16-* and 18-* re-mapped to current line numbers after the final prose edits. Claim 16-ah now cites checks 11 to 15 for the pause. Claim 16-bo restated.
+- Camel route in chapter 16 now uses `KafkaConstants.TOPIC` and `KafkaConstants.TIMESTAMP`; chapter 18 routes had no string headers. Chapter 18 check 4 now asserts `version_count == 1` as well as the first version lacking `shippingPriority`. Figures 16.1 and 18.2 regenerated from their specs.
+- Re-runs from clean under the stack lock: mvn verify chapter 16, 14 tests (`r1-16-mvn.log`); chapter 18, 19 plus 3 = 22 tests (`r1-18-mvn.log`); verify.sh chapter 16, 29/29 twice (`r1-16-run1.log`, `r1-16-run2.log`); chapter 18, 21/21 twice (`r1-18-run1.log`, `r1-18-run2.log`). No failing check; test counts unchanged.
