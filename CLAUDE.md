@@ -69,7 +69,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 
 - Write like EIP Camel, Geewax tone: problem before mechanism, show the code, state the trade-off, stop.
 - About 2,000 words is a target, never a floor; 2,500 is the maximum, excluding code. Never pad.
-- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (the commands, the pass count, one bullet per experiment: what to change, what fails), `## When not to use it`, `## References`.
+- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (short, like EIP Camel: one code block with the commands, then one or two sentences on what runs and what to watch, ending with the pass count, then at most three `Try` bullets of one sentence each naming the switch and the visible effect; about 100 words of prose, 150 at most, enforced by `validate.py`; no test lists, no check numbers, no run statistics or failure rates, which belong in the example's README; a measured result that is the chapter's lesson is stated once in the pattern sections, not here), `## When not to use it`, `## References`.
 - Exactly one AI callout per pattern chapter, in this form, with no HTML wrapper and no nested quote:
   > **🤖 Explore with your agent**
   > "<runnable prompt naming the example's own types and the chapter's decision rule>"

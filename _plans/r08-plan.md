@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r08 plan: chapters 19 to 21, enrich, join, aggregate (Opus planner, 2026-11-13)
 
-Status: **draft for owner review**. Branch `release/r08`, cut from main after r07.0; r07 housekeeping committed at ffc24e0.
+Status: **approved by the owner 2026-11-13** ("please continue": all 21 recommendations), with one addition from the owner the same day: `## Build, run, observe` sections are far longer than EIP Camel's and must be cut to its form (see "Build, run, observe rule" below and step 2E). Branch `release/r08`, cut from main after r07.0; r07 housekeeping committed at ffc24e0.
 
 Planner note: this plan was made with read-only commands, the local Maven repository (the quarkus-bom and quarkus-camel-bom 3.40.1.2 poms, the kafka-streams 4.2.1 pom), Maven Central metadata, and web fetches of the Quarkus Kafka Streams guide, the Quarkus Micrometer guide, the Camel 4.22.x Aggregate and Enrich EIP pages, the Camel 4.22.x SQL component page, the Camel Quarkus SQL extension page and the Kafka Streams 4.2 DSL page. No stack was started, no container was run, nothing but this file was written and no git command changed state.
 
@@ -497,6 +497,17 @@ All spike code under `<scratchpad>/r08-spikes/`. Each live spike starts with `do
 
 If S1 fails coexistence, decision 3 takes the two-module fallback before any executor starts.
 
+## Build, run, observe rule (owner, 2026-11-13)
+
+EIP Camel's sections are about 60 words; ours had grown to 250 to 650 (test lists, check numbers, recorded-run statistics). From r08 on, and retrofitted to 02 to 18 in step 2E:
+
+- One code block with the commands (domain-model install, `mvn -B verify`, `./verify.sh`, with short `#` comments if needed).
+- One or two sentences: what runs and what to watch, ending with the pass count.
+- At most three `Try` bullets, one sentence each: the switch (labelled demo code) and the visible effect, for example "`PROJECTION_GUARD=off ./verify.sh` (demo code): a late in-transit event moves a delivered order back to SHIPPED."
+- About 100 words of prose, 150 at most (code blocks excluded), enforced by `validate.py`.
+- No test lists, no check numbers, no run statistics or failure rates. Those go in the example README (its check list and an "Experiments" table with the failing checks and measured rates). A measured result that is the chapter's lesson is stated once in the pattern sections.
+- Wherever this plan says "the prose states the measured rate", read: the README states the measured rate, and the chapter uses a plain qualifier ("usually", "in most runs") only if the effect is not deterministic.
+
 ## Steps
 
 | Step | Work | Files | Owner | Depends | Parallel | Stack | Status |
@@ -509,6 +520,7 @@ If S1 fails coexistence, decision 3 takes the two-module fallback before any exe
 | 2A | Ch 19: code, tests, Containerfiles, compose, README, example page, figure specs and outputs, chapter draft without numbers | `examples/19-*/**`, `_docs/19-*.md`, `_example_pages/19-*.md`, `diagrams/specs/19-*.py`, `diagrams/19-*.*` | exec 2A | G0 | with 2B, 2C | mvn under lock | pending |
 | 2B | Ch 20: same set, Flyway repository tables | `examples/20-*/**`, `_docs/20-*.md`, `_example_pages/20-*.md`, `diagrams/specs/20-*.py`, `diagrams/20-*.*` | exec 2B | G0 | with 2A, 2C | mvn under lock | pending |
 | 2C | Ch 21: same set, plus the bench oracle script | `examples/21-*/**`, `_docs/21-*.md`, `_example_pages/21-*.md`, `diagrams/specs/21-*.py`, `diagrams/21-*.*` | exec 2C | G0 | with 2A, 2B | mvn under lock | pending |
+| 2E | Retrofit the Build, run, observe rule to chapters 02 to 18: cut each section to the rule; move removed detail (test coverage, check list, experiment failing checks and rates) into the example README where it is missing; keep any lesson-level measured result in the pattern sections if it was only stated here; `validate.py` gains the 150-word section limit; `claims.md` rows re-pointed (line numbers) or moved to README evidence; word counts drop | `_docs/02..18-*.md`, `examples/02..18/README.md`, `scripts/validate.py`, `_plans/claims.md` | exec 2E (Sonnet), orchestrator for claims and validate.py | G0 | with 2A to 2C (disjoint files) | no | pending |
 | 2D | Earlier-chapter consistency: grep 02, 03, 04, 06, 12, 14 and 17 for sentences 19 to 21 contradict (list in Findings); claims rows drafted | `_plans/claims.md`, earlier `_docs` only if needed | orchestrator | G0 | yes | no | pending |
 | 3 | Runtime windows, serial, exclusive, 120 min cap each, order 20, 21, 19. Verify N/N twice from clean, then three bench runs; every experiment once; the 15-run loop for each timing witness (20: checks 6, 10; 21: check 4; 19: check 11) from fresh containers, failures counted; numbers filled; numbering frozen | as 2A to 2C | orchestrator | 2A to 2C | serial | exclusive | pending |
 | 4 | Orchestrator re-run of every prose experiment, logged with the failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | pending |
@@ -543,18 +555,20 @@ Executors:
 
 ## Acceptance criteria
 
+**All chapters (02 to 21)**: every `## Build, run, observe` section passes the `validate.py` limit (150 words of prose, code excluded), has at most three `Try` bullets, and contains no check numbers, test names or failure rates; every removed fact is still in the README or the pattern sections; `validate.py` fails on a deliberately altered copy with a 151-word section.
+
 **19**:
 
 - verify N/N, N >= 18, from clean twice; mvn green with >= 10 tests across both modules, including the TTD inner-join and key-mismatch tests asserting the bad outcome.
 - Checks 6 and 7 show the lookup and the table join disagreeing on O-1903 and agreeing on O-1904, each after a sync read.
 - With the owner stopped, the Streams output grows and the Camel group shows lag 1 for 20 s; after the owner returns, the Camel output holds O-1905 and lag is 0.
 - `CAMEL_BREAK_ON_FIRST_ERROR=false` fails check 12 and no other, in step 3 and step 4.
-- Check 11 green in 15 of 15 runs, or the prose states the measured rate.
+- Check 11 green in 15 of 15 runs, or the README states the measured rate.
 
 **20**:
 
 - verify N/N, N >= 18, from clean twice; mvn green with >= 12 tests, including co-partitioning and the `completionSize(2)` duplicate bug.
-- The two crafted pairs give opposite outcomes per path (checks 5 to 9). Check 6 green in 15 of 15 runs, or the prose states the measured rate.
+- The two crafted pairs give opposite outcomes per path (checks 5 to 9). Check 6 green in 15 of 15 runs, or the README states the measured rate.
 - PaymentOverdue on the Streams path appears only after a tick (check 11 asserts silence before it).
 - Both paths deliver ReadyToShip for O-2006 across a `--force-recreate`; `AGGREGATION_REPOSITORY=memory` fails check 13 on the Camel side only.
 - The chapter states plainly that the Camel form approximates the window by arrival time, not event time.
@@ -565,7 +579,7 @@ Executors:
 - Exactly one Streams list per carrier per slot (check 3, and 8 lists in the bench); `PICKUP_EMIT=updates` fails checks 3 and 14.
 - The late record is on no Streams list, the dropped-records metric is at least 1 in Prometheus, and the record is on a Camel batch.
 - The open 09:30 window survives a recreate (count 5); `PICKUP_CHANGELOG=off` fails check 12.
-- Check 4 green in 15 of 15 runs, or the prose states the measured rate.
+- Check 4 green in 15 of 15 runs, or the README states the measured rate.
 
 **Every chapter**:
 
