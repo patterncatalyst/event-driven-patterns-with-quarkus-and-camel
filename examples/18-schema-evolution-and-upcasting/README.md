@@ -60,5 +60,5 @@ docker compose down -v
 
 | Change | What it shows | Checks that fail |
 |---|---|---|
-| `UPCASTERS=off ./verify.sh` | A stored shape 1 row cannot be read as the current record, and no upcast is counted | 8, 10 and 19 |
-| `REGISTRY_RULE=BACKWARD ./verify.sh` | Version 3 is accepted and published | 14 to 16 |
+| `UPCASTERS=off ./verify.sh` | A stored shape 1 row cannot be read as the current record, and no upcast is counted | 8, 10 and 19 (18/21) |
+| `REGISTRY_RULE=BACKWARD ./verify.sh` | Version 3 is accepted and published | 14 to 16 (18/21) |

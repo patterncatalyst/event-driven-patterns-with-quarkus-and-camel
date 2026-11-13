@@ -155,7 +155,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 20 tests against PostgreSQL, Kafka and Apicurio Registry from Dev Services. In `order-service` they cover:
+The Maven build runs 22 tests against PostgreSQL, Kafka and Apicurio Registry from Dev Services. In `order-service` they cover:
 
 - the chain and its default;
 - the stored node left untouched;
@@ -163,11 +163,11 @@ The Maven build runs 20 tests against PostgreSQL, Kafka and Apicurio Registry fr
 - a mixed stream of version 1 and version 2 rows;
 - the append-only trigger;
 - an outbox payload that starts with the schema id and decodes to the current record;
-- the two rules in the registry;
+- the two rules in the registry, and a first version accepted on an empty artifact;
 - Avro resolution with no registry, where a version 2 reader fills the default and a version 3 reader throws;
 - a command under the broken release that leaves no row.
 
-In `notification-service` the SmallRye channel and the Camel route each read a version 1 and a version 2 record. `verify.sh` starts the stack and prints `TBD/TBD checks passed`.
+In `notification-service` the SmallRye channel and the Camel route each read a version 1 and a version 2 record, and a plain test fails when its copy of `order-placed.avsc` differs from the one in `order-service`. `verify.sh` starts the stack and prints `21/21 checks passed`.
 
 The checks read the effects, release by release:
 
@@ -181,8 +181,8 @@ The checks read the effects, release by release:
 
 Change one thing and watch a guard fail:
 
-- Run `UPCASTERS=off ./verify.sh` (demo code). The chain is skipped, loading `O-1801` fails because the current record refuses the missing field, the cancellation fails with it, and no upcast is counted. Checks 8, 10 and 19 fail. Check 9 passes, because a version 2 row needs no step.
-- Run `REGISTRY_RULE=BACKWARD ./verify.sh` (demo code). Version 3 is registered and then published for `O-1804`. Checks 14 to 16 fail. A reader built on version 3 cannot read the version 1 records already on the topic.
+- Run `UPCASTERS=off ./verify.sh` (demo code). The chain is skipped, loading `O-1801` fails because the current record refuses the missing field, the cancellation fails with it, and no upcast is counted. The run ends 18/21 with checks 8, 10 and 19 failing. Check 9 passes, because a version 2 row needs no step.
+- Run `REGISTRY_RULE=BACKWARD ./verify.sh` (demo code). Version 3 is registered and then published for `O-1804`. The run ends 18/21 with checks 14 to 16 failing. A reader built on version 3 cannot read the version 1 records already on the topic.
 
 ## When not to use it
 

@@ -75,7 +75,10 @@ sql() { "${PSQL[@]}" -c "$1"; }
 ready() { curl -sf "http://localhost:$1/q/health/ready" >/dev/null; }
 logs() { docker logs "$1" 2>&1; }
 log_has() { logs "$1" | grep -F -- "$2" >/dev/null; } # grep without -q: under pipefail an early exit would fail the pipeline
-log_lacks() { ! logs "$1" | grep -iE -- "$2" >/dev/null; }
+log_lacks() { # the consumer settings the client logs at start name the deserializer, so match failures, not the word
+    local hits; hits="$(logs "$1" | grep -E -- "$2" | head -3 | cut -c1-200 || true)"
+    [[ -z "$hits" ]] || { printf 'unexpected log lines in %s:\n%s\n' "$1" "$hits" >&2; return 1; }
+}
 
 # --- the service
 place() { # place <id> [priority]: prints the HTTP status
@@ -235,7 +238,7 @@ check "an UPDATE of the stored payload of O-1801 is refused by the append-only t
 echo "The wire"
 check "notification-service recorded O-1801 and O-1802 as STANDARD and O-1803 as EXPRESS, and its group has no lag" \
     poll 60 smallrye_recorded
-check "no deserialization failure is logged by notification-service" log_lacks edp-notification-service 'deserializ|AvroTypeException'
+check "no deserialization failure is logged by notification-service" log_lacks edp-notification-service 'DeserializationException|SerializationException|AvroTypeException|Failed to deserialize'
 
 echo "Refusing an incompatible version"
 check "registering v3 as a version of $ARTIFACT is refused with 400, naming shippingPriority, and the artifact keeps two versions" \

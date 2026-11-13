@@ -40,4 +40,11 @@ class RegistryRuleTest {
         serializer.serialize("rule-backward", Registry.record(Registry.v3(), "EXPRESS"));
         assertEquals(3, Registry.versionCount("rule-backward-value"));
     }
+
+    @Test
+    void aFirstVersionIsAcceptedWhateverItContains() throws Exception {
+        Registry.globalRule("BACKWARD_TRANSITIVE");
+        Registry.serializer().serialize("rule-first", Registry.record(Registry.v3(), "EXPRESS"));
+        assertEquals(1, Registry.versionCount("rule-first-value"));
+    }
 }
