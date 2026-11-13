@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="130" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Artifact edp.orders.placed-value in Apicurio Registry</text>
+<rect x="20" y="215" width="450" height="270" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="235" font-size="12" font-weight="700" fill="#888">Rule BACKWARD_TRANSITIVE</text>
+<rect x="490" y="215" width="450" height="270" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="502" y="235" font-size="12" font-weight="700" fill="#888">Rule BACKWARD</text>
+<rect x="45" y="100" width="250" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="170.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">version 1</text>
+<text x="170.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">no shippingPriority</text>
+<rect x="355" y="100" width="250" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="480.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">version 2</text>
+<text x="480.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">shippingPriority, default STANDARD</text>
+<rect x="665" y="100" width="250" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="790.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v3 candidate</text>
+<text x="790.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">shippingPriority, no default</text>
+<rect x="45" y="255" width="400" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="245.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v3 against version 2</text>
+<text x="245.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">compatible: the field is present</text>
+<rect x="45" y="345" width="400" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="245.0" y="378.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v3 against version 1</text>
+<text x="245.0" y="395.0" font-size="11.5" fill="#555555" text-anchor="middle">incompatible: nothing fills the field</text>
+<rect x="45" y="425" width="400" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="245.0" y="455.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">refused, HTTP 400, no new version</text>
+<rect x="515" y="255" width="400" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="715.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v3 against version 2 only</text>
+<text x="715.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">compatible</text>
+<rect x="515" y="345" width="400" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="715.0" y="378.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">accepted as version 3</text>
+<text x="715.0" y="395.0" font-size="11.5" fill="#555555" text-anchor="middle">version 1 is never consulted</text>
+<rect x="515" y="425" width="400" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="715.0" y="455.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">a v3 reader cannot read the v1 records on the topic</text>
+<path d="M295,135 L355,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M605,135 L665,135" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M245,325 L245,345" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M245,415 L245,425" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M715,325 L715,345" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M715,415 L715,425" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The rule belongs to the registry, and the rule decides which versions can exist</text>
+<text x="480" y="530" font-size="11" fill="#555555" text-anchor="middle">The v2 reader resolves v1 records with the default; a reader without the default cannot.</text>
+</svg>

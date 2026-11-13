@@ -555,7 +555,7 @@ Chapter 15:
 | 4 | Orchestrator re-run of every prose experiment, logged with failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | done |
 | 5 | Final serial run 00 to 15 (fresh containers each); static gates; claims and log; per-chapter commits with host_ids before each | claims, log | orchestrator | 4 | serial | yes | done |
 | 6 | Opus validation (max 2 repair rounds): claims audit, check-bite audit, 7-gram originality vs Young's PDF text and chapter 01, fresh clone, word counts, figures byte-identical | none | validator | 5 | none | yes | done (round 2: SHIP) |
-| 7 | Ship: PR, CI green, squash on owner OK, tag r06.0, notes-only release, delete branch; PRD rows 14 and 15 rewritten to the domain (freight names removed) and roadmap; iteration-plan done; CLAUDE.md decisions log entry | as listed | orchestrator | 6 | none | no | pending |
+| 7 | Ship: PR, CI green, squash on owner OK, tag r06.0, notes-only release, delete branch; PRD rows 14 and 15 rewritten to the domain (freight names removed) and roadmap; iteration-plan done; CLAUDE.md decisions log entry | as listed | orchestrator | 6 | none | no | done (r06.0, PR #7, 2026-11-12) |
 
 Executors:
 

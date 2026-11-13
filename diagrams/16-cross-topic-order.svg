@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="170" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Forward-only guard (the default)</text>
+<rect x="20" y="260" width="920" height="170" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="280" font-size="12" font-weight="700" fill="#888">PROJECTION_GUARD=off (demo code)</text>
+<rect x="40" y="100" width="190" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="135.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Applied: SCHEDULED</text>
+<text x="135.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">row shows SHIPPED</text>
+<rect x="260" y="100" width="190" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="355.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Applied: DELIVERED</text>
+<text x="355.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">row shows DELIVERED</text>
+<rect x="480" y="100" width="200" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="580.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">IN_TRANSIT arrives late</text>
+<text x="580.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">rank 2 is not above 3</text>
+<rect x="710" y="100" width="210" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="815.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Row stays DELIVERED</text>
+<text x="815.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">the statement updates nothing</text>
+<rect x="40" y="300" width="190" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="135.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Applied: SCHEDULED</text>
+<text x="135.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">row shows SHIPPED</text>
+<rect x="260" y="300" width="190" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="355.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Applied: DELIVERED</text>
+<text x="355.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">row shows DELIVERED</text>
+<rect x="480" y="300" width="200" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="580.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">IN_TRANSIT arrives late</text>
+<text x="580.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">last writer wins</text>
+<rect x="710" y="300" width="210" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="815.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Row regresses</text>
+<text x="815.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">to IN_TRANSIT, SHIPPED</text>
+<path d="M230,135 L260,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M450,135 L480,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M680,135 L710,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M230,335 L260,335" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M450,335 L480,335" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M680,335 L710,335" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Six topics are read independently, so a later status can be applied first</text>
+</svg>
