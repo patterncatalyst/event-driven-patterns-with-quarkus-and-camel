@@ -113,7 +113,7 @@ public void on(OrderPlaced placed) {
 }
 ```
 
-A record written without the field arrives with `STANDARD`, filled in by Avro resolution. Quarkus applies that detection to SmallRye channels only, so the Camel route names the deserializer, the registry and the specific reader itself:
+A record written without the field arrives with `STANDARD`, filled in by Avro resolution. The Camel route configures the deserializer, the registry and the specific reader explicitly:
 
 {% raw %}
 ```java
@@ -186,7 +186,7 @@ Change one thing and watch a guard fail:
 
 ## When not to use it
 
-An upcaster cannot invent a fact. When a change alters what an event means, not only what it carries, a default would state something that was never recorded, and a new event type is the correct answer. A chain that grows a step per release is also a cost. After a dozen steps, copying the stream into a new one at the current shape, as Young's copy and replace does, is cheaper than lifting every load.
+An upcaster cannot invent a fact. When a change alters what an event means, not only what it carries, a default would state something that was never recorded, and a new event type is the correct answer. A chain that grows a step per release is also a cost, because every load runs every step. Young's *Versioning in an Event Sourced System* has a chapter titled "Copy and Replace" for that case.
 
 Skip the work where nothing is read back. A snapshot from chapter 15 holds derived state and is discarded and rebuilt when its schema changes, so it needs no upcaster.
 

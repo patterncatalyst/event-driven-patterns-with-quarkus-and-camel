@@ -63,7 +63,7 @@ void tick() {
 
 `SKIP` stops a slow tick from overlapping the next in one instance, and no further, so `ProjectionBatch` also locks the checkpoint row with `PESSIMISTIC_WRITE`: a second instance waits and then reads past the first. One batch is one `@Transactional` method: lock the checkpoint, read up to `projection.batch` events, add the counts to `carrier_daily_shipments`, move the checkpoint.
 
-The read is native SQL, because Hibernate cannot say "after this transaction and position, below the oldest transaction still running":
+The read is native SQL, because the `xid8` comparison and `pg_snapshot_xmin` are not mapped by the entity:
 
 ```sql
 SELECT position, tx_id::text::bigint, type, payload->>'carrier', (occurred_at AT TIME ZONE 'UTC')::date
@@ -104,13 +104,13 @@ Freshness is the projection's price. A command reaches the projection within a t
 
 The obvious checkpoint is the last `position` read: `WHERE position > :last`. It loses rows without a trace.
 
-A position is assigned when a row is inserted, and a commit happens later. Transaction A inserts position 41 and keeps working. Transaction B inserts 42 and commits. The projector reads 42 and stores it as its checkpoint. A commits, its row becomes visible at 41, behind a checkpoint that never goes back. The order A shipped is not counted, and no error, lag or log line says so.
+A position is assigned when a row is inserted, and a commit happens later. Transaction A inserts position 41 and keeps working. Transaction B inserts 42 and commits. The projector reads 42 and stores it as its checkpoint. A commits, its row becomes visible at 41, behind a checkpoint that never goes back. The order A shipped is not counted, and the log shows no error.
 
 {% include excalidraw.html file="17-commit-order-gap" alt="A position checkpoint reads B at 42 while A at 41 is still open, so A is skipped when it commits; a watermark checkpoint reads nothing past the oldest open transaction and counts both A and B once A commits" caption="Figure 17.3: A checkpoint by position skips a late commit; a watermark waits for it" %}
 
 The batch query closes the gap with two conditions. Rows are read in `(tx_id, position)` order, and only those below `pg_snapshot_xmin(pg_current_snapshot())`, the lowest transaction id still running. Every transaction below that id has finished, so no row can appear later before the checkpoint. While A is open nothing past A is read and `lagEvents` stays at 1 or more. When A commits, both rows are read in the next batch.
 
-The price is that one long transaction holds the projection back, and any open transaction in the database counts, an idle-in-transaction session included. The stall is visible, because `projection_lag_events` rises and stays up.
+The price is that one long transaction holds the projection back, and any open transaction in the database counts, an idle-in-transaction session included. The stall is visible, because the report shows `lagEvents` at 1 or more while the transaction is held.
 
 ## Build, run, observe
 

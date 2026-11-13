@@ -350,3 +350,54 @@ Heap experiments re-run after repair round 1 (orchestrator): `INVENTORY_FETCH=en
 
 No High. Live 4/4 green (`v7-*.log`: mvn 14 27 tests, mvn 15 13 tests, verify 14 33/33, verify 15 27/27); all gates green. Fixed before the PR: N table median-load column dropped (single noisy runs contradicted the N-1 cost statement); Figure 15.2 caption and spec docstring now "a snapshot load stays under 1 ms", snapshot labels printed with two decimals, subtitle names the median of three runs; the 30 s period bullet quotes the verify run only (974); "brought to a snapshot with 99 events after it" replaces "receives 100 reservations"; Young snapshot-schema sentence reworded (no shared 6-gram); verify.sh NOTE labels use the measured stream lengths; ch 14 wording (the two events other services act on; any `edp.orders` topic; Vernon reference items separated); ch 15 "Chapter 1"; ch 08 "Event sourcing keeps the outbox when only some events are public"; fully qualified `Function` and `Stream` replaced by imports. Kept: `StockLedger` counts replayed events with `peek` (shown in the chapter snippet; equivalent to version arithmetic only while versions stay contiguous).
 Re-run after these edits: `r2-15-mvn.log` 13 tests BUILD SUCCESS; `r2-15-verify.log` 27/27 (full 1.5/11.4/132.0 ms, ratio 134). No edp-* containers left.
+
+## r07 spikes (step 1B, 2026-11-12)
+
+- S1 to S6 all pass (scratchpad `r07-spikes/`, not committed): S1 chapter 16 (SmallRye pausable channels, six groups, guarded upsert, lag timer, Camel one-route variant, group reset and replay), S2 chapter 17 (`tx_id xid8` watermark, scheduler resolution, streaming replay, three-run bench), S3 and S4 chapter 18 (upcaster chain over a `JsonNode`, Avro bytes in a `bytea` outbox column, Apicurio rules, v3 refusal), S5 the Camel Avro reader, S6 shared tooling (Kafka 4.3 console flags, group lag arithmetic, group reset, binary records, timer units).
+- Every fallback was unused. The decisions that bind the executors are recorded in the "G0 decisions" section of `_plans/r07-plan.md`: Apicurio serde overridden to 3.3.4 (the platform manages 3.1.7; Dev Services image set to 3.3.4 per example), HTTP 400 on a rule violation, rule precedence artifact then group then global, Camel topic header `CamelKafkaTopic`, `lagEvents >= 1` during a hold, scheduler resolution about 1 s, timers exported in milliseconds.
+- Fetched sources for the three chapters: `_plans/sources.md`, "r07 sources" (step 1A, 2026-11-12).
+
+## r07 chapter 16 window (2026-11-12)
+
+- Three baseline runs from clean under the stack lock, 29/29 each (`w16-run1.log`, `w16-run2.log`, `w16-run3.log`). Lag over the run (1,267 samples): p50 175, 175, 184 ms; p95 318, 334, 334 ms; p99 402, 385, 418 ms; max 6,982, 7,014, 7,011 ms. mvn verify: 14 tests (`e16-mvn2.log`).
+- Experiments, each from clean:
+  - `PROJECTION_GUARD=off`, three runs (`w16-guardoff1.log` to `w16-guardoff3.log`): 25/29, checks 18, 24, 26 and 27 fail in all three, so the failing set is deterministic. Checks 24 and 26 fail although `view_hash` excludes O-1604.
+  - Same experiment with a row dump (`w16-guardoff-dump.log`; `w16-dump-before.txt`, `w16-dump-replay.txt`, `w16-dump-camel.txt` of `orders.order_view` without O-1604, 254 rows each): after the replay and after the Camel route, 252 of the 254 orders moved from DELIVERED to SCHEDULED; the two unchanged are O-1602 (CANCELLED) and O-1605 (SCHEDULED). The chapter sentence quotes this run. The interleaving of the reads was not recorded, so the chapter does not state a cause beyond "the last event applied wins".
+  - `PROJECTOR_DELAY_MS=50` (`w16-delay50.log`): 28/29, check 23 fails only; p50 6,707 ms, p95 12,881 ms, p99 13,418 ms, max 13,371 ms; check 22 passed, so the burst still converges inside 60 s. This switch was not spiked, so this run is its first measurement.
+- Scans at the end of the window: validate ok, voice 0, idiomatic 0, host_ids 0 hits.
+
+## r07 chapter 17 window (2026-11-12)
+
+- Defect fixed: `verify.sh` check 2 quoted a `/` inside a single-quoted SQL argument, so the checkpoint query was a syntax error and precondition 2 failed (`w17-run0-fail.log`). Fixed with double quotes. Diagnosed by querying the fresh stack (events 0, triggers 2, rows 0, checkpoint 0/0).
+- Three consecutive clean passes after the fix, 22/22 each (`w17-run1.log`, `w17-run2.log`, `w17-run3.log`):
+
+  | Run | Replay 1k / 10k / 100k (ms) | Projection read (ms) | Rebuild (ms) | Freshness median |
+  |---|---|---|---|---|
+  | 1 | 15 / 76 / 570 | 0.890 / 0.605 / 0.4746 | 1,025 / 758 / 26,585 | 993 ms |
+  | 2 | 14 / 76 / 592 | 0.674 / 0.595 / 0.4789 | 522 / 1,272 / 26,577 | 993 ms |
+  | 3 | 13 / 75 / 581 | 0.641 / 0.621 / 0.4774 | 1,022 / 1,016 / 26,585 | 994 ms |
+
+  Medians of the three: replay 14 / 76 / 581 ms, projection 0.67 / 0.61 / 0.48 ms, rebuild 1,022 / 1,016 / 26,585 ms, freshness 993 ms. Ratio at 100,000 orders 581 / 0.4774 = 1,218 (per run 1,201, 1,236, 1,217). Events table 1.1 / 10 / 103 MB, projection 27 rows at every size. mvn verify: 16 tests (`r07-17-mvn3.log`).
+- Memory: `docker stats` peak of `order-service` 353.8 MiB (run 2) and 330.9 MiB (run 3), sampled every 3 s (`w17-run2.mem`, `w17-run3.mem`); `mem_limit: 512m` kept (about 30 percent margin) and a comment added to `compose.yaml`.
+- Experiments, each from clean:
+  - `PROJECTION_WATERMARK=off` (`w17-expwm.log`): 19/22, checks 16, 17 and 18 fail. The brief expected 16 and 17 only; check 18 fails because the projection stays one order short after the restart, so the chapter names all three.
+  - `PROJECTION_POLL=5s` (`w17-exppoll.log`): 21/22, check 14 fails only; freshness median 4,994 ms (min 298, max 5,993).
+  - `PROJECTION_BATCH=100` (`w17-expbatcha.log`, `w17-expbatchb.log`): checks 10 and 11 fail (not caught up within 60 s at 100,000 orders) and the run then aborts in the measurement because the rebuild wait times out; the 10,000 order rebuild took 3,768 and 3,519 ms against 758 to 1,272 ms at batch 1000. The expected "every check passes" bullet was cut from the chapter.
+
+## r07 chapter 18 window (2026-11-12)
+
+- Defect fixed: `verify.sh` check 13 matched the Kafka consumer config line `value.deserializer`, so the first run was 20/21 (`w18-run1.log`). The regex is now `DeserializationException|SerializationException|AvroTypeException|Failed to deserialize` and the check prints the matched lines on failure.
+- mvn verify: 19 `order-service` tests and 3 `notification-service` tests, 22 in all, BUILD SUCCESS (`w18-mvn.log`); added in the window: a first version accepted on an empty artifact, and the `ReaderSchemaTest` drift check.
+- Three consecutive clean passes, 21/21 each (`w18-run1b.log` with a `docker stats` sampler, `w18-run2.log`, `w18-run3.log`). The built image holds the Apicurio serde 3.3.4 jars in both services.
+- Experiments, each from clean:
+  - `UPCASTERS=off` (`w18-exp-upcasters-off.log`): 18/21, checks 8, 10 and 19 fail; check 9 passes because a version 2 row needs no step.
+  - `REGISTRY_RULE=BACKWARD` (`w18-exp-rule-backward.log`): 18/21, checks 14, 15 and 16 fail (version 3 is accepted and published).
+- Memory: `docker stats` peak of the whole stack 2.85 GiB (5 s samples, `edp-*` containers); per-container peaks connect 0.98, kafka 0.58, lgtm 0.58, apicurio 0.27, notification-service 0.24, order-service 0.22, postgres 0.05 GiB (`w18-stats.raw`).
+
+## r07 claims rows (2026-11-12)
+
+- Rows 16-*, 17-* and 18-* drafted from the chapters against the tests, the window logs and the r07 source rows; row 15-bh now cites the chapter 17 measurement (about 1,218 times at 100,000 orders, check 12 in `w17-run1.log` to `w17-run3.log`) and is verified. Rows marked UNBACKED are listed in `claims.md` and must be fixed or cut before release.
+
+## Step 4 and 5: final run
+
+(Orchestrator: final serial run, repair rounds and validation rounds are recorded here.)

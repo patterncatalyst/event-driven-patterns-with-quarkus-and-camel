@@ -29,7 +29,7 @@ The read model is a materialized view: disposable, because it can be rebuilt fro
 
 ### How Quarkus and Camel model it
 
-`order_view` has one row per order. `OrderView` is a read-only Panache entity over it, and `OrderViewResource` answers from it without touching Kafka. Writing is the projector's job alone, with one native upsert per event, because Hibernate has no upsert. `OrderViewProjector` sets only the columns its event owns. The payment upsert:
+`order_view` has one row per order. `OrderView` is a read-only Panache entity over it, and `OrderViewResource` answers from it without touching Kafka. Writing is the projector's job alone, with one native upsert per event, a single `INSERT ... ON CONFLICT DO UPDATE` statement. `OrderViewProjector` sets only the columns its event owns. The payment upsert:
 
 ```sql
 INSERT INTO orders.order_view (order_id, payment_status, last_event_at)
@@ -69,7 +69,11 @@ from("kafka:" + String.join(",", Topics.ORDERS_PLACED, Topics.ORDERS_CANCELLED, 
         Topics.SHIPPING_SCHEDULED, Topics.SHIPPING_IN_TRANSIT, Topics.SHIPPING_DELIVERED)
         + "?groupId=order-view-camel&autoOffsetReset=earliest&sessionTimeoutMs=10000")
     .choice()
-        .when(header("CamelKafkaTopic").isEqualTo(Topics.SHIPPING_DELIVERED))
+        .when(header("CamelKafkaTopic").isEqualTo(Topics.ORDERS_PLACED))
+            .unmarshal().json(JsonLibrary.Jackson, Events.OrderPlaced.class)
+            .bean(projector, "placed(${body}, ${exchangeProperty.at})")
+        // four more when() branches, one per topic
+        .otherwise()
             .unmarshal().json(JsonLibrary.Jackson, Events.ShipmentDelivered.class)
             .bean(projector, "delivered(${body}, ${exchangeProperty.at})")
 ```
@@ -78,14 +82,14 @@ from("kafka:" + String.join(",", Topics.ORDERS_PLACED, Topics.ORDERS_CANCELLED, 
 |---|---|---|
 | Consumers and groups | Six of each | One of each |
 | Where lag is read | Per group, one partition each | One group, six partitions |
-| Holding one topic back | Pause that channel | Stop the whole route |
+| Holding one topic back | Pause that channel | Stop the route, which reads all six topics |
 | Projector | Shared | Shared |
 
 The route is the smaller configuration and the channels are the finer control. Both write through the same guarded projector, so the view is identical (checked below).
 
 ## Read lag
 
-The view is behind its sources by the time an event takes to travel: producer, topic, consumer, transaction. Usually that is short. When a consumer is paused, restarted or slow, it is as long as the stall, and a reader sees the old state.
+The view is behind its sources by the time an event takes to travel: producer, topic, consumer, transaction. Usually that is short. When a consumer is paused or slow, it is as long as the stall, and a reader sees the old state.
 
 {% include excalidraw.html file="16-read-lag-window" alt="ShipmentDelivered is produced while the delivered channel is paused; reads at one second and at four seconds return SHIPPED with the same asOf; after resume the view returns DELIVERED and the lag timer records the time from the record timestamp to the acknowledgement" caption="Figure 16.2: A paused topic leaves the view stale, and asOf shows it" %}
 
@@ -109,7 +113,7 @@ ON CONFLICT (order_id) DO UPDATE SET shipment_status = EXCLUDED.shipment_status,
 WHERE orders.shipment_rank(EXCLUDED.shipment_status) > orders.shipment_rank(order_view.shipment_status)
 ```
 
-`shipment_rank` is an immutable SQL function that numbers the lifecycle. The `WHERE` makes the statement a no-op for an event that does not advance the row, which also makes a redelivered record harmless. It lives in the database statement, not in Java, because the check and the write have to be one step: a Java read-then-write would race with the other five channels.
+`shipment_rank` is an immutable SQL function that numbers the lifecycle. The `WHERE` makes the statement a no-op for an event that does not advance the row, which also makes a redelivered record harmless. It lives in the database statement, not in Java, so that the check and the write are one step and the five other channels cannot interleave between them.
 
 The guard fits this view because the facts are a lifecycle, where "further" is defined. For a column with no order, such as an address that can be changed twice, arrival order does not decide the answer and the event needs a version or a timestamp from its owner. Where the order of events matters, the owner keys them to one partition (chapter 4).
 
@@ -136,7 +140,7 @@ The checks read the effects:
 
 Change one thing and watch a guard fail:
 
-- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins. A replay from offset 0 and the Camel route read the three shipment topics in a different interleaving, and in a recorded run both moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Checks 18, 24, 26 and 27 fail, in each of three runs; 25 of 29 pass.
+- Run `PROJECTION_GUARD=off ./verify.sh`. This is demo code. The late `ShipmentInTransit` replaces DELIVERED, and the reader sees SHIPPED. Without the guard the last shipment event applied wins, and a second pass over the topics does not apply the three shipment events in their original order. In a recorded run, a replay from offset 0 and the Camel route each moved 252 of the 254 other orders from DELIVERED back to SCHEDULED. Checks 18, 24, 26 and 27 fail, in each of three runs; 25 of 29 pass.
 - Run `PROJECTOR_DELAY_MS=50 ./verify.sh`. This is demo code. The burst outruns the projector and the 95th percentile of lag is 12,881 ms. Only check 23 fails; the burst still converges, so 28 of 29 pass.
 
 ## When not to use it
@@ -147,7 +151,7 @@ A read model is eventually consistent. If a reader must see its own write at onc
 
 A view that needs events the owner keeps private cannot be built from the public topics. Reading the owner's events means either tailing its store or publishing more events, and that is a decision for the owner. Chapter 9 covers tailing the log of a database.
 
-A rebuild is a replay of the topics, so Kafka retention bounds how far back one can go. A view that must be rebuilt from the beginning needs retention that long, or a different source.
+A rebuild is a replay of the topics, so the topic's retention limits how far back one can go: `retention.ms` is the maximum time a log is kept before old segments are discarded. A view that must be rebuilt from the beginning needs retention that long, or a different source.
 
 > **🤖 Explore with your agent**
 > "In examples/16-cqrs-and-projections, pause the delivered channel, produce ShipmentDelivered for an order, and compare what OrderViewResource returns with what OrderViewProjector has applied. Then produce ShipmentInTransit after ShipmentDelivered with and without PROJECTION_GUARD=off, and state which column each of the six events in order_view is allowed to write."
@@ -164,5 +168,5 @@ A rebuild is a replay of the topics, so Kafka retention bounds how far back one 
 - SmallRye Reactive Messaging, [Pausable Channels](https://smallrye.io/smallrye-reactive-messaging/4.37.0/concepts/pausable-channels/)
 - Apache Camel, [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html) (several topics in one consumer) and [Choice](https://camel.apache.org/components/4.22.x/eips/choice-eip.html)
 - PostgreSQL documentation, [INSERT](https://www.postgresql.org/docs/18/sql-insert.html) (`ON CONFLICT DO UPDATE ... WHERE`)
-- Apache Kafka, [Managing consumer groups](https://kafka.apache.org/43/operations/basic-kafka-operations/) (describe a group and its lag)
+- Apache Kafka, [Managing consumer groups](https://kafka.apache.org/43/operations/basic-kafka-operations/) (describe a group and its lag) and [topic configuration](https://kafka.apache.org/43/configuration/topic-configs/) (`retention.ms`)
 - Chapter 3: Event-carried state transfer, for `order_copy`; chapter 4 for order within one partition; chapter 11 for the inbox; chapter 14 for the write side
