@@ -52,6 +52,8 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/DeadLetterChannel.html" rel="noopener">Dead Letter Channel</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Where a message goes when it cannot be delivered or processed</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/InvalidMessageChannel.html" rel="noopener">Invalid Message Channel</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Separating messages that make no sense from messages that failed</td></tr>
     <tr><td><a href="https://microservices.io/patterns/communication-style/idempotent-consumer.html" rel="noopener">Pattern: Idempotent Consumer</a></td><td>Chris Richardson</td><td>Recording processed message ids in the database, in the handler's transaction</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html" rel="noopener">Content Enricher</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Fetching the missing data from an external source and attaching it to the message</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html" rel="noopener">Aggregator</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A stateful filter that combines related messages into one, and the ways a group is completed</td></tr>
   </tbody>
 </table>
 
@@ -115,6 +117,18 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://quarkus.io/guides/smallrye-fault-tolerance" rel="noopener">Quarkus SmallRye Fault Tolerance</a></td><td>Retrying work with @Retry</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/idempotentConsumer-eip.html" rel="noopener">Camel Idempotent Consumer EIP</a></td><td>The eager, removeOnFailure and skipDuplicate options and the key repositories</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/kafka-component.html" rel="noopener">Camel Kafka component</a></td><td>Transacted producers, isolationLevel, breakOnFirstError and pollOnError</td></tr>
+    <tr><td><a href="https://kafka.apache.org/42/streams/developer-guide/dsl-api/" rel="noopener">Kafka Streams DSL</a></td><td>Joins, co-partitioning, the GlobalKTable, windows, grace and suppress</td></tr>
+    <tr><td><a href="https://kafka.apache.org/42/streams/core-concepts/" rel="noopener">Kafka Streams core concepts</a></td><td>Event time, stream time, out-of-order records and the grace period</td></tr>
+    <tr><td><a href="https://kafka.apache.org/42/streams/developer-guide/config-streams/" rel="noopener">Kafka Streams configuration</a></td><td>processing.guarantee, commit.interval.ms, the timestamp extractor and group.protocol</td></tr>
+    <tr><td><a href="https://kafka.apache.org/42/streams/developer-guide/testing/" rel="noopener">Testing a Streams application</a></td><td>TopologyTestDriver and advancing time without a broker</td></tr>
+    <tr><td><a href="https://kafka.apache.org/42/operations/monitoring/" rel="noopener">Kafka monitoring</a></td><td>The Kafka Streams task metrics, including dropped-records-total</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/kafka-streams" rel="noopener">Quarkus Apache Kafka Streams guide</a></td><td>The Kafka Streams extension, its topics setting, health checks and interactive queries</td></tr>
+    <tr><td><a href="https://quarkus.io/guides/kafka-dev-services" rel="noopener">Quarkus Dev Services for Kafka</a></td><td>Topic partitions in the Dev Services broker</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/enrich-eip.html" rel="noopener">Camel Enrich EIP</a></td><td>Enriching a message from a resource endpoint with an aggregation strategy</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/aggregate-eip.html" rel="noopener">Camel Aggregate EIP</a></td><td>Correlation, completion size, predicate and timeout, and the completed-by property</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/4.22.x/sql-component.html" rel="noopener">Camel SQL component</a></td><td>JdbcAggregationRepository and PostgresAggregationRepository</td></tr>
+    <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/sql.html" rel="noopener">Camel Quarkus SQL extension</a></td><td>The Agroal DataSource for the SQL component</td></tr>
+    <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/http.html" rel="noopener">Camel Quarkus HTTP extension</a></td><td>Calling an HTTP endpoint from a route</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/eips/dead-letter-channel.html" rel="noopener">Camel Dead Letter Channel</a></td><td>Redelivery and routing the original message to a dead letter endpoint</td></tr>
     <tr><td><a href="https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/jpa.html" rel="noopener">Camel Quarkus JPA extension</a></td><td>The Quarkus transaction strategy and JpaMessageIdRepository</td></tr>
     <tr><td><a href="https://camel.apache.org/components/4.22.x/jpa-component.html" rel="noopener">Camel JPA component</a></td><td>JpaMessageIdRepository and the transacted consumer option</td></tr>
