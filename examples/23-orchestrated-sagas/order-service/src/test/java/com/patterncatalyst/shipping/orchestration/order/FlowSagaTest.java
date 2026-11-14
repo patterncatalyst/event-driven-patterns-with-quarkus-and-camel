@@ -123,4 +123,27 @@ class FlowSagaTest {
         Wire.reply(bootstrap, Topics.INVENTORY_RESERVED, "InventoryReserved", id, "RESERVED", reserve);
         Wire.command(bootstrap, Topics.PAYMENTS_COMMANDS, id, "TakePayment");
     }
+
+    @Test
+    void aReplyWakesOnlyTheInstanceItNames() throws Exception {
+        String declined = Orders.id();
+        String accepted = Orders.id();
+        Orders.start("flow", declined);
+        Orders.start("flow", accepted);
+
+        var reserveDeclined = Wire.command(bootstrap, Topics.INVENTORY_COMMANDS, declined, "ReserveStock");
+        var reserveAccepted = Wire.command(bootstrap, Topics.INVENTORY_COMMANDS, accepted, "ReserveStock");
+        Wire.reply(bootstrap, Topics.INVENTORY_RESERVED, "InventoryReserved", declined, "RESERVED", reserveDeclined);
+        Wire.reply(bootstrap, Topics.INVENTORY_RESERVED, "InventoryReserved", accepted, "RESERVED", reserveAccepted);
+        var takeDeclined = Wire.command(bootstrap, Topics.PAYMENTS_COMMANDS, declined, "TakePayment");
+        var takeAccepted = Wire.command(bootstrap, Topics.PAYMENTS_COMMANDS, accepted, "TakePayment");
+
+        Wire.reply(bootstrap, Topics.PAYMENTS_PROCESSED, "PaymentProcessed", accepted, "PAID", takeAccepted);
+        awaitStatus(accepted, "PAID");
+        assertEquals("PLACED", Orders.status(declined), "the other instance is still waiting");
+
+        Wire.reply(bootstrap, Topics.PAYMENTS_FAILED, "PaymentFailed", declined, "DECLINED", takeDeclined);
+        awaitStatus(declined, "CANCELLED");
+        assertEquals("PAID", Orders.status(accepted));
+    }
 }

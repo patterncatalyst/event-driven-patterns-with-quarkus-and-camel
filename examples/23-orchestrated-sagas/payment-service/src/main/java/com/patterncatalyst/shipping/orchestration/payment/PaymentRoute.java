@@ -49,14 +49,21 @@ public class PaymentRoute extends RouteBuilder {
                     .otherwise().log("ignored command ${header.type}")
                 .end();
 
-        from("direct:take-payment").routeId("take-payment")
+        var start = from("direct:take-payment").routeId("take-payment")
                 .unmarshal().json(JsonLibrary.Jackson, TakePayment.class)
-                .process(e -> e.getMessage().setHeader("orderId", e.getMessage().getBody(TakePayment.class).orderId()))
-                .saga().propagation("off".equals(join) ? SagaPropagation.NOT_SUPPORTED : SagaPropagation.SUPPORTS)
+                .process(e -> e.getMessage().setHeader("orderId", e.getMessage().getBody(TakePayment.class).orderId()));
+        if ("off".equals(join)) {
+            // No saga step at all: the payment is taken outside the saga, and the header stays on the exchange so
+            // the reply still carries it.
+            start.process(e -> e.getMessage().setBody(payments.take(e.getMessage().getBody(TakePayment.class))))
+                    .to("direct:reply");
+        } else {
+            start.saga().propagation(SagaPropagation.SUPPORTS)
                     .compensation("direct:refund-compensation")
                     .option("orderId", simple("${header.orderId}"))
-                .process(e -> e.getMessage().setBody(payments.take(e.getMessage().getBody(TakePayment.class))))
-                .to("direct:reply");
+                    .process(e -> e.getMessage().setBody(payments.take(e.getMessage().getBody(TakePayment.class))))
+                    .to("direct:reply");
+        }
 
         from("direct:refund-payment").routeId("refund-payment")
                 .unmarshal().json(JsonLibrary.Jackson, RefundPayment.class)

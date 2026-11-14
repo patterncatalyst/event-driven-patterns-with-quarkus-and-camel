@@ -6,7 +6,8 @@ import static io.quarkiverse.flow.dsl.FlowDSL.cases;
 import static io.quarkiverse.flow.dsl.FlowDSL.listen;
 import static io.quarkiverse.flow.dsl.FlowDSL.switchCase;
 import static io.quarkiverse.flow.dsl.FlowDSL.tasks;
-import static io.quarkiverse.flow.dsl.FlowDSL.toAny;
+import static io.quarkiverse.flow.dsl.FlowDSL.consumed;
+import static io.quarkiverse.flow.dsl.FlowDSL.to;
 import static io.quarkiverse.flow.dsl.FlowDSL.tryCatch;
 import static io.quarkiverse.flow.dsl.FlowDSL.withInstanceId;
 
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.quarkiverse.flow.Flow;
 import io.quarkiverse.flow.dsl.FlowWorkflowBuilder;
+import io.quarkiverse.flow.dsl.FuncListenSpec;
 import io.serverlessworkflow.api.types.FlowDirectiveEnum;
 import io.serverlessworkflow.api.types.Workflow;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -60,7 +62,7 @@ public class OrderSagaWorkflow extends Flow {
                             commands.reserve(instance, orders.reserveCommand(orderId));
                             return orderId;
                         }, String.class),
-                        listen("awaitReserved", toAny("InventoryReserved", "InventoryInsufficient")),
+                        listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")),
                         switchCase("afterReserved", cases(
                                 caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)), JsonNode.class).then("cancel"),
                                 caseDefault("takePayment"))),
@@ -70,7 +72,7 @@ public class OrderSagaWorkflow extends Flow {
                             return reply;
                         }, JsonNode.class),
                         tryCatch("payment", t -> t
-                                .tryCatch(tasks(listen("awaitPayment", toAny("PaymentProcessed", "PaymentFailed")).timeout(timeout)))
+                                .tryCatch(tasks(listen("awaitPayment", replyTo("PaymentProcessed", "PaymentFailed")).timeout(timeout)))
                                 .catchType(TIMEOUT, tasks(
                                         withInstanceId("refund", (String instance, JsonNode error) -> {
                                             if (compensating()) {
@@ -96,6 +98,16 @@ public class OrderSagaWorkflow extends Flow {
                             return reply;
                         }, JsonNode.class))
                 .build();
+    }
+
+    /**
+     * Waits for one of these events, but only one whose {@code flowinstanceid} attribute is this instance's id. A
+     * listen on the event type alone wakes every waiting instance, so one order's reply would complete another's.
+     */
+    private static FuncListenSpec replyTo(String... types) {
+        return to().any(java.util.Arrays.stream(types)
+                .map(type -> consumed(type).extensionByInstanceId("flowinstanceid"))
+                .toArray(io.quarkiverse.flow.dsl.FuncEventFilterSpec[]::new));
     }
 
     private boolean compensating() {

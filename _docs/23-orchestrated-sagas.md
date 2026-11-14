@@ -96,13 +96,13 @@ FlowWorkflowBuilder.workflow("order-saga").tasks(
             commands.reserve(instance, orders.reserveCommand(orderId));
             return orderId;
         }, String.class),
-        listen("awaitReserved", toAny("InventoryReserved", "InventoryInsufficient")),
+        listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")),
         switchCase("afterReserved", cases(
                 caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)), JsonNode.class).then("cancel"),
                 caseDefault("takePayment"))),
         withInstanceId("takePayment", ...),
         tryCatch("payment", t -> t
-                .tryCatch(tasks(listen("awaitPayment", toAny("PaymentProcessed", "PaymentFailed")).timeout(timeout)))
+                .tryCatch(tasks(listen("awaitPayment", replyTo("PaymentProcessed", "PaymentFailed")).timeout(timeout)))
                 .catchType(TIMEOUT, tasks(withInstanceId("refund", ...)))),
         switchCase("afterPayment", cases(
                 caseOf((JsonNode reply) -> "PAID".equals(outcome(reply)), JsonNode.class).then("markPaid"),
@@ -112,7 +112,17 @@ FlowWorkflowBuilder.workflow("order-saga").tasks(
         withInstanceId("cancel", ...))
 ```
 
-A command is a record sent through a SmallRye emitter with the workflow instance id in a header. The participant copies it onto its reply as the CloudEvent attribute `flowinstanceid`, and the reply wakes exactly that instance. The output of a `listen` is the event data without its type, so the workflow branches on the `outcome` field the participants put in the payload.
+A command is a record sent through a SmallRye emitter with the workflow instance id in a header. The participant copies it onto its reply as the CloudEvent attribute `flowinstanceid`. A `listen` on the event type alone wakes every waiting instance, so one order's reply completes another order's wait. `replyTo` adds the filter that makes the reply wake the instance it names:
+
+```java
+private static FuncListenSpec replyTo(String... types) {
+    return to().any(Arrays.stream(types)
+            .map(type -> consumed(type).extensionByInstanceId("flowinstanceid"))
+            .toArray(FuncEventFilterSpec[]::new));
+}
+```
+
+The output of a `listen` is the event data without its type, so the workflow branches on the `outcome` field the participants put in the payload.
 
 The compensation is the tasks after a failure. A declined payment releases the stock and cancels the order. A listen that passes its time limit raises the standard timeout error, which the `tryCatch` catches to send a refund, and the same tail then releases and cancels. The Serverless Workflow DSL has no compensation construct, only these tasks.
 
@@ -120,13 +130,13 @@ The compensation is the tasks after a failure. A declined payment releases the s
 
 The state is in PostgreSQL. A waiting instance has one row in the instance table and one per executed task, written as each task completes or pauses, and a completed instance is removed. That is what the workflow adds that Camel's saga does not need: tables and their migration, in the same database as the orders.
 
-It does not make the wait durable. When order-service was recreated with an instance waiting for payment, the row stayed, the restore logged that the instance was already active in memory and skipped it, and the listen timeout never fired. A reply to it was ignored: TBD(spike: no resume in 3 of 3 trials). Restore is on by default. Nothing may recreate order-service while workflows wait, or something else must find and cancel the stuck orders.
+It does not make the wait durable. When order-service was recreated with an instance waiting for payment and payment-service then took the payment, the row stayed and the order was still PLACED 30 s later, with the restore's periodic rescan set to 5 s as well as without it. Restore is on by default. Nothing may recreate order-service while workflows wait, or something else must find and cancel the stuck orders.
 
 ## When the payment service does not answer
 
-With payment-service stopped, an order is placed under each orchestrator. Each has a time limit of TBD(20 s).
+With payment-service stopped, an order is placed under each orchestrator. Each has a time limit of 20 s.
 
-The coordinator cancels the Camel saga when the limit passes. It calls every compensation registered by then: inventory-service releases the stock and order-service cancels the order. payment-service never joined, so it has nothing to compensate. When it starts it reads TakePayment, tries to join, and the coordinator refuses because the saga is cancelled. The payment is not taken. That refusal holds for a participant that never joined. A payment already running when the limit passes is not stopped: the coordinator calls its refund first and the payment then completes, so a slow participant needs a guard of its own, like the cancelled-order check of chapter 22. A participant that is down when the coordinator calls gets its compensation on the coordinator's retry cycle, TBD(spike: 100 s) after it was stopped in one trial.
+The coordinator cancels the Camel saga when the limit passes. It calls every compensation registered by then: inventory-service releases the stock and order-service cancels the order. payment-service never joined, so it has nothing to compensate. When it starts it reads TakePayment, tries to join, and the coordinator refuses because the saga is cancelled. The payment is not taken. That refusal holds for a participant that never joined.
 
 The workflow's listen task times out at the same limit and the tail runs: RefundPayment, ReleaseStock, cancel. The commands queue behind TakePayment on the same partition. When payment-service starts it takes the payment and then refunds it, in that order. The money moved and came back, and the payment row ends REFUNDED. That is the price of compensating by command rather than by refusing to join.
 
@@ -144,8 +154,8 @@ Both end with the order CANCELLED, the stock released and one OrderCancelled pub
 | Who owns the time limit | A sweeper in order-service | The saga timeout | The listen timeout |
 | A late participant | A cancelled order is refused (semantic lock) | The join is refused if it never joined | Taken, then refunded |
 | Added infrastructure | Outbox tables and Debezium Connect | A coordinator container | Workflow tables |
-| Added requests per order | TBD | TBD coordinator requests | TBD |
-| 100 orders, last one PAID | TBD | TBD | TBD |
+| Coordinator requests per order | None | 6 | None |
+| 100 orders in one burst, last one PAID | Not measured | 3.8 s | 2.1 s |
 
 Choreograph a short flow owned by one team. Orchestrate when the sequence changes often or has to be audited. With LRA the participants register their own undo and the coordinator calls it, which suits participants owned by other teams. With a workflow the undo is a step you write, which keeps everything in one file and one database.
 
@@ -158,18 +168,18 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs both orchestrators on the same orders over three services and a coordinator, stops payment-service, and recreates order-service with sagas in flight. Watch both forms reach the same states and then part at the recreate. It prints `TBD checks passed`.
+`verify.sh` runs both orchestrators on the same orders over three services and a coordinator, stops payment-service, and recreates order-service with sagas in flight. Watch both forms reach the same states and then part at the recreate. It prints `32/32 checks passed`.
 
 Try one change and rerun:
 
-- `PAYMENT_JOIN=off ./verify.sh` (demo code): the coordinator never calls the refund and the late payment is taken.
+- `PAYMENT_JOIN=off ./verify.sh` (demo code): the payment service stays out of the saga, so the late payment for the cancelled order is not refused.
 - `FLOW_COMPENSATION=off ./verify.sh` (demo code): the workflow cancels the order and leaves the payment and the stock alone.
 
 ## When not to use it
 
 A short flow owned by one team does not need a coordinator or a workflow engine. Choreography has fewer moving parts to run.
 
-The coordinator is state you have to keep. Its object store is on the container filesystem, and a restart lost the sagas in flight in TBD(spike: 6 of 7) trials. A saga with no time limit never ends.
+The coordinator is state you have to keep. In a trial with one saga in flight, restarting the coordinator left it with no sagas, and the order stayed PLACED with its stock reserved past the time limit. A saga with no time limit never ends.
 
 A workflow engine is as durable as its restore. If the flow waits for days, find out what a waiting instance does after a restart before the first one is in production.
 
