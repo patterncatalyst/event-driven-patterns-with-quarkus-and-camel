@@ -13,8 +13,8 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 
 /**
- * Where the Camel aggregator keeps open groups: the shipping.readiness table, written in the same JDBC transaction as
- * the aggregation step. Demo code: AGGREGATION_REPOSITORY=memory keeps the groups in the JVM instead, so a restart
+ * Where the Camel aggregator keeps open groups: the shipping.readiness table, written through the transaction manager
+ * each time the group changes. Demo code: AGGREGATION_REPOSITORY=memory keeps the groups in the JVM instead, so a restart
  * loses them.
  */
 @ApplicationScoped

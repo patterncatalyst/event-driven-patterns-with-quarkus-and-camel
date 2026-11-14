@@ -12,11 +12,13 @@ import org.junit.jupiter.api.Test;
 
 import com.patterncatalyst.shipping.Topics;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 
 /** The Camel aggregator on Dev Services Kafka and PostgreSQL: the predicate, the timeout and the stored group. */
 @QuarkusTest
+@QuarkusTestResource(StateDir.class)
 class CamelAggregationTest {
 
     @ConfigProperty(name = "kafka.bootstrap.servers")

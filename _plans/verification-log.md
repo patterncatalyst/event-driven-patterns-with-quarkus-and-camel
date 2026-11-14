@@ -529,7 +529,26 @@ Notes:
 
 - The first bite run of check 11 passed 24/24 because the strengthened check counted records by the `orderId` field in the JSON, and a record the guard would have filtered is not JSON. The check now counts records by key. The second bite run failed check 11 and only check 11.
 - An intermediate `CopartitioningTest` run matched 7 of 30 because the test read the Streams output before the group had committed the end of both topics. The test now waits for that commit; the three runs listed above matched 14 of 30 each.
-- Each `CopartitioningTest` run logs `TaskCorruptedException` lines while a Streams store restores from a state directory left by an earlier run in `/tmp`; the same lines are in the earlier `w20-copart1.log`. The matched count is the same.
+- Round 1 `CopartitioningTest` runs logged `TaskCorruptedException` lines: the Streams state directory under `/tmp` was shared between runs. Example 20 now gives each test run its own state directory; round 2 logs have none.
 - The 15-run timing loop of chapter 20 (`w20-loop01.log` to `w20-loop15.log`) ran before the mapping of event times to the clock changed, which touched event times only; `h20-run1`, `h20-run2` and `f8-20-run` on the final script also passed 24/24. Ranges now in the chapter table: Streams 2.52 to 2.61 s, Camel 3.04 to 3.13 s.
 - Chapter 21: check 4 passed in 23 of 23 fresh runs (list in the example README); the bench figures come from 17 of them. `BASE_AGE_HOURS=44` ran twice (`w21-exp-age44.log`, `f8-21-exp-base-age-44.log`).
 - `.removeHeaders("kafka.*")` was removed from the three routes; the three example builds and six `verify.sh` runs above passed without it.
+
+### r08 repair round 2 (2026-11-13)
+
+Every run was one hold of the stack lock, from clean, with no `edp-*` container left afterwards. Logs are `<scratchpad>/r2-*.log`.
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| 20 `mvn -B verify`, per-run Streams state directory | 18 tests, BUILD SUCCESS, 0 lines with "corrupted" | | `r2-20-mvn.log` |
+| 20 `CopartitioningTest` x3 | green each; partitions 3 and 2; Streams matched 7 of 30, Camel 30 of 30; 0 "corrupted" lines each | | `r2-20-copart-1.log` to `r2-20-copart-3.log` |
+| 20 `./verify.sh` with the `filter(header("emit"))` guard removed from the route (temporary edit, restored with `git checkout`) | 23/24 | 11 only | `r2-20-noguard.log` |
+| 02 `mvn -B verify`, without `removeHeaders` | 4 tests, BUILD SUCCESS | | `r2-02-mvn.log` |
+| 02 `./verify.sh` | 21/21 | | `r2-02-run.log` |
+| 08 `./verify.sh` with the `route.by.field` and `route.topic.replacement` lines removed from `connect/order-outbox.json` (restored with `git checkout`) | 21/27 | 6, 7, 9, 11, 17, 24 | `r2-08-noroute.log` |
+
+Notes:
+
+- The earlier count of 14 of 30 for the mismatched partitions came from a state directory left by earlier runs. With a per-run state directory the count is 7 of 30 in all three runs, which is also what the murmur2 partitioner gives for the 30 order ids (7 have the same partition number under 3 and under 2 partitions). The chapter and the example README now say 7 of 30.
+- Chapter 20 table ranges now cover 20 runs: the 15 loop runs and the final-script runs `h20-run1`, `h20-run2`, `f8-20-run`, `r1b-20-run1`, `r1b-20-run2` (Streams 2.52 to 2.62 s, Camel 3.04 to 3.13 s, `PaymentOverdue` 10.05 to 11.07 s).
+- `claims.md`: 20-ah marked superseded by 20-ay; 21-aq now 23 of 23; 08-r08-c carries the round 2 run.

@@ -38,7 +38,7 @@ reserved.leftJoin(paid, Readiness::of,
 
 A payment within 30 minutes of the reservation, in either direction, matches and gives `ReadyToShip`. The five minutes of grace admit a record that is late in event time. A reservation that finds no payment leaves as `PaymentOverdue`, with a null payment passed to the join function. Both source streams read their timestamp from the payload with a `PayloadTimestampExtractor`, so the window is measured on when the facts happened.
 
-Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway and reported RUNNING, and no co-partitioning error was logged. It built three tasks: two paired a reservations partition with the payments partition of the same number, and the third held a reservations partition alone. It matched only the orders whose two records share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
+Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway and reported RUNNING, and no co-partitioning error was logged. It built three tasks: two paired a reservations partition with the payments partition of the same number, and the third held a reservations partition alone. It matched only the orders whose two records share a partition number: 7 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
 
 Camel has no join. It has the Aggregator, correlated here on the record key:
 
@@ -66,7 +66,7 @@ The two forms in one place:
 | Late or replayed records | Placed by event time; accepted within the grace | Placed by arrival; a replay looks like a burst |
 | State | Local store plus a changelog topic | A PostgreSQL row per open group |
 | Partitioning | Both topics need the same partition count | None; one consumer reads both topics |
-| Time to match 200 orders | About 2.6 s (2.52 to 2.61) | About 3.1 s (3.04 to 3.13) |
+| Time to match 200 orders | About 2.6 s (2.52 to 2.62) | About 3.1 s (3.04 to 3.13) |
 
 A real service runs one of the two. Both forms run side by side on the same input, each with its own consumer group and its own output topic, so every difference above comes from the input, not the setup.
 
@@ -90,7 +90,7 @@ The window does not retract. A payment that arrives after `PaymentOverdue` has b
 
 An inner join would leave an order that is never paid with no trace. The left join emits `PaymentOverdue` after the window and the grace have passed, but only when stream time passes them, and stream time advances only with records. An idle stream never closes its windows, so a reservation with no further traffic behind it waits in silence until some record, from any order, arrives with a later event time. A wall clock does not move it.
 
-Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: between 10.05 and 11.07 seconds in 15 runs with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why `O-2004` slips through.
+Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: between 10.05 and 11.07 seconds in 20 runs with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why `O-2004` slips through.
 
 A payment that arrives first and alone forms a group with no reservation. By timeout it would be reported as overdue with nothing reserved, so the route filters it: a group without a reservation completes silently and leaves no row behind.
 

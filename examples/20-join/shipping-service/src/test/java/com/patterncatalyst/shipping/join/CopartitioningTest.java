@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import com.patterncatalyst.shipping.Topics;
 
 import io.quarkus.logging.Log;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -26,6 +27,7 @@ import jakarta.inject.Inject;
  * Camel route reads both topics in one consumer and matches every order.
  */
 @QuarkusTest
+@QuarkusTestResource(StateDir.class)
 @TestProfile(MismatchedPartitionsProfile.class)
 class CopartitioningTest {
 

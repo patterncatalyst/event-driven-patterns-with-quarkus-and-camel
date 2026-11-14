@@ -15,7 +15,7 @@ Quarkus, Kafka Streams, Hibernate ORM with Panache, Flyway, Quarkus REST, Camel 
 |---|---|---|
 | `CAMEL_BREAK_ON_FIRST_ERROR` | `true` | Demo code. `false` commits a record whose lookup failed, so it is never enriched (the negative witness) |
 
-Topics, one partition each: `edp.shipping.scheduled` (input), `edp.shipping.carriers` (compacted reference), `edp.shipping.scheduled-enriched` (Streams output), `edp.shipping.scheduled-enriched-camel` (Camel output). Kafka Streams state is under `/tmp`; the Streams application id is `notification-enricher`, the Camel group is `notification-enricher-camel`, and both use a 10 s session timeout so a recreated service takes its partitions back within seconds. `verify.sh` plays the owner's publishing step: it writes the reference records to the compacted topic, as an outbox or log tailing would (chapters 8 and 9).
+Topics, one partition each: `edp.shipping.scheduled` (input), `edp.shipping.carriers` (compacted reference), `edp.shipping.scheduled-enriched` (Streams output), `edp.shipping.scheduled-enriched-camel` (Camel output). Kafka Streams state is under `/tmp`; the Streams application id is `notification-enricher`, the Camel group is `notification-enricher-camel`, and both use a 10 s session timeout, the time the broker keeps the session of a stopped member before it hands out its partitions. `verify.sh` plays the owner's publishing step: it writes the reference records to the compacted topic, as an outbox or log tailing would (chapters 8 and 9).
 
 ## Run
 

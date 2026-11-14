@@ -172,6 +172,14 @@ PRD §14, decided:
 - Apicurio serdes overridden to 3.3.4 to match the server; Dev Services image pinned to 3.3.4. PostgreSQL held at 18.6 (owner). Young's versioning book cited by chapter titles only.
 - An experiment whose failing set varies between runs is stated with its measured rate, never as deterministic.
 
+2026-11-13 (r08 plan approval, all recommendations):
+
+- Chapters 19 to 21 run both forms side by side in one Quarkus app per example: a Kafka Streams topology (quarkus-kafka-streams, platform kafka-streams, not overridden) and a Camel route, each with its own group and its own output topic (a `-camel` twin in `Topics`, domain-model 2.3.0).
+- Chapter 19: GlobalKTable left join from the compacted `edp.shipping.carriers` vs a Camel Content Enricher over shipping-service's lookup, `breakOnFirstError` on. Chapter 20: windowed left join by event time vs a Camel Aggregator by arrival time with PostgresAggregationRepository; the chapter says the Camel form approximates the window. Chapter 21: tumbling windows with grace and `suppress(untilWindowCloses)` vs a Camel Aggregator by size and timeout.
+- Event times in verify.sh are relative to now (a 15-minute base 20 hours back), never in the future (the broker refuses timestamps more than an hour ahead) and never a fixed or "yesterday" date (window-store changelogs expire). Recreates wait for liveness, no fixed sleeps.
+- Build, run, observe is short (owner): commands, one or two sentences ending with the pass count, at most three one-sentence Try bullets, 250 words as a soft cap; check numbers and run statistics live in the README. validate.py warns on length, fails on check numbers.
+- grafana/otel-lgtm promoted to 0.41.0.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.

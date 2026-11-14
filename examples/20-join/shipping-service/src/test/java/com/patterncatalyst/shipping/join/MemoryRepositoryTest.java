@@ -9,12 +9,14 @@ import org.junit.jupiter.api.Test;
 
 import com.patterncatalyst.shipping.Topics;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 
 /** With the in-memory repository the open group is in the JVM and nowhere else, so a restart cannot find it. */
 @QuarkusTest
+@QuarkusTestResource(StateDir.class)
 @TestProfile(MemoryRepositoryProfile.class)
 class MemoryRepositoryTest {
 
