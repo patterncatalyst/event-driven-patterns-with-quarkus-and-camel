@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">One trace id, five carriers</text>
+<rect x="40" y="95" width="150" height="80" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="115.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">POST /orders</text>
+<text x="115.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">order-service</text>
+<text x="115.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">server span</text>
+<rect x="230" y="95" width="150" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="305.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Outbox row</text>
+<text x="305.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">same transaction</text>
+<text x="305.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">outbox-write span</text>
+<rect x="420" y="95" width="150" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="495.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Log and Connect</text>
+<text x="495.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">db-log-write</text>
+<text x="495.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">debezium-read</text>
+<rect x="610" y="95" width="150" height="80" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="685.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Kafka record</text>
+<text x="685.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">edp.orders.placed</text>
+<text x="685.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">one partition</text>
+<rect x="800" y="95" width="160" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="880.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">inventory-service</text>
+<text x="880.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">consumer span</text>
+<text x="880.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">reserve stock</text>
+<path d="M190,135 L230,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M380,135 L420,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M570,135 L610,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M760,135 L800,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Every relay copies the context; the first hop that does not starts a new trace</text>
+<text x="115" y="235" font-size="12" fill="#555555" text-anchor="middle">traceparent HTTP header</text>
+<text x="305" y="235" font-size="12" fill="#555555" text-anchor="middle">tracingspancontext column</text>
+<text x="495" y="235" font-size="12" fill="#555555" text-anchor="middle">span started from the log entry</text>
+<text x="685" y="235" font-size="12" fill="#555555" text-anchor="middle">traceparent record header</text>
+<text x="880" y="235" font-size="12" fill="#555555" text-anchor="middle">child of the span in the header</text>
+<text x="500" y="275" font-size="13" fill="#555555" text-anchor="middle">Carrier under each hop: the place the context is written so the next hop can read it</text>
+</svg>
