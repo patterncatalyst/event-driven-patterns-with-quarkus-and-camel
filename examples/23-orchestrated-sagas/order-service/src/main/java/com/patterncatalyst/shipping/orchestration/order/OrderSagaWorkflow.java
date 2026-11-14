@@ -27,7 +27,8 @@ import jakarta.inject.Inject;
 /**
  * The orchestrator written as a Quarkus Flow workflow. The sequence is the list of tasks, the state of an instance
  * is in PostgreSQL, and the compensation is tasks: a declined payment releases the stock and cancels the order, a
- * payment that does not answer within the listen timeout refunds, releases and cancels.
+ * payment that does not answer within the listen timeout refunds, releases and cancels, and a reservation that does
+ * not answer within it releases and cancels.
  */
 @ApplicationScoped
 public class OrderSagaWorkflow extends Flow {
@@ -62,9 +63,17 @@ public class OrderSagaWorkflow extends Flow {
                             commands.reserve(instance, orders.reserveCommand(orderId));
                             return orderId;
                         }, String.class),
-                        listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")),
+                        tryCatch("reservation", t -> t
+                                .tryCatch(tasks(listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")).timeout(timeout)))
+                                .catchType(TIMEOUT, tasks(
+                                        withInstanceId("releaseUnanswered", (String instance, JsonNode error) -> {
+                                            if (compensating()) {
+                                                commands.release(instance, new ReleaseStock(orders.findByInstance(instance).id));
+                                            }
+                                            return json.createObjectNode().put("outcome", "TIMEOUT");
+                                        }, JsonNode.class)))),
                         switchCase("afterReserved", cases(
-                                caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)), JsonNode.class).then("cancel"),
+                                caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)) || "TIMEOUT".equals(outcome(reply)), JsonNode.class).then("cancel"),
                                 caseDefault("takePayment"))),
                         withInstanceId("takePayment", (String instance, JsonNode reply) -> {
                             String orderId = orders.findByInstance(instance).id;

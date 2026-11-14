@@ -5,16 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.camel.CamelContext;
 import org.awaitility.Awaitility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import com.patterncatalyst.shipping.Topics;
 
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ClientProxy;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -68,6 +71,22 @@ class CancellationGateTest {
         } finally {
             camel.getRouteController().startRoute("record-cancellation");
         }
+    }
+
+    @Test
+    void aLagCheckThatFailsOnceIsRetriedAndTheGateStillOpens() throws Exception {
+        Fixtures.await(() -> !behind());
+        var check = Mockito.spy((CancellationLag) ClientProxy.unwrap(Arc.container().instance("cancellationLag").get()));
+        Mockito.doThrow(new TimeoutException("admin call timed out")).doCallRealMethod().when(check).behind();
+        QuarkusMock.installMockForType(check, CancellationLag.class);
+
+        camel.getRouteController().stopRoute("take-payment");
+        camel.getRouteController().stopRoute("cancellation-gate");
+        camel.getRouteController().startRoute("cancellation-gate");
+
+        Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(
+                () -> assertTrue(camel.getRouteController().getRouteStatus("take-payment").isStarted()));
+        Mockito.verify(check, Mockito.atLeast(2)).behind();
     }
 
     private boolean behind() {

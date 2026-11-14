@@ -96,9 +96,11 @@ FlowWorkflowBuilder.workflow("order-saga").tasks(
             commands.reserve(instance, orders.reserveCommand(orderId));
             return orderId;
         }, String.class),
-        listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")),
+        tryCatch("reservation", t -> t
+                .tryCatch(tasks(listen("awaitReserved", replyTo("InventoryReserved", "InventoryInsufficient")).timeout(timeout)))
+                .catchType(TIMEOUT, tasks(withInstanceId("releaseUnanswered", ...)))),
         switchCase("afterReserved", cases(
-                caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)), JsonNode.class).then("cancel"),
+                caseOf((JsonNode reply) -> "INSUFFICIENT".equals(outcome(reply)) || "TIMEOUT".equals(outcome(reply)), JsonNode.class).then("cancel"),
                 caseDefault("takePayment"))),
         withInstanceId("takePayment", ...),
         tryCatch("payment", t -> t
@@ -124,13 +126,13 @@ private static FuncListenSpec replyTo(String... types) {
 
 The output of a `listen` is the event data without its type, so the workflow branches on the `outcome` field the participants put in the payload.
 
-The compensation is the tasks after a failure. A declined payment releases the stock and cancels the order. A listen that passes its time limit raises the standard timeout error, which the `tryCatch` catches to send a refund, and the same tail then releases and cancels. The Serverless Workflow DSL has no compensation construct, only these tasks.
+The compensation is the tasks after a failure. A declined payment releases the stock and cancels the order. Every `listen` has a time limit, and passing it raises the standard timeout error, which a `tryCatch` catches. The payment wait refunds, releases and cancels; the reservation wait releases, in case the reply was lost, and cancels. The Serverless Workflow DSL has no compensation construct, only these tasks.
 
 {% include excalidraw.html file="23-flow-workflow" alt="The workflow tasks reserve, awaitReserved, afterReserved, takePayment, awaitPayment and afterPayment in a row, with paid going to markPaid and a decline or a timeout going through refund where needed, release and cancel, and the instance tables in PostgreSQL below" caption="Figure 23.2: The sequence is the task list and the compensation is tasks you write" %}
 
 The state is in PostgreSQL. A waiting instance has one row in the instance table and one per executed task, written as each task completes or pauses, and a completed instance is removed. That is what the workflow adds that Camel's saga does not need: tables and their migration, in the same database as the orders.
 
-The wait can also lose a reply. The engine hands an event only to an instance that is already waiting, so a reply that arrives between the task that sends the command and the `listen` task that awaits it is dropped, and the order stays PLACED with its instance row. With the order-service container held to 0.3 CPU, 18 and 25 orders of a burst of 100 stalled this way; unthrottled, one order of the first three stalled in 5 of 15 runs.
+The engine can also lose a reply. It hands an event only to an instance that is already waiting, so a reply that arrives between the task that sends the command and the `listen` task is dropped. Unthrottled, one order of the first three stalled in 9 of 29 runs; with the container held to 0.3 CPU, 18 and 25 orders of 100 did. The reservation limit does not end such an order: it stayed PLACED minutes past the 20 s limit, because the instance never reaches a wait that has a timer.
 
 It does not make the wait durable. When order-service was recreated with an instance waiting for payment and payment-service then took the payment, the row stayed and the order was still PLACED 30 s later, with the restore's periodic rescan set to 5 s as well as without it. Restore is on by default. Nothing may recreate order-service while workflows wait, or something else must find and cancel the stuck orders.
 
@@ -170,7 +172,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs both orchestrators on the same orders over three services and a coordinator, stops payment-service, and recreates order-service with sagas in flight. Watch both forms reach the same states and then part at the recreate. It prints `33/33 checks passed`.
+`verify.sh` runs both orchestrators on the same orders over three services and a coordinator, stops payment-service, and recreates order-service with sagas in flight. Watch both forms reach the same states and part at the recreate; it ends with `33/33 checks passed`.
 
 Try one change and rerun:
 

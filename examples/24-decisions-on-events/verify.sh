@@ -326,13 +326,20 @@ DECISIONS_BEFORE="$(topic_end "$DECISIONS")"
 REPLAY_OUT="$(mktemp)"
 trap 'rm -f "$REPLAY_OUT"; cleanup' EXIT
 replay_to "$REPLAY_OUT" ""
+REPLAY_END="$(date +%s.%N)"
 check "POST /demo/replay returns the eight decisions identical to the recorded ones" replay_equals_record "$REPLAY_OUT"
 nothing_new_published() { [[ "$(topic_end "$ANALYSES")" == "$ANALYSES_BEFORE" && "$(topic_end "$DECISIONS")" == "$DECISIONS_BEFORE" ]]; }
 no_model_call_since() { [[ "$(app_calls)" == "$CALLS_BEFORE" && "$(ollama_chats)" == "$CHATS_BEFORE" ]]; }
 if [[ "$MODEL" == "off" ]]; then
     check "the replay published no record on the analyses or decisions topic" nothing_new_published
 else
-    quiet_replay() { sleep 10; nothing_new_published && no_model_call_since; }  # 10 s: the counter reaches Prometheus every 5 s
+    # The counter is read only from a Prometheus sample taken after the replay ended (it is exported every 5 s).
+    sample_after_replay() {
+        curl -sf -G "http://localhost:19090/api/v1/query" \
+            --data-urlencode 'query=max(timestamp(langchain4j_aiservices_counted_total{service_name="shipping-service",result="success"}))' |
+            python3 -I -c 'import json, sys; r = json.load(sys.stdin)["data"]["result"]; sys.exit(0 if r and float(r[0]["value"][1]) > float(sys.argv[1]) else 1)' "$REPLAY_END"
+    }
+    quiet_replay() { poll 60 sample_after_replay && nothing_new_published && no_model_call_since; }
     check "the replay made no model call, by both counts, and published no record" quiet_replay
 fi
 RULES_OUT="$(mktemp)"

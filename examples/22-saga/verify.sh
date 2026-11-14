@@ -261,6 +261,8 @@ sql "UPDATE orders.order_saga SET deadline = now() + interval '${RESTART_DEADLIN
 DEADLINE_2205="$(view_tuple O-2205 deadline)"
 "${COMPOSE[@]}" up -d --no-deps --force-recreate --wait order-service
 poll 60 ready 8080 || fail_loudly "order-service is not ready after the recreate"
+REMAINING_MS=""
+DELTA_MS=""
 check "after the recreate O-2205 is still AWAITING_PAYMENT before its deadline, and the sweeper cancels it with reason TIMED_OUT at the deadline PostgreSQL held before" \
     survives_restart O-2205 "$DEADLINE_2205"
 echo "NOTE: O-2205 was still waiting ${REMAINING_MS:-unknown} ms before its deadline after the recreate, and was observed cancelled ${DELTA_MS:-unknown} ms after it"

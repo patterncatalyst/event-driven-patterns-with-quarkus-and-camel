@@ -99,6 +99,19 @@ class FlowSagaTest {
     }
 
     @Test
+    void anUnansweredReservationReleasesAndCancelsWithoutPayment() throws Exception {
+        String id = Orders.id();
+        Orders.start("flow", id);
+
+        Wire.command(bootstrap, Topics.INVENTORY_COMMANDS, id, "ReserveStock");
+
+        awaitStatus(id, "CANCELLED");
+        Wire.command(bootstrap, Topics.INVENTORY_COMMANDS, id, "ReleaseStock");
+        assertEquals(0, Wire.records(bootstrap, Topics.PAYMENTS_COMMANDS, id, 1, Duration.ofSeconds(2)).size(),
+                "no payment is taken for an order whose reservation never answered");
+    }
+
+    @Test
     void anInstanceRowExistsWhileWaitingAndIsGoneAfterwards() throws Exception {
         String id = Orders.id();
         Orders.start("flow", id);
@@ -124,7 +137,7 @@ class FlowSagaTest {
         Wire.send(bootstrap, Topics.INVENTORY_RESERVED, id, "{\"orderId\":\"" + id + "\",\"outcome\":\"RESERVED\"}",
                 Map.of("type", "InventoryReserved", "orderId", id, "Long-Running-Action", "http://coordinator/" + id,
                         "ce_specversion", "1.0", "ce_id", "ce-" + id, "ce_source", "/test", "ce_type", "InventoryReserved"));
-        assertEquals(0, Wire.records(bootstrap, Topics.PAYMENTS_COMMANDS, id, 1, Duration.ofSeconds(3)).size());
+        assertEquals(0, Wire.records(bootstrap, Topics.PAYMENTS_COMMANDS, id, 1, Duration.ofSeconds(1)).size());
 
         Wire.reply(bootstrap, Topics.INVENTORY_RESERVED, "InventoryReserved", id, "RESERVED", reserve);
         Wire.command(bootstrap, Topics.PAYMENTS_COMMANDS, id, "TakePayment");
