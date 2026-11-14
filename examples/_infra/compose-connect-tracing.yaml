@@ -1,0 +1,49 @@
+# Tracing for Kafka Connect, merged over compose-connect.yaml:
+#   include:
+#     - path: [../_infra/compose-connect.yaml, ../_infra/compose-connect-tracing.yaml]
+# The published Debezium image carries the OpenTelemetry API but no SDK. An init service copies
+# the pinned OpenTelemetry Java agent into a run-scoped volume (removed by `down -v`), and Connect
+# loads it with -javaagent. Only the agent's OpenTelemetry API bridge is enabled: its own Kafka and
+# JDBC instrumentation would replace the outbox trace with a new root and flood Tempo.
+# CONNECT_ENABLE_OTEL=false and CONNECT_KAFKA_OPTS= (empty) turn tracing off (demo switches).
+services:
+  otel-agent:
+    image: registry.access.redhat.com/ubi10/openjdk-25:1.24-20
+    container_name: edp-otel-agent
+    user: "0"    # the named volume is root-owned when first created
+    working_dir: /tmp
+    volumes:
+      - otel-agent:/otel
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        mvn -B -ntp -C dependency:copy
+        -Dartifact=io.opentelemetry.javaagent:opentelemetry-javaagent:2.33.1
+        -Dmaven.repo.local=/tmp/m2 -DoutputDirectory=/otel -Dmdep.stripVersion=true
+    restart: "no"
+    mem_limit: 512m
+    networks:
+      - edp
+
+  connect:
+    environment:
+      - OFFSET_FLUSH_INTERVAL_MS=1000
+      - ENABLE_OTEL=${CONNECT_ENABLE_OTEL:-true}
+      - KAFKA_OPTS=${CONNECT_KAFKA_OPTS--javaagent:/otel/opentelemetry-javaagent.jar}
+      - OTEL_SERVICE_NAME=connect
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_BSP_SCHEDULE_DELAY=1000
+      - OTEL_INSTRUMENTATION_COMMON_DEFAULT_ENABLED=false
+      - OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED=true
+    volumes:
+      - otel-agent:/otel:ro
+    depends_on:
+      otel-agent:
+        condition: service_completed_successfully
+
+volumes:
+  otel-agent:
