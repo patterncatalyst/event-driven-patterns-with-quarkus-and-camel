@@ -14,6 +14,10 @@ NAME="edp-ollama-model-$$"
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
+has_model() {
+  docker exec "$NAME" ollama list | awk -v m="$MODEL" -v d="$DIGEST" '$1 == m && $2 == d { f = 1 } END { exit !f }'
+}
+
 start() {  # $1 = mount options
   docker run -d --name "$NAME" --memory 4g -v "$VOLUME:/root/.ollama$1" "$IMAGE" >/dev/null
   for _ in $(seq 1 60); do
@@ -29,7 +33,12 @@ case "${1:-}" in
     docker volume inspect "$VOLUME" >/dev/null 2>&1 || docker volume create "$VOLUME" >/dev/null
     start ""
     docker exec "$NAME" ollama pull "$MODEL"
-    docker exec "$NAME" ollama list
+    if has_model; then
+      echo "ok: $MODEL ($DIGEST) is in $VOLUME"
+    else
+      echo "pulled $MODEL but its digest is not $DIGEST: upstream changed the tag" >&2
+      exit 1
+    fi
     ;;
   check)
     if ! docker volume inspect "$VOLUME" >/dev/null 2>&1; then
@@ -37,7 +46,7 @@ case "${1:-}" in
       exit 1
     fi
     start ":ro"
-    if docker exec "$NAME" ollama list | awk -v m="$MODEL" -v d="$DIGEST" '$1 == m && $2 == d { f = 1 } END { exit !f }'; then
+    if has_model; then
       echo "ok: $MODEL ($DIGEST) is in $VOLUME"
     else
       echo "$MODEL with digest $DIGEST is not in $VOLUME: run scripts/ollama-model.sh pull" >&2

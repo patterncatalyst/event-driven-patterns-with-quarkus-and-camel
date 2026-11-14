@@ -652,3 +652,13 @@ Every page below was fetched by script on 2026-11-14 (HTTP 200 unless stated) an
 | Source | URL | Fetched | Facts confirmed |
 |---|---|---|---|
 | Microsoft Learn, "Saga Design Pattern" (Azure Architecture Center, page dated 2025-02-25) | https://learn.microsoft.com/en-us/azure/architecture/patterns/saga | 2026-11-14 | Key concepts: compensable transactions can be undone by transactions with the opposite effect; the pivot transaction is "the point of no return", and after it succeeds the compensable transactions are no longer relevant and all later actions must complete; retryable transactions follow the pivot, are idempotent and help the saga reach its final state. Countermeasures for the missing isolation include the semantic lock and commutative updates. Sagas leave no isolation across services. |
+
+### r09 licence audit (validation round 1, 2026-11-14)
+
+| Component | Licence | Source | Notes |
+|---|---|---|---|
+| Qwen3-4B-Instruct-2507 (Ollama `qwen3:4b-instruct-2507-q4_K_M`) | Apache-2.0 | https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507 | Model card licence field |
+| Ollama | MIT | https://github.com/ollama/ollama/blob/main/LICENSE | The published `ollama/ollama` image also bundles NVIDIA CUDA runtime libraries under NVIDIA's redistribution licence: free, no key or fee, not OSI. The examples run on CPU only. |
+| Narayana LRA coordinator | Apache-2.0 | https://github.com/jbosstm/narayana/blob/main/LICENSE | Image built from Narayana on Quarkus |
+| Quarkus Flow | Apache-2.0 | https://github.com/quarkiverse/quarkus-flow/blob/main/LICENSE | |
+| Drools | Apache-2.0 | https://github.com/apache/incubator-kie-drools/blob/main/LICENSE | |

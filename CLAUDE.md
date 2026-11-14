@@ -39,7 +39,7 @@ The repo is public, so no tracked file may name the development machine, its own
 - Docker Engine and `docker compose` only (never Docker Desktop, never podman outside Appendix H). Fedora/RHEL hosts.
 - One stack or cluster at a time. Stop it when idle. `scripts/stack-guard.sh` refuses a second stack.
 - **No forwarding of any kind**: no `kubectl port-forward`, `minikube tunnel`, SSH tunnels (`ssh -L/-R/-D`), `socat` relays, IP forwarding (`net.ipv4.ip_forward`), iptables/nft/firewalld rules or NAT. Publish ports instead: compose `ports:`, and on minikube NodePorts published with `minikube start --ports`. Tunnels and forwards disconnect and change the host. `scripts/validate.py` fails the build on any of these in reader-facing content, examples, scripts or workflows.
-- Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081 (management and health 19000), Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100.
+- Prometheus is on host port 19090 (Cockpit holds 9090). Host ports: Kafka 9092, PostgreSQL 5432, Apicurio 8081 (management and health 19000), Connect 8083, Grafana 3000, OTLP 4317/4318, Tempo 3200, Loki 3100, LRA coordinator 8091, Ollama 11434; a third app service uses 8084.
 - Parts 1 to 5 run on compose (`lgtm-docker-stack`): Kafka KRaft, PostgreSQL on the CloudNativePG operand image, Apicurio, Debezium Connect (published `quay.io/debezium/connect` image first; our own UBI 10 image only on a real need), `grafana/otel-lgtm`.
 - Part 6 runs on minikube with the docker driver and containerd (`lgtm-minikube-stack`): Strimzi KRaft, CloudNativePG, LGTM.
 - OpenShift Local (CRC) appears only in Appendix H, through `lgtm-crc`, running the chapter 08 outbox.
@@ -129,7 +129,7 @@ PRD §14, decided:
 - Q9: Kafka 4.3.2 everywhere, re-checked against Strimzi.
 - Q10: Parts 1 to 5 on compose, Part 6 on minikube; ch 10 shows both connector-offset forms.
 - Q11: Narayana LRA coordinator container on compose; Camel's in-memory saga service only in tests.
-- Q12: Ollama with `qwen2.5:3b`, ch 24 only.
+- Q12: Ollama with `qwen3:4b-instruct-2507-q4_K_M` (Apache-2.0; replaced `qwen2.5:3b`, Qwen Research License, in r09), ch 24 only.
 
 2026-11-10 (r01 plan approval):
 
@@ -179,6 +179,15 @@ PRD §14, decided:
 - Event times in verify.sh are relative to now (a 15-minute base 20 hours back), never in the future (the broker refuses timestamps more than an hour ahead) and never a fixed or "yesterday" date (window-store changelogs expire). Recreates wait for liveness, no fixed sleeps.
 - Build, run, observe is short (owner): commands, one or two sentences ending with the pass count, at most three one-sentence Try bullets, 250 words as a soft cap; check numbers and run statistics live in the README. validate.py warns on length, fails on check numbers.
 - grafana/otel-lgtm promoted to 0.41.0.
+
+2026-11-14 (r09 plan approval and validation):
+
+- Chapters 22 to 24 share one flow: order, then stock, then payment, with a declined payment, a silent payment service and a late answer in every chapter. Chapter 22 is choreography with compensation through three outboxes and one Debezium connector; 23 is the Camel Saga EIP on the Narayana LRA coordinator and the same saga as a Quarkus Flow workflow; 24 is a local model that classifies a note and Drools rules that decide.
+- One external Docker volume, `edp-ollama-models`, is the only state that survives `down -v` (owner decision 2); examples mount it read-only and never pull; `scripts/ollama-model.sh pull|check` manages it. The model is pinned by manifest digest.
+- Camel LRA settings come from env names that are not `CAMEL_LRA_*` (those abort startup), behind placeholders. Tests use `InMemorySagaService`.
+- Drools runs as `drools-ruleunits-engine` plus `drools-wiring-dynamic`; the Quarkus extension is incompatible with Quarkus 3.40 (G0-7).
+- Quarkus Flow: replies are filtered by instance id (`extensionByInstanceId("flowinstanceid")`); a listen on the event type alone wakes every waiting instance. A waiting instance does not resume after a recreate (stated as measured).
+- Model analyses are recorded once and replayed; decisions are re-derived from the record with no model call. Only stable-and-correct notes go in verify.sh; the obeyed prompt injection is a stated limit.
 
 2026-11-14 (owner, verification scope):
 
