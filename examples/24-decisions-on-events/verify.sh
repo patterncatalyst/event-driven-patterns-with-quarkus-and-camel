@@ -22,7 +22,7 @@ MODEL_ID=qwen3:4b-instruct-2507-q4_K_M
 MODEL_DIGEST=0edcdef34593
 PROMPT_VERSION=v1
 RULES_VERSION=v1
-D="$(date -u -d yesterday +%F)"
+NOTED_AT="$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)"
 MODEL="${MODEL:-on}"
 TOTAL=0
 PASSED=0
@@ -85,7 +85,7 @@ for line in open("fixtures/corpus.jsonl"):
 report() { # report <exceptionId...>: the line the carrier integration would publish, keyed by order id
     python3 -I -c '
 import json, sys
-day, wanted = sys.argv[1], set(sys.argv[2:])
+noted_at, wanted = sys.argv[1], set(sys.argv[2:])
 for line in open("fixtures/corpus.jsonl"):
     row = json.loads(line)
     if row["exceptionId"] not in wanted:
@@ -93,8 +93,8 @@ for line in open("fixtures/corpus.jsonl"):
     shipment = {"id": row["shipmentId"], "orderId": row["orderId"], "carrier": row["carrier"],
                 "trackingNumber": "TRK-" + row["shipmentId"], "status": "SCHEDULED"}
     event = {"exceptionId": row["exceptionId"], "shipment": shipment, "attempt": row["attempt"],
-             "note": row["note"], "occurredAt": day + "T10:00:00Z"}
-    print("%s|%s" % (row["orderId"], json.dumps(event, separators=(",", ":"))))' "$D" "$@"
+             "note": row["note"], "occurredAt": noted_at}
+    print("%s|%s" % (row["orderId"], json.dumps(event, separators=(",", ":"))))' "$NOTED_AT" "$@"
 }
 produce() { # produce <topic>: lines "key|json" on stdin
     docker exec -i edp-kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic "$1" \
@@ -185,7 +185,12 @@ warm_up() { # one generate, so the model is loaded before a note is timed or cou
     curl -sf --max-time 120 "$OLLAMA/api/generate" -d "{\"model\":\"$MODEL_ID\",\"prompt\":\"Reply with ok\",\"stream\":false,\"options\":{\"num_predict\":4}}" | grep '"done":true' >/dev/null
 }
 ollama_chats() { logs edp-ollama | grep -c 'POST.*"/api/chat"' || true; }
-app_calls() { curl -sf "$SVC/demo/model-calls" | python3 -I -c 'import json, sys; print(json.load(sys.stdin)["calls"])'; }
+# The platform counter of Quarkus LangChain4j, as Prometheus holds it (exported every 5 s): answered model calls.
+app_calls() {
+    curl -sf -G "http://localhost:19090/api/v1/query" \
+        --data-urlencode 'query=sum(langchain4j_aiservices_counted_total{service_name="shipping-service",result="success"})' |
+        python3 -I -c 'import json, sys; r = json.load(sys.stdin)["data"]["result"]; print(int(float(r[0]["value"][1])) if r else 0)'
+}
 counters_agree() { local a o; a="$(app_calls)"; o="$(ollama_chats)"; [[ "$a" == "$o" && "$a" -gt 0 ]]; }
 ollama_unreachable() { ! curl -sf --max-time 3 "$OLLAMA/api/tags" >/dev/null; }
 
@@ -231,13 +236,19 @@ replay_count() { python3 -I -c 'import json, sys; print(len(json.load(open(sys.a
 replay_millis() { python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["millis"])' "$1"; }
 
 # --- a note waits while the model is down
+retries_are_exhausted() { (( $(logs edp-shipping-service | grep -c 'Exhausted after delivery attempt') > 0 )); }  # grep -c reads all of it: no SIGPIPE under pipefail
 analysis_absent_for() { # analysis_absent_for <exceptionId> <seconds>: absent at every sample, and the group keeps lag 1
-    local end=$((SECONDS + $2))
+    local end=$((SECONDS + $2)) lag seen=0
     while (( SECONDS < end )); do
         ! analysis_field "$1" reason >/dev/null 2>&1 || return 1
-        lag_is 1 || return 1
+        lag="$(group_lag)"  # empty while the consumer rejoins after a seek-back: no sample
+        if [[ -n "$lag" ]]; then
+            [[ "$lag" == 1 ]] || return 1
+            seen=$((seen + 1))
+        fi
         sleep 3
     done
+    (( seen >= 2 ))
 }
 
 # --- observability
@@ -306,7 +317,7 @@ echo "Replay"
 if [[ "$MODEL" == "off" ]]; then
     skip "the model-call count and the Ollama request count are read"
 else
-    precondition "the model-call count of the service equals the requests Ollama served" counters_agree
+    precondition "the model-call counter in Prometheus equals the requests Ollama served" poll 30 counters_agree
     CALLS_BEFORE="$(app_calls)"
     CHATS_BEFORE="$(ollama_chats)"
 fi
@@ -321,7 +332,7 @@ no_model_call_since() { [[ "$(app_calls)" == "$CALLS_BEFORE" && "$(ollama_chats)
 if [[ "$MODEL" == "off" ]]; then
     check "the replay published no record on the analyses or decisions topic" nothing_new_published
 else
-    quiet_replay() { nothing_new_published && no_model_call_since; }
+    quiet_replay() { sleep 10; nothing_new_published && no_model_call_since; }  # 10 s: the counter reaches Prometheus every 5 s
     check "the replay made no model call, by both counts, and published no record" quiet_replay
 fi
 RULES_OUT="$(mktemp)"
@@ -339,14 +350,18 @@ echo "NOTE: replay of $(replay_count "$REPLAY_OUT") recorded analyses took $(rep
 echo "The model is down (E-2409)"
 if [[ "$MODEL" == "off" ]]; then
     skip "the model is stopped and unreachable, and the analysis group has no lag"
-    skip "for 20 s the note has no analysis and the analysis group has lag 1"
+    skip "after the redeliveries are exhausted the note still has no analysis and the analysis group still has lag 1 for 20 s"
     skip "after the model returns, the note is analysed and decided within 90 s and the lag is 0"
 else
     docker stop edp-ollama >/dev/null
     down_and_caught_up() { ollama_unreachable && lag_is 0; }
     precondition "Ollama is stopped and unreachable, and the analysis group has no lag" poll 60 down_and_caught_up
     report E-2409 | produce "$EXCEPTIONS"
-    check "for 20 s the note has no analysis and the analysis group has lag 1" analysis_absent_for E-2409 20
+    # Once the redeliveries have run out, only the consumer's seek-back (breakOnFirstError) keeps the record: without it
+    # the offset is committed within 5 s and the lag falls to 0.
+    waits_after_the_retries() { poll 150 retries_are_exhausted && analysis_absent_for E-2409 20; }
+    check "after the redeliveries are exhausted the note still has no analysis and the analysis group still has lag 1 for 20 s" \
+        waits_after_the_retries
     docker start edp-ollama >/dev/null
     poll 60 ollama_has_the_model || fail_loudly "Ollama did not come back"
     warm_up || fail_loudly "the model did not load again"

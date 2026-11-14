@@ -9,24 +9,19 @@ import com.patterncatalyst.shipping.Topics;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 /**
- * Demo code, not part of the pattern: replays the recorded decisions and reports the model-call count. The replay
- * publishes nothing.
+ * Demo code, not part of the pattern: replays the recorded decisions. The replay publishes nothing.
  */
 @Path("/demo")
 @Produces(MediaType.APPLICATION_JSON)
 public class DemoResource {
 
     public record Replay(String mode, long millis, List<DeliveryExceptionDecided> decisions) {
-    }
-
-    public record ModelCalls(long calls, long unparsed) {
     }
 
     @Inject
@@ -37,9 +32,6 @@ public class DemoResource {
 
     @Inject
     ObjectMapper mapper;
-
-    @Inject
-    AnalystGateway gateway;
 
     @ConfigProperty(name = "camel.component.kafka.brokers")
     String brokers;
@@ -60,12 +52,5 @@ public class DemoResource {
         List<DeliveryExceptionDecided> result = analyses.stream()
                 .map(a -> attemptLimit == null ? decisions.decide(a) : decisions.decide(a, attemptLimit)).toList();
         return new Replay(mode, (System.nanoTime() - start) / 1_000_000, result);
-    }
-
-    /** The model requests answered since the service started, which equal the requests Ollama served, and the unparsed ones. */
-    @GET
-    @Path("/model-calls")
-    public ModelCalls modelCalls() {
-        return new ModelCalls(gateway.answered(), gateway.count("unparsed"));
     }
 }

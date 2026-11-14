@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.service.output.OutputParsingException;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -21,31 +22,34 @@ class AnalystGatewayTest {
     @Inject
     AnalystGateway gateway;
 
-    private long count(String outcome) {
-        return gateway.count(outcome);
+    @Inject
+    MeterRegistry meters;
+
+    private double unparsed() {
+        return meters.counter(AnalystGateway.CALLS, "outcome", "unparsed").count();
     }
 
     @Test
-    void anAnswerInsideTheSchemaPassesThroughAndIsCounted() {
+    void anAnswerInsideTheSchemaPassesThrough() {
         when(analyst.analyse(anyString())).thenReturn(new ExceptionAnalysis(Reason.LOST, "never seen again"));
-        long before = count("ok");
+        double before = unparsed();
         assertEquals(new ExceptionAnalysis(Reason.LOST, "never seen again"), gateway.analyse("n"));
-        assertEquals(before + 1, count("ok"));
+        assertEquals(before, unparsed());
     }
 
     @Test
     void anAnswerTheSchemaCannotParseBecomesUnknownAndIsCounted() {
         when(analyst.analyse(anyString())).thenThrow(new OutputParsingException("not json", new IllegalArgumentException("no such reason")));
-        long before = count("unparsed");
+        double before = unparsed();
         assertEquals(Reason.UNKNOWN, gateway.analyse("n").reason());
-        assertEquals(before + 1, count("unparsed"));
+        assertEquals(before + 1, unparsed());
     }
 
     @Test
     void aModelThatCannotBeReachedThrowsInsteadOfAnswering() {
         when(analyst.analyse(anyString())).thenThrow(new IllegalStateException("connection refused"));
-        long before = count("error");
+        double before = unparsed();
         assertThrows(IllegalStateException.class, () -> gateway.analyse("n"));
-        assertEquals(before + 1, count("error"));
+        assertEquals(before, unparsed());
     }
 }
