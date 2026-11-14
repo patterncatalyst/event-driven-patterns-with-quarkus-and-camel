@@ -1,0 +1,20 @@
+# Merged into the collector's own configuration through OTELCOL_EXTRA_ARGS: a receiver that asks the broker for
+# consumer group lag and topic end offsets, in a pipeline of its own so the OTLP pipelines are left as they are.
+receivers:
+  kafka_metrics:
+    brokers: ["kafka:9094"]
+    scrapers: [brokers, topics, consumers]
+    collection_interval: 5s
+    topic_match: "^edp\\..*"
+    group_match: ".*"
+    metrics:
+      kafka.consumer_group.lag: {enabled: true}
+      kafka.consumer_group.lag_sum: {enabled: true}
+      kafka.partition.current_offset: {enabled: true}
+      kafka.partition.oldest_offset: {enabled: true}
+service:
+  pipelines:
+    metrics/kafka:
+      receivers: [kafka_metrics]
+      processors: [batch]
+      exporters: [otlp_http/metrics]
