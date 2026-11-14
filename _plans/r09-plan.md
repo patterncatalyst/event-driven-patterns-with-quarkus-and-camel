@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r09 plan: chapters 22 to 24, saga, orchestrated sagas, decisions on events (Opus planner, 2026-11-13)
 
-Status: **draft for owner review.** Branch `release/r09`, cut from main after r08.0; r08 housekeeping committed at 7f9568f ("r09 in progress").
+Status: **approved by the owner 2026-11-14** (all 24 recommendations; decision 1: an Apache-2.0 model chosen by S4; decision 2: one external model volume `edp-ollama-models`; merge when validation and CI pass). Branch `release/r09`, cut from main after r08.0; r08 housekeeping committed at 7f9568f ("r09 in progress").
 
 Planner note: made with read-only commands only. Sources: the repo (CLAUDE.md, `_plans/*`, examples 08, 11, 13, 14, 16, 19 to 21, `_infra`, `scripts/validate.py`); the local Maven repository (quarkus-bom and quarkus-camel-bom 3.40.1.2, quarkus-langchain4j-bom 3.40.1, drools 10.2.0, quarkus-flow 1.1.3); Maven Central metadata; quay.io, Docker Hub, GitHub, Hugging Face and Crossref APIs; and web fetches of the Camel 4.22.x Saga EIP and LRA pages, the Camel Quarkus LRA extension page, the Quarkus Flow docs (intro, messaging, persistence, DSL cheatsheet, fault tolerance), the quarkus-langchain4j Ollama page, the Serverless Workflow DSL page and the Ollama library tags. Sibling projects read: datamesh-reference-arch-quarkus (ch 13, 14, 21, `examples/ai-rules-service`), enterprise-integration-patterns-with-camel (ch 10 Process Manager, Appendix F Drools, Appendix G Quarkus Flow and its examples), cloud-native-design-patterns (Appendix D "Saga State & Compensation"). No stack or container was started, no file was written and no git command changed state.
 
