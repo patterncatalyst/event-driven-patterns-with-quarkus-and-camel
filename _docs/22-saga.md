@@ -105,7 +105,7 @@ void sweep() {
 }
 ```
 
-The timeout is a business decision. A short one cancels orders that were about to be paid. A long one keeps stock reserved for a customer whose payment never comes.
+The sweeper runs every second, so a saga is cancelled between 0.6 and 1.7 seconds after its deadline. The timeout itself is a business decision. A short one cancels orders that were about to be paid. A long one keeps stock reserved for a customer whose payment never comes.
 
 {% include excalidraw.html file="22-timeout-and-late-reply" alt="With payment-service stopped, an order is reserved and waits with a deadline, the sweeper cancels it at the deadline, inventory releases the stock, and when payment-service returns it reads the cancellation and refuses the reservation; a dashed branch shows the payment taken when the check is off" caption="Figure 22.2: The saga gives up at its deadline, and the participant that returns must not act on the old reservation" %}
 
@@ -147,12 +147,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` registers one connector over the three outbox tables, places a happy order, a burst, an order that is out of stock and one that is declined, stops `payment-service` while a saga times out, and recreates `order-service` with a saga in flight. Watch the stock return after the decline and the late reservation get refused. It prints `TBD/TBD checks passed`.
+`verify.sh` registers one connector over the three outbox tables, places a happy order, a burst, an order that is out of stock and one that is declined, stops `payment-service` while a saga times out, and recreates `order-service` with a saga in flight. Watch the stock return after the decline and the late reservation get refused. It prints `30/30 checks passed`.
 
 Try one change and rerun:
 
 - `PAYMENT_CANCEL_GUARD=off ./verify.sh` (demo code): the payment for a cancelled order is taken.
-- `SAGA_PAYMENT_TIMEOUT=60s ./verify.sh` (demo code): the saga is not cancelled in the time the script waits, and the payment completes the order when the service returns.
+- `SAGA_PAYMENT_TIMEOUT=60s ./verify.sh` (demo code): the sweeper cancels the saga after 60 seconds, later than the script waits for it.
 
 ## When not to use it
 

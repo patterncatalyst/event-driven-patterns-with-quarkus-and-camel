@@ -15,7 +15,7 @@ public class CancellationGateRoute extends RouteBuilder {
     public void configure() {
         from("timer:cancellation-gate?repeatCount=1")
                 .routeId("cancellation-gate")
-                .bean(CancellationReplay.class, "replay")
+                .bean("cancellationReplay", "replay")
                 .to("controlbus:route?routeId=take-payment&action=start");
     }
 }

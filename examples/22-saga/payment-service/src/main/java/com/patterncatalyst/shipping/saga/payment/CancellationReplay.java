@@ -15,9 +15,11 @@ import com.patterncatalyst.shipping.Topics;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 
 /** Reads OrderCancelled from the beginning of the topic to its current end and records each one. Repeating it is harmless. */
 @ApplicationScoped
+@Named("cancellationReplay")
 public class CancellationReplay {
 
     private static final Logger LOG = Logger.getLogger(CancellationReplay.class);

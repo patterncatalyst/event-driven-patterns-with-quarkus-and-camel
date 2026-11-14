@@ -28,7 +28,7 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `TBD/TBD checks passed`.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `30/30 checks passed`.
 
 ## What verify.sh does
 
@@ -62,14 +62,15 @@ The checks read effects: the order view over HTTP, rows in the three schemas, re
 
 ## Experiments
 
-Each row changes a single thing and names the checks that fail.
+Each row changes a single thing and names the checks that fail. Check numbers are the `PASS` and `FAIL` numbers `verify.sh` prints.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `PAYMENT_CANCEL_GUARD=off ./verify.sh` (demo code) | The returning payment-service takes the payment for the cancelled orders | TBD(window) | TBD(window) |
-| `SAGA_PAYMENT_TIMEOUT=60s ./verify.sh` (demo code) | O-2204 is not cancelled in the time the script waits, and the payment completes the order when the service returns | TBD(window) | TBD(window) |
+| `PAYMENT_CANCEL_GUARD=off ./verify.sh` (demo code) | The returning payment-service takes the payment for the cancelled orders | 21, 22 and 27 | 27/30: no refusal is logged for O-2204 and O-2205, and a payment event exists for O-2204 |
+| `SAGA_PAYMENT_TIMEOUT=60s ./verify.sh` (demo code) | The sweeper cancels O-2204 60 seconds after the reservation | 18 | 29/30: the check waits 45 seconds for the cancellation; the cancellation still happens before payment-service returns, so the order ends CANCELLED and checks 19 to 23 pass |
+| Inbox of inventory removed (temporary edit, bite proof) | A repeated PaymentFailed is applied again | 15 | 29/30: inventory applies the repeated PaymentFailed again; the others pass |
 
-Timing witness: the cancellation of O-2204 after its deadline, TBD(window) in TBD(window) fresh runs. Burst: TBD(window) ms for 200 orders. Connector registration to RUNNING: TBD(spike: 0.8 s).
+Timing witness: the cancellation of O-2204 (check 18) passed in 15 of 15 fresh runs. The cancellation was observed 595 to 1727 ms after the deadline (median 1128 ms) against the 3500 ms limit the check allows. Burst: 200 orders reached a final state after 2597 to 3698 ms in 15 fresh runs (median 3651 ms, 55 orders per second; two runs took 2.6 s and the other 13 between 3.6 and 3.7 s). Times are for an 8-core CPU.
 
 ## Notes
 
