@@ -56,6 +56,9 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html" rel="noopener">Content Enricher</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Fetching the missing data from an external source and attaching it to the message</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html" rel="noopener">Aggregator</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A stateful filter that combines related messages into one, and the ways a group is completed</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html" rel="noopener">Process Manager</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A central unit that keeps the state of a sequence and picks the next step from intermediate results</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html" rel="noopener">Correlation Identifier</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A unique identifier that ties a reply to its request, carried here as the order id and the trace id</td></tr>
+    <tr><td><a href="https://www.w3.org/TR/trace-context/" rel="noopener">Trace Context</a>, W3C Recommendation, 2021</td><td>W3C</td><td>The traceparent and tracestate headers</td></tr>
+    <tr><td><a href="https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/" rel="noopener">Semantic conventions for messaging spans</a></td><td>OpenTelemetry</td><td>Process spans, links and parents for messages</td></tr>
     <tr><td><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/saga" rel="noopener">Saga design pattern</a>, Azure Architecture Center</td><td>Microsoft</td><td>Compensable, pivot and retryable transactions; the semantic lock and commutative updates as countermeasures</td></tr>
     <tr><td><a href="https://microservices.io/patterns/data/saga.html" rel="noopener">Pattern: Saga</a></td><td>Chris Richardson</td><td>A saga as a sequence of local transactions with compensating transactions, choreography and orchestration, and the lack of isolation</td></tr>
     <tr><td><a href="https://doi.org/10.1145/38713.38742" rel="noopener">Sagas</a>, Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data, pages 249 to 259</td><td>Hector Garcia-Molina, Kenneth Salem</td><td>The origin of the saga</td></tr>
@@ -167,6 +170,12 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://camel.apache.org/docs/" rel="noopener">Apache Camel</a></td><td>The route DSL, components and the Saga EIP</td></tr>
     <tr><td><a href="https://camel.apache.org/camel-quarkus/latest/" rel="noopener">Camel Quarkus</a></td><td>The Quarkus runtime for Camel</td></tr>
     <tr><td><a href="https://github.com/grafana/docker-otel-lgtm" rel="noopener">Grafana LGTM</a></td><td>The all-in-one Loki, Grafana, Tempo and Mimir image the examples send telemetry to</td></tr>
+    <tr><td><a href="https://debezium.io/documentation/reference/stable/integrations/tracing.html" rel="noopener">Debezium tracing</a></td><td>Spans written at the outbox and read by Connect</td></tr>
+    <tr><td><a href="https://opentelemetry.io/docs/zero-code/java/agent/" rel="noopener">OpenTelemetry Java agent</a></td><td>The agent that gives Kafka Connect its tracing SDK</td></tr>
+    <tr><td><a href="https://grafana.com/docs/tempo/latest/" rel="noopener">Grafana Tempo</a></td><td>The trace store, its HTTP API and TraceQL</td></tr>
+    <tr><td><a href="https://grafana.com/docs/loki/latest/" rel="noopener">Grafana Loki</a></td><td>Log storage, OTLP ingestion, structured metadata and LogQL</td></tr>
+    <tr><td><a href="https://grafana.com/docs/grafana/latest/alerting/" rel="noopener">Grafana alerting</a></td><td>Provisioned alert rules</td></tr>
+    <tr><td><a href="https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.165.0/receiver/kafkametricsreceiver" rel="noopener">OpenTelemetry Collector Kafka metrics receiver</a></td><td>Consumer group lag and partition offsets from the broker</td></tr>
     <tr><td><a href="https://cloudnative-pg.io/documentation/" rel="noopener">CloudNativePG</a></td><td>The PostgreSQL operator and operand image</td></tr>
     <tr><td><a href="https://sdkman.io/" rel="noopener">SDKMAN</a></td><td>Installing JDK and Maven</td></tr>
   </tbody>
