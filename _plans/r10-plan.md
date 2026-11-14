@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r10 plan: chapters 25 to 27, observing event flows (Opus planner, 2026-11-14)
 
-Status: **draft, awaiting owner review.** Branch `release/r10`, cut from main after r09.0. No version re-survey: every existing pin is frozen (CLAUDE.md, 2026-11-14). The only new pin is the OpenTelemetry Java agent (decision 2).
+Status: **approved by the owner 2026-11-14** (decision 1: Debezium tracing with the OpenTelemetry Java agent in Connect; decision 9: trimmed standalone copy of 22 for 27; all other recommendations; merge when validation and CI pass). Branch `release/r10`, cut from main after r09.0. No version re-survey: every existing pin is frozen (CLAUDE.md, 2026-11-14). The only new pin is the OpenTelemetry Java agent (decision 2).
 
 Planner note: read-only. Sources: the repo (CLAUDE.md, `_plans/*`, examples 08, 13, 22 to 24, `_infra`, `scripts/validate.py`); the local `debezium-quarkus-outbox` 3.7.1.Final jars (`javap`); `docker image inspect`/`history` of `quay.io/debezium/connect:3.7.1.Final` and `grafana/otel-lgtm:0.41.0`; fetched: the Debezium tracing page, the OpenTelemetry messaging-spans semconv, `docker-otel-lgtm` at 0.41.0 (rev 6fa5344: README, Dockerfile, datasource, Prometheus, Tempo, collector configs, run scripts), the Tempo API page, the Quarkus OpenTelemetry logging guide, Maven Central metadata for `opentelemetry-javaagent`; the sibling `~/Dev/otel-observability-tutorial` ch 13 (read, not copied).
 
@@ -127,7 +127,7 @@ One command block, one or two sentences ending with the pass count, at most thre
 
 | Step | Work | Files | Owner | Depends | Parallel | Stack | Status |
 |---|---|---|---|---|---|---|---|
-| 0 | Preflight: branch, iteration-plan r10 in progress, save plan | `_plans/r10-plan.md`, `_plans/iteration-plan.md` | orchestrator | owner OK | none | no | pending |
+| 0 | Preflight: branch, iteration-plan r10 in progress, save plan | `_plans/r10-plan.md`, `_plans/iteration-plan.md` | orchestrator | owner OK | none | no | done |
 | 1A | Sources and bibliography rows; versions.md row for the agent 2.33.1 (new pin only); claims rows drafted | `_plans/sources.md`, `bibliography.md`, `_plans/versions.md` | exec 1A | 0 | 1B | no | pending |
 | 1B | Spikes S1 to S7 (scratchpad) | scratchpad | exec 1B | 0 | 1A | lock, serial | pending |
 | 1C | Domain: none (decision 11); domain-model.md rows 25 to 27 reworded to the final designs | `_plans/domain-model.md` | orchestrator | 1B | yes | no | pending |
