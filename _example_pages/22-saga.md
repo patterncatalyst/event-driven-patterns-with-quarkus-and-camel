@@ -20,10 +20,10 @@ mvn -B verify
 
 ## What to observe
 
-1. **Compensation once.** A declined payment ends in a cancelled order and a released reservation, and a repeated PaymentFailed does not release again.
+1. **Compensation once.** A declined payment ends in a cancelled order and a released reservation, and a repeated PaymentFailed is skipped by the inbox (the release is idempotent, so the stock is the same either way).
 2. **A deadline owned by one service.** With payment-service stopped, the sweeper cancels the saga after its deadline and inventory releases the stock.
-3. **A late reservation refused.** When payment-service returns, it reads the cancellations first and takes no money for the cancelled order.
-4. **State in PostgreSQL.** A saga in flight survives a recreate of order-service and is cancelled at its original deadline.
+3. **A late reservation refused.** When payment-service returns, it waits until it has read the cancellations and takes no money for the cancelled order.
+4. **State in PostgreSQL.** A saga in flight is still waiting after a recreate of order-service and is cancelled at its original deadline.
 
 ## Infrastructure
 

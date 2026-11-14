@@ -1,7 +1,6 @@
 package com.patterncatalyst.shipping.saga.payment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Test;
@@ -18,9 +17,6 @@ class PaymentServiceTest {
 
     @Inject
     PaymentService payments;
-
-    @Inject
-    CancellationReplay replay;
 
     @Inject
     EntityManager em;
@@ -61,14 +57,6 @@ class PaymentServiceTest {
         payments.take(Fixtures.reserved(id, "25.00"));
         payments.take(Fixtures.reserved(id, "25.00"));
         assertEquals(1, Fixtures.outbox(em, "PaymentProcessed", id));
-    }
-
-    @Test
-    void theCancellationsAreReadBeforeAnyPaymentIsTaken() throws Exception {
-        String id = Fixtures.newId();
-        Fixtures.send(bootstrapServers, Topics.ORDERS_CANCELLED, id, "{\"orderId\":\"%s\",\"reason\":\"TIMED_OUT\"}".formatted(id));
-        assertTrue(replay.replay() >= 1);
-        assertTrue(Fixtures.cancelledRow(em, id));
     }
 
     @Test

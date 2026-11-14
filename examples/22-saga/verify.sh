@@ -19,6 +19,7 @@ TOPICS=(edp.orders.placed edp.orders.cancelled edp.inventory.reserved edp.invent
 GROUPS_WANTED=(order-saga-reserved order-saga-insufficient order-saga-processed order-saga-failed
     inventory-placed inventory-failed inventory-cancelled payment-reserved payment-cancelled)
 TIMEOUT_SLACK_MS=3500
+RESTART_DEADLINE_S="${RESTART_DEADLINE_S:-40}"
 TOTAL=0
 PASSED=0
 
@@ -156,7 +157,16 @@ cancelled_on_time() { # cancelled_on_time <id> <deadline ms>: CANCELLED by the s
     DELTA_MS=$(( $(now_ms) - $2 ))
     (( DELTA_MS >= 0 && DELTA_MS <= TIMEOUT_SLACK_MS ))
 }
-duplicate_skipped() { # duplicate_skipped <event id>: inventory dropped the repeated PaymentFailed and the stock did not move
+survives_restart() { # survives_restart <id> <deadline>: still waiting after the recreate, before the deadline, then cancelled at that deadline
+    local dl_ms; dl_ms="$(date -d "$2" +%s%3N)"
+    saga_is "$1" AWAITING_PAYMENT || return 1
+    REMAINING_MS=$(( dl_ms - $(now_ms) ))
+    (( REMAINING_MS > 0 )) || return 1
+    cancelled_on_time "$1" "$dl_ms" && view_is "$1" deadline "$2"
+}
+# The release is idempotent, so the stock and the reservation are the same with or without the inbox: only the log line
+# shows that the inbox saw the repeated id. The stock is checked as the harmless outcome, not as the witness.
+duplicate_skipped() { # duplicate_skipped <event id>
     log_has inventory-service "duplicate event $1 skipped" && stock_is SKU-22 9 && reservation_is O-2203 RELEASED
 }
 refused_and_no_money() { log_has payment-service "refused the payment for $1: the order was cancelled" && payment_is "$1" none; }
@@ -222,7 +232,7 @@ check "the reservation of O-2203 is RELEASED and the stock of SKU-22 is back at 
 FAILED_ID="$(event_id edp.payments.failed O-2203)"
 [[ -n "$FAILED_ID" ]] || fail_loudly "no id header on the PaymentFailed record of O-2203"
 printf 'id:%s,eventType:PaymentFailed\tO-2203|{"orderId":"O-2203","reason":"DECLINED"}\n' "$FAILED_ID" | produce edp.payments.failed
-check "a repeated PaymentFailed with the same id is dropped by inventory and the stock stays at 9" poll 30 duplicate_skipped "$FAILED_ID"
+check "inventory logs that its inbox skipped the repeated PaymentFailed id (a log witness: the release is idempotent), and the stock stays at 9" poll 30 duplicate_skipped "$FAILED_ID"
 
 echo "A payment-service that does not answer (O-2204)"
 "${COMPOSE[@]}" stop payment-service >/dev/null
@@ -245,11 +255,15 @@ echo "The saga state survives a restart of order-service (O-2205)"
 precondition "payment-service is down again and its groups have no member" poll 60 payment_down
 place O-2205 SKU-22 1 100.00 || fail_loudly "O-2205 was not accepted"
 precondition "O-2205 waits for the payment, with a deadline" poll 20 saga_is O-2205 AWAITING_PAYMENT
+# The deadline is moved well beyond the time a recreate takes, so the saga is still waiting when order-service is back.
+sql "UPDATE orders.order_saga SET deadline = now() + interval '${RESTART_DEADLINE_S} seconds' WHERE order_id = 'O-2205'" >/dev/null \
+    || fail_loudly "the deadline of O-2205 was not moved"
 DEADLINE_2205="$(view_tuple O-2205 deadline)"
 "${COMPOSE[@]}" up -d --no-deps --force-recreate --wait order-service
 poll 60 ready 8080 || fail_loudly "order-service is not ready after the recreate"
-check "after the recreate the sweeper cancels O-2205 with reason TIMED_OUT and the deadline in PostgreSQL is the one it had before" \
-    poll 60 view_is O-2205 status/saga/reason/deadline "CANCELLED/CANCELLED/TIMED_OUT/$DEADLINE_2205"
+check "after the recreate O-2205 is still AWAITING_PAYMENT before its deadline, and the sweeper cancels it with reason TIMED_OUT at the deadline PostgreSQL held before" \
+    survives_restart O-2205 "$DEADLINE_2205"
+echo "NOTE: O-2205 was still waiting ${REMAINING_MS:-unknown} ms before its deadline after the recreate, and was observed cancelled ${DELTA_MS:-unknown} ms after it"
 "${COMPOSE[@]}" up -d --no-deps --wait payment-service
 poll 60 ready 8084 || fail_loudly "payment-service is not ready after the second restart"
 check "payment-service refused the reservation of O-2205 and took no money" poll 60 refused_and_no_money O-2205

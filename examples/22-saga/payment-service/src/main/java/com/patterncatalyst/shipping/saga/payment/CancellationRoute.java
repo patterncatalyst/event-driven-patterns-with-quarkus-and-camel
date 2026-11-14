@@ -14,7 +14,7 @@ public class CancellationRoute extends RouteBuilder {
     @Override
     public void configure() {
         from("kafka:" + Topics.ORDERS_CANCELLED
-                + "?groupId=payment-cancelled&autoOffsetReset=earliest&sessionTimeoutMs=10000&heartbeatIntervalMs=3000&breakOnFirstError=true")
+                + "?groupId=payment-cancelled&autoOffsetReset=earliest&sessionTimeoutMs=10000&heartbeatIntervalMs=3000&autoCommitIntervalMs=500&breakOnFirstError=true")
                 .routeId("record-cancellation")
                 .unmarshal().json(JsonLibrary.Jackson, OrderCancelled.class)
                 .bean("paymentService", "recordCancelled");

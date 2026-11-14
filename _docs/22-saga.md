@@ -3,7 +3,7 @@ title: "Saga"
 order: 22
 part: processing-and-coordinating-streams
 permalink: /docs/22-saga/
-description: "An order touches three databases and no transaction spans them. A saga is a chain of local transactions, each publishing the event that starts the next, and a failure is undone by new events. The example choreographs order, stock and payment with no coordinator, and handles a declined payment, a service that does not answer and a late reply."
+description: "An order touches three databases and no transaction spans them. A saga is a chain of local transactions, each publishing the event that starts the next, and a failure is undone by new events. Order, stock and payment are choreographed with no coordinator, and the saga handles a declined payment, a service that does not answer and a late reply."
 duration: "65 minutes"
 ---
 
@@ -27,7 +27,7 @@ There is a second cost. While the saga runs, other readers see its intermediate 
 
 Garcia-Molina and Salem introduced the saga in 1987. Richardson names the two ways to coordinate one: choreography, where each participant reacts to events, and orchestration, where a central unit tells each participant what to do. Hohpe and Woolf's Process Manager is the orchestrating form, a central unit that keeps the state of the sequence and picks the next step. Here nobody does: the flow exists only as the events the services publish.
 
-Steps differ in what can be done about them afterwards:
+Steps differ in what can be done about them afterwards. The three kinds, compensatable, pivot and retriable, come from Chris Richardson's *Microservices Patterns* (chapter 4) and the Azure Architecture Center's Saga pattern, which also names the semantic lock and the commutative update used below:
 
 | Step | Action | Compensation | Kind |
 |---|---|---|---|
@@ -35,7 +35,7 @@ Steps differ in what can be done about them afterwards:
 | Take payment | `payment-service` takes the money | A refund, which is a business decision and not an undo | Pivot |
 | Schedule shipment | Book the carrier | None; it is retried until it succeeds | Retriable |
 
-The pivot is the step after which the saga goes forward or ends. Everything before it needs a compensation. Everything after it needs a retry, because there is no way back. The example ends at the payment, and the shipment is the retriable step that follows.
+The pivot is the step after which the saga goes forward or ends. Everything before it needs a compensation. Everything after it needs a retry, because there is no way back. The saga here ends at the payment, and the shipment is the retriable step that follows.
 
 ### How Quarkus and Camel model it
 
@@ -88,7 +88,7 @@ UPDATE inventory.reservation SET state = 'RELEASED'
 WHERE order_id = :id AND state = 'RESERVED' RETURNING sku, quantity;   -- reserved: release it once
 ```
 
-The first statement makes a release that arrives early leave a `RELEASED` row, and the reservation that follows finds the row and is refused. The second changes a `RESERVED` row once and returns what to put back. Applied twice, the release releases once. Applied before the reservation, it still ends with the stock untouched. A compensation that is idempotent and commutative cannot be broken by the order in which Kafka delivers the events or by a redelivery, and the Camel Saga documentation gives the same advice for the same reason.
+The first statement makes a release that arrives early leave a `RELEASED` row, and the reservation that follows finds the row and is refused. The second changes a `RESERVED` row once and returns what to put back. Applied twice, the release releases once. The inbox of inventory drops a repeated event id before the release runs, but the release would change nothing a second time either, so the stock looks the same with or without the inbox. Applied before the reservation, it still ends with the stock untouched. A compensation that is idempotent and commutative cannot be broken by the order in which Kafka delivers the events or by a redelivery, and the Camel Saga documentation gives the same advice for the same reason.
 
 Not every failure needs one. When the stock is not there, `InventoryInsufficient` ends the saga at once, and no release exists for a reservation that was never made. The compensation for each step is part of its design: a step that can be undone publishes how.
 
@@ -111,9 +111,9 @@ The sweeper runs every second, so a saga is cancelled between 0.6 and 1.7 second
 
 The hazard is the third case. `payment-service` was down for the whole timeout. The saga cancelled, inventory released the stock, and now the participant restarts to find an `InventoryReserved` waiting. Taking the payment would charge a customer for an order that no longer exists and goods that are back on the shelf.
 
-A saga has no isolation, and the countermeasure is a semantic lock. `payment-service` reads `OrderCancelled` and keeps the order ids in `cancelled_order`. `PaymentService` checks the table before it takes any money and refuses a payment for a cancelled order. The check works only if the lock is set before the payment is attempted, and two consumers on two topics make no promise about order. After a restart, a gate route reads the cancellations to the end of the topic first and then starts the payment route. A participant that was away learns what it missed before it acts.
+A saga has no isolation, and the countermeasure is a semantic lock. `payment-service` reads `OrderCancelled` and keeps the order ids in `cancelled_order`. `PaymentService` checks the table before it takes any money and refuses a payment for a cancelled order. The check works only if the lock is set before the payment is attempted, and two consumers on two topics make no promise about order. After a restart, a gate route waits until the cancellation consumer has no lag, which is a comparison of its committed offset with the end of the topic, and only then starts the payment route. A participant that was away learns what it missed before it acts.
 
-With `PAYMENT_CANCEL_GUARD=off` (demo code) the check is removed, and the payment for the cancelled order is taken: money taken, no goods. The check is the whole difference between a saga that is right and one that looks right while every service is up.
+With `PAYMENT_CANCEL_GUARD=off` (demo code) the check is removed, and the payment for the cancelled order is taken: money taken, no goods. With every service up the two sagas behave the same; the difference shows only when a participant returns late.
 
 The limit of the lock is in what it knows. It protects against a payment that starts after the cancellation is recorded. A payment already in flight when the order is cancelled completes, and its refund is a business decision about money, which is why the step is a pivot.
 
@@ -125,7 +125,7 @@ Choreography has no coordinator, and the flow still has to be answerable: where 
 
 Every transition is `UPDATE order_saga SET state = new WHERE state = expected`. A payment reply and the sweeper can arrive in the same instant for the same saga, and exactly one of them updates a row. The other updates none and changes nothing, so a late `PaymentProcessed` for a cancelled order is logged and ignored. The winner writes its event in the same transaction, and `SKIP LOCKED` leaves a saga that a reply is deciding to that reply.
 
-The state lives in PostgreSQL, so a restart of `order-service` loses nothing. A saga that waited through the restart is cancelled at its original deadline, by a sweeper that knows nothing but the table.
+The state lives in PostgreSQL, so a restart of `order-service` loses nothing. A saga that waited through the restart is still waiting when the service is back, and is cancelled at its original deadline by a sweeper that knows nothing but the table.
 
 | | Choreography | A coordinator that holds the sequence |
 |---|---|---|
@@ -147,7 +147,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` registers one connector over the three outbox tables, places a happy order, a burst, an order that is out of stock and one that is declined, stops `payment-service` while a saga times out, and recreates `order-service` with a saga in flight. Watch the stock return after the decline and the late reservation get refused. It prints `30/30 checks passed`.
+`verify.sh` runs a happy order, a burst, a decline, a `payment-service` that stays down while a saga times out, and a recreate of `order-service` with a saga in flight. Watch the stock return after the decline and the late reservation get refused; it prints `30/30 checks passed`.
 
 Try one change and rerun:
 
@@ -156,7 +156,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-A saga is for work that cannot share a transaction. When one service and one database can do the steps, a local transaction is simpler and isolated. Splitting the order into services creates the problem; it does not have to be accepted.
+A saga is for work that cannot share a transaction. When one service and one database can do the steps, a local transaction is simpler and isolated, and the problem the saga solves comes only from splitting the order across services.
 
 Compensations are code to write and test for every step. A step with no real undo, such as an email that was sent, can only be followed by another message, and a design that needs many of them has put the pivot too early.
 
