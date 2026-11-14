@@ -187,6 +187,7 @@ PRD §14, decided:
 - Camel LRA settings come from env names that are not `CAMEL_LRA_*` (those abort startup), behind placeholders. Tests use `InMemorySagaService`.
 - Drools runs as `drools-ruleunits-engine` plus `drools-wiring-dynamic`; the Quarkus extension is incompatible with Quarkus 3.40 (G0-7).
 - Quarkus Flow: replies are filtered by instance id (`extensionByInstanceId("flowinstanceid")`); a listen on the event type alone wakes every waiting instance. A waiting instance does not resume after a recreate (stated as measured).
+- The published `ollama/ollama` image is kept although it bundles NVIDIA CUDA libraries (free, not OSI); the examples run on CPU only (owner, 2026-11-14).
 - Model analyses are recorded once and replayed; decisions are re-derived from the record with no model call. Only stable-and-correct notes go in verify.sh; the obeyed prompt injection is a stated limit.
 
 2026-11-14 (owner, verification scope):
