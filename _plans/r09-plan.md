@@ -113,7 +113,7 @@ Same gate shape as r08:
 2. Three authoring executors on disjoint files, with `mvn verify` under the lock.
 3. Serial exclusive runtime windows (23, then 22, then 24), including the 15-run loops.
 4. The orchestrator re-runs every prose experiment.
-5. Final serial run 00 to 24.
+5. Final serial run 22 to 24 (owner 2026-11-14: earlier chapters are re-run live once, after the last chapter).
 6. Opus validation (at most two rounds), then ship.
 
 **The three chapters tell one story on one flow.** The order flow is order, then stock, then payment, with the same participants and the same failures. Three cases recur in every chapter: a declined payment, a payment service that does not answer, and a late answer after the saga gave up.
@@ -655,7 +655,7 @@ If S1 fails the cross-JVM join over Kafka, decision 7's fallback applies before 
 | 2D | Consistency: backward links in 22 to 24 to 08, 11, 12, 13, 17, 19, 20; check that 12's "Kafka only" sentence and 22's opening agree; chapter 00 setup surface gains the model pull and the coordinator image; claims rows drafted | `_plans/claims.md`, `_docs/00-*.md` if needed | orchestrator | G0 | yes | no | pending |
 | 3 | Runtime windows, serial, exclusive, 150 min cap each, order 23, 22, 24. Verify N/N twice from clean; three bench runs; every experiment once; 15-run loops (22: check 10; 23: checks 9, 10; 24: checks 3 to 6 on the corpus, and the analysis fixture captured); bite proofs; numbering frozen | as 2A to 2C | orchestrator | 2A to 2C | serial | exclusive | pending |
 | 4 | Orchestrator re-run of every prose experiment, logged with failing check numbers | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | pending |
-| 5 | Final serial run 00 to 24 (fresh containers each, one flock, no `edp-*` left); 24 runs with the model and with `MODEL=off`; static gates; claims and log; per-chapter commits with `python3 scripts/host_ids.py check` first | claims, log | orchestrator | 4 | serial | yes | pending |
+| 5 | Final serial run 22 to 24 (owner 2026-11-14: 00 to 21 unchanged apart from the domain-model line, mvn green; full live re-run deferred to the end of the book; fresh containers each, one flock, no `edp-*` left); 24 runs with the model and with `MODEL=off`; static gates; claims and log; per-chapter commits with `python3 scripts/host_ids.py check` first | claims, log | orchestrator | 4 | serial | yes | pending |
 | 6 | Opus validation (max 2 repair rounds): claims audit; check-bite audit; timing and model witness audit (15 runs or rate stated); bench consistency; 7-gram originality against the Camel Saga page, Quarkus Flow docs, datamesh ch 13, 14, 21, EIP Camel ch 10 and Appendices F and G, and CNDP App D; licence audit of every image and model; fresh clone; word counts; figures byte-identical | none | validator | 5 | none | yes | pending |
 | 7 | Ship: PR, CI green (mvn for 22 to 24 without Ollama), squash on owner OK, tag r09.0, notes-only release, delete the branch; PRD rows 22 to 24 and Q12 (if decision 1 changes the model) rewritten; roadmap and status; iteration-plan done; CLAUDE.md decisions entry and port list | as listed | orchestrator | 6 | none | no | pending |
 
@@ -728,7 +728,7 @@ Executors:
 
 - Static gates green (`validate.py`, voice-scan, idiomatic-scan, `host_ids.py check`, site-build).
 - Every example pom 00 to 24 on domain-model 2.4.0 with `mvn -B verify` green.
-- Final serial run 00 to 24 logged; versions.md records Quarkus Flow 1.3.0, Drools 10.2.0, Ollama 0.40.16, the model and digest, the coordinator image and digest, and the langchain4j platform hold with reasons.
+- Final serial run 22 to 24 logged; versions.md records Quarkus Flow 1.3.0, Drools 10.2.0, Ollama 0.40.16, the model and digest, the coordinator image and digest, and the langchain4j platform hold with reasons.
 - CI green; tag r09.0; PRD rows 22 to 24, Q12 if changed, and CLAUDE.md decisions and ports updated.
 
 ## Sources to fetch and confirm (1A)

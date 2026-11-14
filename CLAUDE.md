@@ -21,7 +21,7 @@ The repo is public, so no tracked file may name the development machine, its own
 
 ## House rules
 
-- **Versions**: latest stable upstream, exact pins, never prerelease, `latest` or floating tags. Open source only; nothing needing a licence key, subscription or fee. JDK 25 minimum.
+- **Versions**: exact pins, never prerelease, `latest` or floating tags. Pins are frozen (owner, 2026-11-14): a component is pinned to its latest stable release once, when it is introduced, and existing pins move only for a valid reason (a security fix, an actual incompatibility, or a feature a chapter needs), recorded next to the pin. No routine re-surveys or bumps. Open source only; nothing needing a licence key, subscription or fee. JDK 25 minimum.
 - **Images**: every image the book builds starts from UBI 10 (`registry.access.redhat.com/ubi10/openjdk-25`, `-runtime`). Fall back to `ubi9/openjdk-25` (same runtime, never a lower JDK) only on a real incompatibility, recorded next to the pin. Upstream images are used as published (Strimzi, CloudNativePG, LGTM, Debezium Connect, Ollama, LRA coordinator).
 - **Idiomatic code**: Hibernate ORM with Panache, Quarkus REST, SmallRye Reactive Messaging, SmallRye Health, Micrometer and OpenTelemetry, Dev Services, Flyway; Camel Java DSL, one route per `RouteBuilder`. Nothing hand-rolled that the framework provides.
 - **No vendor platforms in code**: nothing depends on OpenShift, CRC or a cloud. Appendix H is a demo of the same neutral code.
@@ -179,6 +179,12 @@ PRD §14, decided:
 - Event times in verify.sh are relative to now (a 15-minute base 20 hours back), never in the future (the broker refuses timestamps more than an hour ahead) and never a fixed or "yesterday" date (window-store changelogs expire). Recreates wait for liveness, no fixed sleeps.
 - Build, run, observe is short (owner): commands, one or two sentences ending with the pass count, at most three one-sentence Try bullets, 250 words as a soft cap; check numbers and run statistics live in the README. validate.py warns on length, fails on check numbers.
 - grafana/otel-lgtm promoted to 0.41.0.
+
+2026-11-14 (owner, verification scope):
+
+- Version pins are frozen; see House rules. No iteration re-surveys or bumps existing pins without a valid reason.
+- Each iteration runs only its new chapters live: the runtime windows, then one final run after the last repair. Earlier chapters get `mvn -B verify` when the shared domain model moves (our own artifact, needed for a fresh-clone build), not a live re-run.
+- One full serial live run of every chapter happens once, after the last chapter is written.
 
 ## Skills
 
