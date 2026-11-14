@@ -4,12 +4,15 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import io.quarkiverse.langchain4j.RegisterAiService;
+import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Stage one: free text in, one value of a closed set out. The prompt is versioned; a change to the text changes
- * {@link #PROMPT_VERSION}, and every recorded analysis carries the version it was made with.
+ * {@link #PROMPT_VERSION}, and every recorded analysis carries the version it was made with. Application scoped: the
+ * default request scope is not active on a Kafka consumer thread.
  */
 @RegisterAiService
+@ApplicationScoped
 public interface DeliveryExceptionAnalyst {
 
     String PROMPT_VERSION = "v1";

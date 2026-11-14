@@ -364,7 +364,7 @@ fi
 
 echo "Observability"
 check "Prometheus holds exception_decisions_total for REFUND of shipping-service at 3 or more" \
-    poll 90 prom_holds 'max_over_time(exception_decisions_total{decision="REFUND",service_name="shipping-service"}[1h]) >= 3'
+    poll 90 prom_holds 'sum(max_over_time(exception_decisions_total{decision="REFUND",service_name="shipping-service"}[1h])) >= 3'
 if [[ "$MODEL" == "off" ]]; then
     check "Tempo has a trace for shipping-service" poll 90 tempo_has "tags=service.name=shipping-service"
 else
