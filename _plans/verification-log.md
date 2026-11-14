@@ -552,3 +552,58 @@ Notes:
 - The earlier count of 14 of 30 for the mismatched partitions came from a state directory left by earlier runs. With a per-run state directory the count is 7 of 30 in all three runs, which is also what the murmur2 partitioner gives for the 30 order ids (7 have the same partition number under 3 and under 2 partitions). The chapter and the example README now say 7 of 30.
 - Chapter 20 table ranges now cover 20 runs: the 15 loop runs and the final-script runs `h20-run1`, `h20-run2`, `f8-20-run`, `r1b-20-run1`, `r1b-20-run2` (Streams 2.52 to 2.62 s, Camel 3.04 to 3.13 s, `PaymentOverdue` 10.05 to 11.07 s).
 - `claims.md`: 20-ah marked superseded by 20-ay; 21-aq now 23 of 23; 08-r08-c carries the round 2 run.
+
+## r09 final serial run (2026-11-14)
+
+Steps 4 and 5: every prose experiment of chapters 22 to 24 once from clean, then one serial pass over examples 22 to 24, each `./verify.sh` and each `mvn -B verify` as its own hold of the stack lock, fresh containers per run (`verify.sh` starts with `down -v` and `up --force-recreate --renew-anon-volumes`), no `edp-*` container left after any run. The external volume `edp-ollama-models` was never removed; `scripts/ollama-model.sh check` passed before the model run. Logs are `<scratchpad>/s45-final-NN.log` and `<scratchpad>/s45-exp-NN-<name>.log`. Pins are frozen, so nothing was re-surveyed.
+
+Chapters 00 to 21 were not re-run live: their only change was the domain-model version line, and `mvn -B verify` passed on each (owner decision 2026-11-14).
+
+Gate wiring test (chapter 22): the runtime window found that `CancellationGateRoute` called `.bean(CancellationReplay.class, "replay")`, which made Camel build an uninjected instance. `CancellationGateTest` (2 tests) asserts that `cancellationReplay` is a resolvable CDI bean with its configuration injected and that the gate opens the payment route. Bite proof: with the route back on the class form and the `@Named` removed (the defect as found), `theReplayIsAContainerBeanWithItsConfigurationInjected` fails (BUILD FAILURE, 1 failure in 9 tests of payment-service, `<scratchpad>/s45-22-bite.log`); with only the route reverted and `@Named` kept the test passes, because Camel then finds the bean by type. Both files were restored from saved copies and diff identical; `mvn -B verify` green (`<scratchpad>/s45-22-mvn.log`).
+
+| Example | mvn verify tests (BUILD SUCCESS) | verify.sh | Logs |
+|---|---|---|---|
+| 22 | 12 + 7 + 9 = 28 | 30/30 | `s45-final-22-mvn.log`, `s45-final-22.log` |
+| 23 | 13 + 7 + 5 = 25 | 32/32 | `s45-final-23-mvn.log`, `s45-final-23.log` |
+| 24 | 23 | 17/17 with the model (digest 0edcdef34593 checked first) | `s45-final-24-mvn.log`, `s45-final-24.log` |
+| 24 `MODEL=off` | | 9/9 (model checks not run) | `s45-final-24-off.log` |
+
+Final-run NOTE lines: 22 burst of 200 in 2,595 ms, O-2204 cancelled 700 ms after its deadline; 23 Camel cancel 20,480 ms, Flow cancel 31,149 ms (upper bound), bench Camel 3,818 ms and Flow 2,074 ms, 6 and 0 coordinator requests per order; 24 replay 525 ms, warm chat median 2.40 s and maximum 5.00 s over 9 requests on an 8-core CPU.
+
+Experiments, each once from clean on the final scripts (every Try bullet and every Experiments row of the three READMEs):
+
+| Experiment | Stated failing set | Measured failing set | Log |
+|---|---|---|---|
+| 22 `PAYMENT_CANCEL_GUARD=off` | 21, 22, 27 | 27/30: 21, 22, 27 | `s45-exp-22-guardoff.log` |
+| 22 `SAGA_PAYMENT_TIMEOUT=60s` | 18 | 29/30: 18 | `s45-exp-22-timeout60.log` |
+| 22 inventory inbox removed (temporary edit, restored, diff identical) | 15 | 29/30: 15 | `s45-exp-22-noinbox.log` |
+| 23 `PAYMENT_JOIN=off` | 18 | 31/32: 18 | `s45-exp-23-joinoff.log` |
+| 23 `FLOW_COMPENSATION=off` | 11, 13, 16, 19, 20 | 27/32: 11, 13, 16, 19, 20 | `s45-exp-23-compoff.log` |
+| 23 `FLOW_SCAN_INTERVAL=5s` | none (32/32) | run 1: 31/32, 29 (Flow burst: 100 orders not complete after 181 s); runs 2 to 4: 32/32; check 27 passes in all four | `s45-exp-23-scan5s.log`, `s45-exp-23-scan5s-r2.log` to `s45-exp-23-scan5s-r4.log` |
+| 24 `REPLAY_MODE=reanalyse` | 10, 11 | 15/17: 10, 11; 25 chat requests against 9; replay 13.1 s | `s45-exp-24-reanalyse.log` |
+| 24 `RESHIP_ATTEMPT_LIMIT=1` | 6, 11 | 15/17: 6, 11 | `s45-exp-24-limit1.log` |
+| 24 `MODEL=off` | none (9/9) | 9/9 | `s45-exp-24-off.log` |
+| 24 `KEEP=1` then `POST /demo/replay?attemptLimit=2` | E-2403 REFUND, no model call | 17/17; E-2403 REFUND under the rule "at the attempt limit"; Ollama chat count 9 before and 9 after; replay 516 ms | `s45-exp-24-keepreplay.log` |
+
+Prose changes from this pass: the README of 23 states the measured result of the `FLOW_SCAN_INTERVAL=5s` experiment (3 of 4 runs 32/32, one run 31/32 on check 29, cause not investigated; check 27 passes in all four); the replay time of the reanalyse experiment reads about 13 s (13.1 and 13.5 s in two runs); the README of 22 gains the final burst time and the two new gate tests (28 tests).
+
+Claims: 148 rows added for chapters 22 (47), 23 (54) and 24 (47), every one tied to a check, a test, a recorded log or a `sources.md` row. Sentences that no check, test or fetched source backed were reworded or cut: the 1987 paper's content (chapter 22 keeps authorship and year), the Camel saga "no default time limit" and "waits for ever", the default behaviour of the Flow consumer on a reply without CloudEvent attributes (chapter 23 and README), "almost all of it the consumer reading Kafka" and "keeps the service on the JVM" and the existence of a Camel LangChain4j component (chapter 24). The pivot and retryable terminology and the semantic lock now cite the Microsoft Azure Architecture Center Saga page (`sources.md`, `bibliography.md`, chapter 22 references).
+
+### r09 validation round 1 (2026-11-14, Opus): FIX
+
+Blocking: ch 23 check 29 failed in the baseline (2 of 6), not only under `FLOW_SCAN_INTERVAL`; ch 23 left out the in-flight payment limit (G0-5). High: versions.md model and Drools rows; false reason for the ch 23 HTTP setup; several routes per RouteBuilder in ch 23; stale CLAUDE.md Q12 and no r09 entry. Medium: ch 22 check 26 vacuous (bite shown); ch 24 checks 13 and 14 did not witness `breakOnFirstError` (bite shown); ch 22 inbox witness log-only; ch 23 catch-all join refusal, no lower bound on timeouts, OrderCancelled dual write, ~200 Flow ERROR lines per run; ch 24 hand-kept model-call tally; ch 22 replay from offset 0.
+
+Repairs (commits ea9b9ae, 2e66d94, 37aff3b, 93997cc, 0808264):
+- 22: check 26 requires the saga still AWAITING_PAYMENT after the recreate (bite: `sleep 50` fails 26 only); lag-based cancellation gate (`CancellationLag`, Admin client); inbox check labelled as a log witness. mvn 28 tests; verify.sh 30/30 twice.
+- 23: Quarkus REST `OrderResource`; one route per RouteBuilder; OrderCancelled through a Debezium outbox; join refusal scoped (bite fails 18 only); timeout lower bound (`SAGA_TIMEOUT=PT5S` fails 15 and 16); CloudEvent attributes on every reply, ERROR lines 201 to 0, new check 33 (bite fails 33). Check 29: 5 of 15 baseline runs failed; root cause a Quarkus Flow 1.3.0 defect (a reply consumed before the `listen` task registers is acked and dropped; sdk-java 7.35.3.Final `ListenExecutor.internalExecute`, `AbstractTypeConsumer.CloudEventConsumer.accept`), reproduced deterministically on a minimal app and on Flow main. Owner decision: keep the idiom, state the rate, check 29 unchanged. Upstream issue drafted, not filed (owner: keep local).
+- 24: check 13 waits for Camel's exhaustion and then requires the note held (bite `breakOnFirstError=false` fails 13 and 14); platform counter `langchain4j_aiservices_counted_total`; REFUSED to automatic REFUND stated.
+
+### r09 validation round 2 (2026-11-14, Opus): FIX (minor), no Blocking or High
+
+Validator runs: mvn 28 / 27 / 23 green; verify.sh 22 30/30; 23 33/33 three times; 24 17/17 and `MODEL=off` 9/9; fresh clone domain-model then 23 green; site build ok; 71 figures byte-identical; own bites for 22 check 26 and 24 checks 13 and 14. Remaining: Medium M-a (no time limit on the ch 23 reservation wait); Low items (timing ranges, stale burst time, Build, run, observe length, claims rows, gate exception path, fixed sleep in 24).
+
+Repairs (commit a5f4a09): `awaitReserved` has a time limit with release-and-cancel (Maven bite fails without it; 28 tests in 23); a lost-reply stall is not ended by it (two stalled runs inspected: order PLACED minutes past the limit, last persisted task `reserve`), stated in the chapter. Check 29 over all runs: 9 of 29 failed (31 percent), stated in the README. Gate route retries a failing lag check (bite fails without `onException`). 24 replay check polls the Prometheus sample timestamp. Final runs: verify.sh 22 30/30 (`<scratchpad>/r2-22-verify.log`), 23 33/33, 32/33, 32/33 (check 29 alone; `<scratchpad>/r2-23-verify1..3.log`), 24 17/17 and `MODEL=off` 9/9 (`<scratchpad>/r2-24-verify*.log`); mvn 22 / 23 / 24 green. Gates: validate.py, voice-scan, idiomatic-scan 0 ban-tier, host_ids 0. The skill's two-round cap is reached; the orchestrator checked the round 2 repairs against the diff and logs.
+
+### r09 ship fix (2026-11-14)
+
+CI on PR #10 failed `maven (examples/02, 03, 19)`: their service poms still named domain-model 2.3.0, which the G0 bump missed (it moved the aggregator-level and single-module poms only); the local runs had passed because 2.3.0 was still in the local Maven repository. Moved the six service poms to 2.4.0; `mvn -B verify` green (02: 4 tests, 03: 7, 19: 10) and `docker compose build` green for all three (their Containerfiles install domain-model from source, so `verify.sh` would also have failed to build before the fix). No other pom names an older domain-model.

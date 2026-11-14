@@ -1,0 +1,30 @@
+services:
+  lra-coordinator:
+    # Upstream publishes date tags only; the digest pins the 2026-10-26 build
+    # (Narayana LRA 2.0.1.Final on Quarkus 3.40, JDK 21 on UBI 9), used as published.
+    image: quay.io/jbosstm/lra-coordinator:2026-10-26@sha256:b8b2c8fac32095fbce6a0033e23165974223c6837d3f90fb0c1c5cdc12ee6745
+    container_name: edp-lra-coordinator
+    ports:
+      - "8091:8080"     # coordinator API: GET /lra-coordinator
+    environment:
+      # gRPC OTLP to the LGTM service; the export only logs a warning when LGTM is not running.
+      - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317
+      - QUARKUS_TRANSACTION_MANAGER_OBJECT_STORE_DIRECTORY=/deployments/data/ObjectStore
+    volumes:
+      - lra-store:/deployments/data    # object store, removed by down -v
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+    networks:
+      - edp
+
+volumes:
+  lra-store:
+
+networks:
+  edp:
+    name: edp

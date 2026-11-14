@@ -1,0 +1,38 @@
+package com.patterncatalyst.shipping.decisions;
+unit DecisionUnit;
+
+rule "Damaged or lost, first attempt" when
+  $a : /analyses[ reason == "DAMAGED" || reason == "LOST", attempt == 1 ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "RESHIP", drools.getRule().getName()));
+end
+
+rule "Damaged or lost, later attempt" when
+  $a : /analyses[ reason == "DAMAGED" || reason == "LOST", attempt > 1 ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "REFUND", drools.getRule().getName()));
+end
+
+rule "Recipient absent or delayed, under the attempt limit" when
+  $a : /analyses[ reason == "RECIPIENT_ABSENT" || reason == "DELAYED", attempt < attemptLimit ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "RESHIP", drools.getRule().getName()));
+end
+
+rule "Recipient absent or delayed, at the attempt limit" when
+  $a : /analyses[ reason == "RECIPIENT_ABSENT" || reason == "DELAYED", attempt >= attemptLimit ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "REFUND", drools.getRule().getName()));
+end
+
+rule "Address problem or refused" when
+  $a : /analyses[ reason == "ADDRESS_PROBLEM" || reason == "REFUSED" ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "REFUND", drools.getRule().getName()));
+end
+
+rule "Unknown reason" when
+  $a : /analyses[ reason == "UNKNOWN" ]
+then
+  verdicts.add(new Verdict($a.exceptionId(), "REFUND", drools.getRule().getName()));
+end

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="290" height="380" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Choreography</text>
+<rect x="335" y="60" width="290" height="380" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="347" y="80" font-size="12" font-weight="700" fill="#888">Camel Saga with LRA</text>
+<rect x="650" y="60" width="290" height="380" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="662" y="80" font-size="12" font-weight="700" fill="#888">Quarkus Flow</text>
+<rect x="40" y="100" width="250" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="165.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Sequence</text>
+<text x="165.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">spread over three services</text>
+<rect x="40" y="200" width="250" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="165.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">State</text>
+<text x="165.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">order, inventory and payment tables</text>
+<rect x="40" y="300" width="250" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="165.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Compensation trigger</text>
+<text x="165.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">consumers of failure events</text>
+<rect x="40" y="390" width="250" height="36" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="165.0" y="413.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">time limit: a sweeper</text>
+<rect x="355" y="100" width="250" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="480.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Sequence</text>
+<text x="480.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">routes in order-service</text>
+<rect x="355" y="200" width="250" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="480.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">State</text>
+<text x="480.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">coordinator and Kafka headers</text>
+<rect x="355" y="300" width="250" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="480.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Compensation trigger</text>
+<text x="480.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">coordinator callbacks to joined participants</text>
+<rect x="355" y="390" width="250" height="36" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="480.0" y="413.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">time limit: the saga timeout</text>
+<rect x="670" y="100" width="250" height="70" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="795.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Sequence</text>
+<text x="795.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">the task list of one workflow</text>
+<rect x="670" y="200" width="250" height="70" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="795.0" y="233.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">State</text>
+<text x="795.0" y="250.0" font-size="11.5" fill="#555555" text-anchor="middle">workflow instance in PostgreSQL</text>
+<rect x="670" y="300" width="250" height="70" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="795.0" y="333.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Compensation trigger</text>
+<text x="795.0" y="350.0" font-size="11.5" fill="#555555" text-anchor="middle">tasks after a failed or timed-out listen</text>
+<rect x="670" y="390" width="250" height="36" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="795.0" y="413.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">time limit: the listen timeout</text>
+<text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Three places to look when an order is stuck</text>
+</svg>

@@ -11,6 +11,8 @@ Composable services for the runnable examples. Each example includes the pieces 
 | `compose-apicurio.yaml` | Apicurio Registry (in-memory) | 8081 (API), 19000 (health) | `apicurio:8080` | API under `/apis/registry/v3`. Empty after a restart. |
 | `compose-connect.yaml` | Kafka Connect with Debezium | 8083 | `connect:8083` | Includes the PostgreSQL connector and the outbox `EventRouter`. |
 | `compose-lgtm.yaml` | Grafana LGTM (otel-lgtm) | 3000 Grafana, 4317 and 4318 OTLP, 19090 Prometheus, 3200 Tempo, 3100 Loki | `lgtm:4318` | Prometheus is on 19090 because host port 9090 belongs to Cockpit on Fedora and RHEL. |
+| `compose-lra.yaml` | LRA coordinator (Narayana, pinned by digest) | 8091 | `lra-coordinator:8080` | `GET /lra-coordinator` lists the LRAs. The object store is a named volume removed by `down -v`. In-flight LRAs are lost when the coordinator restarts, so never restart it mid-saga. |
+| `compose-ollama.yaml` | Ollama (pinned by digest) | 11434 | `ollama:11434` | Mounts the external volume `edp-ollama-models` read-only; fill it once with `scripts/ollama-model.sh pull`, verify with `check`. The volume survives `down -v`. |
 
 Image tags are pinned in each file. Every service sets a memory limit and a health check.
 

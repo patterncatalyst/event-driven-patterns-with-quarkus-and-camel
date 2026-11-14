@@ -26,14 +26,14 @@ A customer orders an item online. The order is recorded, stock is reserved, the 
 | Service | Owns | Reacts to | Emits |
 |---|---|---|---|
 | order-service | `Order`, its lifecycle | InventoryInsufficient, PaymentProcessed, PaymentFailed, ShipmentScheduled, ShipmentDelivered | OrderPlaced, OrderCancelled |
-| inventory-service | `InventoryItem` stock | OrderPlaced, OrderCancelled, PaymentFailed | InventoryReserved, InventoryInsufficient |
-| payment-service | `Payment` | InventoryReserved | PaymentProcessed, PaymentFailed |
+| inventory-service | `InventoryItem` stock | OrderPlaced, OrderCancelled, PaymentFailed (ch 23: also its command topic) | InventoryReserved, InventoryInsufficient |
+| payment-service | `Payment` | InventoryReserved, OrderCancelled (ch 22: refuses a payment for a cancelled order; ch 23: also its command topic) | PaymentProcessed, PaymentFailed |
 | shipping-service | `Shipment`, carrier choice | PaymentProcessed | ShipmentScheduled, ShipmentInTransit, ShipmentDelivered |
 | notification-service | `Notification` | every event | none |
 
 ## Records and enums
 
-`examples/domain-model` version 2.3.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
+`examples/domain-model` version 2.4.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
 
 | Type | Fields | Validation |
 |---|---|---|
@@ -52,6 +52,12 @@ A customer orders an item online. The order is recorded, stock is reserved, the 
 | `Carrier` | FASTLINE, AIRCO (an unknown carrier fails at unmarshal; witness test) |
 
 Order ids are text, for example `O-1001`. Amounts are `BigDecimal` with 2 decimals (HALF_UP): 19.999 becomes 20.00.
+
+Notes (2.4.0):
+
+- Commands (ReserveStock, ReleaseStock, TakePayment, RefundPayment) are messages from an orchestrator to an existing service about an existing entity (`InventoryItem`, `Payment`). No new entity. Their records live per example; topics `edp.inventory.commands` and `edp.payments.commands` are outside the catalog.
+- RESHIP and REFUND are decision values, and the delivery-exception reason (DAMAGED, LOST, RECIPIENT_ABSENT, ADDRESS_PROBLEM, REFUSED, DELAYED, UNKNOWN) is a payload field. Neither is a domain enum.
+- `DeliveryExceptionReported` is a message about `Shipment` (a carrier's note); no new entity. Its topics `edp.shipping.delivery-exceptions`, `edp.shipping.exception-analyses` and `edp.shipping.exception-decisions` are outside the catalog.
 
 ## Event catalog
 
@@ -139,9 +145,9 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 19 | Enrich | ShipmentScheduled enriched with the carrier's mode and tracking URL by notification-service; shipping-service owns the carrier reference data (its table, its lookup endpoint and the compacted `edp.shipping.carriers` topic); a Camel Content Enricher looks it up per record, a Kafka Streams left join against a GlobalKTable keeps a local copy; a reference change and an owner outage show the difference; decision table |
 | 20 | Join | shipping-service releases an order when InventoryReserved and PaymentProcessed have both arrived: a Kafka Streams left join by event time within 30 minutes plus grace, and a Camel Aggregator correlated by order id with a completion timeout by arrival time, its state in PostgreSQL; an unmatched reservation becomes PaymentOverdue; two crafted pairs where the forms disagree; state kept across a restart; decision table |
 | 21 | Aggregate (stream aggregation) | ShipmentScheduled grouped per carrier into pickup lists from one input: Kafka Streams tumbling 15-minute event-time windows with grace and suppression (one final list and count per carrier per slot, late records dropped and counted) and a Camel Aggregator batching by size and completion timeout; decision table |
-| 22 | Saga: the pattern | the order-to-delivery flow choreographed over Kafka; PaymentFailed compensates (release stock, cancel order); a timeout; saga state in PostgreSQL |
-| 23 | Orchestrated sagas | the same order flow via the Camel Saga EIP (LRA) and Quarkus Flow; decision table against chapter 22 |
-| 24 | Decisions on events: Drools, LangChain4j | a free-text delivery-exception note from a carrier on a `Shipment`; LangChain4j extracts the reason, Drools decides RESHIP or REFUND (settled at r09) |
+| 22 | Saga: the pattern | the order flow to PAID choreographed over the catalog topics by order, inventory and payment services, each publishing through the outbox; PaymentFailed and OrderCancelled compensate (release stock, cancel order) idempotently and commutatively; order-service owns the saga state and a payment deadline in PostgreSQL; payment-service refuses a payment for an order it has seen cancelled |
+| 23 | Orchestrated sagas | the same flow orchestrated from order-service two ways over the same participants with commands on `edp.inventory.commands` and `edp.payments.commands`: the Camel Saga EIP with a Narayana LRA coordinator (participants join and register their compensation) and a Quarkus Flow workflow with its state in PostgreSQL (compensation as workflow tasks); a payment service that does not answer; decision table against chapter 22 |
+| 24 | Decisions on events: Drools, LangChain4j | a carrier's free-text delivery-exception note on a `Shipment`: a LangChain4j AI service on a local Ollama model extracts a closed reason, recorded on `edp.shipping.exception-analyses`; a Drools rule unit decides RESHIP or REFUND from the recorded reason and attempt, recorded on `edp.shipping.exception-decisions`; a replay re-decides from the record without the model |
 | 25 | Tracing across async hops | one `Order` traced from `POST /orders` through the outbox, Debezium, Kafka and the inventory consumer |
 | 26 | Metrics for event flows | consumer lag, event age, outbox backlog and DLQ rate for order-flow traffic; dashboard and alert |
 | 27 | Correlated logs and traces | the chapter 22 order saga followed by order id across services |

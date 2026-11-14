@@ -51,6 +51,13 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 
 Each service image is pinned by tag in `examples/_infra`.
 
+Chapter 24 runs a local model. Pull it once into its own Docker volume, which survives every `docker compose down -v`; the examples mount it read-only and never download it themselves:
+
+```bash
+scripts/ollama-model.sh pull    # about 2.5 GB, once
+scripts/ollama-model.sh check   # confirms the pinned model digest
+```
+
 ## The stack
 
 `examples/_infra` holds one compose file per service. An example includes the files it needs and adds its own services on the shared `edp` network.

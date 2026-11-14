@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 494" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="250" y="40" width="220" height="34" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="360.0" y="62.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Attempt 1</text>
+<rect x="478" y="40" width="220" height="34" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="588.0" y="62.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Attempt 2</text>
+<rect x="706" y="40" width="220" height="34" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="816.0" y="62.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Attempt 3</text>
+<rect x="30" y="90" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="117.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">DAMAGED</text>
+<rect x="250" y="90" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="110.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="360.0" y="127.0" font-size="11.5" fill="#555555" text-anchor="middle">first attempt</text>
+<rect x="478" y="90" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="588.0" y="110.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="588.0" y="127.0" font-size="11.5" fill="#555555" text-anchor="middle">later attempt</text>
+<rect x="706" y="90" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="110.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="127.0" font-size="11.5" fill="#555555" text-anchor="middle">later attempt</text>
+<rect x="30" y="142" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="169.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">LOST</text>
+<rect x="250" y="142" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="162.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="360.0" y="179.0" font-size="11.5" fill="#555555" text-anchor="middle">first attempt</text>
+<rect x="478" y="142" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="588.0" y="162.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="588.0" y="179.0" font-size="11.5" fill="#555555" text-anchor="middle">later attempt</text>
+<rect x="706" y="142" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="162.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="179.0" font-size="11.5" fill="#555555" text-anchor="middle">later attempt</text>
+<rect x="30" y="194" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="221.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RECIPIENT_ABSENT</text>
+<rect x="250" y="194" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="214.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="360.0" y="231.0" font-size="11.5" fill="#555555" text-anchor="middle">under limit</text>
+<rect x="478" y="194" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="588.0" y="214.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="588.0" y="231.0" font-size="11.5" fill="#555555" text-anchor="middle">under limit</text>
+<rect x="706" y="194" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="214.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="231.0" font-size="11.5" fill="#555555" text-anchor="middle">at limit</text>
+<rect x="30" y="246" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="273.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">DELAYED</text>
+<rect x="250" y="246" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="266.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="360.0" y="283.0" font-size="11.5" fill="#555555" text-anchor="middle">under limit</text>
+<rect x="478" y="246" width="220" height="44" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="588.0" y="266.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">RESHIP</text>
+<text x="588.0" y="283.0" font-size="11.5" fill="#555555" text-anchor="middle">under limit</text>
+<rect x="706" y="246" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="266.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="283.0" font-size="11.5" fill="#555555" text-anchor="middle">at limit</text>
+<rect x="30" y="298" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="325.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">ADDRESS_PROBLEM</text>
+<rect x="250" y="298" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="360.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="360.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="478" y="298" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="588.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="588.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="706" y="298" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="30" y="350" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="377.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUSED</text>
+<rect x="250" y="350" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="360.0" y="370.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="360.0" y="387.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="478" y="350" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="588.0" y="370.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="588.0" y="387.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="706" y="350" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="370.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="387.0" font-size="11.5" fill="#555555" text-anchor="middle">address or refused</text>
+<rect x="30" y="402" width="200" height="44" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="429.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">UNKNOWN</text>
+<rect x="250" y="402" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="360.0" y="422.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="360.0" y="439.0" font-size="11.5" fill="#555555" text-anchor="middle">unknown reason</text>
+<rect x="478" y="402" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="588.0" y="422.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="588.0" y="439.0" font-size="11.5" fill="#555555" text-anchor="middle">unknown reason</text>
+<rect x="706" y="402" width="220" height="44" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="816.0" y="422.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">REFUND</text>
+<text x="816.0" y="439.0" font-size="11.5" fill="#555555" text-anchor="middle">unknown reason</text>
+<text x="480" y="474" font-size="12" fill="#555555" text-anchor="middle">Exactly one rule fires per cell; the attempt limit is the one parameter, 3 here</text>
+</svg>

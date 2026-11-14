@@ -1,0 +1,77 @@
+# 22 Saga
+
+An order is carried from placed to paid by three services that react to each other's events, with no coordinator. `order-service` owns the saga state (`orders.order_saga`: state, deadline, version) and a sweeper that cancels sagas past their deadline. `inventory-service` reserves stock and releases it as a compensation that is idempotent and commutative. `payment-service`, a Camel participant, takes the payment, declines it above a limit and refuses a payment for an order it has seen cancelled. Every event leaves through the outbox of the service that publishes it, and one Debezium connector reads the three outbox tables.
+
+Quarkus, SmallRye Reactive Messaging, Camel Kafka (payment-service), Hibernate ORM with Panache, Flyway, `debezium-quarkus-outbox`, Quarkus Scheduler, SmallRye Health, PostgreSQL, Kafka, Kafka Connect and OpenTelemetry to the LGTM stack. Topic names come from `Topics` in `examples/domain-model`. The six topics are created by `topics-init` with one partition each, because topics the connector creates get three.
+
+## Services
+
+| Service | Port | Purpose |
+|---|---|---|
+| `order-service` | 8080 | `POST /orders`, `GET /orders/{id}`, the saga state, the sweeper |
+| `inventory-service` | 8082 | Reservation and release |
+| `payment-service` | 8084 | Payment and the check of cancelled orders |
+
+| Setting | Default | Effect |
+|---|---|---|
+| `SAGA_PAYMENT_TIMEOUT` | `15s` | Demo code. How long a saga may wait in one state before the sweeper cancels it |
+| `PAYMENT_DECLINE_ABOVE` | `500.00` | Demo code. Payments above this amount are declined |
+| `PAYMENT_CANCEL_GUARD` | `on` | Demo code. `off` removes the check of cancelled orders, so a late payment is taken |
+
+## Run
+
+```bash
+(cd ../domain-model && mvn -B -q install)
+mvn -B verify      # the three services against Dev Services PostgreSQL and Kafka
+./verify.sh        # compose stack
+KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
+docker compose down -v
+```
+
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `30/30 checks passed`.
+
+## What verify.sh does
+
+1. Starts the stack, registers the connector over the three outbox tables and waits for it, the six one-partition topics, the nine consumer groups and the seeded stock.
+2. O-2201: PAID, stock down by one, the three events in causal order across topics.
+3. A burst of 200 orders (O-22100 to O-22299), every second one above the decline limit: 100 COMPLETED, 100 CANCELLED, 100 reservations released. A `NOTE` line prints the time to the last final state.
+4. O-2202 asks for more stock than exists: CANCELLED (OUT_OF_STOCK), no payment, stock unchanged.
+5. O-2203 is declined: CANCELLED (PAYMENT_DECLINED), reservation RELEASED, stock restored. A repeated PaymentFailed with the same id header is dropped by the inbox of inventory: the check reads the log line "duplicate event ... skipped" and confirms the stock stays at 9. The release is idempotent on its own, so the stock and the reservation are identical without the inbox; the log line is the only witness of the inbox and the check says so.
+6. payment-service is stopped. O-2204 is reserved and waits; the sweeper cancels it after its deadline (a `NOTE` line prints how long after), OrderCancelled is published and the stock is released. payment-service returns, waits until its cancellation consumer has no lag and refuses the waiting reservation: its log says so, there is no payment row and no payment event.
+7. payment-service is stopped again and O-2205 waits. Its deadline is moved to 40 seconds ahead (`RESTART_DEADLINE_S`), far beyond the time a recreate takes, and order-service is recreated. Check 26 requires O-2205 to be still AWAITING_PAYMENT after the recreate and before the deadline, and then CANCELLED (TIMED_OUT) 0 to 3.5 seconds after that same deadline. A pause of 50 seconds before the recreate makes the check fail. The returning payment-service refuses O-2205 too.
+8. Prometheus holds `saga_outcomes_total` for outcome `compensated`, Tempo a trace and Loki a log line.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `order-service/.../SagaService` | The transitions: conditional updates, inbox, outbox, sweeper query |
+| `order-service/.../SagaListener`, `SagaSweeper`, `OrderResource` | The four replies, the scheduled sweep, the HTTP edge |
+| `inventory-service/.../ReservationService`, `InventoryListener` | Reserve and release, the three inputs |
+| `payment-service/.../PaymentService` | The payment and the cancelled-order check |
+| `payment-service/.../PaymentRoute`, `CancellationRoute`, `CancellationGateRoute`, `CancellationLag` | The Camel routes and the check that the cancellation consumer has no lag before the first payment |
+| `*/src/main/resources/db/migration` | One schema per service: orders, inventory, payments, each with its outbox table |
+| `connect/saga-outbox.json` | The one connector over the three outbox tables |
+| `compose.yaml` | Topics and the three services |
+
+## Tests and checks in detail
+
+The Maven build runs 28 tests against PostgreSQL and Kafka from Dev Services. In `order-service` (12): each reply moves the saga once, insufficient stock cancels with no compensation, a declined payment cancels, the sweeper cancels an expired saga and writes the outbox row in the same transaction, a rolled back sweep leaves neither, a late payment for a cancelled order changes nothing, one event id is applied once, and a sweep and a payment released together over 50 rounds have exactly one winner (probabilistic: it makes the overlap likely, it does not prove it); three more cover the HTTP edge and the replies as Kafka records. In `inventory-service` (7): reserve then release restores the stock, release twice releases once, a release before the reservation refuses it, insufficient stock is answered and holds nothing, one event id is applied once, a reservation and a release released together over 50 rounds end with the stock back, and records on the topics reserve and release. In `payment-service` (9): a payment is taken, one above the limit is declined, one for a cancelled order is refused, a repeated reservation takes the money once, a cancellation that is not yet read keeps the lag check true until the route has recorded it, the route takes a payment from a topic record, with `payment.cancel-guard=off` a payment for a cancelled order is taken (asserts the bad outcome), the lag check is a container bean with its configuration injected (the gate route calls it by name, and a bean built by Camel instead has no configuration), and the gate route starts the payment route.
+
+The checks read effects: the order view over HTTP, rows in the three schemas, records on the topics with their timestamps and id headers, consumer-group lag, the services' logs and Prometheus. Every recreate waits for readiness and the consumer groups; outputs are polled, never slept on. Consumers use a 10-second session timeout and a 3-second heartbeat.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail. Check numbers are the `PASS` and `FAIL` numbers `verify.sh` prints.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `PAYMENT_CANCEL_GUARD=off ./verify.sh` (demo code) | The returning payment-service takes the payment for the cancelled orders | 21, 22 and 27 | 27/30: no refusal is logged for O-2204 and O-2205, and a payment event exists for O-2204 |
+| `SAGA_PAYMENT_TIMEOUT=60s ./verify.sh` (demo code) | The sweeper cancels O-2204 60 seconds after the reservation | 18 | 29/30: the check waits 45 seconds for the cancellation; the cancellation still happens before payment-service returns, so the order ends CANCELLED and checks 19 to 23 pass |
+| Inbox of inventory removed (temporary edit, bite proof) | The repeated PaymentFailed is no longer skipped or logged; the release is idempotent, so the stock and the reservation do not change | 15 | 29/30: only the "duplicate event ... skipped" log line is missing; no state differs, which is why the check is a log witness |
+
+Timing witness: the cancellation of O-2204 (check 18) passed in 15 of 15 fresh runs. The cancellation was observed 595 to 1727 ms after the deadline (median 1128 ms) against the 3500 ms limit the check allows. Burst: 200 orders reached a final state after 2597 to 3698 ms in 15 fresh runs (median 3651 ms, 55 orders per second; two runs took 2.6 s and the other 13 between 3.6 and 3.7 s). The three runs after the last repair took 3662, 3670 and 3672 ms. O-2205 (check 26): after the recreate it was still waiting 24.0 s before its deadline (2 final runs: 24022 and 24017 ms), and was cancelled 1929 and 1947 ms after it. With a 50 second pause before the recreate the check fails (29/30). Times are for an 8-core CPU.
+
+## Notes
+
+The coordinator-free saga has no isolation: the stock of a saga in flight is visibly reserved. `payment-service` holds its payment route until the `payment-cancelled` group has no lag, so a restart costs the cancellations published while it was away, not the history of the topic. The lag is read with the Kafka admin client and the group commits every 500 ms, so the gate opens within about a second of the last cancellation being recorded.

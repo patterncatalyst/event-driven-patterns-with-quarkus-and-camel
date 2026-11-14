@@ -48,6 +48,21 @@ public final class Topics {
     /** Per-carrier pickup lists (Camel output). */
     public static final String SHIPPING_PICKUP_LISTS_CAMEL = "edp.shipping.pickup-lists-camel";
 
+    /** ReserveStock and ReleaseStock commands from an orchestrator to inventory-service, keyed by order id. */
+    public static final String INVENTORY_COMMANDS = "edp.inventory.commands";
+
+    /** TakePayment and RefundPayment commands from an orchestrator to payment-service, keyed by order id. */
+    public static final String PAYMENTS_COMMANDS = "edp.payments.commands";
+
+    /** A carrier's free-text delivery-exception note on a Shipment, keyed by order id. */
+    public static final String SHIPPING_DELIVERY_EXCEPTIONS = "edp.shipping.delivery-exceptions";
+
+    /** The recorded analysis of a delivery-exception note: reason, model and prompt version. */
+    public static final String SHIPPING_EXCEPTION_ANALYSES = "edp.shipping.exception-analyses";
+
+    /** The decision on a delivery exception, RESHIP or REFUND, with the rule that fired. */
+    public static final String SHIPPING_EXCEPTION_DECISIONS = "edp.shipping.exception-decisions";
+
     /** The nine event catalog topics. */
     public static final List<String> ALL = List.of(
             ORDERS_PLACED, ORDERS_CANCELLED,
