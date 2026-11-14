@@ -1,10 +1,5 @@
 package com.patterncatalyst.shipping.orchestration.order;
 
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.component.kafka.KafkaConstants;
-
-import com.patterncatalyst.shipping.Topics;
-
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -19,9 +14,6 @@ public class SagaOutcomes {
     @Inject
     MeterRegistry registry;
 
-    @Inject
-    ProducerTemplate camel;
-
     public void completed(String orchestrator, String orderId) {
         if (orders.markPaid(orderId)) {
             registry.counter("saga.outcomes", "orchestrator", orchestrator, "outcome", "completed").increment();
@@ -30,8 +22,6 @@ public class SagaOutcomes {
 
     public void compensated(String orchestrator, String orderId) {
         if (orders.cancel(orderId)) {
-            camel.sendBodyAndHeader("kafka:" + Topics.ORDERS_CANCELLED, "{\"orderId\":\"" + orderId + "\"}",
-                    KafkaConstants.KEY, orderId);
             registry.counter("saga.outcomes", "orchestrator", orchestrator, "outcome", "compensated").increment();
         }
     }

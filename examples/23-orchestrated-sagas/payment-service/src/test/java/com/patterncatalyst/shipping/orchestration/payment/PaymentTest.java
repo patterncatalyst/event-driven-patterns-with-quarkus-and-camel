@@ -52,6 +52,8 @@ class PaymentTest {
         var replies = Records.replies(bootstrap, Topics.PAYMENTS_PROCESSED, id, Duration.ofSeconds(30));
         assertEquals(1, replies.size());
         assertEquals("PaymentProcessed", Records.header(replies.get(0), "type"));
+        assertEquals("PaymentProcessed", Records.header(replies.get(0), "ce_type"), "every reply is a CloudEvent");
+        assertEquals(null, Records.header(replies.get(0), "ce_flowinstanceid"), "no workflow instance to name");
         assertEquals("COMPLETED", status(id));
     }
 

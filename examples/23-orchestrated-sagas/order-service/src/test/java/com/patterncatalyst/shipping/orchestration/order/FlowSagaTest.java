@@ -75,7 +75,12 @@ class FlowSagaTest {
 
         awaitStatus(id, "CANCELLED");
         assertEquals(0, Wire.records(bootstrap, Topics.PAYMENTS_COMMANDS, id, 1, Duration.ofSeconds(2)).size());
-        assertEquals(1, Wire.records(bootstrap, Topics.INVENTORY_COMMANDS, id, 2, Duration.ofSeconds(2)).size());
+        assertEquals(0, commandsOfType(Topics.INVENTORY_COMMANDS, id, "ReleaseStock"), "nothing was reserved, so nothing is released");
+    }
+
+    private long commandsOfType(String topic, String id, String type) {
+        return Wire.records(bootstrap, topic, id, 20, Duration.ofSeconds(2)).stream()
+                .filter(r -> type.equals(Wire.header(r, "type"))).count();
     }
 
     @Test
@@ -110,14 +115,15 @@ class FlowSagaTest {
     }
 
     @Test
-    void aReplyWithoutCloudEventAttributesDoesNotWakeAnInstance() throws Exception {
+    void aReplyThatNamesNoInstanceDoesNotWakeOne() throws Exception {
         String id = Orders.id();
         Orders.start("flow", id);
 
         var reserve = Wire.command(bootstrap, Topics.INVENTORY_COMMANDS, id, "ReserveStock");
-        // A reply as the Camel orchestrator's participants send it: a saga header, no CloudEvent attributes.
+        // A reply to a command of the Camel orchestrator: a saga header and CloudEvent attributes, no instance id.
         Wire.send(bootstrap, Topics.INVENTORY_RESERVED, id, "{\"orderId\":\"" + id + "\",\"outcome\":\"RESERVED\"}",
-                Map.of("type", "InventoryReserved", "orderId", id, "Long-Running-Action", "http://coordinator/" + id));
+                Map.of("type", "InventoryReserved", "orderId", id, "Long-Running-Action", "http://coordinator/" + id,
+                        "ce_specversion", "1.0", "ce_id", "ce-" + id, "ce_source", "/test", "ce_type", "InventoryReserved"));
         assertEquals(0, Wire.records(bootstrap, Topics.PAYMENTS_COMMANDS, id, 1, Duration.ofSeconds(3)).size());
 
         Wire.reply(bootstrap, Topics.INVENTORY_RESERVED, "InventoryReserved", id, "RESERVED", reserve);

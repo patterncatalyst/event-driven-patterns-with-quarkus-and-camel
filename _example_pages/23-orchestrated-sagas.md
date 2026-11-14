@@ -7,7 +7,7 @@ description: "One order-service that runs the same order saga under a Camel Saga
 
 [`examples/23-orchestrated-sagas/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/23-orchestrated-sagas) runs one order flow, order then stock then payment, under two orchestrators in `order-service`. `inventory-service` and `payment-service` take commands over Kafka and join the Camel saga when the command carries its header. It accompanies [Orchestrated sagas: Camel Saga and Quarkus Flow]({{ '/docs/23-orchestrated-sagas/' | relative_url }}).
 
-It uses Quarkus, Camel Kafka, the Camel Saga EIP with the LRA binding, Quarkus Flow, Flyway, SmallRye Health, PostgreSQL, Kafka, a Narayana LRA coordinator and OpenTelemetry to the LGTM stack.
+It uses Quarkus with Quarkus REST, Camel Kafka, the Camel Saga EIP with the LRA binding, Quarkus Flow, Flyway, the Debezium outbox and Connect, SmallRye Health, PostgreSQL, Kafka, a Narayana LRA coordinator and OpenTelemetry to the LGTM stack.
 
 ```bash
 (cd examples/domain-model && mvn -B -q install)
@@ -27,4 +27,4 @@ mvn -B verify
 
 ## Infrastructure
 
-Kafka, PostgreSQL, the LGTM stack and the LRA coordinator from `examples/_infra`, plus three services. The compose project is `edp-23`.
+Kafka, PostgreSQL, Connect, the LGTM stack and the LRA coordinator from `examples/_infra`, plus three services. The compose project is `edp-23`.

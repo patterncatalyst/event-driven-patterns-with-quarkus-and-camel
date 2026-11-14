@@ -44,7 +44,7 @@ class CamelSagaTest {
 
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertEquals("PAID", Orders.status(id)));
         assertEquals(1, Wire.records(bootstrap, Topics.INVENTORY_COMMANDS, id, 1, Duration.ofSeconds(20)).size());
-        assertEquals(0, Wire.records(bootstrap, Topics.ORDERS_CANCELLED, id, 1, Duration.ofSeconds(2)).size(), "nothing was compensated");
+        assertEquals(0, Orders.cancelledRows(id), "nothing was compensated");
     }
 
     @Test
@@ -68,7 +68,7 @@ class CamelSagaTest {
         run("direct:test-compensate", id);
 
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertEquals("CANCELLED", Orders.status(id)));
-        assertEquals(1, Wire.records(bootstrap, Topics.ORDERS_CANCELLED, id, 1, Duration.ofSeconds(20)).size());
+        assertEquals(1, Orders.cancelledRows(id));
     }
 
     @Test
@@ -90,6 +90,6 @@ class CamelSagaTest {
         outcomes.compensated("camel-lra", id);
 
         assertEquals("CANCELLED", Orders.status(id));
-        assertEquals(1, Wire.records(bootstrap, Topics.ORDERS_CANCELLED, id, 1, Duration.ofSeconds(20)).size());
+        assertEquals(1, Orders.cancelledRows(id));
     }
 }

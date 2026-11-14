@@ -28,6 +28,7 @@
     <surefire-plugin.version>3.6.1</surefire-plugin.version>
     <!-- Quarkus Flow is not in the Quarkus platform; its BOM is imported after the platform BOMs. -->
     <quarkus-flow.version>1.3.0</quarkus-flow.version>
+    <debezium.outbox.version>3.7.1.Final</debezium.outbox.version>
   </properties>
 
   <dependencyManagement>

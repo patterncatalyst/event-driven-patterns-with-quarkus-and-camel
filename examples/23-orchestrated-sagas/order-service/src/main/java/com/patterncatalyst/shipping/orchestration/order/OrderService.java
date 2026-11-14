@@ -1,13 +1,23 @@
 package com.patterncatalyst.shipping.orchestration.order;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.patterncatalyst.shipping.Order;
 
+import io.debezium.outbox.quarkus.ExportedEvent;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 /** The order table. Every state change is a conditional update, so a repeated callback changes nothing. */
 @ApplicationScoped
 public class OrderService {
+
+    @Inject
+    Event<ExportedEvent<?, ?>> events;
+
+    @Inject
+    ObjectMapper json;
 
     @Transactional
     public void place(Order order, String orchestrator) {
@@ -43,10 +53,14 @@ public class OrderService {
         return OrderEntity.update("status = 'PAID' where id = ?1 and status = 'PLACED'", orderId) == 1;
     }
 
-    /** True when this call moved the order from PLACED to CANCELLED. */
+    /** True when this call moved the order from PLACED to CANCELLED. The OrderCancelled outbox row commits with it. */
     @Transactional
     public boolean cancel(String orderId) {
-        return OrderEntity.update("status = 'CANCELLED' where id = ?1 and status = 'PLACED'", orderId) == 1;
+        boolean cancelled = OrderEntity.update("status = 'CANCELLED' where id = ?1 and status = 'PLACED'", orderId) == 1;
+        if (cancelled) {
+            events.fire(OrderCancelledEvent.of(orderId, json));
+        }
+        return cancelled;
     }
 
     @Transactional

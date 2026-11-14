@@ -41,6 +41,13 @@ final class Orders {
         return given().get("/orders/" + id).then().statusCode(200).extract().path("status");
     }
 
+    /** The OrderCancelled rows in the outbox: the tests keep them, the compose run lets the connector read them. */
+    static long cancelledRows(String orderId) {
+        return QuarkusTransaction.requiringNew().call(() -> ((Number) io.quarkus.hibernate.orm.panache.Panache.getEntityManager()
+                .createNativeQuery("SELECT count(*) FROM orders.outboxevent WHERE aggregateid = :id AND type = 'OrderCancelled'")
+                .setParameter("id", orderId).getSingleResult()).longValue());
+    }
+
     static long instanceRows(String instanceId) {
         return QuarkusTransaction.requiringNew().call(() -> ((Number) io.quarkus.hibernate.orm.panache.Panache.getEntityManager()
                 .createNativeQuery("SELECT count(*) FROM orders.workflow_instance_entity WHERE instance_id = :id")

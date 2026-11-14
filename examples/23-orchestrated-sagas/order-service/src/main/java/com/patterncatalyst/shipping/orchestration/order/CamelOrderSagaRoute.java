@@ -15,18 +15,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
- * The orchestrator written with the Camel Saga EIP. The start route opens the saga at the coordinator and sends
- * ReserveStock; the saga stays open (MANUAL) until the replies route completes or compensates it. The coordinator
- * calls the two callback routes when it closes or cancels the saga, including when the time limit passes.
+ * The start of the orchestrator written with the Camel Saga EIP. It opens the saga at the coordinator and sends
+ * ReserveStock; the saga stays open (MANUAL) until the replies route completes or compensates it, and the
+ * coordinator cancels it when the time limit passes.
  */
 @ApplicationScoped
 public class CamelOrderSagaRoute extends RouteBuilder {
 
     @Inject
     OrderService orders;
-
-    @Inject
-    SagaOutcomes outcomes;
 
     @ConfigProperty(name = "saga.timeout")
     String timeout;
@@ -44,11 +41,5 @@ public class CamelOrderSagaRoute extends RouteBuilder {
                 .setHeader(KafkaConstants.KEY, header("orderId"))
                 .marshal().json(JsonLibrary.Jackson)
                 .to("kafka:" + Topics.INVENTORY_COMMANDS);
-
-        from("direct:camel-cancel-order").routeId("camel-cancel-order")
-                .process(e -> outcomes.compensated("camel-lra", e.getMessage().getHeader("orderId", String.class)));
-
-        from("direct:camel-complete-order").routeId("camel-complete-order")
-                .process(e -> outcomes.completed("camel-lra", e.getMessage().getHeader("orderId", String.class)));
     }
 }

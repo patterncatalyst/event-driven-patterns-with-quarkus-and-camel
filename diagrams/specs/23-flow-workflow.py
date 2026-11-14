@@ -22,7 +22,7 @@ emit(
         {"x": 790, "y": 200, "w": 130, "h": 60, "style": "box", "lines": ["markPaid", "then end"]},
         {"x": 340, "y": 300, "w": 130, "h": 50, "style": "accent", "lines": ["cancel", "order CANCELLED"]},
         {"x": 40, "y": 390, "w": 420, "h": 46, "style": "ink", "lines": ["workflow_instance_entity, task_info_entity", "written as each task completes or pauses"]},
-        {"x": 500, "y": 390, "w": 420, "h": 46, "style": "ghost", "lines": ["a waiting instance does not resume after a recreate", "measured in the example"]},
+        {"x": 500, "y": 390, "w": 420, "h": 46, "style": "ghost", "lines": ["a waiting instance does not resume after a recreate", "measured"]},
     ],
     edges=[
         {"x1": 170, "y1": 130, "x2": 190, "y2": 130},

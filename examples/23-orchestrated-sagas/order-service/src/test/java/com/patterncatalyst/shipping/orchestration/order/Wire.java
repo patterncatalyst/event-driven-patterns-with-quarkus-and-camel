@@ -30,7 +30,7 @@ final class Wire {
         }
     }
 
-    /** A reply as a participant sends it: the saga header or the CloudEvent attributes of the command, and a payload. */
+    /** A reply as a participant sends it: the saga header and the instance id of the command, CloudEvent attributes always, and a payload. */
     static void reply(String bootstrap, String topic, String type, String orderId, String outcome, ConsumerRecord<String, String> command) throws Exception {
         var headers = new java.util.HashMap<String, String>();
         headers.put("type", type);
@@ -39,14 +39,14 @@ final class Wire {
         if (saga != null) {
             headers.put("Long-Running-Action", saga);
         }
+        headers.put("ce_specversion", "1.0");
+        headers.put("ce_id", UUID.randomUUID().toString());
+        headers.put("ce_source", "/test");
+        headers.put("ce_type", type);
+        headers.put("content-type", "application/json");
         String instance = header(command, "flowinstanceid");
         if (instance != null) {
-            headers.put("ce_specversion", "1.0");
-            headers.put("ce_id", UUID.randomUUID().toString());
-            headers.put("ce_source", "/test");
-            headers.put("ce_type", type);
             headers.put("ce_flowinstanceid", instance);
-            headers.put("content-type", "application/json");
         }
         send(bootstrap, topic, orderId, "{\"orderId\":\"" + orderId + "\",\"outcome\":\"" + outcome + "\"}", headers);
     }

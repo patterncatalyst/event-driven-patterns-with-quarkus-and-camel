@@ -14,8 +14,9 @@
   <artifactId>order-service</artifactId>
   <name>Chapter 23: order-service (both orchestrators)</name>
   <dependencies>
-    <!-- The LRA extension brings the classic RESTEasy client, Quarkus Flow brings the reactive one, and the two cannot
-         share an application. The reactive client implements the JAX-RS client API the LRA binding calls. -->
+    <!-- The LRA extension brings the classic RESTEasy client and Quarkus Flow brings the reactive REST client, and the
+         two clients cannot share an application: the build fails on two producers of the same build item. The
+         classic client is excluded. The LRA binding itself uses the JDK HTTP client, so nothing needs it. -->
     <dependency>
       <groupId>org.apache.camel.quarkus</groupId>
       <artifactId>camel-quarkus-lra</artifactId>
@@ -36,7 +37,13 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-jackson</artifactId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+    <!-- Writes the OrderCancelled outbox row in the transaction that cancels the order. -->
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-quarkus-outbox</artifactId>
+      <version>${debezium.outbox.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

@@ -68,6 +68,8 @@ class StockCommandsTest {
         var replies = Records.replies(bootstrap, Topics.INVENTORY_RESERVED, id, Duration.ofSeconds(30));
         assertEquals(1, replies.size());
         assertNotNull(Records.header(replies.get(0), "Long-Running-Action"));
+        assertEquals("InventoryReserved", Records.header(replies.get(0), "ce_type"), "every reply is a CloudEvent");
+        assertEquals(null, Records.header(replies.get(0), "ce_flowinstanceid"), "no workflow instance to name");
     }
 
     @Test

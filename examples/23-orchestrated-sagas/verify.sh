@@ -12,6 +12,8 @@ source ../../scripts/stack-guard.sh edp-23
 
 COMPOSE=(docker compose -f compose.yaml)
 PSQL=(docker exec -e PGPASSWORD=edp edp-postgres psql -h 127.0.0.1 -U edp -d edp -tA)
+CONNECT=http://localhost:8083
+CONNECTOR=order-outbox
 TIMEOUT_S=20   # the time limit of a saga in both orchestrators (SAGA_TIMEOUT, compose default PT20S)
 REPEAT=${REPEAT:-0}
 TOTAL=0
@@ -73,6 +75,13 @@ kafka() { docker exec edp-kafka "/opt/kafka/bin/$1" --bootstrap-server localhost
 sql() { "${PSQL[@]}" -c "$1"; }
 ready() { curl -sf "http://localhost:$1/q/health/ready" >/dev/null; }
 live() { curl -sf "http://localhost:$1/q/health/live" >/dev/null; }
+connector_running() {
+    curl -sf "$CONNECT/connectors/$CONNECTOR/status" | python3 -I -c "
+import json, sys
+d = json.load(sys.stdin)
+sys.exit(0 if d['connector']['state'] == 'RUNNING' and d['tasks'] and all(t['state'] == 'RUNNING' for t in d['tasks']) else 1)"
+}
+plugin_listed() { local out; out="$(curl -sf "$CONNECT/connector-plugins")" || return 1; [[ "$out" == *io.debezium.connector.postgresql.PostgresConnector* ]]; }
 coordinator_ready() { curl -sf http://localhost:8091/q/health/ready >/dev/null; }
 logs() { docker logs "edp-$1" 2>&1; }
 
@@ -147,6 +156,11 @@ poll 60 topics_init_done || fail_loudly "topics-init did not finish"
 
 echo "Infrastructure"
 precondition "the three services and the LRA coordinator are ready" poll 90 all_ready
+# The connector reads the outbox table order-service creates at start, so it is registered once the services are ready.
+poll 60 plugin_listed || fail_loudly "Connect does not list the PostgreSQL connector"
+curl -sf -X PUT -H 'Content-Type: application/json' --data @connect/order-outbox.json "$CONNECT/connectors/$CONNECTOR/config" >/dev/null \
+    || fail_loudly "the connector was not accepted by Connect"
+poll 60 connector_running || fail_loudly "the connector $CONNECTOR is not RUNNING"
 precondition "the seven topics exist with one partition each" topics_have_one_partition
 tables_and_stock() { [[ "$(flow_tables)" == 'task_info_entity,workflow_instance_entity' && "$(stock)" == 20 ]]; }
 precondition "Flow's tables exist and SKU-23 holds 20" tables_and_stock
@@ -192,17 +206,26 @@ T0=$(now_ms)
 place camel O-2303 100.00
 place flow O-2313 100.00
 cancelled_with_stock_back() { status_is "$1" CANCELLED && reservation_is "$1" RELEASED; }
-check "Camel saga: the coordinator cancels O-2303 at the time limit and its stock is released" \
-    poll $((TIMEOUT_S + 25)) cancelled_with_stock_back O-2303
-echo "NOTE: Camel saga cancelled $(( $(now_ms) - T0 )) ms after the order, time limit ${TIMEOUT_S} s"
 flow_compensated() { status_is O-2313 CANCELLED && has_record edp.payments.commands O-2313 RefundPayment && has_record edp.inventory.commands O-2313 ReleaseStock; }
-check "Flow workflow: the listen task times out, RefundPayment and ReleaseStock are on the topics and O-2313 is CANCELLED" \
-    poll $((TIMEOUT_S + 25)) flow_compensated
-echo "NOTE: Flow workflow cancelled $(( $(now_ms) - T0 )) ms after the order, time limit ${TIMEOUT_S} s"
+camel_ms=""; flow_ms=""
+watch_cancels() { # polls both orders every second and records when each cancel first shows
+    local end=$((SECONDS + TIMEOUT_S + 25))
+    while (( SECONDS < end )) && [[ -z "$camel_ms" || -z "$flow_ms" ]]; do
+        [[ -n "$camel_ms" ]] || ! cancelled_with_stock_back O-2303 || camel_ms=$(( $(now_ms) - T0 ))
+        [[ -n "$flow_ms" ]] || ! flow_compensated || flow_ms=$(( $(now_ms) - T0 ))
+        sleep 1
+    done
+}
+at_or_after_the_limit() { [[ -n "$1" ]] && (( $1 >= TIMEOUT_S * 1000 )); } # at_or_after_the_limit <ms>
+watch_cancels
+check "Camel saga: the coordinator cancels O-2303 at the time limit, not before, and its stock is released" at_or_after_the_limit "$camel_ms"
+echo "NOTE: Camel saga cancelled ${camel_ms:-never} ms after the order, time limit ${TIMEOUT_S} s"
+check "Flow workflow: the listen task gives up at the time limit, not before; RefundPayment and ReleaseStock are on the topics and O-2313 is CANCELLED" at_or_after_the_limit "$flow_ms"
+echo "NOTE: Flow workflow cancelled ${flow_ms:-never} ms after the order, time limit ${TIMEOUT_S} s"
 "${COMPOSE[@]}" up -d --no-deps --wait payment-service
 payment_caught_up() { ready 8084 && group_caught_up; }
 precondition "payment-service is ready again and has read its backlog (no lag on the commands topic)" poll 90 payment_caught_up
-refused_join_logged() { logs payment-service | grep -F 'TakePayment for O-2303 refused'; }
+refused_join_logged() { logs payment-service | grep -E 'TakePayment for O-2303 refused: .*Cannot join LRA.*404'; }
 join_refused() { no_payment O-2303 && refused_join_logged; }
 check "O-2303: no payment was taken, because the late TakePayment could not join a cancelled saga" poll 30 join_refused
 check "O-2313: the late TakePayment took the payment and the RefundPayment behind it refunded it: REFUNDED" poll 30 payment_is O-2313 REFUNDED
@@ -275,6 +298,9 @@ check "Prometheus holds the compensated Flow sagas of order-service" \
     poll 90 prom_holds 'max_over_time(saga_outcomes_total{orchestrator="flow",outcome="compensated",service_name="order-service"}[1h]) >= 2'
 check "Tempo has a trace for order-service" poll 90 tempo_has_trace order-service
 check "Loki has logs for order-service" poll 90 loki_has_log order-service
+
+no_foreign_records() { [[ "$(logs order-service | grep -c 'CE parse failure' || true)" == 0 ]]; }
+check "the workflow's consumer skipped no record: every reply of both forms is a CloudEvent, so the log holds no parse failure" no_foreign_records
 
 if [[ "$PASSED" != "$TOTAL" ]]; then
     for s in order-service inventory-service payment-service; do
