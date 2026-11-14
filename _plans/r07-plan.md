@@ -677,7 +677,7 @@ Chapter 18:
 | 4 | Orchestrator re-run of every prose experiment, logged with the failing check numbers; grep "check N" after any renumbering | `_plans/verification-log.md` | orchestrator | 3 | serial | yes | done |
 | 5 | Final serial run 00 to 18 (fresh containers each, one flock, no `edp-*` left between runs); static gates; claims and log; per-chapter commits with `host_ids.py check` before each | claims, log | orchestrator | 4 | serial | yes | done |
 | 6 | Opus validation (max 2 repair rounds): claims audit; check-bite audit; bench consistency (the table, the figure and the prose from one bench); 7-gram originality against Young's CQRS Documents text, the Apicurio and Debezium pages and chapters 14 and 15; fresh clone; word counts; figures byte-identical | none | validator | 5 | none | yes | done (round 1 FIX, round 2 FIX on one Medium, repair round 2 verified by the orchestrator) |
-| 7 | Ship: PR, CI green, squash on owner OK, tag r07.0, notes-only release, delete the branch; PRD rows 16 to 18 rewritten to the domain (freight names removed), roadmap and status; iteration-plan done; CLAUDE.md decisions entry | as listed | orchestrator | 6 | none | no | pending |
+| 7 | Ship: PR, CI green, squash on owner OK, tag r07.0, notes-only release, delete the branch; PRD rows 16 to 18 rewritten to the domain (freight names removed), roadmap and status; iteration-plan done; CLAUDE.md decisions entry | as listed | orchestrator | 6 | none | no | done |
 
 Executors:
 

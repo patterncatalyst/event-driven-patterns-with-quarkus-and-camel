@@ -41,6 +41,29 @@ docker compose down -v
 6. Restarts the service and requires the projection to resume from its checkpoint with nothing counted twice.
 7. A trace in Tempo, logs in Loki and `projection_lag_events` in Prometheus.
 
+## Tests and checks in detail
+
+The Maven build runs 16 tests against PostgreSQL from Dev Services: a replay against a history worked out by hand, UTC days, a projection equal to the replay after catch-up and in batches of three, a failed batch that rolls back its rows and its checkpoint, four overlapping ticks that count each event once, a rebuild, the timer, the commands and their refusals, a replay of 100,000 orders in a 256 MB heap, and the commit-order gap on two connections, with the watermark and with it off. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three sizes, and prints `22/22 checks passed`.
+
+The checks read the effects:
+
+- At each size the replay equals the SQL oracle, the projection reaches `lagEvents=0` within 10 seconds and equals the replay. NOTE lines print the medians, the rebuild time and the sizes.
+- At 100,000 orders a projection read is at least 250 times faster than a replay (1,277 times by the medians of three runs). A rebuild starts with work left and a count below the replay, then catches up and equals it.
+- A shipment is in the next replay at once and in the projection within 2 seconds. The median over 50 commands is 994 ms.
+- `ShipOrder` for `O-1701` is held after its append with its transaction open. `O-1702` ships and commits, and the projection counts neither: `lagEvents` is at least 1, the total has not moved, and a replay already counts `O-1702`. When the hold ends the projection equals the replay with both counted.
+- After a restart the projection resumes from its checkpoint and counts nothing twice. It stays keyed by carrier and day, so it holds at most 60 rows at every size.
+- Prometheus holds `projection_lag_events`, and Tempo and Loki hold a trace and logs of `order-service`.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `PROJECTION_WATERMARK=off ./verify.sh` (demo code) | The batch reads by position alone. The projection moves past `O-1701`, counts `O-1702` and never counts `O-1701`: it counted `O-1702` while `O-1701` was still open, and it stays one order short after the hold and after a restart. No other check fails | 16, 17 and 18 | - |
+| `PROJECTION_POLL=5s ./verify.sh` | A command reaches the projection within a tick, now 5 seconds. The check sends its command right after a tick, so it fails every time and passes every time at the default | 14 (no other) | freshness median 4,994 ms |
+| `POST /demo/projection/rebuild` (demo code) with the stack up | Empties the projection and rewinds the checkpoint. The projection report then shows a count below the replay and a `lagEvents` that falls to 0 | - | - |
+
 ## Layout
 
 | Path | Purpose |

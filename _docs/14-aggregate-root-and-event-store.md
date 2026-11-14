@@ -174,24 +174,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services: 27 tests cover every aggregate rule without a database, a stale append that adds no row, both outcomes of the race, a stale `If-Match`, a failure after the append that leaves neither row, Kafka commands, the Camel route with and without redelivery, and the blind re-append as the negative witness. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, and prints `33/33 checks passed`.
+`verify.sh` runs three races between a command and a competing append, then the Camel route with redelivery. Watch the loser of each race decide again against the new head and be refused or accepted by the lifecycle. It prints `33/33 checks passed`.
 
-The checks read the effects:
+Try one change and rerun:
 
-- The schema holds no table of order state. `O-1401` is one row and one record on `edp.orders.placed`. The same `PaymentProcessed` produced twice gives one `OrderPaid`, and no `OrderPaid` is on any `edp.orders` topic.
-- Race 1: a cancellation for `O-1402` is held after it decided at version 2, and a shipment is appended as version 3 while the request is open. The cancellation answers 409 `SHIPPED to CANCELLED` after one logged conflict, the stream stays at three events and nothing is on `edp.orders.cancelled`. Every history in the table obeys the lifecycle.
-- Race 2: a cancellation for `O-1403` is held at version 1 and a payment is appended as version 2. The cancellation returns 200 with `ETag` `"3"` and one record reaches `edp.orders.cancelled`.
-- A cancellation of the paid `O-1404` with `If-Match` `"1"` returns 412 and runs no command. With `"2"` it returns 200.
-- Race 3: a payment for `O-1405` read from Kafka is held at version 1 while a REST cancellation wins. The payment is decided again, refused with `CANCELLED to PAID` after one conflict, and acknowledged.
-- The service restarts with `camel-commands`, the group `order-payments-camel` is reset to the earliest offset, and every payment is read again with no change to any earlier stream. Race 3 repeats for `O-1406`: the route redelivers the payment once and acknowledges the refusal.
-- A trace, logs and `order_command_conflicts_total` for `order-service` reach Tempo, Loki and Prometheus.
-
-Change one thing and watch a guard fail:
-
-- Run `RETRY_MODE=reappend ./verify.sh`. The cancellation that lost the race is appended again at the new head without being decided: `O-1402` ends with `OrderCancelled` as version 4 after `OrderShipped`, and a cancelled record is published for an order that shipped. Checks 14, 15, 17 and 30 fail.
-- Run `RETRY_MAX=0 ./verify.sh`. A conflict is reported instead of decided again, so race 1 has no refusal reason, race 2 is rejected and race 3 does not decide the payment again. Checks 14, 19 to 21, 26 and 30 fail.
-- Delete the `CONSTRAINT events_stream_version` line and the comma before it from the first migration and run `./verify.sh`. Nothing detects the race: no conflict is logged and the history of `O-1402` is no longer a legal lifecycle. Checks 14 to 17, 19, 20, 26 and 29 to 31 fail.
-- Run `CAMEL_REDELIVERIES=0 ./verify.sh`. The route drops the conflicting payment after one attempt and commits its offset. `O-1406` ends in the same stream, since the cancellation had already won, so only the redelivery and the refusal are missing: check 29 fails.
+- `RETRY_MODE=reappend ./verify.sh`: the lost cancellation is appended again without being decided, so an order that shipped also ends cancelled.
+- `RETRY_MAX=0 ./verify.sh`: a conflict is reported instead of decided again.
+- Delete the `CONSTRAINT events_stream_version` line from the first migration: nothing detects the race and a history is no longer a legal lifecycle.
 
 ## When not to use it
 

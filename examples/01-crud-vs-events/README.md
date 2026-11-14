@@ -28,6 +28,22 @@ docker compose down -v
 
 `verify.sh` refuses to start while another stack is running, and stops this one on exit unless `KEEP=1`.
 
+## Tests and checks in detail
+
+The Maven build runs eleven tests against PostgreSQL started by Dev Services, with `orders` and `order_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, places an order and moves it from PLACED to DELIVERED, then prints `19/19 checks passed`: the row, the stream, the replayed document and the history agree, and an illegal move, a duplicate order, an `UPDATE`, a `DELETE` and a `TRUNCATE` on the stream are all refused, and Tempo holds a trace for the service. Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to see the request traces.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| Make `Lifecycle.allows` return true | The illegal move returns 204 instead of 409 and the event count grows | 11, 12 and 15 | - |
+| Delete the `UPDATE` and `DELETE` trigger from the first Flyway migration | The `UPDATE` and the `DELETE` on `order_event` succeed and history can be rewritten | 14 and 16 | - |
+| Delete the second Flyway migration | `TRUNCATE order_event` empties every stream | 17 and 18 | - |
+| Remove the `appendEvent` call in `OrderService.change` | The row advances while the stream stops, so the replayed document and the history fall behind the row | 6, 8, 10, 12 and 15 | - |
+| Send `PAID` and then `SHIPPED`, both with `expectedVersion` 1, for the same order | The second gets 409 because version 2 already exists, and neither the row nor the stream changes. With the unique constraint removed from the first migration the second also gets 204, so two events share version 2 | - | - |
+
 ## Layout
 
 | Path | Purpose |

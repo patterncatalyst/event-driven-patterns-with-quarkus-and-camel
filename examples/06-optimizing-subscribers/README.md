@@ -57,6 +57,21 @@ docker compose --profile '*' down -v
 6. Rebalance: replica 2 joins two-thread replica 1. Under the classic protocol (group type Classic) replica 1 gives up all nine partitions. Under the consumer protocol (group type Consumer) it gives up at least one and fewer than nine.
 7. Tempo, Prometheus and Loki hold telemetry from the service.
 
+## Tests and checks in detail
+
+`verify.sh` seeds 200 records into each of the three topics with the stock Kafka performance tool, drains them under different settings, one consumer group per run, and prints `36/36 checks passed`. It asserts relations, never durations, and every relation has a control run: eviction is checked against a run that is not evicted, the fetch ratio against a run with the default settings, the idle members of the default assignor against the round-robin assignor, and the revoked partitions of the new protocol against the classic protocol's nine. `bench.sh` repeats the profiles five times, interleaved, and writes the timings to `results/`.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `FIXED_MAX_POLL_RECORDS=500` | The run that should not be evicted is now evicted like the failing one: it never stores all 600 records within four minutes, records are delivered again and the client leaves the group | 21, 22 and 23 | - |
+| `CLASSIC_ASSIGNOR=org.apache.kafka.clients.consumer.CooperativeStickyAssignor` | Replica 1 gives up 4 partitions under the classic protocol instead of 9 | 29 | 4 partitions instead of 9 |
+| `TRICKLE_MIN_BYTES=1` | The run that was meant to send fewer fetch requests sends as many as the default | 26 | about 2,400 requests in both runs against 60 |
+| `SECOND_PROTOCOL=classic` | The group type is Classic instead of Consumer, and replica 1 gives up all nine partitions | 30 and 33 | - |
+
 ## Layout
 
 | Path | Purpose |

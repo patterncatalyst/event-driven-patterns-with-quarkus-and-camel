@@ -124,22 +124,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the service against PostgreSQL and Kafka from Dev Services, and 7 tests pass. The same event id twice leaves one decrement and one inbox row. An effect that fails after the inbox insert leaves no inbox row. Two threads released together with the same id apply it once, in each of 20 rounds. A duplicate record on the topic is applied once with the inbox and twice without it. The Camel route applies a duplicate once, and a failed effect rolls its key back.
+`verify.sh` produces the same event id twice, crashes the service after its effect commits, then reads the same records with the inbox off and through the Camel route. Watch the stock drop once per event id. It prints `29/29 checks passed`.
 
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `29/29 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
+Try one change and rerun:
 
-- `O-1101` (id A, quantity 3) is produced twice and `O-1102` (id B, quantity 2) once. A precondition confirms the topic holds two records with id A before anything is asserted. The group reaches lag 0, `SKU-1` is 95, the inbox holds exactly A and B, and the log shows A skipped once.
-- The service is recreated with a crash switch for `O-1103` (id C, quantity 4). The container exits with code 137 after the reservation commits. Preconditions confirm that the group's committed offset is not past C's record and that the stock already dropped by 4. After a recreate without the switch the group reaches lag 0, `SKU-1` is 91 and the log shows C skipped.
-- With the inbox off, stock reset and a new group over the same four records, `SKU-1` is 88: A was applied twice, and the inbox stays empty.
-- With the Camel route, `SKU-1` is 91 and the repository table holds exactly A, B and C. The topic holds four records against three keys, and the inbox table is untouched.
-- `O-1104` fails after its decrement. `SKU-1` stays 91 and the repository does not hold its key. After the offsets are reset and the failure switch is off, the redelivery reserves it: `SKU-1` is 86.
-- Traces and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds `inventory.inbox.duplicates` above 0.
-
-Change one thing and watch a guard fail:
-
-- Run `INBOX_ENABLED=false ./verify.sh`. Checks 5, 6, 7, 12, 13 and 29 fail (23 of 29 pass): the duplicate and the redelivery are applied, the inbox stays empty, nothing is skipped and the duplicates counter stays at 0. The preconditions pass first, which shows both the duplicate and the redelivery happened.
-- Run `CAMEL_TRANSACTED=false ./verify.sh`. Checks 23 and 25 fail (27 of 29 pass): after the failed effect the repository holds the key of `O-1104` and `SKU-1` is still 91, and after the redelivery the stock stays 91. The reservation is lost.
-- Delete `session.timeout.ms` from the channel. All 29 checks still pass, but the group needs 49 seconds from the exit of the container to lag 0 instead of 19, because the replacement consumer waits for the broker to expire the dead member's session.
+- `INBOX_ENABLED=false ./verify.sh`: the duplicate and the redelivery are both applied, the inbox stays empty and nothing is skipped.
+- `CAMEL_TRANSACTED=false ./verify.sh`: after the failed effect the repository keeps the key, so the redelivery is skipped and the reservation is lost.
+- Delete `session.timeout.ms` from the channel: every check still passes, but the group takes longer to catch up after the crash.
 
 ## When not to use it
 

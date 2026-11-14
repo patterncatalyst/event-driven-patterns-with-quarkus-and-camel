@@ -23,6 +23,10 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 MAX_WORDS = 2500
+MAX_BRO_WORDS = 250  # soft cap (warning), owner 2026-11-13
+MAX_BRO_BULLETS = 3
+BRO_HEAD = "## Build, run, observe"
+CHECKNUM_RE = re.compile(r"\bchecks? \d+|\b\d+ of \d+ runs\b|\bin \d+ runs\b", re.I)
 CALLOUT = "Explore with your agent"
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 RAW_RE = re.compile(r"\{%-?\s*(raw|endraw)\s*-?%\}")
@@ -234,6 +238,31 @@ def chapter_words(body: str) -> int:
     return len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(t for _, t in prose_lines(body))))
 
 
+def check_bro(rep: Report, p: Path, plines, off: int):
+    """Build, run, observe stays EIP-Camel short: commands, what to watch, at most three Try bullets."""
+    sec, start = [], None
+    for i, t in plines:
+        if t.startswith(BRO_HEAD):
+            start = i
+            continue
+        if start is not None:
+            if t.startswith("## "):
+                break
+            sec.append((i, t))
+    if start is None:
+        return
+    words = len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(t for _, t in sec)))
+    if words > MAX_BRO_WORDS:
+        rep.warn(f"{p.relative_to(rep.root)}:{start + off}: '{BRO_HEAD}' has {words} prose words, soft cap {MAX_BRO_WORDS}")
+    bullets = [i for i, t in sec if re.match(r"\s*[-*] ", t)]
+    if len(bullets) > MAX_BRO_BULLETS:
+        rep.warn(f"{p.relative_to(rep.root)}:{start + off}: '{BRO_HEAD}' has {len(bullets)} bullets, soft cap {MAX_BRO_BULLETS}")
+    for i, t in sec:
+        m = CHECKNUM_RE.search(t)
+        if m:
+            rep.err(p, i + off, f"check number or run statistic '{m.group(0)}' in '{BRO_HEAD}' (belongs in the README)")
+
+
 def check_chapters(rep: Report):
     for p in files(rep.root, "_docs/*.md"):
         text = p.read_text(encoding="utf-8")
@@ -242,6 +271,7 @@ def check_chapters(rep: Report):
         if n > MAX_WORDS:
             rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
         plines = prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S))
+        check_bro(rep, p, plines, off)
         has_pattern = any(re.match(r"##\s+Pattern:", t) for _, t in plines)
         callouts = [i for i, t in plines if CALLOUT in t]
         if has_pattern and len(callouts) != 1:
@@ -509,6 +539,26 @@ def self_test() -> int:
             good_doc + '\n> **\U0001F916 Explore with your agent**\n> "Again."\n> Check: no.\n')
         e = run(r).errors
         results.append(("second callout caught", any("exactly one" in x for x in e), e))
+
+        r = build("bro")
+        long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 251) + "\n"
+        (r / "_docs/01-demo.md").write_text(good_doc + long_bro)
+        rr = run(r)
+        results.append(("251-word build section warned, not failed",
+                        any("soft cap 250" in x for x in rr.warnings) and not any("Build, run" in x for x in rr.errors),
+                        rr.errors + rr.warnings))
+
+        r = build("bro-ok")
+        ok_bro = ("\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 244)
+                  + "\n\n- Try one.\n- Try two.\n- Try three.\n")
+        (r / "_docs/01-demo.md").write_text(good_doc + ok_bro)
+        e = run(r).errors
+        results.append(("250-word build section with three bullets allowed", not any("Build, run" in x for x in e), e))
+
+        r = build("bro-check")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\n## Build, run, observe\n\nOnly check 12 fails.\n")
+        e = run(r).errors
+        results.append(("check number in build section caught", any("check number" in x for x in e), e))
 
     ok = True
     for name, passed, errs in results:

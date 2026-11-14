@@ -44,6 +44,33 @@ docker compose down -v
 7. Restarts the service with `camel-snapshotter`, runs a burst of 10N reservations while sampling the snapshot every 0.2 seconds: only the route writes, the version never goes down and the snapshot catches up after the burst.
 8. A trace in Tempo, logs in Loki and the rehydrate timer and ignored-snapshot counter in Prometheus.
 
+## Tests and checks in detail
+
+The Maven build runs 13 tests against PostgreSQL from Dev Services: a snapshot plus the tail equals the full replay at every split point for N of 1, 7 and 100, a snapshot with another schema is ignored, a read writes nothing, the guarded upsert never lowers the version, a refused reservation appends nothing, eight writers on one SKU lose no reservation, the Camel route writes the snapshot of a stream past N, a failed inline snapshot rolls its reservation back, and a snapshotter tick that fails leaves reservations working and is repeated on the next tick. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three streams, and prints `27/27 checks passed`.
+
+The checks read the effects:
+
+- `SKU-1503` is read from the bulk-loaded events with the quantity that SQL folds from the payloads, all 100,000 events replayed. The first reservation writes a snapshot at version 100001. A load then replays 0 events; after 99 more reservations it replays exactly 99; the hundredth moves the snapshot on. All three streams give the same quantity and version with and without the snapshot, and a stream nobody has commanded has none.
+- The snapshot load of the 100,000 event stream is at least 20 times faster than the full load.
+- After every snapshot is deleted the state is the same and the whole stream is replayed; the next reservation writes one again. A snapshot whose schema version is set to 0 by hand is ignored and logged.
+- A reservation larger than the stock returns 409, appends nothing and leaves the snapshot row untouched. 200 reservations from 8 clients on one SKU all succeed with contiguous versions. A snapshot written late is refused by the guard.
+- With the `camel-snapshotter` profile only the route writes snapshots, the stored version never decreases during a burst, and the snapshot catches up after it.
+- A trace and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds the rehydrate timer and the counter of ignored snapshots.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `SNAPSHOT_EVERY=0 ./verify.sh` | No snapshot is ever written and every load replays the whole stream. The run stops before check 12, because no snapshot exists to delete | 4 to 7, 10 and 11 | - |
+| `SNAPSHOT_EVERY=10 ./verify.sh`, then `SNAPSHOT_EVERY=1000 ./verify.sh` | Every check passes, and the tail and the writes follow N: N of 10 replays at most 9 events per load and writes 100 snapshots per 1,000 reservations; N of 100 at most 99 and 10; N of 1000 at most 999 and 1 | none | The runs replayed exactly 9 and 999 events after the snapshot |
+| `SNAPSHOT_GUARD=false ./verify.sh` | The stale snapshot replaces a newer one and the stored version goes down | 18 (the only one) | - |
+| Change the quantity in the stored `state` of a snapshot and leave its schema version alone | The next `GET` answers with the wrong quantity, and the same `GET` with `ignoreSnapshot=true` does not. A snapshot is believed, and deleting it is the repair | - | - |
+| Restart the service with `SNAPSHOT_SCHEMA=2` | The first load replays the whole stream and the next command writes a snapshot of schema 2 | - | - |
+| `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh` | Every check passes, because the route still catches up afterwards, but the largest tail sampled grows | none | from 350 to 974 events |
+| `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh` | Replaying 100,000 events as managed entities exhausts a 96 MB heap and the service exits with `OutOfMemoryError` at the first load, so the run stops there. With the projection the same heap passes | 3 (the run stops) | 27 of 27 with the projection |
+
 ## Layout
 
 | Path | Purpose |

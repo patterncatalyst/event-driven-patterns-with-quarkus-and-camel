@@ -33,7 +33,7 @@ A customer orders an item online. The order is recorded, stock is reserved, the 
 
 ## Records and enums
 
-`examples/domain-model` version 2.2.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
+`examples/domain-model` version 2.3.0, plain Java 25, compact-constructor validation, one JUnit negative witness per rule.
 
 | Type | Fields | Validation |
 |---|---|---|
@@ -74,6 +74,12 @@ Chapter 04 adds one ordered stream topic, `edp.shipping.shipments`, keyed by ord
 Chapter 09 adds two more non-catalog topics: `edp.inventory.item-changes` (raw Debezium change envelopes of the legacy `inventory_item` table) and `edp.inventory.items` (compacted `InventoryItem` state documents keyed by sku). Neither is in `Topics.ALL`.
 
 Chapter 13 adds `edp.orders.placed-dlq`, not in `Topics.ALL`.
+
+Chapters 19 to 21 add seven topics, none in `Topics.ALL`: `edp.shipping.carriers` (compacted carrier reference records keyed by carrier, published by shipping-service), `edp.shipping.scheduled-enriched` and `edp.shipping.scheduled-enriched-camel`, `edp.shipping.order-readiness` and `edp.shipping.order-readiness-camel`, `edp.shipping.pickup-lists` and `edp.shipping.pickup-lists-camel`. The `-camel` twins exist only because both forms run side by side in chapters 19 to 21.
+
+Kafka Streams internal topics (changelog, repartition) are named by the application id and are not in `Topics`.
+
+`CarrierReference` (mode ROAD or AIR, tracking URL template on a `.example` host), ReadyToShip, PaymentOverdue and PickupList are payload records about existing entities.
 
 Chapter 09 also writes helper topics that no service reads: `edp.inventory.signals` (events of the Debezium signal table), `edp.inventory.heartbeats` (events of the heartbeat table the heartbeat query writes), `edp.inventory.interval-only-signals` (the interval-only witness connector's signal table) and the heartbeat record topics, set with `topic.heartbeat.name`: `edp.inventory.connector-heartbeats` (main connector) and `edp.inventory.interval-only-heartbeats` (witness). "heartbeat" is not a domain, so no topic is named `edp.heartbeat.*`.
 
@@ -130,9 +136,9 @@ Aggregator `pom.xml` at `examples/NN-slug/`, one module per service. Application
 | 16 | CQRS and projections | an order-status read model per customer in PostgreSQL (`order_view`), projected by order-service's query side from OrderPlaced, OrderCancelled, PaymentProcessed, ShipmentScheduled, ShipmentInTransit and ShipmentDelivered on their catalog topics; each column set by its owner's event; read lag made visible (`asOf`, group lag) and asserted with a paused channel; out-of-order arrival across topics guarded by a forward-only upsert; a single Camel consumer over the six topics as the comparison |
 | 17 | Aggregate replay or CQRS projection | shipments per carrier per day (FASTLINE vs AIRCO) answered by replaying every `Order` aggregate from an append-only `events` table and by a new projection rebuilt from position 0 of the same table, measured at 1,000, 10,000 and 100,000 orders; the projection's checkpoint advances only below the oldest open transaction; decision table |
 | 18 | Schema evolution and upcasting | OrderPlaced v1 to v2 adds `shippingPriority` (STANDARD or EXPRESS, default STANDARD); stored v1 events upcast on read and never rewritten; the published event as Avro in Apicurio through the outbox, read by notification-service with the v2 schema; a BACKWARD_TRANSITIVE rule refuses a v3 that drops the default. STANDARD and EXPRESS are values of a payload field, not an entity; customer ids `C-16xx` in 16 |
-| 19 | Enrich | ShipmentScheduled enriched with carrier reference data; Camel Content Enricher vs a Kafka Streams stream-table join |
-| 20 | Join | InventoryReserved joined with PaymentProcessed per order within a window; Kafka Streams windowed join vs a Camel Aggregator with completion timeout |
-| 21 | Aggregate (stream aggregation) | ShipmentDelivered counts per carrier per window; a Camel Aggregator batches ShipmentScheduled into a per-carrier pickup list |
+| 19 | Enrich | ShipmentScheduled enriched with the carrier's mode and tracking URL by notification-service; shipping-service owns the carrier reference data (its table, its lookup endpoint and the compacted `edp.shipping.carriers` topic); a Camel Content Enricher looks it up per record, a Kafka Streams left join against a GlobalKTable keeps a local copy; a reference change and an owner outage show the difference; decision table |
+| 20 | Join | shipping-service releases an order when InventoryReserved and PaymentProcessed have both arrived: a Kafka Streams left join by event time within 30 minutes plus grace, and a Camel Aggregator correlated by order id with a completion timeout by arrival time, its state in PostgreSQL; an unmatched reservation becomes PaymentOverdue; two crafted pairs where the forms disagree; state kept across a restart; decision table |
+| 21 | Aggregate (stream aggregation) | ShipmentScheduled grouped per carrier into pickup lists from one input: Kafka Streams tumbling 15-minute event-time windows with grace and suppression (one final list and count per carrier per slot, late records dropped and counted) and a Camel Aggregator batching by size and completion timeout; decision table |
 | 22 | Saga: the pattern | the order-to-delivery flow choreographed over Kafka; PaymentFailed compensates (release stock, cancel order); a timeout; saga state in PostgreSQL |
 | 23 | Orchestrated sagas | the same order flow via the Camel Saga EIP (LRA) and Quarkus Flow; decision table against chapter 22 |
 | 24 | Decisions on events: Drools, LangChain4j | a free-text delivery-exception note from a carrier on a `Shipment`; LangChain4j extracts the reason, Drools decides RESHIP or REFUND (settled at r09) |

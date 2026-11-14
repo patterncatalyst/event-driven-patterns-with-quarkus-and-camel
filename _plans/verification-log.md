@@ -443,3 +443,112 @@ Final serial run 2026-11-12/13 (`<scratchpad>/final-r07.log`, `f7-*.log`), one `
 - Guard-off now has five runs: checks 18, 26 and 27 failed in all five, check 24 in four; four runs 25/29, one 26/29 (`w16-guardoff1.log` to `w16-guardoff3.log`, `f7-x16-guardoff.log`, `f7b-x16-guardoff.log`). Chapter 16, its README and claim 16-bo updated.
 - Claims repointed: 16-ax (:116), 16-bn (:143), 16-z (KafkaConstants.TOPIC, OrderViewRoute.java:19-54), 16-p (OrderViewProjector.java:29-104), 17-e (r1-17 replay medians 15, 77, 586 ms), 17-bu (994 ms; r1 runs 994, 994, 995). Chapter 17 rebuild sentence and README line reworded.
 - Figure 18.2 (`18-outbox-avro-bytes`): Router box narrowed and the dashed registry edge moved to x=890, clear of the box; only that spec regenerated.
+
+## r08 final serial run (2026-11-13)
+
+Steps 4 and 5 combined: one serial pass over domain-model and examples 00 to 21, each `mvn -B verify` and each `./verify.sh` as its own hold of the stack lock, fresh containers per run (`verify.sh` starts with `down -v` and `up --force-recreate --renew-anon-volumes`), no `edp-*` container left after any run. Logs are `<scratchpad>/f8-NN-mvn.log` and `<scratchpad>/f8-NN-run.log`; experiments are `<scratchpad>/f8-NN-exp-<name>.log`. Image `grafana/otel-lgtm` is 0.41.0 in every run. No failure, so no re-run was needed.
+
+| Example | mvn verify tests (BUILD SUCCESS) | verify.sh |
+|---|---|---|
+| domain-model | install, BUILD SUCCESS | |
+| 00 | 4 | 17/17 |
+| 01 | 11 | 19/19 |
+| 02 | 7 + 4 | 21/21 |
+| 03 | 8 + 7 | 30/30 |
+| 04 | 4 + 46 | 28/28 |
+| 05 | 6 | 24/24 |
+| 06 | 4 | 36/36 |
+| 07 | 10 | 27/27 |
+| 08 | 7 | 27/27 |
+| 09 | 8 | 35/35 |
+| 10 | 2 | 40/40 |
+| 11 | 7 | 29/29 |
+| 12 | 3 | 21/21 |
+| 13 | 7 | 31/31 |
+| 14 | 27 | 33/33 |
+| 15 | 13 | 27/27 |
+| 16 | 14 | 29/29 |
+| 17 | 16 | 22/22 |
+| 18 | 19 + 3 | 21/21 |
+| 19 | 3 + 10 | 20/20 |
+| 20 | 18 | 24/24 |
+| 21 | 15 | 22/22 |
+
+Experiments of chapters 19 to 21, each once from clean on the final scripts; the failing sets equal the chapter and README statements:
+
+| Experiment | Result | Failing checks | Log |
+|---|---|---|---|
+| 19 `CAMEL_BREAK_ON_FIRST_ERROR=false` | 18/20 | 12, 13 | `f8-19-exp-break-false.log` |
+| 20 `AGGREGATION_REPOSITORY=memory` | 21/24 | 18, 20, 21 | `f8-20-exp-repo-memory.log` |
+| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (O-2005 not reported within 15 s) | `f8-20-exp-timeout-30000.log` |
+| 20 `BASE_AGE_HOURS=44` | 24/24 | none | `f8-20-exp-base-age-44.log` |
+| 21 `PICKUP_EMIT=updates` | 14/22 | 5, 7, 8, 9, 10, 13, 15, 19 (bench 1,000 lists) | `f8-21-exp-emit-updates.log` |
+| 21 `PICKUP_CHANGELOG=off` | 20/22 | 17, 19 (slot 19:30 holds RS4, RS5) | `f8-21-exp-changelog-off.log` |
+| 21 `BASE_AGE_HOURS=44` | 21/22 | 19 (slot 19:30 holds RS4, RS5) | `f8-21-exp-base-age-44.log` |
+
+Try bullets of earlier chapters that no earlier log backed, run once from clean:
+
+| Experiment | Result | Failing checks | Log |
+|---|---|---|---|
+| 03 `ORDER_EVENTS_ATTACHMENT=inline` | 22/30 | 2, 7, 9, 10, 19, 21, 22, 23 | `f8-03-exp-attachment-inline.log` |
+| 05 `PUBLISHER_LINGER_MS=0 PUBLISHER_BATCH_SIZE=0 PUBLISHER_COMPRESSION=none` | 20/24 | 14, 15, 16, 20 | `f8-05-exp-tuning-off.log` |
+| 11 `CAMEL_TRANSACTED=false` | 27/29 | 23, 25 | `f8-11-exp-camel-transacted-false.log` |
+| 12 `PAYMENT_MODE=camel-transacted` | 12/21 | 4, 5, 8 to 13, 21 | `f8-12-exp-camel-transacted.log` |
+| 13 `FAILURE_STRATEGY=fail` | 16/31 | 4, 6, 7, 9 to 14, 16, 24 to 28 | `f8-13-exp-failure-fail.log` |
+| 14 `RETRY_MODE=reappend` | 29/33 | 14, 15, 17, 30 | `f8-14-exp-reappend.log` |
+
+Bench values (one run each; the chapter tables carry the medians of 15 or 17 earlier runs):
+
+| Chapter | Final run | Stated |
+|---|---|---|
+| 19 burst of 500, producer call to last record | Streams 2,535 ms, Camel 6,354 ms, 500 lookups | 2.5 s (2,496 to 2,560 ms), 6.4 s (6,365 to 6,441 ms); Camel 11 ms below the stated range, rounds to 6.4 s |
+| 20 time to 200 ReadyToShip | Streams 2,590 ms, Camel 3,111 ms, 200 records each, peak 40 open groups | about 2.6 s, about 3.1 s, peak 25 to 50 |
+| 20 O-2005 Camel PaymentOverdue | 11,049 ms | 10.05 to 11.07 s |
+| 21 1,000 shipments | Streams 8 lists, last 1,302 ms after the tick; Camel 201 batches (200 by size, 1 by timeout), last 12,825 ms | 1.3 s (1.25 to 1.33); 13.7 s (12.8 to 13.8), 201 batches |
+
+Claims: 52 of the 53 pending `NN-r08-*` rows are verified against these logs; 08-r08-c (remove the Debezium routing lines) stays pending because its experiment needs a source edit and was not run.
+
+### r08 repair round 1 (2026-11-13)
+
+Every run was one hold of the stack lock, from clean, with no `edp-*` container left afterwards. Logs are `<scratchpad>/r1b-*.log`.
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| 20 `CopartitioningTest` x3, after the broker-side assertion of 3 and 2 partitions and the task list were added | green; partitions 3 and 2; tasks 0_0 (reserved-0, payments-0), 0_1 (reserved-1, payments-1), 0_2 (reserved-2); state RUNNING; no co-partitioning error; Streams matched 14 of 30, Camel 30 of 30 | | `r1b-20-copart-1.log` to `r1b-20-copart-3.log` |
+| 20 `mvn -B verify` | 18 tests, BUILD SUCCESS | | `r1b-20-mvn.log` |
+| 20 `./verify.sh` x2 | 24/24 both | | `r1b-20-run1.log`, `r1b-20-run2.log` |
+| 20 `./verify.sh` with the `filter(header("emit"))` guard removed from the route (temporary edit, restored from a saved copy) | 23/24 | 11 | `r1b-20-noguard.log` |
+| 20 `AGGREGATION_REPOSITORY=memory` | 21/24 | 18, 20, 21 | `r1b-20-exp-memory.log` |
+| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (no O-2005 NOTE line is printed) | `r1b-20-exp-timeout.log` |
+| 19 `mvn -B verify` | 10 tests, BUILD SUCCESS | | `r1b-19-mvn.log` |
+| 19 `./verify.sh` x2 | 20/20 both | | `r1b-19-run1.log`, `r1b-19-run2.log` |
+| 21 `mvn -B verify` | 15 tests, BUILD SUCCESS | | `r1b-21-mvn.log` |
+| 21 `./verify.sh` x2 | 22/22 both | | `r1b-21-run1.log`, `r1b-21-run2.log` |
+
+Notes:
+
+- The first bite run of check 11 passed 24/24 because the strengthened check counted records by the `orderId` field in the JSON, and a record the guard would have filtered is not JSON. The check now counts records by key. The second bite run failed check 11 and only check 11.
+- An intermediate `CopartitioningTest` run matched 7 of 30 because the test read the Streams output before the group had committed the end of both topics. The test now waits for that commit; the three runs listed above matched 14 of 30 each.
+- Round 1 `CopartitioningTest` runs logged `TaskCorruptedException` lines: the Streams state directory under `/tmp` was shared between runs. Example 20 now gives each test run its own state directory; round 2 logs have none.
+- The 15-run timing loop of chapter 20 (`w20-loop01.log` to `w20-loop15.log`) ran before the mapping of event times to the clock changed, which touched event times only; `h20-run1`, `h20-run2` and `f8-20-run` on the final script also passed 24/24. Ranges now in the chapter table: Streams 2.52 to 2.61 s, Camel 3.04 to 3.13 s.
+- Chapter 21: check 4 passed in 23 of 23 fresh runs (list in the example README); the bench figures come from 17 of them. `BASE_AGE_HOURS=44` ran twice (`w21-exp-age44.log`, `f8-21-exp-base-age-44.log`).
+- `.removeHeaders("kafka.*")` was removed from the three routes; the three example builds and six `verify.sh` runs above passed without it.
+
+### r08 repair round 2 (2026-11-13)
+
+Every run was one hold of the stack lock, from clean, with no `edp-*` container left afterwards. Logs are `<scratchpad>/r2-*.log`.
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| 20 `mvn -B verify`, per-run Streams state directory | 18 tests, BUILD SUCCESS, 0 lines with "corrupted" | | `r2-20-mvn.log` |
+| 20 `CopartitioningTest` x3 | green each; partitions 3 and 2; Streams matched 7 of 30, Camel 30 of 30; 0 "corrupted" lines each | | `r2-20-copart-1.log` to `r2-20-copart-3.log` |
+| 20 `./verify.sh` with the `filter(header("emit"))` guard removed from the route (temporary edit, restored with `git checkout`) | 23/24 | 11 only | `r2-20-noguard.log` |
+| 02 `mvn -B verify`, without `removeHeaders` | 4 tests, BUILD SUCCESS | | `r2-02-mvn.log` |
+| 02 `./verify.sh` | 21/21 | | `r2-02-run.log` |
+| 08 `./verify.sh` with the `route.by.field` and `route.topic.replacement` lines removed from `connect/order-outbox.json` (restored with `git checkout`) | 21/27 | 6, 7, 9, 11, 17, 24 | `r2-08-noroute.log` |
+
+Notes:
+
+- The earlier count of 14 of 30 for the mismatched partitions came from a state directory left by earlier runs. With a per-run state directory the count is 7 of 30 in all three runs, which is also what the murmur2 partitioner gives for the 30 order ids (7 have the same partition number under 3 and under 2 partitions). The chapter and the example README now say 7 of 30.
+- Chapter 20 table ranges now cover 20 runs: the 15 loop runs and the final-script runs `h20-run1`, `h20-run2`, `f8-20-run`, `r1b-20-run1`, `r1b-20-run2` (Streams 2.52 to 2.62 s, Camel 3.04 to 3.13 s, `PaymentOverdue` 10.05 to 11.07 s).
+- `claims.md`: 20-ah marked superseded by 20-ay; 21-aq now 23 of 23; 08-r08-c carries the round 2 run.

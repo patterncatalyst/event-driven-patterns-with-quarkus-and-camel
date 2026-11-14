@@ -37,6 +37,30 @@ docker compose down -v
 6. Embedded: the service is recreated with `CDC_MODE=embedded`. The engine takes its own slot, publishes the same `sku:qty` set as the Connect path, streams an update, and publishes every row again after its offset file is deleted.
 7. Checks that every topic under `edp.` is named `edp.<domain>.<event>`. Debezium names a table's topic `<prefix>.<schema>.<table>`, so the two helper tables would land on `edp.inventory.dbz_signal` and `edp.inventory.dbz_heartbeat`; each has a RegexRouter to a name without underscores. `interval-only` has its own `topic.prefix` because two connectors with one prefix in one Connect worker collide on the same JMX metrics name, and the second waits almost two minutes before its slot starts.
 
+## Tests and checks in detail
+
+The Maven build runs the route against Kafka from Dev Services: mapping, tombstones, the order of changes to one row, the rows the embedded engine hands over, and a row the domain rejects. `verify.sh` starts Kafka, PostgreSQL, Kafka Connect and the LGTM stack, creates and seeds the legacy table, registers the connectors with `PUT /connectors/<name>/config` and prints `35/35 checks passed`. It needs `jq` on the host.
+
+- Checks 1 to 6: the connector and its task run, the slot is active, the publication holds the legacy table, the signal table and the heartbeat table and not the busy one, and the snapshot published five `r` events and five documents that match the table.
+- Checks 7 to 16: an update becomes a `u` event and a document with the domain's names. Under the default replica identity a delete's `before` carries the key and not the old quantity; after `ALTER TABLE ... REPLICA IDENTITY FULL` it carries the whole row. Debezium's own tombstone is on the change topic, the document topic gets exactly one for each delete, and the service logs no failure for the record it drops.
+- Checks 17 and 18: three updates of one row in one transaction arrive as documents in commit order, with increasing `source.lsn`.
+- Checks 19 to 24: a burst of about 55 MB goes into a table nobody captures. Both slots retain it. With the heartbeat query the slot's retained WAL falls to a few hundred bytes within one offset flush; with the interval alone, on a second connector, it is still 55 MB when the first has released it.
+- Checks 25 to 29: one insert into the signal table re-emits each untouched row as an `r` event while an update made at once still arrives, and the latest document per SKU matches the table. Tempo has a trace for the service.
+- Checks 30 to 34: the service is recreated with `CDC_MODE=embedded`. The engine holds its own slot, publishes the same `sku:qty` set as the Connect path, streams an update, and publishes every row again after its offset file is deleted.
+- Check 35: every topic under `edp.` is named `edp.<domain>.<event>`, the helper-table and heartbeat topics included.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| Remove `.filter(body().isNotNull())` from `InventoryItemDocumentRoute` | Debezium's tombstone has no body to unmarshal, so each delete logs a failed change, and the documents are unchanged | 13 | - |
+| Delete the `ALTER TABLE ... REPLICA IDENTITY FULL` line in `verify.sh` | The table stays on the default, and the delete's `before` carries the key and not the old quantity | 14 and 15 | - |
+| Remove `heartbeat.action.query` from `connect/inventory-cdc.json` | The real connector now behaves like the witness, and the burst stays in the log | 22 | 55 MB after the wait |
+| Update a row to a negative quantity | The domain's `InventoryItem` rejects it, the route logs the failed change and skips it, the SKU's document keeps its earlier value, and the next change on the topic is processed | none | - |
+| Remove the line that deletes the offset file in `verify.sh` | The engine resumes from its stored offset and publishes nothing again | 34 | - |
+
 ## Layout
 
 | Path | Purpose |

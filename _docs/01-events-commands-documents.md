@@ -92,15 +92,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs eleven tests against PostgreSQL started by Dev Services, with `orders` and `order_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, places an order and moves it from PLACED to DELIVERED, then prints `19/19 checks passed`: the row, the stream, the replayed document and the history agree, and an illegal move, a duplicate order, an `UPDATE`, a `DELETE` and a `TRUNCATE` on the stream are all refused, and Tempo holds a trace for the service. Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to see the request traces.
+Eleven Maven tests run against PostgreSQL from Dev Services. `verify.sh` then places an order, moves it from PLACED to DELIVERED and prints `19/19 checks passed`. Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` for the request traces.
 
-Change one thing and watch a guard fail:
+Try one change and rerun:
 
-- Make `Lifecycle.allows` return true. The illegal move returns 204 instead of 409 and the event count grows: `verify.sh` checks 11, 12 and 15 fail.
-- Delete the `UPDATE` and `DELETE` trigger from the first Flyway migration. The `UPDATE` and the `DELETE` on `order_event` succeed and history can be rewritten: checks 14 and 16 fail.
-- Delete the second Flyway migration. `TRUNCATE order_event` empties every stream: checks 17 and 18 fail.
-- Remove the `appendEvent` call in `OrderService.change`. The row advances while the stream stops, so the replayed document and the history fall behind the row: checks 6, 8, 10, 12 and 15 fail.
-- Send `PAID` and then `SHIPPED`, both with `expectedVersion` 1, for the same order. The second gets 409 because version 2 already exists, and neither the row nor the stream changes. Remove the unique constraint from the first migration and the second also gets 204, so two events share version 2.
+- Make `Lifecycle.allows` return true: the illegal move returns 204 instead of 409 and the event count grows.
+- Delete the `UPDATE` and `DELETE` trigger from the first Flyway migration: both statements succeed on `order_event` and history can be rewritten.
+- Remove the `appendEvent` call in `OrderService.change`: the row advances while the stream stops, so the replayed document and the history fall behind the row.
 
 ## When not to use it
 

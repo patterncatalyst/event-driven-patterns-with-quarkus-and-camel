@@ -69,7 +69,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 
 - Write like EIP Camel, Geewax tone: problem before mechanism, show the code, state the trade-off, stop.
 - About 2,000 words is a target, never a floor; 2,500 is the maximum, excluding code. Never pad.
-- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (the commands, the pass count, one bullet per experiment: what to change, what fails), `## When not to use it`, `## References`.
+- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (short, like EIP Camel: one code block with the commands, then one or two sentences on what runs and what to watch, ending with the pass count, then at most three `Try` bullets of one sentence each naming the switch and the visible effect; short prose, 250 words as a soft cap (`validate.py` warns above it and above three bullets); no test lists, no check numbers, no run statistics or failure rates, which belong in the example's README; a measured result that is the chapter's lesson is stated once in the pattern sections, not here), `## When not to use it`, `## References`.
 - Exactly one AI callout per pattern chapter, in this form, with no HTML wrapper and no nested quote:
   > **🤖 Explore with your agent**
   > "<runnable prompt naming the example's own types and the chapter's decision rule>"
@@ -171,6 +171,14 @@ PRD §14, decided:
 - Chapter 18: stored v1 events upcast on read (`JsonNode` chain keyed by `schema_version`), never rewritten; the wire uses Avro with Apicurio through the chapter 08 outbox (`bytea` payload, BinaryDataConverter); global BACKWARD_TRANSITIVE rule refuses a v3 that drops the default (HTTP 400).
 - Apicurio serdes overridden to 3.3.4 to match the server; Dev Services image pinned to 3.3.4. PostgreSQL held at 18.6 (owner). Young's versioning book cited by chapter titles only.
 - An experiment whose failing set varies between runs is stated with its measured rate, never as deterministic.
+
+2026-11-13 (r08 plan approval, all recommendations):
+
+- Chapters 19 to 21 run both forms side by side in one Quarkus app per example: a Kafka Streams topology (quarkus-kafka-streams, platform kafka-streams, not overridden) and a Camel route, each with its own group and its own output topic (a `-camel` twin in `Topics`, domain-model 2.3.0).
+- Chapter 19: GlobalKTable left join from the compacted `edp.shipping.carriers` vs a Camel Content Enricher over shipping-service's lookup, `breakOnFirstError` on. Chapter 20: windowed left join by event time vs a Camel Aggregator by arrival time with PostgresAggregationRepository; the chapter says the Camel form approximates the window. Chapter 21: tumbling windows with grace and `suppress(untilWindowCloses)` vs a Camel Aggregator by size and timeout.
+- Event times in verify.sh are relative to now (a 15-minute base 20 hours back), never in the future (the broker refuses timestamps more than an hour ahead) and never a fixed or "yesterday" date (window-store changelogs expire). Recreates wait for liveness, no fixed sleeps.
+- Build, run, observe is short (owner): commands, one or two sentences ending with the pass count, at most three one-sentence Try bullets, 250 words as a soft cap; check numbers and run statistics live in the README. validate.py warns on length, fails on check numbers.
+- grafana/otel-lgtm promoted to 0.41.0.
 
 ## Skills
 

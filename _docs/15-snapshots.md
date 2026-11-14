@@ -110,7 +110,7 @@ The timing is taken inside the service, around the snapshot read, the event read
 
 The full load is linear in the stream, and most of it is spent turning rows into events and folding them, not reading them: `EXPLAIN (ANALYZE)` puts the database read of the 100,200 event stream at 41 ms of the 128 ms. The snapshot load reads one row and 99 events, so it stayed under 1 ms on every stream in all three runs, and it rises from 0.50 ms to 0.95 ms while the full load rises from 1.6 ms to 127.7 ms. The state is 57 bytes of `jsonb` at any version, which is why the policy counts events and not bytes.
 
-The cost per event gives the rule for N. A load replays at most N-1 events after a snapshot, so the worst case is N-1 times the per-event cost plus the fixed cost of reading the snapshot. A smaller N bounds the tail more tightly and writes more snapshots, each one a row version written inside a command.
+The cost per event gives the rule for N. A load replays at most N-1 events after a snapshot, so the worst case is N-1 times the per-event cost plus the fixed cost of reading the snapshot. A smaller N bounds the tail more tightly and writes more snapshots, each one a row version written inside a command. At N of 10 a load replays at most 9 events and 1,000 reservations write 100 snapshots; at N of 1,000 a load replays at most 999 events and 1,000 reservations write one.
 
 ## Inline or out of band
 
@@ -139,35 +139,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 13 tests against PostgreSQL from Dev Services: a snapshot plus the tail equals the full replay at every split point for N of 1, 7 and 100, a snapshot with another schema is ignored, a read writes nothing, the guarded upsert never lowers the version, a refused reservation appends nothing, eight writers on one SKU lose no reservation, the Camel route writes the snapshot of a stream past N, a failed inline snapshot rolls its reservation back, and a snapshotter tick that fails leaves reservations working and is repeated on the next tick. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three streams, and prints `27/27 checks passed`.
+`verify.sh` loads three streams, the largest of 100,000 events, and compares loads with and without a snapshot. Watch how many events a load replays after the snapshot. It prints `27/27 checks passed`.
 
-The checks read the effects:
+Try one change and rerun:
 
-- `SKU-1503` is read from the bulk-loaded events with the quantity that SQL folds from the payloads, all 100,000 events replayed. The first reservation writes a snapshot at version 100001. A load then replays 0 events; after 99 more reservations it replays exactly 99; the hundredth moves the snapshot on. All three streams give the same quantity and version with and without the snapshot, and a stream nobody has commanded has none.
-- The snapshot load of the 100,000 event stream is at least 20 times faster than the full load.
-- After every snapshot is deleted the state is the same and the whole stream is replayed; the next reservation writes one again. A snapshot whose schema version is set to 0 by hand is ignored and logged.
-- A reservation larger than the stock returns 409, appends nothing and leaves the snapshot row untouched. 200 reservations from 8 clients on one SKU all succeed with contiguous versions. A snapshot written late is refused by the guard.
-- With the `camel-snapshotter` profile only the route writes snapshots, the stored version never decreases during a burst, and the snapshot catches up after it.
-- A trace and logs for `inventory-service` reach Tempo and Loki, and Prometheus holds the rehydrate timer and the counter of ignored snapshots.
-
-Change one thing and watch a guard fail:
-
-- Run `SNAPSHOT_EVERY=0 ./verify.sh`. No snapshot is ever written and every load replays the whole stream. Checks 4 to 7, 10 and 11 fail, and the run stops before check 12, because no snapshot exists to delete.
-- Run `SNAPSHOT_EVERY=10 ./verify.sh` and then `SNAPSHOT_EVERY=1000 ./verify.sh`. Every check passes, and the tail and the writes follow N:
-
-  | N | At most this many events replayed by a load | Snapshots per 1,000 reservations |
-  |---|---|---|
-  | 10 | 9 | 100 |
-  | 100 | 99 | 10 |
-  | 1000 | 999 | 1 |
-
-  The runs replayed exactly 9 and 999 events after the snapshot.
-
-- Run `SNAPSHOT_GUARD=false ./verify.sh`. The stale snapshot replaces a newer one, the stored version goes down, and check 18 is the only one that fails.
-- Change the quantity in the stored `state` of a snapshot and leave its schema version alone. The next `GET` answers with the wrong quantity, and the same `GET` with `ignoreSnapshot=true` does not. A snapshot is believed, and deleting it is the repair.
-- Restart the service with `SNAPSHOT_SCHEMA=2`. The first load replays the whole stream and the next command writes a snapshot of schema 2.
-- Run `SNAPSHOTTER_DELAY_MS=30000 ./verify.sh`. Every check passes, because the route still catches up afterwards, but the largest tail sampled grows from 350 to 974 events.
-- Run `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh`. Replaying 100,000 events as managed entities exhausts a 96 MB heap and the service exits with `OutOfMemoryError` at the first load, so check 3 stops the run. With the projection the same heap passes 27 of 27.
+- `SNAPSHOT_EVERY=0 ./verify.sh`: no snapshot is written and every load replays the whole stream.
+- `SNAPSHOT_GUARD=false ./verify.sh` (demo code): a stale snapshot replaces a newer one and the stored version goes down.
+- `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh` (demo code): replaying 100,000 events as managed entities runs out of heap with `OutOfMemoryError`.
 
 ## When not to use it
 

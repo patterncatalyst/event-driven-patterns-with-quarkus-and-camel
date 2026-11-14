@@ -155,34 +155,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 22 tests against PostgreSQL, Kafka and Apicurio Registry from Dev Services. In `order-service` they cover:
+`verify.sh` runs the previous, the current and a broken release against a registry that enforces compatibility, then recreates `notification-service` on the Camel reader. Watch old rows and records stay readable and the broken release get a 503. It prints `21/21 checks passed`.
 
-- the chain and its default;
-- the stored node left untouched;
-- an unknown version;
-- a mixed stream of version 1 and version 2 rows;
-- the append-only trigger;
-- an outbox payload that starts with the schema id and decodes to the current record;
-- the two rules in the registry, and a first version accepted on an empty artifact;
-- Avro resolution with no registry, where a version 2 reader fills the default and a version 3 reader throws;
-- a command under the broken release that leaves no row.
+Try one change and rerun:
 
-In `notification-service` the SmallRye channel and the Camel route each read a version 1 and a version 2 record, and a plain test fails when its copy of `order-placed.avsc` differs from the one in `order-service`. `verify.sh` starts the stack and prints `21/21 checks passed`.
-
-The checks read the effects, release by release:
-
-- With the registry rule read back, the previous release (`ORDER_PLACED_SCHEMA=1`, demo code) places `O-1801` and `O-1802`. Their rows are stored at `schema_version` 1 with no `shippingPriority`, and `edp.orders.placed` holds two records written with registry version 1.
-- The current release places `O-1803` with `EXPRESS`: a version 2 row, a second registry version and a third record, written with version 2.
-- `GET /orders/O-1801` returns `STANDARD` from a version 1 row, `GET /orders/O-1803` returns `EXPRESS`, and cancelling `O-1801` leaves the stored payload with the same checksum. An `UPDATE` of a stored payload is refused.
-- `notification-service` recorded the three priorities, its group has no lag and no deserialization failure is logged.
-- Registering version 3 is refused with 400 and the artifact keeps two versions. The broken release (`ORDER_PLACED_SCHEMA=3`) answers 503 for `O-1804`, stores no row, adds no record and no version, and the log shows the refusal.
-- Recreated with the `camel-reader` profile, `notification-service` reads the topic from the earliest offset and records the same three priorities.
-- `order_upcasts_total` with `from="1"` reaches Prometheus, and a trace and logs reach Tempo and Loki.
-
-Change one thing and watch a guard fail:
-
-- Run `UPCASTERS=off ./verify.sh` (demo code). The chain is skipped, loading `O-1801` fails because the current record refuses the missing field, the cancellation fails with it, and no upcast is counted. The run ends 18/21 with checks 8, 10 and 19 failing. Check 9 passes, because a version 2 row needs no step.
-- Run `REGISTRY_RULE=BACKWARD ./verify.sh` (demo code). Version 3 is registered and then published for `O-1804`. The run ends 18/21 with checks 14 to 16 failing. A reader built on version 3 cannot read the version 1 records already on the topic.
+- `UPCASTERS=off ./verify.sh` (demo code): the chain is skipped and loading a version 1 row fails, because the current record refuses the missing field.
+- `REGISTRY_RULE=BACKWARD ./verify.sh` (demo code): version 3 is registered and published, and a reader built on it cannot read the version 1 records on the topic.
 
 ## When not to use it
 

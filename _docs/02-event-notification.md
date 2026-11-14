@@ -58,7 +58,6 @@ from("kafka:" + Topics.ORDERS_PLACED + "?groupId=notification-service&breakOnFir
         .routeId("order-placed-notification")
         .unmarshal().json(OrderPlaced.class)
         .setHeader("orderId", simple("${body.orderId}"))
-        .removeHeaders("kafka.*")
         .setBody(constant(null))
         .setHeader(Exchange.HTTP_METHOD, constant("GET"))
         .toD("{{order-service.url}}/orders/${header.orderId}")
@@ -84,19 +83,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs both services' tests against PostgreSQL and Kafka started by Dev Services. In notification-service the order-service is a test resource served on the test application's own port, so a test can make the source answer, refuse or report CANCELLED on demand. `verify.sh` starts Kafka, PostgreSQL, LGTM and both services with Docker Compose and prints `21/21 checks passed`:
+Both services' tests run against PostgreSQL and Kafka from Dev Services. `verify.sh` places orders and stops each service in turn. Watch one Tempo trace follow the order request through the consume to the fetch; `KEEP=1 ./verify.sh` leaves Grafana at `http://localhost:3000`. It prints `21/21 checks passed`.
 
-- Placing an order publishes one record keyed by the order id whose value holds exactly the event id, the time and the order id.
-- The notification holds the customer and amount that order-service holds, read through the fetch, and one Tempo trace holds order-service's `POST /orders` span together with the consume and the fetch in notification-service. Request metrics from order-service and JVM metrics from notification-service reach Prometheus.
-- With notification-service stopped, a second order placed and then order-service stopped too, notification-service starts, tries the fetch, fails, and neither writes a notification nor moves the group's offset past the record. When order-service starts again the notification appears and the group has committed everything.
-- A third order cancelled before notification-service reads its event yields a notification that says CANCELLED.
+Try one change and rerun:
 
-Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to follow the trace from the order request to the fetch.
-
-Change one thing and watch a guard fail:
-
-- Remove `breakOnFirstError=true` from the consumer route. The consumer reads past the record it could not fetch and commits it, so the offset moves beyond B and B's notification never appears: `verify.sh` checks 14 and 16 fail.
-- Send the event without the key header in `OrderPlacedPublisher`. The record is no longer keyed by the order id, and the three Maven tests that read the topic by order id fail.
+- Remove `breakOnFirstError=true` from the consumer route: the consumer commits the record it could not fetch, and that notification never appears.
+- Send the event without the key header in `OrderPlacedPublisher`: the record is no longer keyed by the order id and the Maven tests that read the topic by order id fail.
 
 ## When not to use it
 

@@ -103,13 +103,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs twelve tests across both services against Kafka and PostgreSQL from Dev Services, with three partitions. Four of them compute the expected partition of every key with Kafka's own murmur2 and compare it with the placement the broker reports, for all three strategies; the others cover arrival order and the buffer, including two replicas that handle the same order at the same moment, repeated 20 times. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack, `shipping-service` and two `order-service` replicas, runs the stalled-replica order under four configurations and prints `28/28 checks passed`. When the Scheduled and Delivered partitions of an event-type run belong to the same replica, the pause cannot change the order in which events are applied, so the script stops with an error instead of reporting a pass. It also records how long each replica was paused and checks that every pause stayed under the 45 second session timeout.
+`verify.sh` runs two `order-service` replicas, pauses one and applies a shipment's events under four configurations. Watch the order's final status in each configuration. It prints `28/28 checks passed`.
 
-Change one thing and watch a guard fail:
+Try one change and rerun:
 
-- Export `SHIPPING_PARTITION_KEY=event-type` before `./verify.sh`. The first run now spreads the order across partitions: check 3 fails because the three events no longer share the key's partition, and check 5 fails because the unpaused replica applies events while the other is paused. Checks 6, 7 and 9 may fail as well, depending on which replica owns the partition of the order id.
-- Compare the third and fourth runs. They differ only in `RESEQUENCE=true`: the third ends SHIPPED with Delivered applied first, the fourth ends DELIVERED in lifecycle order.
-- Export `RESEQUENCE=true` before `./verify.sh`. The buffer is now on in the event-type run as well, so the negative witness stops failing: checks 14, 15 and 16 fail because the order no longer ends SHIPPED.
+- `SHIPPING_PARTITION_KEY=event-type ./verify.sh`: the order is spread across partitions and the unpaused replica applies events while the other is paused.
+- `RESEQUENCE=true ./verify.sh`: the buffer is on in the event-type run too, so the order no longer ends SHIPPED.
+- Compare the third and fourth runs, which differ only in `RESEQUENCE=true`: the third ends SHIPPED, the fourth ends DELIVERED in lifecycle order.
 
 ## When not to use it
 

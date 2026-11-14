@@ -115,19 +115,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs the order-service tests and the notification-service tests, which need no order-service at all. `verify.sh` starts Kafka, PostgreSQL, LGTM and both services with Docker Compose and prints `30/30 checks passed`:
+`verify.sh` places orders, one with a 100 KB attachment, and stops `order-service`. Watch the copy keep answering while `order-service` is down and the attachment return 503 until it is back. It prints `30/30 checks passed`.
 
-- The copy of a placed order has every field, the copy of a cancelled order shows CANCELLED, and the event for the order with the 100 KB attachment is under 1 KB and holds the claim size.
-- Prometheus has no `GET /orders/{id}` series for order-service and Tempo has no HTTP client span from notification-service, while both can see other series and spans.
-- With order-service stopped, the copy still answers 200 with the customer, item and amount, and the attachment returns 503. With it back, the attachment is fetched, byte for byte, and the first HTTP client span appears.
-- With `ORDER_EVENTS_ATTACHMENT=inline`, the 100 KB attachment is refused with 502 and the topic does not grow.
+Try one change and rerun:
 
-Change one thing and watch a guard fail:
-
-- Run `ORDER_EVENTS_CARRY_STATE=false ./verify.sh`. The event holds only the order id, notification-service logs it as skipped and every copy answers 404: checks 5 to 10, 16 to 19 and 21 to 26 fail, 14 of 30 pass.
-- Run `ORDER_EVENTS_ATTACHMENT=inline ./verify.sh`. The 100 KB attachment goes inside the event, the producer refuses it, and the order with the attachment is never placed on the topic: checks 2, 7, 9, 10, 19 and 21 to 23 fail.
-- Set `camel.component.kafka.max-request-size` to 1048576 and run `ORDER_EVENTS_ATTACHMENT=inline ./verify.sh`. The inline event is accepted, so the topic carries 100 KB for one order and the negative witness disappears: checks 9, 10, 19 and 21 to 27 fail.
-- Remove the status guard from `OrderCopies.apply`. A late `OrderPlaced` turns a cancelled copy back into PLACED, and the Maven test for it fails.
+- `ORDER_EVENTS_CARRY_STATE=false ./verify.sh`: the event holds only the order id and every copy answers 404.
+- `ORDER_EVENTS_ATTACHMENT=inline ./verify.sh`: the producer refuses the 100 KB event and the order is never placed on the topic.
+- Remove the status guard from `OrderCopies.apply`: a late `OrderPlaced` turns a cancelled copy back into PLACED.
 
 ## When not to use it
 

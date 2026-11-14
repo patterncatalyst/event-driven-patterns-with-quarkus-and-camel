@@ -1,6 +1,6 @@
 services:
   lgtm:
-    image: docker.io/grafana/otel-lgtm:0.40.0
+    image: docker.io/grafana/otel-lgtm:0.41.0
     container_name: edp-lgtm
     ports:
       - "3000:3000"     # Grafana

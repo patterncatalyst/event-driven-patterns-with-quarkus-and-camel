@@ -120,22 +120,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-The Maven build runs 16 tests against PostgreSQL from Dev Services: a replay against a history worked out by hand, UTC days, a projection equal to the replay after catch-up and in batches of three, a failed batch that rolls back its rows and its checkpoint, four overlapping ticks that count each event once, a rebuild, the timer, the commands and their refusals, a replay of 100,000 orders in a 256 MB heap, and the commit-order gap on two connections, with the watermark and with it off. `verify.sh` starts PostgreSQL, the LGTM stack and the service, loads the three sizes, and prints `22/22 checks passed`.
+`verify.sh` loads three store sizes and compares an aggregate replay with a projection that a checkpointed poller keeps current. Watch the projection equal the replay at every size and answer a read much faster at 100,000 orders. It prints `22/22 checks passed`.
 
-The checks read the effects:
+Try one change and rerun:
 
-- At each size the replay equals the SQL oracle, the projection reaches `lagEvents=0` within 10 seconds and equals the replay. NOTE lines print the medians, the rebuild time and the sizes.
-- At 100,000 orders a projection read is at least 250 times faster than a replay (1,277 times by the medians of three runs). A rebuild starts with work left and a count below the replay, then catches up and equals it.
-- A shipment is in the next replay at once and in the projection within 2 seconds. The median over 50 commands is 994 ms.
-- `ShipOrder` for `O-1701` is held after its append with its transaction open. `O-1702` ships and commits, and the projection counts neither: `lagEvents` is at least 1, the total has not moved, and a replay already counts `O-1702`. When the hold ends the projection equals the replay with both counted.
-- After a restart the projection resumes from its checkpoint and counts nothing twice. It stays keyed by carrier and day, so it holds at most 60 rows at every size.
-- Prometheus holds `projection_lag_events`, and Tempo and Loki hold a trace and logs of `order-service`.
-
-Change one thing and watch a check fail:
-
-- Run `PROJECTION_WATERMARK=off ./verify.sh`. This is demo code: the batch reads by position alone. The projection moves past `O-1701`, counts `O-1702` and never counts `O-1701`. Check 16 fails, because the projection counted `O-1702` while `O-1701` was still open, and checks 17 and 18 fail because the projection stays one order short after the hold and after a restart. No other check fails.
-- Run `PROJECTION_POLL=5s ./verify.sh`. A command reaches the projection within a tick, now 5 seconds, so check 14 fails and no other. The check sends its command right after a tick, so it fails every time and passes every time at the default. The freshness median is 4,994 ms.
-- With the stack up, `POST /demo/projection/rebuild` (demo code) empties the projection and rewinds the checkpoint. The projection report then shows a count below the replay and a `lagEvents` that falls to 0.
+- `PROJECTION_WATERMARK=off ./verify.sh` (demo code): the projection moves past an open transaction and never counts that order.
+- `PROJECTION_POLL=5s ./verify.sh`: a command reaches the projection only within a tick, now 5 seconds.
+- `POST /demo/projection/rebuild` (demo code): the projection is emptied and its checkpoint rewound, and `lagEvents` falls back to 0.
 
 ## When not to use it
 

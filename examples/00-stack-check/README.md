@@ -24,11 +24,32 @@ mvn -B verify
 ```
 PASS 1: edp-kafka is healthy
 ...
+PASS 7: valid Order accepted with 2xx
+PASS 8: the record keyed O-1794344257 arrives on the edp.orders.placed topic
+PASS 9: PostgreSQL wal_level is logical
+...
+PASS 13: Tempo has a trace for service stack-check
+PASS 14: Prometheus has a metric from stack-check
+PASS 15: Loki has a log line from stack-check
+PASS 16: negative witness: invalid Order (quantity 0) gets 400
 PASS 17: negative witness: record count unchanged (1)
 17/17 checks passed
 ```
 
 The checks cover: six healthy containers; a valid order accepted and its record on the topic; PostgreSQL `wal_level` is `logical`; Apicurio ready; Connect lists `PostgresConnector` and the outbox `EventRouter`; a trace in Tempo, a metric in Prometheus and a log line in Loki for `stack-check`; and the negative witness: an invalid order (quantity 0) gets 400 and the topic record count is unchanged.
+
+## Tests and checks in detail
+
+The tests pass on a Dev Services Kafka running the pinned broker image.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| Remove the `onException` clause | An invalid Order gets 500 instead of 400; the record count still passes because nothing reached the topic | 16 (17 still passes) | - |
+| Change `Topics.ORDERS_PLACED` in the intake route to `"edp.orders.placed-v2"` | No record arrives on `edp.orders.placed`, and the consumer route has nothing to log | 8 and 15 | - |
 
 ## Layout
 

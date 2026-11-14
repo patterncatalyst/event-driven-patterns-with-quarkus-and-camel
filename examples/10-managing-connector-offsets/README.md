@@ -41,6 +41,22 @@ docker compose down -v
 7. An incremental snapshot signal re-reads the five rows while the connector keeps running. Tempo has a trace for `inventory-service`.
 8. Every topic under `edp.` is named `edp.<domain>.<event>`; the signal table's topic is routed to `edp.inventory.signals` (check 40).
 
+## Tests and checks in detail
+
+`mvn verify` runs against Kafka and PostgreSQL from Dev Services and checks that envelopes become rows in order with their LSN, once each. `verify.sh` brings up Kafka, PostgreSQL, Connect and the LGTM stack, seeds five SKUs, registers the connector and finishes with 40/40 checks passed. Checks 1 to 6 cover the snapshot, the offset shape and its relation to the slot. Check 7 is the refusal while running. Checks 8 to 14 stop the connector, grow the retained WAL and show the resume delivering every change. The forward alter (checks 15 to 18) skips ten updates and delivers the next; the backward alter (checks 19 to 22) replays nothing older than the slot, but repeats the last change before the stop once; the reset (checks 23 to 26) delivers five snapshot rows and no history. The dropped slot (checks 27 to 30) and the lost slot (checks 31 to 37) show the two failure shapes and recover from each. Check 38 re-reads the table with a signal instead of a reset. Check 39 finds the trace in Tempo. Check 40 confirms that every topic under `edp.` follows `edp.<domain>.<event>`, which is why the signal table's topic is renamed to `edp.inventory.signals`.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `OFFSET_FLUSH_INTERVAL_MS=60000 ./verify.sh` (Connect's default) | A GET now lags the connector: no offset is stored within 30 seconds of the snapshot and the run stops at its precondition | 4 | - |
+| Kill Connect with `docker kill edp-connect` between flushes under the default interval and start it again | The changes written after the last flush are delivered a second time | - | 21 updates, 21 duplicates |
+| Stop the connector, replace its configuration with `connect/inventory-cdc-no-data.json`, make three updates, delete the offsets and resume | No snapshot row arrives, and the slot's unconfirmed backlog is replayed: the three updates plus a repeat of the last change delivered before the stop, as with a backward alter | - | 4 `u` rows |
+| Alter the offset with the connector running | HTTP 400, and nothing changes | - | - |
+| Send the incremental snapshot signal instead of resetting | The connector stays running, the offsets are untouched and the five rows arrive again as `r` events | 38 (the check that covers it) | - |
+
 ## Layout
 
 | Path | Purpose |

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="920" height="150" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Event time, read from the payload</text>
+<rect x="20" y="240" width="920" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="260" font-size="12" font-weight="700" fill="#888">What the left join emits</text>
+<rect x="40" y="105" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="135.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Reservation at T</text>
+<text x="135.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">kept in the join store</text>
+<text x="135.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">until the window ends</text>
+<rect x="260" y="105" width="200" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Payment at T + 2 min</text>
+<text x="360.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">inside the 30 minute</text>
+<text x="360.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">window</text>
+<rect x="490" y="105" width="200" height="80" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="590.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Grace: 5 minutes</text>
+<text x="590.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">a payment this late is</text>
+<text x="590.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">still accepted</text>
+<rect x="720" y="105" width="200" height="80" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="820.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Stream time passes</text>
+<text x="820.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">T + 35 min</text>
+<text x="820.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">the window is closed</text>
+<rect x="260" y="285" width="200" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="360.0" y="318.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">ReadyToShip</text>
+<text x="360.0" y="335.0" font-size="11.5" fill="#555555" text-anchor="middle">reserved at T, paid at T + 2</text>
+<rect x="490" y="285" width="200" height="70" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="590.0" y="310.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Payment at T + 90 min</text>
+<text x="590.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">outside the window,</text>
+<text x="590.0" y="342.5" font-size="11.5" fill="#555555" text-anchor="middle">no match</text>
+<rect x="720" y="285" width="200" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="820.0" y="310.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">PaymentOverdue</text>
+<text x="820.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">emitted by the record that</text>
+<text x="820.0" y="342.5" font-size="11.5" fill="#555555" text-anchor="middle">moved stream time</text>
+<path d="M230,145 L260,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M460,145 L490,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M690,145 L720,145" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M360,185 L360,285" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M820,185 L820,285" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="480" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The window is measured on the time of the fact, and only later records close it</text>
+</svg>

@@ -45,6 +45,30 @@ docker compose down -v
 3. Share run: every job finishes, 29 are sent once each, the retry job has delivery counts 1 and 2, the bounce job is rejected once and not delivered again after the lock duration, at least three of the four workers deliver jobs, a partition is delivered by at least two different workers, at least half of the later jobs of the slow job's partition finish before the slow job, and the last of them finishes no more than 3 s after it (after asserting that the slow job is first in its partition with at least five later jobs).
 4. Control run: the workers restart with `DELIVERY_MODE=group` and a new classic group joins, and the same 30 jobs are published again. The same outcomes hold, no later job of the slow partition finishes before the slow job, and each partition has one worker, and exactly three of the four workers deliver.
 
+## Tests and checks in detail
+
+The Maven build runs the gateway behaviours and both delivery paths against Kafka and PostgreSQL from Dev Services, with the share protocol enabled on the broker. `verify.sh` starts Kafka, PostgreSQL, the LGTM stack and four workers, sets the share group's settings, publishes 30 jobs and prints `27/27 checks passed`.
+
+The jobs are published with producer batching turned off, so every job is its own record batch. Job 1 is the slow customer. It is the first record of its partition, and the script asserts that at least five later jobs share the partition before it relies on the result. Checks 4 to 16 run on the share group's rows, which come from four workers sharing three partitions:
+
+- Twenty-nine jobs are sent, once each, and the bounce job is rejected. The retry job has a failed attempt with delivery count 1 and a sent attempt with delivery count 2, and the bounce job has one rejected attempt with count 1.
+- The slow job took at least the gateway's slow time, at least half of the later jobs of its partition finished before it, and the last of them finished no more than 3 seconds after it. At least three of the four workers delivered jobs, and at least one partition was delivered by two or more different workers.
+- The bounce job is not delivered again after the lock duration has passed, and `kafka-share-groups.sh --describe` lists four members.
+
+Checks 18 to 27 run the same jobs through the consumer group. The workers are replaced with `DELIVERY_MODE=group`, and once the four members hold their partitions the same 30 jobs are published again. The retry and bounce outcomes are the same. The control relation is the opposite of check 9: no later job of the slow job's partition finishes before the slow job, each partition was delivered by one worker, and exactly three of the four workers delivered, because the fourth owns no partition.
+
+## Experiments
+
+Each row changes a single thing and names the checks that fail.
+
+| Switch | Effect | Failing checks | Measured result |
+|---|---|---|---|
+| `DELIVERY_MODE=group ./verify.sh` | The first run delivers through the consumer group, so the share relations have nothing to hold on: no later job finishes before the slow one, the share group has no members, both runs wrote group rows. Check 12 is the share-only counterpart of check 26: it asks for a partition delivered by two or more workers, and a consumer group has none | 9, 16, 4 to 8, 10 to 15 (they read the share rows), 20 to 22 | - |
+| `SEED_LINGER_MS=500 ./verify.sh` | The jobs of each partition are written as one producer batch: the worker that receives the slow job's batch acquires all twelve jobs behind it and runs them after the slow one, and every partition is delivered by a single worker | 9 and 12 | - |
+| `RETRY_MAX_WAIT=30` and `POLL_TIMEOUT_MS=1000` (the connector's defaults) | Workers wait longer and longer between jobs, so few later jobs finish before the slow one and its partition is done more than a minute after it | 9 and 10 | - |
+| `SHARE_RECORD_LOCK_MS=15000` and `GATEWAY_SLOW_MS=20000` | The slow job runs longer than the lock, and every check still passes: the connector renews the lock while the job runs, and the job is delivered once, with delivery count 1 | none | delivery count 1 |
+| `SHARE_ACQUIRE_MODE=record_limit` | Each worker acquires at most one record per fetch, whatever the batch. Every check still passes, because with one job per batch the default mode acquires one record as well | none | - |
+
 ## Layout
 
 | Path | Purpose |

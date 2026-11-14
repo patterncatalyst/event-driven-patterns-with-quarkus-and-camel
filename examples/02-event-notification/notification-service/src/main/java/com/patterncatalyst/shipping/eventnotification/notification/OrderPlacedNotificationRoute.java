@@ -20,7 +20,6 @@ public class OrderPlacedNotificationRoute extends RouteBuilder {
                 .routeId("order-placed-notification")
                 .unmarshal().json(OrderPlaced.class)
                 .setHeader("orderId", simple("${body.orderId}"))
-                .removeHeaders("kafka.*")
                 .setBody(constant(null))
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
                 .toD("{{order-service.url}}/orders/${header.orderId}")
