@@ -91,7 +91,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` crashes the service in the middle of a burst of orders and reads the output with `read_committed` and `read_uncommitted` readers. It prints `21/21 checks passed`. Watch the committed view hide the open transaction, and show each order once after the restart.
+`verify.sh` crashes the service in the middle of a burst of orders and reads the output with `read_committed` and `read_uncommitted` readers. Watch the committed view hide the open transaction, and show each order once after the restart. It prints `21/21 checks passed`.
 
 Try one change and rerun:
 

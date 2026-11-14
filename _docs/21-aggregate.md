@@ -58,8 +58,6 @@ The topics are created with one partition, so one task owns the whole input and 
 
 Event time may lag the wall clock, but it may not lead the broker's clock by more than an hour. Kafka Streams forwards event time as the timestamp of every record it writes, the broker refuses a timestamp that far ahead, and the instance stops. A payload dated tomorrow is a fault. Event time may not lag by much more than a day either: the changelog topic of the window store keeps records for the store's retention plus `windowstore.changelog.additional.retention.ms`, which defaults to one day, after their timestamp, and a new instance that restores a slot older than that finds nothing to restore.
 
-Camel takes the batch route in the next section; the two meet in a table after it.
-
 ## Final results, not updates
 
 An aggregation's output is a table. Each record that lands in a window emits the updated list, which overwrites the one before. Read from the output topic, the FASTLINE 09:00 list would arrive with count 1, then 2, then 3, and a warehouse that acts on the first one picks up one parcel.
@@ -85,12 +83,12 @@ The Camel form does not know about slots. The Aggregator groups by arrival and c
 ```java
 from("kafka:" + Topics.SHIPPING_SCHEDULED + "?groupId=shipping-pickups-camel&autoOffsetReset=earliest")
     .unmarshal(incoming)
-    .setHeader("carrier", simple("${body.shipment.carrier}"))
+    .setHeader("carrier", simple("${body.shipment.carrier}", String.class))
     .setBody(simple("${body.shipment.id}"))
     .aggregate(header("carrier"), PickupBatchRoute::collect)
         .completionSize(5)
         .completionTimeout(10000)
-        .aggregationRepository(repository)
+        .aggregationRepository("pickupsRepository")
         .process(PickupBatchRoute::toPickupList)
         .marshal(outgoing)
         .to("kafka:" + Topics.SHIPPING_PICKUP_LISTS_CAMEL)
@@ -113,7 +111,7 @@ Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each
 | 1,000 shipments, tick to last list | 1.3 s (1.25 to 1.33) | |
 | 1,000 shipments, producer call to last batch | | 13.7 s (12.8 to 13.8), 201 batches |
 | Matches the oracle count per slot | 8 lists, every count equal | |
-| Batch scenario as expected, repeated runs | | 15 of 15 |
+| Batch scenario as expected, repeated runs | | 23 of 23 |
 
 The two forms answer different questions. Kafka Streams answers what was scheduled in this slot. Camel answers how to send fewer, fuller messages. In the bench, the time to the last Camel batch includes the 10-second timeout of the final partial batch, so it is not a throughput figure.
 
@@ -126,7 +124,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` sends the same shipments to both forms, closes a window with a later event time, sends a late record and recreates the service while a window and a batch are open. It prints `22/22 checks passed`. Watch the Kafka Streams list leave once and the Camel batches follow the arrival order.
+`verify.sh` sends the same shipments to both forms, closes a window with a later event time, sends a late record and recreates the service while a window and a batch are open. Watch the Kafka Streams list leave once and the Camel batches follow the arrival order. It prints `22/22 checks passed`.
 
 Try one change and rerun:
 
@@ -158,4 +156,5 @@ Neither form fits a count or a sum that a reader may poll at any moment. That is
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 8: Stateful Event-Driven Microservices and chapter 9: Deterministic Stream Processing
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 9: Composing Data from Different Sources
 - *Enterprise Integration Patterns with Camel*, chapter 13: Structural Transformation (Aggregator)
+- *Cloud-Native Design Patterns*, [chapter 6: Stream Processing](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/06-stream-processing/)
 - Chapter 16: CQRS and projections, for a read model; chapter 19 for the GlobalKTable; chapter 20 for event time and the aggregation repository

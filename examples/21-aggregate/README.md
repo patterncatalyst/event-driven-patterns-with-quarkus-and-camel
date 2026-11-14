@@ -69,7 +69,7 @@ The checks read the effects:
 - Before the tick, the Kafka Streams output is empty. After it, it holds exactly the two lists of slot 09:00 and nothing else.
 - The dropped record is proved by the Prometheus counter, not only by its absence from the output. The Micrometer binder rebinds the Kafka Streams meters about once a minute, so the check polls for up to 90 seconds.
 - The restart scenario uses the changelog end offset and the row in `shipping.pickups` as preconditions, so a result is never an effect of nothing having been stored.
-- Every recreate waits for liveness and for the Camel partition before the next record, and the outputs are polled, never slept on. The Kafka Streams consumer and the Camel consumer use a 10-second session timeout and a 3-second heartbeat, so a recreated instance takes its partitions back in seconds.
+- Every recreate waits for liveness and for the Camel partition before the next record, and the outputs are polled, never slept on. The Kafka Streams consumer and the Camel consumer use a 10-second session timeout and a 3-second heartbeat.
 
 ## Experiments
 
@@ -79,10 +79,10 @@ Each row changes a single thing and names the checks that fail.
 |---|---|---|---|
 | `PICKUP_EMIT=updates ./verify.sh` (demo code) | Every update of a list leaves, so the output holds partial lists with `closedBy` set to `update` | 5, 7, 8, 9, 10, 13, 15 and 19 (14 of 22 pass) | After the recreate the slot 19:30 holds five partial lists, with 1 to 5 shipments, and the bench hour emits 1,000 lists instead of 8. Check 19 fails: the list with count 5 is there, but it is not the only list for the slot |
 | `PICKUP_CHANGELOG=off ./verify.sh` (demo code) | The window store has no changelog, so the recreate loses the three shipments of the open window and the list holds the two that came after | 17 and 19 (20 of 22 pass) | The only list of slot 19:30 is FASTLINE with count 2, RS4 and RS5 |
-| `BASE_AGE_HOURS=44 ./verify.sh` (demo setting) | The scenario's event times are 44 hours old, beyond what the changelog topic keeps | 19 (21 of 22 pass) | The changelog topic has nothing to restore, and the only list of slot 19:30 holds RS4 and RS5 |
+| `BASE_AGE_HOURS=44 ./verify.sh` (demo setting) | The scenario's event times are 44 hours old, beyond what the changelog topic keeps | 19 (21 of 22 pass) | The changelog topic has nothing to restore, and the only list of slot 19:30 holds RS4 and RS5. Two runs (`w21-exp-age44`, `f8-21-exp-base-age-44`) gave this result; it depends on the broker having deleted the old segment, which happens at its retention check interval |
 
-Timing witnesses. Check 4 (the Camel batches of 5, 2 and 3) passed in every fresh run: 23 normal runs from fresh containers, each with all of its checks run.
+Timing witnesses. Check 4 (the Camel batches of 5, 2 and 3) passed in 23 of 23 fresh runs of the unmodified script: `w21-run2` to `w21-run4`, `w21-hunt-1`, `w21-final-1` to `w21-final-3`, `w21-loop-1` to `w21-loop-15` and the final-script run `f8-21-run`. Two of them (`w21-run4`, `w21-hunt-1`) failed check 19 only.
 
-Bench (1,000 shipments, 17 fresh runs): Kafka Streams emitted exactly 8 lists, last one a median of 1.3 s after the tick (range 1.25 to 1.33 s); Camel emitted 201 batches in every run, 200 by size and 1 by timeout, the last a median of 13.7 s after the producer call (range 12.8 to 13.8 s), which includes the 10 s timeout of the last partial batch.
+Bench (1,000 shipments, 17 fresh runs: `w21-run2`, `w21-run3` and `w21-loop-1` to `w21-loop-15`): Kafka Streams emitted exactly 8 lists, last one a median of 1.3 s after the tick (range 1.25 to 1.33 s); Camel emitted 201 batches in every run, 200 by size and 1 by timeout, the last a median of 13.7 s after the producer call (range 12.8 to 13.8 s), which includes the 10 s timeout of the last partial batch.
 
 `REPEAT=n`, the 7 + 3 scenario of step 2 repeats n times (n up to 15) at later event times after the bench, and one extra line `PASS R` or `FAIL R` reports how many runs gave the expected batches. It is outside the numbered checks.

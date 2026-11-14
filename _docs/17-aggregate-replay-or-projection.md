@@ -120,7 +120,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` loads three store sizes and compares an aggregate replay with a projection that a checkpointed poller keeps current. It prints `22/22 checks passed`. Watch the projection equal the replay at every size and answer a read much faster at 100,000 orders.
+`verify.sh` loads three store sizes and compares an aggregate replay with a projection that a checkpointed poller keeps current. Watch the projection equal the replay at every size and answer a read much faster at 100,000 orders. It prints `22/22 checks passed`.
 
 Try one change and rerun:
 

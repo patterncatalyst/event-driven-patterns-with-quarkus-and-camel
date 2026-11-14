@@ -98,7 +98,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` drains 200 records from each of three topics under different consumer settings and prints `36/36 checks passed`. It asserts relations between runs, never durations. `bench.sh` repeats the profiles five times and writes the timings to `results/`.
+`verify.sh` drains 200 records from each of three topics under different consumer settings. It asserts relations between runs, never durations. `bench.sh` repeats the profiles five times and writes the timings to `results/`. It prints `36/36 checks passed`.
 
 Try one change and rerun:
 

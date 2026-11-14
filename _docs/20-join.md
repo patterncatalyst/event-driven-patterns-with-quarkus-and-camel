@@ -38,7 +38,7 @@ reserved.leftJoin(paid, Readiness::of,
 
 A payment within 30 minutes of the reservation, in either direction, matches and gives `ReadyToShip`. The five minutes of grace admit a record that is late in event time. A reservation that finds no payment leaves as `PaymentOverdue`, with a null payment passed to the join function. Both source streams read their timestamp from the payload with a `PayloadTimestampExtractor`, so the window is measured on when the facts happened.
 
-Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway, reported healthy and matched only the orders whose two records happen to share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
+Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway and reported RUNNING, and no co-partitioning error was logged. It built three tasks: two paired a reservations partition with the payments partition of the same number, and the third held a reservations partition alone. It matched only the orders whose two records share a partition number: 14 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
 
 Camel has no join. It has the Aggregator, correlated here on the record key:
 
@@ -66,9 +66,9 @@ The two forms in one place:
 | Late or replayed records | Placed by event time; accepted within the grace | Placed by arrival; a replay looks like a burst |
 | State | Local store plus a changelog topic | A PostgreSQL row per open group |
 | Partitioning | Both topics need the same partition count | None; one consumer reads both topics |
-| Time to match 200 orders | About 2.6 s | About 3.1 s |
+| Time to match 200 orders | About 2.6 s (2.52 to 2.61) | About 3.1 s (3.04 to 3.13) |
 
-A real service runs one of the two. The example runs both on the same input, each with its own consumer group and its own output topic, so every difference is visible in one run.
+A real service runs one of the two. Both forms run side by side on the same input, each with its own consumer group and its own output topic, so every difference above comes from the input, not the setup.
 
 ## Event time and arrival time
 
@@ -76,15 +76,15 @@ Kafka Streams orders by the timestamp its extractor returns. The record timestam
 
 Camel never reads `occurredAt`. The completion timeout is the time a group has been inactive, counted on the clock of the service. **The Camel form approximates the window by arrival time, not event time.** Where records arrive close to when they happened, the two clocks agree and the aggregator is the smaller piece of code. Where they do not, the forms disagree, and two crafted pairs show it in opposite directions.
 
-{% include excalidraw.html file="20-event-vs-arrival-time" alt="O-2003 has event times two minutes apart and arrives 20 seconds apart, so Kafka Streams matches it and the Camel aggregator, with a 10 second timeout, emits PaymentOverdue first; O-2004 has event times 90 minutes apart and arrives back to back, so Kafka Streams emits PaymentOverdue and the Camel aggregator matches it" caption="Figure 20.2: Two clocks, two answers, in opposite directions" %}
+{% include excalidraw.html file="20-event-vs-arrival-time" alt="O-2003 has event times two minutes apart and arrives more than the 10 second timeout apart, so Kafka Streams matches it and the Camel aggregator, with a 10 second timeout, emits PaymentOverdue first; O-2004 has event times 90 minutes apart and arrives back to back, so Kafka Streams emits PaymentOverdue and the Camel aggregator matches it" caption="Figure 20.2: Two clocks, two answers, in opposite directions" %}
 
 `O-2003` is reserved at 09:10 and paid at 09:12 in event time, and the two records are produced more than the 10 second timeout apart. Streams matches it. The Camel group times out first and emits `PaymentOverdue`; the payment then arrives alone and is ignored. `O-2004` is reserved at 09:20 and paid at 10:50, a replayed payment, and the two records are produced back to back. Streams sees 90 minutes and emits `PaymentOverdue`. Camel sees both facts together and emits `ReadyToShip`.
 
-Neither is wrong about its own clock. The question is which clock the business rule means. "Payment within 30 minutes of the reservation" is a statement about when things happened, and only the event-time form can keep it when records are late, replayed or backlogged. "Payment within 10 seconds of the reservation reaching this service" is a statement about the service, and the timeout is the direct form of it. A timeout chosen as a guess at the spread of arrival times is a third thing, and it moves the answer: a longer timeout makes `O-2003` match on the Camel path as well.
+The question is which clock the business rule means. "Payment within 30 minutes of the reservation" is a statement about when things happened, and only the event-time form can keep it when records are late, replayed or backlogged. "Payment within 10 seconds of the reservation reaching this service" is a statement about the service, and the timeout is the direct form of it. A timeout chosen as a guess at the spread of arrival times is a third thing, and it moves the answer: a longer timeout makes `O-2003` match on the Camel path as well.
 
 Event times have to be in the past. The broker refuses a record whose timestamp is more than an hour ahead, and Kafka Streams forwards the event time as the timestamp of its output, so a payload dated in the future puts the instance in ERROR.
 
-The window does not retract. A payment that arrives after `PaymentOverdue` has been emitted can still match while the reservation is retained in the store, and the output then holds `ReadyToShip` for an order that was already reported overdue. The join does not count that record as dropped. A consumer of the output topic has to accept two answers for one order, and chapter 11's idempotent consumer is the tool for deciding which wins.
+The window does not retract. A payment that arrives after `PaymentOverdue` has been emitted can still match while the reservation is retained in the store, and the output then holds `ReadyToShip` for an order that was already reported overdue. The join does not count that record as dropped. A consumer of the output topic has to accept two answers for one order. The rule that fits is that a later `ReadyToShip` supersedes a `PaymentOverdue` for the same order: the consumer keeps the latest result by order id and never lets `PaymentOverdue` replace `ReadyToShip`, as the guarded upsert of chapter 16 only moves a row forward.
 
 ## When one side never arrives
 
@@ -100,7 +100,7 @@ Both forms hold open state, and it has to be somewhere a recreated container can
 
 {% include excalidraw.html file="20-state-where" alt="Kafka Streams keeps the join store as local files and writes every put to a changelog topic, restoring the store from it after a recreate; the Camel aggregator saves each open group as a row in shipping.readiness and reads it back after a recreate" caption="Figure 20.3: Local files and a changelog on one side, a table on the other" %}
 
-The join store is local files, and every put is also written to a changelog topic, so a recreated instance rebuilds the store by reading it. The Camel repository is `PostgresAggregationRepository` over the Agroal datasource, with a `DataSourceTransactionManager` from `camel-quarkus-sql`: each open group is a row of `shipping.readiness`, written in the same JDBC transaction as the aggregation step. After a recreate both forms finish a pair whose reservation arrived before it.
+The join store is local files, and every put is also written to a changelog topic, so a recreated instance rebuilds the store by reading it. The Camel repository is `PostgresAggregationRepository` over the Agroal datasource, with a `DataSourceTransactionManager` from `camel-quarkus-sql`: each open group is a row of `shipping.readiness`, written through the transaction manager each time the group changes. After a recreate both forms finish a pair whose reservation arrived before it.
 
 ```java
 new PostgresAggregationRepository(new DataSourceTransactionManager(dataSource), "shipping.readiness", dataSource)
@@ -108,7 +108,7 @@ new PostgresAggregationRepository(new DataSourceTransactionManager(dataSource), 
 
 The in-memory repository is the contrast, and it is demo code: `AGGREGATION_REPOSITORY=memory` keeps groups in the JVM. The Camel consumer has already committed the reservation's offset, so after a recreate the group is gone and nothing will replay it.
 
-Two details of the restart are worth knowing. A restored group's timeout starts again from the restart, so its `PaymentOverdue` arrives one timeout after the service is back, not one timeout after the reservation. And a recreated Streams instance reports RUNNING on the liveness check about 13 seconds after the recreate. The Quarkus readiness check covers the input topics and does not wait for RUNNING. The liveness check reports the Streams state, and a deployment that routes traffic by what the stream needs waits for that one.
+A restored group's timeout starts again from the restart, so its `PaymentOverdue` arrives one timeout after the service is back, not one timeout after the reservation. And a recreated Streams instance reports RUNNING on the liveness check about 13 seconds after the recreate. The Quarkus readiness check covers the input topics and does not wait for RUNNING. The liveness check reports the Streams state, and a deployment that routes traffic by what the stream needs waits for that one.
 
 ## Build, run, observe
 
@@ -119,12 +119,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. It prints `24/24 checks passed`. Watch `O-2003` and `O-2004` get opposite answers from the two forms.
+`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. Watch `O-2003` and `O-2004` get opposite answers from the two forms. It prints `24/24 checks passed`.
 
 Try one change and rerun:
 
 - `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code): the reservation open at the recreate is lost on the Camel path and never becomes `ReadyToShip` there.
-- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and `O-2005` is reported later than 15 seconds after it arrived.
+- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and `O-2005` is not reported within 15 seconds of arriving.
 
 ## When not to use it
 
@@ -146,4 +146,4 @@ If the two facts already sit in one database, a SQL join answers the question wi
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 8: Stateful Event-Driven Microservices and chapter 9: Deterministic Stream Processing
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 9: Composing Data from Different Sources
 - Enterprise Integration Patterns with Camel, chapter 13: Structural Transformation, for the Aggregator
-- Chapter 2: Event notification, for fetching back; chapter 3 for the local copy; chapter 4 for keys and partitions; chapter 8 for the outbox; chapter 11 for the idempotent consumer; chapter 14 for the aggregate; chapter 19 for the table join
+- Chapter 2: Event notification, for fetching back; chapter 3 for the local copy; chapter 4 for keys and partitions; chapter 8 for the outbox; chapter 11 for the idempotent consumer; chapter 14 for the aggregate; chapter 16 for the guarded upsert; chapter 19 for the table join

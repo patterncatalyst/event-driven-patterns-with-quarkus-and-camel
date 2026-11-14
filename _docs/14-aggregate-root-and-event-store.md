@@ -174,7 +174,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs three races between a command and a competing append, then the Camel route with redelivery. It prints `33/33 checks passed`. Watch the loser of each race decide again against the new head and be refused or accepted by the lifecycle.
+`verify.sh` runs three races between a command and a competing append, then the Camel route with redelivery. Watch the loser of each race decide again against the new head and be refused or accepted by the lifecycle. It prints `33/33 checks passed`.
 
 Try one change and rerun:
 

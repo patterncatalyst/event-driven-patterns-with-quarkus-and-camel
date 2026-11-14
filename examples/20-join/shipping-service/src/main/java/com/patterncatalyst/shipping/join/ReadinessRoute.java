@@ -62,7 +62,6 @@ public class ReadinessRoute extends RouteBuilder {
                         .unmarshal(json(PaymentProcessed.class))
                         .process(exchange -> fact(exchange, PAID, exchange.getIn().getBody(PaymentProcessed.class).occurredAt()))
                 .end()
-                .removeHeaders("kafka.*")
                 .aggregate(header("orderId"), new AddFact())
                     .completionPredicate(bothKinds)
                     .completionTimeout(timeoutMs)

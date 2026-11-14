@@ -122,7 +122,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` produces six records, some of them malformed, while one SKU is locked, then repeats the run on the Camel route. It prints `31/31 checks passed`. Watch the dead letter topic gain the malformed records with their original bytes, and the order on the locked SKU retried until the lock is released.
+`verify.sh` produces six records, some of them malformed, while one SKU is locked, then repeats the run on the Camel route. Watch the dead letter topic gain the malformed records with their original bytes, and the order on the locked SKU retried until the lock is released. It prints `31/31 checks passed`.
 
 Try one change and rerun:
 

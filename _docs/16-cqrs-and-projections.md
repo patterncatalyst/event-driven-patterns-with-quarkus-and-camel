@@ -126,7 +126,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` pauses one of the six topics, resets the consumer groups to the earliest offset and rebuilds the view through a Camel route. It prints `29/29 checks passed`. Watch a paused topic leave the order stale, with an `asOf` that says so, until the topic resumes.
+`verify.sh` pauses one of the six topics, resets the consumer groups to the earliest offset and rebuilds the view through a Camel route. Watch a paused topic leave the order stale, with an `asOf` that says so, until the topic resumes. It prints `29/29 checks passed`.
 
 Try one change and rerun:
 

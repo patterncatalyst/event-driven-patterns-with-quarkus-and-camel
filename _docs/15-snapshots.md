@@ -139,13 +139,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` loads three streams, the largest of 100,000 events, and compares loads with and without a snapshot. It prints `27/27 checks passed`. Watch how many events a load replays after the snapshot.
+`verify.sh` loads three streams, the largest of 100,000 events, and compares loads with and without a snapshot. Watch how many events a load replays after the snapshot. It prints `27/27 checks passed`.
 
 Try one change and rerun:
 
 - `SNAPSHOT_EVERY=0 ./verify.sh`: no snapshot is written and every load replays the whole stream.
-- `SNAPSHOT_GUARD=false ./verify.sh`: a stale snapshot replaces a newer one and the stored version goes down.
-- `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh`: replaying 100,000 events as managed entities runs out of heap with `OutOfMemoryError`.
+- `SNAPSHOT_GUARD=false ./verify.sh` (demo code): a stale snapshot replaces a newer one and the stored version goes down.
+- `INVENTORY_FETCH=entities EXTRA_JAVA_OPTS=-Xmx96m ./verify.sh` (demo code): replaying 100,000 events as managed entities runs out of heap with `OutOfMemoryError`.
 
 ## When not to use it
 

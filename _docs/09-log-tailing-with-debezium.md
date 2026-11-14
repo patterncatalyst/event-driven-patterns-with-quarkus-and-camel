@@ -130,7 +130,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` registers the connectors, seeds a legacy table and prints `35/35 checks passed`. It needs `jq` on the host. Watch inserts, updates and deletes of the legacy table arrive as documents with the domain's names, and the retained WAL fall when the heartbeat runs.
+`verify.sh` registers the connectors and seeds a legacy table. It needs `jq` on the host. Watch inserts, updates and deletes of the legacy table arrive as documents with the domain's names, and the retained WAL fall when the heartbeat runs. It prints `35/35 checks passed`.
 
 Try one change and rerun:
 

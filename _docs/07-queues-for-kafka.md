@@ -102,7 +102,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs four workers on a share group and publishes 30 jobs, then runs the same jobs through a consumer group. It prints `27/27 checks passed`. Watch later jobs finish while the slow job is still running on the share group and wait behind it on the consumer group.
+`verify.sh` runs four workers on a share group and publishes 30 jobs, then runs the same jobs through a consumer group. Watch later jobs finish while the slow job is still running on the share group and wait behind it on the consumer group. It prints `27/27 checks passed`.
 
 Try one change and rerun:
 

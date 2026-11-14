@@ -100,7 +100,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` registers the Debezium connector, places orders, crashes the service and stops Connect, then prints `27/27 checks passed`. Watch that each order gives one record on the topic, that a crash after the commit loses nothing, and that orders placed while Connect is down arrive once it returns.
+`verify.sh` registers the Debezium connector, places orders, crashes the service and stops Connect. Watch that each order gives one record on the topic, that a crash after the commit loses nothing, and that orders placed while Connect is down arrive once it returns. It prints `27/27 checks passed`.
 
 Try one change and rerun:
 

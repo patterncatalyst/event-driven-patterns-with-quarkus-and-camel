@@ -155,7 +155,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs the previous, the current and a broken release against a registry that enforces compatibility, then recreates `notification-service` on the Camel reader. It prints `21/21 checks passed`. Watch old rows and records stay readable and the broken release get a 503.
+`verify.sh` runs the previous, the current and a broken release against a registry that enforces compatibility, then recreates `notification-service` on the Camel reader. Watch old rows and records stay readable and the broken release get a 503. It prints `21/21 checks passed`.
 
 Try one change and rerun:
 

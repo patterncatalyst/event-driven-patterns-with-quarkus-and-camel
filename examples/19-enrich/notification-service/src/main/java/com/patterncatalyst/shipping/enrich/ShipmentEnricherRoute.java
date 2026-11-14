@@ -30,7 +30,6 @@ public class ShipmentEnricherRoute extends RouteBuilder {
                 + "&breakOnFirstError={{enricher.break-on-first-error}}")
                 .routeId("shipment-enricher")
                 .unmarshal().json(JsonLibrary.Jackson, ShipmentScheduled.class)
-                .removeHeaders("kafka.*")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
                 .enrich().simple("{{shipping-service.url}}/carriers/${body.shipment.carrier}")
                         .aggregationStrategy(carrierEnrichment)

@@ -124,7 +124,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` produces the same event id twice, crashes the service after its effect commits, then reads the same records with the inbox off and through the Camel route. It prints `29/29 checks passed`. Watch the stock drop once per event id.
+`verify.sh` produces the same event id twice, crashes the service after its effect commits, then reads the same records with the inbox off and through the Camel route. Watch the stock drop once per event id. It prints `29/29 checks passed`.
 
 Try one change and rerun:
 

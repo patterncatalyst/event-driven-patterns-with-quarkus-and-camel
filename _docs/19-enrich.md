@@ -34,7 +34,6 @@ Hohpe and Woolf define the pattern by that source being external to the message.
 from("kafka:" + Topics.SHIPPING_SCHEDULED + "?groupId=notification-enricher-camel&sessionTimeoutMs=10000"
         + "&breakOnFirstError={{enricher.break-on-first-error}}")
     .unmarshal().json(JsonLibrary.Jackson, ShipmentScheduled.class)
-    .removeHeaders("kafka.*")
     .setHeader(Exchange.HTTP_METHOD, constant("GET"))
     .enrich().simple("{{shipping-service.url}}/carriers/${body.shipment.carrier}")
             .aggregationStrategy(carrierEnrichment)
@@ -93,12 +92,12 @@ The trade-offs, measured on the same input:
 | Freshness | The owner's current row | The topic's last record for the carrier |
 | Owner down | Stalls on the failed record, catches up, loses nothing | Continues from the local copy |
 | Cost per record | One HTTP call; a burst of 500 shipments made 500 lookups | A local store read, no lookups |
-| Burst of 500 shipments, producer call to last output | 6.4 s | 2.5 s |
+| Burst of 500 shipments, producer call to last output | 6.4 s (6.35 to 6.44) | 2.5 s (2.50 to 2.56) |
 | Memory | None for the reference | The whole table, per instance |
 | Reference deleted from the topic | Not affected while the owner still has it | The record is kept with an empty mode and link |
 | Coupling | Availability and latency of the owner | Format of the reference topic |
 
-A real service picks one. The example runs both side by side so that every difference above comes from the same input.
+A real service picks one. Both forms run side by side on the same input, so every difference above comes from the input, not the setup.
 
 ## Build, run, observe
 
@@ -109,7 +108,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` sends the same shipments to both forms, changes a reference, stops `shipping-service` and recreates the enricher. It prints `20/20 checks passed`. Watch the two outputs differ for one shipment after the template change, and the lookup's lag fall back to zero when the owner returns.
+`verify.sh` sends the same shipments to both forms, changes a reference, stops `shipping-service` and recreates the enricher. Watch the two outputs differ for one shipment after the template change, and the lookup's lag fall back to zero when the owner returns. It prints `20/20 checks passed`.
 
 Try one change and rerun:
 

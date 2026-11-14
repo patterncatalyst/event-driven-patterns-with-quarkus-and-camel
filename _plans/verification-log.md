@@ -480,7 +480,7 @@ Experiments of chapters 19 to 21, each once from clean on the final scripts; the
 |---|---|---|---|
 | 19 `CAMEL_BREAK_ON_FIRST_ERROR=false` | 18/20 | 12, 13 | `f8-19-exp-break-false.log` |
 | 20 `AGGREGATION_REPOSITORY=memory` | 21/24 | 18, 20, 21 | `f8-20-exp-repo-memory.log` |
-| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (O-2005 overdue after 15,080 ms) | `f8-20-exp-timeout-30000.log` |
+| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (O-2005 not reported within 15 s) | `f8-20-exp-timeout-30000.log` |
 | 20 `BASE_AGE_HOURS=44` | 24/24 | none | `f8-20-exp-base-age-44.log` |
 | 21 `PICKUP_EMIT=updates` | 14/22 | 5, 7, 8, 9, 10, 13, 15, 19 (bench 1,000 lists) | `f8-21-exp-emit-updates.log` |
 | 21 `PICKUP_CHANGELOG=off` | 20/22 | 17, 19 (slot 19:30 holds RS4, RS5) | `f8-21-exp-changelog-off.log` |
@@ -507,3 +507,29 @@ Bench values (one run each; the chapter tables carry the medians of 15 or 17 ear
 | 21 1,000 shipments | Streams 8 lists, last 1,302 ms after the tick; Camel 201 batches (200 by size, 1 by timeout), last 12,825 ms | 1.3 s (1.25 to 1.33); 13.7 s (12.8 to 13.8), 201 batches |
 
 Claims: 52 of the 53 pending `NN-r08-*` rows are verified against these logs; 08-r08-c (remove the Debezium routing lines) stays pending because its experiment needs a source edit and was not run.
+
+### r08 repair round 1 (2026-11-13)
+
+Every run was one hold of the stack lock, from clean, with no `edp-*` container left afterwards. Logs are `<scratchpad>/r1b-*.log`.
+
+| Run | Result | Failing checks | Log |
+|---|---|---|---|
+| 20 `CopartitioningTest` x3, after the broker-side assertion of 3 and 2 partitions and the task list were added | green; partitions 3 and 2; tasks 0_0 (reserved-0, payments-0), 0_1 (reserved-1, payments-1), 0_2 (reserved-2); state RUNNING; no co-partitioning error; Streams matched 14 of 30, Camel 30 of 30 | | `r1b-20-copart-1.log` to `r1b-20-copart-3.log` |
+| 20 `mvn -B verify` | 18 tests, BUILD SUCCESS | | `r1b-20-mvn.log` |
+| 20 `./verify.sh` x2 | 24/24 both | | `r1b-20-run1.log`, `r1b-20-run2.log` |
+| 20 `./verify.sh` with the `filter(header("emit"))` guard removed from the route (temporary edit, restored from a saved copy) | 23/24 | 11 | `r1b-20-noguard.log` |
+| 20 `AGGREGATION_REPOSITORY=memory` | 21/24 | 18, 20, 21 | `r1b-20-exp-memory.log` |
+| 20 `READINESS_TIMEOUT_MS=30000` | 21/24 | 9, 11, 15 (no O-2005 NOTE line is printed) | `r1b-20-exp-timeout.log` |
+| 19 `mvn -B verify` | 10 tests, BUILD SUCCESS | | `r1b-19-mvn.log` |
+| 19 `./verify.sh` x2 | 20/20 both | | `r1b-19-run1.log`, `r1b-19-run2.log` |
+| 21 `mvn -B verify` | 15 tests, BUILD SUCCESS | | `r1b-21-mvn.log` |
+| 21 `./verify.sh` x2 | 22/22 both | | `r1b-21-run1.log`, `r1b-21-run2.log` |
+
+Notes:
+
+- The first bite run of check 11 passed 24/24 because the strengthened check counted records by the `orderId` field in the JSON, and a record the guard would have filtered is not JSON. The check now counts records by key. The second bite run failed check 11 and only check 11.
+- An intermediate `CopartitioningTest` run matched 7 of 30 because the test read the Streams output before the group had committed the end of both topics. The test now waits for that commit; the three runs listed above matched 14 of 30 each.
+- Each `CopartitioningTest` run logs `TaskCorruptedException` lines while a Streams store restores from a state directory left by an earlier run in `/tmp`; the same lines are in the earlier `w20-copart1.log`. The matched count is the same.
+- The 15-run timing loop of chapter 20 (`w20-loop01.log` to `w20-loop15.log`) ran before the mapping of event times to the clock changed, which touched event times only; `h20-run1`, `h20-run2` and `f8-20-run` on the final script also passed 24/24. Ranges now in the chapter table: Streams 2.52 to 2.61 s, Camel 3.04 to 3.13 s.
+- Chapter 21: check 4 passed in 23 of 23 fresh runs (list in the example README); the bench figures come from 17 of them. `BASE_AGE_HOURS=44` ran twice (`w21-exp-age44.log`, `f8-21-exp-base-age-44.log`).
+- `.removeHeaders("kafka.*")` was removed from the three routes; the three example builds and six `verify.sh` runs above passed without it.

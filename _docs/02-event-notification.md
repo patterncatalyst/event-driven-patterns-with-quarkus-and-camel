@@ -84,7 +84,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-Both services' tests run against PostgreSQL and Kafka from Dev Services. `verify.sh` places orders, stops each service in turn and prints `21/21 checks passed`. Watch one Tempo trace follow the order request through the consume to the fetch; `KEEP=1 ./verify.sh` leaves Grafana at `http://localhost:3000`.
+Both services' tests run against PostgreSQL and Kafka from Dev Services. `verify.sh` places orders and stops each service in turn. Watch one Tempo trace follow the order request through the consume to the fetch; `KEEP=1 ./verify.sh` leaves Grafana at `http://localhost:3000`. It prints `21/21 checks passed`.
 
 Try one change and rerun:
 

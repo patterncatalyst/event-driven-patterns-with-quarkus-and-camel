@@ -140,7 +140,15 @@ bench_overdue() { [[ "$(emitted_count streams PaymentOverdue '"orderId":"O-2[12]
 
 groups_own_both() { group_owns_both shipping-readiness && group_owns_both shipping-readiness-camel; }
 no_bench_overdue() { ! bench_overdue; }
-late_payment_silent() { stays_false 13 emitted camel ReadyToShip O-2003 && open_row_is O-2003 0; }
+emitted_for() { # emitted_for <streams|camel> <order>: how many records of any kind carry that order id as their key
+    awk -F'\t' -v o="$2" '$1 == o {n++} END {print n + 0}' "$WORK/$1.out"
+}
+# The lone payment has timed out by the end of the 13 s span: the Camel output holds the PaymentOverdue of the
+# reservation and no other record for the order, and no group is left open.
+late_payment_silent() {
+    stays_false 13 emitted camel ReadyToShip O-2003 && open_row_is O-2003 0 \
+        && [[ "$(emitted_count camel PaymentOverdue '"orderId":"O-2003"')" == 1 && "$(emitted_for camel O-2003)" == 1 ]]
+}
 streams_never_ready_2004() { ! emitted streams ReadyToShip O-2004; }
 camel_overdue_after_timeout() { stays_false 8 emitted camel PaymentOverdue O-2005 && poll 7 emitted camel PaymentOverdue O-2005; }
 streams_silent_2005() { stays_false 15 emitted streams PaymentOverdue O-2005; }
@@ -208,7 +216,7 @@ reserve O-2003 09:10
 check "O-2003: the Camel output holds PaymentOverdue within 20 s, before the payment exists" poll 20 emitted camel PaymentOverdue O-2003
 pay O-2003 09:12
 check "O-2003: the Streams output holds ReadyToShip" poll 15 emitted streams ReadyToShip O-2003
-check "O-2003: the late payment on the Camel path emits nothing and leaves no open group" \
+check "O-2003: the late payment on the Camel path leaves no open group, and the Camel output holds only the PaymentOverdue for the order" \
     late_payment_silent
 
 echo "Divergence 2: O-2004 is far apart in event time and together in arrival"
@@ -219,10 +227,12 @@ check "O-2004: the Streams output holds no ReadyToShip" streams_never_ready_2004
 
 echo "A reservation that is never paid (O-2005)"
 reserve O-2005 12:00
-SENT="$(now_ms)"
+SENT="$(now_ms)"; PASSED_BEFORE="$PASSED"
 check "O-2005: the Camel output holds no PaymentOverdue for 8 s and holds one within 15 s of arrival" \
     camel_overdue_after_timeout
-echo "NOTE: O-2005 Camel PaymentOverdue seen $(( $(now_ms) - SENT )) ms after the reservation was produced (polled every second)"
+if (( PASSED > PASSED_BEFORE )); then
+    echo "NOTE: O-2005 Camel PaymentOverdue seen $(( $(now_ms) - SENT )) ms after the reservation was produced (polled every second)"
+fi
 check "O-2005: the Streams output stays silent for 15 s, because no record moves stream time" \
     streams_silent_2005
 reserve O-2098 13:00

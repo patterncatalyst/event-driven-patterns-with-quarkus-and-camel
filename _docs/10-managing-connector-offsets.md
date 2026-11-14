@@ -98,7 +98,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` registers the connector, seeds five SKUs and tries each way to change its offsets. It prints `40/40 checks passed`. Watch what each alteration delivers afterwards: skipped changes, one repeated change, snapshot rows without history.
+`verify.sh` registers the connector, seeds five SKUs and tries each way to change its offsets. Watch what each alteration delivers afterwards: skipped changes, one repeated change, snapshot rows without history. It prints `40/40 checks passed`.
 
 Try one change and rerun:
 

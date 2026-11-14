@@ -116,7 +116,7 @@ mvn -B verify
 ./bench.sh
 ```
 
-`verify.sh` bursts 20,000 orders through each publisher route and prints `24/24 checks passed`; `bench.sh` writes the timings to `results/`. Watch the tuned route send more records per request than the unbatched one.
+`verify.sh` bursts 20,000 orders through each publisher route; `bench.sh` writes the timings to `results/`. Watch the tuned route send more records per request than the unbatched one. It prints `24/24 checks passed`.
 
 Try one change and rerun:
 

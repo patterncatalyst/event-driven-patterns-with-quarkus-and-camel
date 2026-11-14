@@ -103,7 +103,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs two `order-service` replicas, pauses one and applies a shipment's events under four configurations. It prints `28/28 checks passed`. Watch the order's final status in each configuration.
+`verify.sh` runs two `order-service` replicas, pauses one and applies a shipment's events under four configurations. Watch the order's final status in each configuration. It prints `28/28 checks passed`.
 
 Try one change and rerun:
 

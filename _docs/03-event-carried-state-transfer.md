@@ -115,7 +115,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` places orders, one with a 100 KB attachment, stops `order-service` and prints `30/30 checks passed`. Watch the copy keep answering while `order-service` is down and the attachment return 503 until it is back.
+`verify.sh` places orders, one with a 100 KB attachment, and stops `order-service`. Watch the copy keep answering while `order-service` is down and the attachment return 503 until it is back. It prints `30/30 checks passed`.
 
 Try one change and rerun:
 

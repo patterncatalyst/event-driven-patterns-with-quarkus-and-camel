@@ -42,7 +42,6 @@ public class PickupBatchRoute extends RouteBuilder {
                 // A String: the repository drops header values that are not simple types.
                 .setHeader("carrier", simple("${body.shipment.carrier}", String.class))
                 .setBody(simple("${body.shipment.id}"))
-                .removeHeaders("kafka.*")
                 .aggregate(header("carrier"), PickupBatchRoute::collect)
                     .completionSize(batchSize)
                     .completionTimeout(timeoutMillis)

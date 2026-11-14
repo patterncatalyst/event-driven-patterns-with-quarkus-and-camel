@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
 <defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
 <rect x="20" y="60" width="920" height="170" rx="12" fill="#fff8ef" stroke="#ddd"/>
-<text x="32" y="80" font-size="12" font-weight="700" fill="#888">O-2003: payment 2 minutes after the reservation in event time, 20 seconds later in arrival</text>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">O-2003: 2 minutes apart in event time, more than the 10 second timeout apart in arrival</text>
 <rect x="20" y="260" width="920" height="170" rx="12" fill="#fafafa" stroke="#ddd"/>
 <text x="32" y="280" font-size="12" font-weight="700" fill="#888">O-2004: payment 90 minutes after the reservation in event time, produced back to back</text>
 <rect x="40" y="105" width="200" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
@@ -13,8 +13,9 @@
 <text x="370.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">inside the 30 minute</text>
 <text x="370.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">window: ReadyToShip</text>
 <rect x="500" y="105" width="200" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="600.0" y="143.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrival</text>
-<text x="600.0" y="160.0" font-size="11.5" fill="#555555" text-anchor="middle">20 seconds apart</text>
+<text x="600.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrival</text>
+<text x="600.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">more than the 10 s</text>
+<text x="600.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">timeout apart</text>
 <rect x="730" y="105" width="190" height="80" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
 <text x="825.0" y="135.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Camel aggregator</text>
 <text x="825.0" y="152.5" font-size="11.5" fill="#555555" text-anchor="middle">10 second timeout passed:</text>
