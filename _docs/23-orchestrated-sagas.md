@@ -15,7 +15,7 @@ In the choreographed saga nobody holds the whole sequence. Each service knows it
 
 ### The problem
 
-A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only (chapter 12), and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback (Garcia-Molina and Salem; Richardson). Chapter 22 coordinated that with events and no coordinator.
+A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only (chapter 12), and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback (Richardson). Chapter 22 coordinated that with events and no coordinator.
 
 That works while the flow is short and one team owns it. Three things push toward a central owner. The sequence changes, and every change is a coordinated release. Someone has to answer where order O-2314 is, and the answer is spread over three tables. And a time limit is a property of the whole saga, not of any one service. Hohpe and Woolf call the central unit a Process Manager: it keeps the state of the sequence and chooses the next step from the intermediate results.
 
@@ -25,7 +25,7 @@ The orchestrator has to answer two questions. What does it do when a step fails?
 
 **An orchestrated saga keeps the sequence of local transactions, and the compensation of each, in one orchestrator that sends a command to each participant, waits for its reply, and on a failure or an expired time limit tells the participants that already acted to undo their work.**
 
-Participants only execute commands. Commands go to `edp.inventory.commands` and `edp.payments.commands`, keyed by order id on one partition, so a refund sent after a payment is read after it. Replies go to the catalog topics, `edp.inventory.reserved`, `edp.inventory.insufficient`, `edp.payments.processed` and `edp.payments.failed`, with the outcome in the payload. Every saga gets an explicit time limit: Camel states that a saga has no default one, and a saga without one waits for ever.
+Participants only execute commands. Commands go to `edp.inventory.commands` and `edp.payments.commands`, keyed by order id on one partition, so a refund sent after a payment is read after it. Replies go to the catalog topics, `edp.inventory.reserved`, `edp.inventory.insufficient`, `edp.payments.processed` and `edp.payments.failed`, with the outcome in the payload. Every saga gets an explicit time limit, and the coordinator cancels the saga when it passes.
 
 ### How Quarkus and Camel model it
 
@@ -45,7 +45,7 @@ from("direct:reserve-stock").routeId("reserve-stock")
 
 With a saga header on the command, the participant joins that saga and the coordinator will call `direct:release-compensation` if the saga is cancelled. Without one it runs plain, which is how the workflow uses the same route. Release and refund are idempotent, and a release that arrives before its reserve leaves a mark so the late reserve takes nothing: the two commute.
 
-Replies of both forms share four topics, so each orchestrator skips the other's. The Camel route skips records without the `Long-Running-Action` header. The workflow's consumer skips records without CloudEvent attributes, which needs `failure-strategy=ignore`: by default one such record nacks the channel and the consumer stops.
+Replies of both forms share four topics, so each orchestrator skips the other's. The Camel route skips records without the `Long-Running-Action` header. The workflow's consumer skips records without CloudEvent attributes, which needs `failure-strategy=ignore` so that such a record is skipped and logged.
 
 ## Camel Saga with an LRA coordinator
 
@@ -179,7 +179,7 @@ Try one change and rerun:
 
 A short flow owned by one team does not need a coordinator or a workflow engine. Choreography has fewer moving parts to run.
 
-The coordinator is state you have to keep. In a trial with one saga in flight, restarting the coordinator left it with no sagas, and the order stayed PLACED with its stock reserved past the time limit. A saga with no time limit never ends.
+The coordinator is state you have to keep. In a trial with one saga in flight, restarting the coordinator left it with no sagas, and the order stayed PLACED with its stock reserved past the time limit.
 
 A workflow engine is as durable as its restore. If the flow waits for days, find out what a waiting instance does after a restart before the first one is in production.
 

@@ -78,7 +78,7 @@ The Maven build runs 23 tests with no Ollama (`quarkus.langchain4j.ollama.devser
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `REPLAY_MODE=reanalyse ./verify.sh` (demo code) | The replay reads the notes and calls the model for each | 10 and 11 (15/17) | Both replays called the model: Ollama served 25 chat requests instead of 9, and the 8-note replay took 13.5 s instead of 0.5 s. The decisions equalled the recorded ones (check 9 passed) because the model gives these notes the same reason every time |
+| `REPLAY_MODE=reanalyse ./verify.sh` (demo code) | The replay reads the notes and calls the model for each | 10 and 11 (15/17) | Both replays called the model: Ollama served 25 chat requests instead of 9, and the 8-note replay took 13.1 and 13.5 s (two runs) instead of 0.5 s. The decisions equalled the recorded ones (check 9 passed) because the model gives these notes the same reason every time |
 | `RESHIP_ATTEMPT_LIMIT=1 ./verify.sh` | The service decides with another limit; `verify.sh` still holds the default table | 6 and 11 (15/17) | Check 6 fails because the recorded decisions no longer equal the table with limit 3; check 11 fails because E-2403 is already REFUND, so the replay with limit 2 moves nothing. Check 9 passes: a replay at the service's own limit reproduces its own record |
 | `MODEL=off ./verify.sh` (demo code) | No Ollama; rules, replay and observability run on `fixtures/analyses.jsonl` | none | 9/9, with the eight model checks skipped; 173 s against 350 s with the model |
 | `POST /demo/replay?attemptLimit=2` | A rule change shown on the record | none | Check 11 in every run: E-2403 changes from RESHIP to REFUND and Ollama's request count does not move |

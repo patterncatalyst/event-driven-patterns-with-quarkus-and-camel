@@ -56,8 +56,9 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html" rel="noopener">Content Enricher</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Fetching the missing data from an external source and attaching it to the message</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html" rel="noopener">Aggregator</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A stateful filter that combines related messages into one, and the ways a group is completed</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html" rel="noopener">Process Manager</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A central unit that keeps the state of a sequence and picks the next step from intermediate results</td></tr>
+    <tr><td><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/saga" rel="noopener">Saga design pattern</a>, Azure Architecture Center</td><td>Microsoft</td><td>Compensable, pivot and retryable transactions; the semantic lock and commutative updates as countermeasures</td></tr>
     <tr><td><a href="https://microservices.io/patterns/data/saga.html" rel="noopener">Pattern: Saga</a></td><td>Chris Richardson</td><td>A saga as a sequence of local transactions with compensating transactions, choreography and orchestration, and the lack of isolation</td></tr>
-    <tr><td><a href="https://doi.org/10.1145/38713.38742" rel="noopener">Sagas</a>, Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data, pages 249 to 259</td><td>Hector Garcia-Molina, Kenneth Salem</td><td>The origin of the saga: a long transaction split into sub-transactions, each with a compensating one</td></tr>
+    <tr><td><a href="https://doi.org/10.1145/38713.38742" rel="noopener">Sagas</a>, Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data, pages 249 to 259</td><td>Hector Garcia-Molina, Kenneth Salem</td><td>The origin of the saga</td></tr>
   </tbody>
 </table>
 

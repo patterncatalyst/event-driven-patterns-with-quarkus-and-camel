@@ -25,7 +25,7 @@ There is a second cost. While the saga runs, other readers see its intermediate 
 
 **A saga is a sequence of local transactions, each publishing the event that triggers the next, in which a failure is undone by compensating transactions that are new events, not rollbacks.**
 
-Garcia-Molina and Salem introduced the saga for long database transactions that were split into sub-transactions with a compensation for each. Richardson names the two ways to coordinate one: choreography, where each participant reacts to events, and orchestration, where a central unit tells each participant what to do. Hohpe and Woolf's Process Manager is the orchestrating form, a central unit that keeps the state of the sequence and picks the next step. Here nobody does: the flow exists only as the events the services publish.
+Garcia-Molina and Salem introduced the saga in 1987. Richardson names the two ways to coordinate one: choreography, where each participant reacts to events, and orchestration, where a central unit tells each participant what to do. Hohpe and Woolf's Process Manager is the orchestrating form, a central unit that keeps the state of the sequence and picks the next step. Here nobody does: the flow exists only as the events the services publish.
 
 Steps differ in what can be done about them afterwards:
 
@@ -171,6 +171,7 @@ Choreography stops scaling at the point where nobody can say what the whole flow
 ## References
 
 - Hector Garcia-Molina and Kenneth Salem, [*Sagas*](https://doi.org/10.1145/38713.38742), Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data
+- Microsoft, [Saga design pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga), Azure Architecture Center (compensable, pivot and retryable transactions; semantic lock and commutative updates)
 - Chris Richardson, [Pattern: Saga](https://microservices.io/patterns/data/saga.html), microservices.io, and *Microservices Patterns*, Manning, 2018
 - Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html), Addison-Wesley, 2003: Process Manager
 - Apache Camel, [Saga EIP](https://camel.apache.org/components/4.22.x/eips/saga-eip.html) (compensations that are idempotent and commutative)

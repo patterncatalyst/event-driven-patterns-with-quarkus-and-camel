@@ -63,7 +63,7 @@ from("kafka:" + Topics.SHIPPING_DELIVERY_EXCEPTIONS
     .to("kafka:" + Topics.SHIPPING_EXCEPTION_ANALYSES);
 ```
 
-`DeliveryExceptionAnalysed` carries the reason, the evidence phrase, the model name and digest and the prompt version. `DeliveryExceptionDecided` carries RESHIP or REFUND, the rule name and the rules version. A Camel component for LangChain4j exists, but the AI service gives a typed return value and a place to put the prompt, so the route only calls a bean. The AI service is `@ApplicationScoped`, because the default is the request scope and a Kafka consumer thread has no request.
+`DeliveryExceptionAnalysed` carries the reason, the evidence phrase, the model name and digest and the prompt version. `DeliveryExceptionDecided` carries RESHIP or REFUND, the rule name and the rules version. The AI service gives a typed return value and a place to put the prompt, so the route only calls a bean. The AI service is `@ApplicationScoped`, because the default is the request scope and a Kafka consumer thread has no request.
 
 When the model is unreachable the call fails, is retried, and then `breakOnFirstError` seeks the consumer back to the record. The note waits and the consumer group shows lag. No analysis is made up and nothing is decided without one, the same behaviour as chapter 19's enricher with its owner down, and chapter 13 covers what retrying does and does not rescue.
 
@@ -108,15 +108,15 @@ Six rules cover the table, and they are written to be mutually exclusive, so exa
 
 UNKNOWN refunds. The customer is not left waiting on a parcel nobody understood, the decision set stays RESHIP or REFUND, and the policy is one visible rule that the business can change. The alternative is a third value for a human to review, which is a different domain decision.
 
-The rule unit runs through the engine's `RuleUnitProvider`. Drools' Quarkus extension for rule units did not build against the Quarkus release in use, so the rule unit is created by calling the provider instead of being injected, and the DRL compiles at runtime, which keeps the service on the JVM. The rules themselves are the same either way.
+The rule unit runs through the engine's `RuleUnitProvider`. Drools' Quarkus extension for rule units did not build against the Quarkus release in use, so the rule unit is created by calling the provider instead of being injected, and the DRL compiles at runtime. The rules themselves are the same either way.
 
 ## Replay without the model
 
-Chapter 17 replays events to rebuild a projection. Here the replay rebuilds decisions. `POST /demo/replay` (demo code) reads `exception-analyses` from the first offset with a fresh consumer, runs the same `DecisionService` on each record and returns the decisions. It publishes nothing. The returned decisions equal the recorded ones field for field, and the model-call counter and Ollama's request log do not move. Replay is cheap because only the rules run: eight recorded analyses came back in about half a second, almost all of it the consumer reading Kafka.
+Chapter 17 replays events to rebuild a projection. Here the replay rebuilds decisions. `POST /demo/replay` (demo code) reads `exception-analyses` from the first offset with a fresh consumer, runs the same `DecisionService` on each record and returns the decisions. It publishes nothing. The returned decisions equal the recorded ones field for field, and the model-call counter and Ollama's request log do not move. Replay is cheap because only the rules run: eight recorded analyses came back in about half a second, including the consumer's start.
 
 The same endpoint shows what a rule change does. Replay with `attemptLimit=2` and the absent recipient on attempt 2 turns from RESHIP into REFUND, and still no model call is made. A policy change is previewed against the record before it ships.
 
-With `REPLAY_MODE=reanalyse` (demo code) the replay goes back to the notes and asks the model again. The count of model calls rises by one per note, and eight notes took 13.5 s instead of half a second. A model that answers differently on another day would change the decisions too. That is the cost of letting the model sit on the decision path.
+With `REPLAY_MODE=reanalyse` (demo code) the replay goes back to the notes and asks the model again. The count of model calls rises by one per note, and eight notes took about 13 s instead of half a second. A model that answers differently on another day would change the decisions too. That is the cost of letting the model sit on the decision path.
 
 | | Model decides | Model analyses, rules decide |
 |---|---|---|
