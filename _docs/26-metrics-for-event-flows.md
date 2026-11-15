@@ -7,9 +7,9 @@ description: "Every service reports healthy while orders wait in a paused relay 
 duration: "60 minutes"
 ---
 
-`order-service` accepts an order in a few milliseconds and answers 201. `inventory-service` has no errors and an idle thread pool. Kafka is up and the dead letter topic is empty. Every dashboard built from the services' own counters is green, and twenty orders have been waiting for a minute because the connector that reads the outbox is paused.
+`order-service` accepts an order in a few milliseconds and answers 201. `inventory-service` has nothing to consume. Kafka is up and no record reaches the order topic. Every dashboard built from the services' own counters is green, and twenty orders have been waiting for a minute because the connector that reads the outbox is paused.
 
-Nothing is wrong inside any one service. The work is stuck between them: in a replication slot, on a topic nobody reads, or in a queue of failures. A counter in a service sees the work that reaches it. Work that has not arrived has no service to count it.
+Nothing is wrong inside any one service. The work is stuck between them: in a replication slot, on a topic nobody reads, or in a queue of failures. A counter in a service counts only the work that reaches it.
 
 {% include excalidraw.html file="26-where-each-signal-lives" alt="An order passes from order-service through the replication slot, Connect and the topic edp.orders.placed to inventory-service; the backlog is read at the slot, group lag at the topic and event age at the consumer, while the outbox table, always empty, reads zero in a stall" caption="Figure 26.1: Each signal is read where the work waits, not inside the service that is stuck" %}
 
@@ -54,7 +54,7 @@ public class OutboxBacklog implements MeterBinder {
 
 A `MeterBinder` bean is bound to the registry at startup, and Prometheus holds the gauge as `outbox_backlog_bytes`. The table is the wrong place to look: with `remove-after-insert` it holds zero rows however many orders wait, and `BACKLOG_SOURCE=table` (demo code) swaps the query to count them, to show a gauge that stays flat through a stall.
 
-The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector confirms a position only when it processes a captured change. Inventory updates and checkpoints land after the last order's event, and a plain heartbeat does not confirm them: in the first runs the gauge stayed near 108 KB after the relay resumed and the alert stayed up for minutes. The connector's `heartbeat.action.query` writes one row a second to a table the connector captures, so the confirmed position follows the write position, and a Filter transform drops those records before they reach a topic.
+The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector confirms a position only when it processes a captured change. Inventory updates and checkpoints land after the last order's event, and a plain heartbeat does not confirm them: without it the gauge stays near 108 KB after the relay resumes and the alert is still not Normal 90 seconds later. The connector's `heartbeat.action.query` writes one row a second to a table the connector captures, so the confirmed position follows the write position, and a Filter transform drops those records before they reach a topic.
 
 ```json
 "heartbeat.interval.ms": "1000",
@@ -64,7 +64,7 @@ The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for eve
 "transforms.skipHeartbeat.predicate": "isHeartbeatTable"
 ```
 
-A one second offset flush on the Connect worker keeps the confirmation prompt. At rest the gauge then reads about 630 bytes; twenty orders waiting behind a paused connector read about about 27 KB, and a checkpoint can lift it for a few seconds. The alert threshold sits between them, at 16 KiB, and the rule's 20 second `for` clause rides out the checkpoint. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
+A one second offset flush on the Connect worker keeps the confirmation prompt. At rest the gauge then reads about 630 bytes; twenty orders waiting behind a paused connector read about 27 KB, and a checkpoint can lift it for a few seconds. The alert threshold sits between them, at 16 KiB, and the rule's 20 second `for` clause rides out the checkpoint. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
 
 ## Lag at the broker
 
@@ -93,7 +93,7 @@ With the consumer stopped, the group's lag at the broker equals the orders waiti
 
 ## Event age, not record age
 
-The age of an event is how long it has existed when it arrives. The order service stamps the time of the commit in the outbox row, and the connector's router places that column in a header.
+The age of an event is how long it has existed when it arrives. The order service stamps the time in the outbox row, set in the transaction a few milliseconds before the commit, and the connector's router places that column in a header.
 
 ```json
 "transforms.outbox.table.fields.additional.placement": "type:header:eventType,timestamp:header:occurredAt"
@@ -106,12 +106,13 @@ void record(ConsumerRecord<?, ?> record, Instant now) {
     recordAge.record(nonNegative(Duration.between(Instant.ofEpochMilli(record.timestamp()), now)));
     Header occurredAt = record.headers().lastHeader(OCCURRED_AT);
     if (occurredAt != null) {
-        eventAge.record(nonNegative(Duration.between(Instant.parse(text(occurredAt)), now)));
+        Instant stamped = Instant.parse(new String(occurredAt.value(), StandardCharsets.UTF_8));
+        eventAge.record(nonNegative(Duration.between(stamped, now)));
     }
 }
 ```
 
-Behind a Debezium outbox the two agree. The router stamps the record with the commit time, not the time it read the change: with the connector paused for 35 seconds, the twenty drained records were older than 30 seconds by record age as well as by event age. A stall at the relay therefore shows up in record age, which is what chapter 16's projection lag relies on, and event age adds nothing there.
+Behind a Debezium outbox the two agree. The router stamps the record with the outbox row's time, not the time it read the change: with the connector paused for 35 seconds, the twenty drained records were older than 30 seconds by record age as well as by event age. A stall at the relay therefore shows up in record age, which is what chapter 16's projection lag relies on, and event age adds nothing there.
 
 They part when a record is written again. A dead letter keeps the original headers, so `occurredAt` travels with it, but a redrive publishes a new record and the broker stamps a new timestamp. The redriven record reads young by record age and old by event age.
 
@@ -146,7 +147,7 @@ Grafana loads provisioning files at startup. The dashboard is a JSON file with s
       model: { type: threshold, expression: B, conditions: [{ evaluator: { type: gt, params: [16384] } }] }
 ```
 
-The rule has the shape Grafana's file provisioning documents: a query, a reduction and a threshold, evaluated every 10 seconds. With the connector paused the state went Normal, Pending, Alerting, and Grafana's word for a firing alert is Alerting. It reached Alerting a median of 29 seconds after the orders were placed, and Normal again a median of 8 seconds after the resume.
+The rule is a query, a reduction and a threshold, evaluated every 10 seconds. With the connector paused the state went Normal, Pending, Alerting, and Grafana's word for a firing alert is Alerting. It reached Alerting a median of 29 seconds after the orders were placed, and Normal again a median of 8 seconds after the resume.
 
 The rule watches backlog because backlog is the signal that grows while the flow is stuck. Lag grows too, but only after records reach the topic, and a stalled relay never lets them. Age cannot be the alert: it is recorded when an event arrives, so a rule on it fires after the resume, when the stall is over. `ALERT_ON=age` (demo code) mounts that rule instead, to show it.
 
@@ -173,7 +174,7 @@ Try one change and rerun:
 
 - `BACKLOG_SOURCE=table ./verify.sh` (demo code): the gauge counts table rows, stays at zero through the pause and the alert never fires.
 - `ALERT_ON=age ./verify.sh` (demo code): the rule watches event age and does not fire during the pause.
-- `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`.
+- `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`: after about twenty orders the Outbox backlog panel climbs past 16384 bytes and `order flow stalled` reaches Alerting about 30 seconds later.
 
 ## When not to use it
 
@@ -183,7 +184,7 @@ The backlog is a property of the slot, so it reads every change in the database,
 
 Group lag measures records, not time. A hundred records of lag is nothing for a consumer that drains thousands a second and a long wait for one that handles a few a minute. Where lateness is the contract, alert on age after arrival or on lag divided by the consumption rate.
 
-Alerts on all five signals teach people to ignore alerts. One that fires while the flow is stuck, and graphs for the rest, is enough.
+Alert on the backlog, the one signal that fires while the flow is stuck, and keep the other four as graphs.
 
 > **🤖 Explore with your agent**
 > "In examples/26-metrics-for-event-flows, pause the Debezium connector order-flow-outbox, place twenty orders through order-service, and watch outbox.backlog, the provisioned alert order flow stalled and the group lag of inventory-placed in Prometheus and Grafana. Resume, then add stock for SKU-26-LATE, redrive edp.orders.placed-dlq and compare order.flow.event.age with order.flow.record.age. Say which signal moved first and which one an alert should watch."
@@ -191,7 +192,7 @@ Alerts on all five signals teach people to ignore alerts. One that fires while t
 
 ## References
 
-- Debezium, [Outbox event router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) (additional field placement, event timestamp) and [connector for PostgreSQL](https://debezium.io/documentation/reference/stable/connectors/postgresql.html) (heartbeats, the replication slot and WAL)
+- Debezium, [Outbox event router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) (additional field placement) and [connector for PostgreSQL](https://debezium.io/documentation/reference/stable/connectors/postgresql.html) (heartbeats, the replication slot and WAL)
 - PostgreSQL, [`pg_replication_slots`](https://www.postgresql.org/docs/18/view-pg-replication-slots.html) and the [administration functions](https://www.postgresql.org/docs/current/functions-admin.html) (`pg_wal_lsn_diff`, `pg_current_wal_lsn`)
 - OpenTelemetry Collector contrib, [Kafka metrics receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.165.0/receiver/kafkametricsreceiver)
 - Quarkus, [Micrometer](https://quarkus.io/guides/telemetry-micrometer) and [Micrometer to OpenTelemetry bridge](https://quarkus.io/guides/telemetry-micrometer-to-opentelemetry)

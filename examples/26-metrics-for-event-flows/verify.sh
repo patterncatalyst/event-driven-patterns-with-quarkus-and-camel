@@ -189,6 +189,7 @@ metrics_present() {
 }
 restarted_and_caught_up() { lag_is 0 && stock_is SKU-26 939; }
 counted_is() { [[ "$(age_count event_age)" == "$1" && "$(age_count record_age)" == "$1" ]]; } # counted_is <n>: n arrivals counted since the last restart
+counted_and_normal() { counted_is "$1" && alert_is Normal; } # counted_and_normal <n>: the timers hold n arrivals and no earlier stall leaves the rule Pending
 age_counted_since_baseline() { (( $(age_count event_age) - BURST_BASE >= $1 )); } # age_counted_since_baseline <n>
 waited_ms() { (( $(now_ms) - $1 >= $2 )); } # waited_ms <since ms> <at least ms>
 
@@ -265,7 +266,7 @@ check "the 3 redriven orders are reserved: stock of SKU-26-LATE is 97" poll 60 s
 check "the 3 redriven records are young by record age and old by event age" poll 60 redriven_ages 3
 
 echo "A relay that stops (O-2671 to O-2690)"
-precondition "the 26 arrivals since the restart, redriven ones included, are counted by both age timers" poll 60 counted_is 26
+precondition "the 26 arrivals since the restart, redriven ones included, are counted by both age timers and the alert is Normal before the pause" poll 60 counted_and_normal 26
 snapshot_ages
 OFFSET_BEFORE_PAUSE="$(end_offset edp.orders.placed)"
 curl -sf -X PUT "$CONNECT/connectors/$CONNECTOR/pause" >/dev/null || fail_loudly "the connector was not paused"
