@@ -205,6 +205,16 @@ PRD §14, decided:
 - Chapter 27 is a trimmed standalone copy of 22 (decision 9). The sweeper starts its own root span with a link to the stored `traceparent` only when it cancels; Quarkus scheduler tracing stays off.
 - 15-run timing witnesses may run a copy of verify.sh truncated after the witnessed check, after the first full runs (orchestrator, to save time).
 
+2026-11-15 (r11 plan approval, G0):
+
+- Part 6 runs on one minikube profile `edp` (docker driver, containerd, Kubernetes v1.37.2, 6 CPU, 10g). Tools come from PATH (minikube v1.39.0, kubectl v1.37.2); `examples/_k8s/tools.sh` checks their versions and downloads nothing. CloudNativePG 1.30 lists Kubernetes 1.37 as tested but not supported; the pin stays because nothing fails, and chapter 28 says so.
+- Part 6 examples are manifest overlays over `examples/_k8s` and have no pom. They deploy earlier chapters' Quarkus projects unchanged (no Java, pom or properties diff) as `localhost/edp/<NN>-<service>:local` images, loaded with `minikube image load` and `imagePullPolicy: Never`. No Helm and no Quarkus Kubernetes extension; every apply is `kubectl apply --server-side`.
+- Fresh state on Part 6 = delete and recreate the namespaces `edp`, `edp-kafka` and `edp-lgtm` per `verify.sh` run (KafkaTopics first, finalizers never stripped). The profile is recreated per live session and for the final run, and deleted when idle.
+- Services are reached only through NodePorts published on 127.0.0.1 with `minikube start --ports`, or `kubectl exec`. `scripts/stack-guard.sh --minikube edp` refuses while a compose stack, another profile or CRC is running.
+- LGTM on minikube is the same `grafana/otel-lgtm` image as one Deployment, not the Helm LGTM charts. `edp-lgtm` stays outside Pod Security `restricted`.
+- Strimzi runs with `STRIMZI_POD_SECURITY_PROVIDER_CLASS=restricted` where namespaces enforce `restricted`; the default provider's Kafka pods are refused there.
+- Versions may appear in chapter 28's `## Setting up the cluster` section (validate.py allows it), besides chapter 00 and the appendices.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.
