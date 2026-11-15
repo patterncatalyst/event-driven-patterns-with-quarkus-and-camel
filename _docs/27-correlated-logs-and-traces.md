@@ -30,7 +30,7 @@ This is Hohpe and Woolf's Correlation Identifier used for something other than a
 | Key | Set by | Finds | Where it is stored |
 |---|---|---|---|
 | Trace id | The tracing library | The spans of one request tree, and the log lines written inside it | Span, and a structured field on every log record |
-| Order id | The handler | Every trace and every log line about one order, however many trees it crossed | Span attribute `order.id`, log attribute `orderId` |
+| Order id | The handler | Every trace and every handler's log line about one order, however many trees it crossed | Span attribute `order.id`, log attribute `orderId` |
 | Link | The code that starts a trace later | The trace that started the work | Link on the root span |
 
 ### How Quarkus and Camel model it
@@ -146,7 +146,7 @@ When there is one service and one request per trace, the trace id is enough. A b
 
 When the business id is not unique, it finds the wrong things. An order id that is reused, or an id that is shared by many customers, returns traces and lines that have nothing to do with each other. Use the id that names one unit of work.
 
-When the id is personal data, putting it on every span and every line spreads it across Tempo and Loki and every retention rule that applies to them. An opaque order number is fine. An email address is not.
+When the id is personal data, putting it on every span and in every handler's log line spreads it across Tempo and Loki and every retention rule that applies to them. An opaque order number is fine. An email address is not.
 
 Labels and metric dimensions are different from attributes. The order id as a Loki label or a metric label creates a series per order, which is the failure that structured metadata and span attributes avoid. Keep it out of both.
 

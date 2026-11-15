@@ -669,3 +669,17 @@ To save time the loop runs after the first full runs of each chapter used trunca
 ### r10 claims and sources (2026-11-14)
 
 Claims rows added: 101 for chapter 25, 106 for chapter 26 and 86 for chapter 27 (293 in all), covering every factual sentence of the three chapters and READMEs. Seven rows are `unverified` and are listed in the hand-off. `mvn -B verify` for chapters 25 and 27 has no log in the scratchpad (chapter 26 has `w26-mvn2.raw`), so their test rows cite test classes counted from source.
+
+### r10 repair round 2 (2026-11-15)
+
+Tempo's search API drops leading zeros from trace ids; `tools/tempo.py` (25) and `tools/observe.py` (27) now pad to 32 hex digits. The one-in-sixteen failures of ch25 checks 12, 20 and 21 and the one-off ch27 check 24 failure are attributed to it (not reproduced: no later run hit a leading-zero id). ch25 `one_trace` now requires both per-span searches to return the same single trace id. ch27 `verify.sh` prints orders, sagas, container states and service logs when a precondition stops the run.
+
+| Run | Log | Result |
+|---|---|---|
+| ch27 `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS=` twice | `rp2-27-off1.log`, `rp2-27-off2.log` | 20/31 both; fails 8, 9, 10, 13, 14, 15, 17, 18, 23, 25, 31; check 6 passed and no precondition stopped either run; the validator's earlier check 6 failure was not reproduced |
+| ch25 clean run | `rp2-25-run.log` | 22/22 |
+| ch26 clean run | `rp2-26-run.log` | 37/37 |
+| ch27 clean run | `rp2-27-run.log` | 31/31 |
+| ch25 `CONNECT_TRACING=off` | `rp2-25-off.log` | 11/22; fails 6 to 13, 16, 20, 21 (the README set) |
+
+`mvn -B verify` was not re-run: no Java changed. Claims rows changed: 25-cj, 25-as, 25-ct, 26-al, 26-bo, and the line references of 25-m, 25-n, 25-u and 25-ac to 25-bu (shifted by 2). README 25 now says 15 logged bursts (15 distinct burst NOTE values in 16 logs).

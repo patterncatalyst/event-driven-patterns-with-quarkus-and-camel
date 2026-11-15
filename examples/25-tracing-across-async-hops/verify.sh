@@ -141,9 +141,9 @@ one_trace() { # one_trace <order id>: sets TRACE when exactly one trace carries 
     # shellcheck disable=SC2086
     set -- $ids
     (( $# == 1 )) || return 1
-    # The request span and the consumer's span must both be searchable: while only one of them is, the one trace found
-    # would pass as the only trace (without Connect tracing the two are different traces).
-    [[ -n "$(order_trace_of "$order")" && -n "$(consumer_trace_of "$order")" ]] || return 1
+    # The request span and the consumer's span must both be searchable, and each search must return that one trace: while only
+    # one of them is, the one trace found would pass as the only trace (without Connect tracing the two are different traces).
+    [[ "$(order_trace_of "$order")" == "$1" && "$(consumer_trace_of "$order")" == "$1" ]] || return 1
     TRACE="$1"
 }
 trace_count_is() { # trace_count_is <order id> <n>

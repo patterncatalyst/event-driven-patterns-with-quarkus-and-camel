@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts the stack, registers the one outbox connector and follows orders through Tempo and Loki: one order is one trace
-# across three services and the Connect relay, every log line of it carries that trace id and the order id, a log line
+# across three services and the Connect relay, every handler's log line of it carries that trace id and the order id, a log line
 # leads to its trace and the trace to its log lines, and an order that the sweeper cancels is two traces, the second
 # linked to the first. SWEEPER_LINK=off, ORDER_ID_IN_LOGS=off and CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= (Connect
 # without the agent) are the negative witnesses (see the README).
@@ -43,13 +43,24 @@ check() { # check "<description>" <command...>
     fi
 }
 
+diagnostics() { # state and the service logs, printed when a precondition stops the run
+    echo "--- diagnostics ---" >&2
+    sql "SELECT id, status FROM orders.orders ORDER BY id" >&2 || true
+    sql "SELECT order_id, state FROM orders.order_saga ORDER BY order_id" >&2 || true
+    docker ps -a --filter name=edp- --format '{{.Names}} {{.Status}}' >&2 || true
+    for s in order-service inventory-service payment-service connect; do
+        echo "$s log, last lines:" >&2
+        docker logs "edp-$s" 2>&1 | tail -25 | cut -c1-260 >&2 || true
+    done
+}
+
 precondition() { # precondition "<description>" <command...>: counted as a check; failing it stops the run
     local desc="$1"; shift
     TOTAL=$((TOTAL + 1))
     if "$@" >/dev/null 2>&1; then
         PASSED=$((PASSED + 1)); printf 'PASS %d: %s\n' "$TOTAL" "$desc"
     else
-        printf 'PRECONDITION FAILED %d: %s\n' "$TOTAL" "$desc" >&2; exit 1
+        printf 'PRECONDITION FAILED %d: %s\n' "$TOTAL" "$desc" >&2; diagnostics; exit 1
     fi
 }
 
@@ -62,7 +73,7 @@ poll() { # poll <seconds> <command...>: retry every second until the command suc
 }
 
 expect() { [[ "$1" == "$2" ]]; } # expect <actual> <expected>
-fail_loudly() { printf 'PRECONDITION FAILED: %s\n' "$1" >&2; exit 1; }
+fail_loudly() { printf 'PRECONDITION FAILED: %s\n' "$1" >&2; diagnostics; exit 1; }
 
 kafka() { docker exec edp-kafka "/opt/kafka/bin/$1" --bootstrap-server localhost:9092 "${@:2}"; }
 sql() { "${PSQL[@]}" -c "$1"; }

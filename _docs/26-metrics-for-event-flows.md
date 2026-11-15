@@ -174,7 +174,7 @@ Try one change and rerun:
 
 - `BACKLOG_SOURCE=table ./verify.sh` (demo code): the gauge counts table rows, stays at zero through the pause and the alert never fires.
 - `ALERT_ON=age ./verify.sh` (demo code): the rule watches event age and does not fire during the pause.
-- `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`: after about twenty orders the Outbox backlog panel climbs past 16384 bytes and `order flow stalled` reaches Alerting about 30 seconds later.
+- `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`. Then place twenty orders, for example with `for i in $(seq 1 20); do curl -s -X POST localhost:8080/orders -H 'Content-Type: application/json' -d "{\"id\":\"O-26$i\",\"customerId\":\"CU-26\",\"itemSku\":\"SKU-26\",\"quantity\":1,\"amount\":10.00}"; done`. The Outbox backlog panel climbs past 16384 bytes and `order flow stalled` reaches Alerting about 30 seconds later.
 
 ## When not to use it
 
