@@ -1,0 +1,19 @@
+# Demo code (KAFKA_BROKERS=compose): notification-service keeps the address the compose stack used.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/apps/02
+patches:
+  - target: {kind: Deployment, name: notification-service}
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: notification-service
+      spec:
+        template:
+          spec:
+            containers:
+              - name: app
+                env:
+                  - {name: CAMEL_COMPONENT_KAFKA_BROKERS, value: "kafka:9094"}

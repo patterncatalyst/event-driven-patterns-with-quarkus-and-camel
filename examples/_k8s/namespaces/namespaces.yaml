@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: edp
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: edp-kafka
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: edp-lgtm

@@ -318,6 +318,14 @@ def check_callout_shape(rep: Report, p: Path, lines: list[str], at: int, off: in
         rep.err(p, ln, "callout must not contain a nested quote")
 
 
+VENDOR_RE = re.compile(r"/vendor/|/platform/cnpg/cnpg-[^/]*\.yaml$|/strimzi/strimzi-cluster-operator-[^/]*\.yaml$")
+
+
+def is_vendor(p: Path) -> bool:
+    """Upstream release manifests downloaded by examples/_k8s/cluster.sh (gitignored, sha256-checked)."""
+    return bool(VENDOR_RE.search(p.as_posix()))
+
+
 def check_examples(rep: Report):
     ex = rep.root / "examples"
     if not ex.is_dir():
@@ -350,7 +358,7 @@ def check_examples(rep: Report):
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
     for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
-        if "compose" in m_.name or "/vendor/" in m_.as_posix():
+        if "compose" in m_.name or is_vendor(m_):
             continue
         lines = m_.read_text(encoding="utf-8").split("\n")
         for n, ln_ in enumerate(lines):
@@ -360,7 +368,7 @@ def check_examples(rep: Report):
                     rep.err(m_, n + 1, "imagePullPolicy: Never only for localhost/edp/ images")
     for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml",
                    "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
-        if "/vendor/" in c.as_posix() or "/target/" in c.as_posix():
+        if is_vendor(c) or "/target/" in c.as_posix():
             continue
         text = c.read_text(encoding="utf-8")
         for m in IMG_RE.finditer(text):

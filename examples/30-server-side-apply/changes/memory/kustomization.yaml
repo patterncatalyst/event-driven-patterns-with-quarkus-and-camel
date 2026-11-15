@@ -1,0 +1,11 @@
+# A changed manifest for kubectl diff: order-service asks for 400Mi instead of 384Mi. It is never applied.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../apps
+patches:
+  - target: {kind: Deployment, name: order-service}
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 400Mi

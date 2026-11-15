@@ -1,0 +1,11 @@
+# Applied by edp-apps to add one label to order-service; applying apps/ again drops it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../apps
+patches:
+  - target: {kind: Deployment, name: order-service}
+    patch: |-
+      - op: add
+        path: /metadata/labels/witness
+        value: "on"

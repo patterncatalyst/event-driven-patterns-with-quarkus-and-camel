@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp-kafka
+resources:
+  - strimzi-cluster-operator-1.3.1.yaml
+# The release YAML binds ServiceAccount strimzi-cluster-operator in namespace myproject;
+# the namespace transformer leaves those subjects alone, so patch them.
+patches:
+  - target: {kind: RoleBinding}
+    patch: |-
+      - {op: replace, path: /subjects/0/namespace, value: edp-kafka}
+  - target: {kind: ClusterRoleBinding}
+    patch: |-
+      - {op: replace, path: /subjects/0/namespace, value: edp-kafka}

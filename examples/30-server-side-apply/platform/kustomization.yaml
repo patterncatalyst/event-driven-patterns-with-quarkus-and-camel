@@ -1,0 +1,5 @@
+# The writer edp-platform: a partial Deployment that sets one field edp-apps also sets.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - order-service-memory.yaml

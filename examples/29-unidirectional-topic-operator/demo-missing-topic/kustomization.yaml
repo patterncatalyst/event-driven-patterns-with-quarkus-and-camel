@@ -1,0 +1,13 @@
+# Demo code (TOPIC_SET=missing): an altered copy of the set, one KafkaTopic short.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: kafka.strimzi.io/v1
+      kind: KafkaTopic
+      metadata:
+        name: edp.orders.placed
+        namespace: edp-kafka

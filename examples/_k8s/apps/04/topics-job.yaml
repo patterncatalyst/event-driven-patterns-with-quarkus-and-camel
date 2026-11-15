@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: topics-init
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: topics
+          image: quay.io/strimzi/kafka:1.3.1-kafka-4.3.2
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              kt=/opt/kafka/bin/kafka-topics.sh
+              $kt --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 --create --if-not-exists --topic edp.shipping.shipments --partitions 3 --replication-factor 1
+              $kt --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 --create --if-not-exists --topic edp.shipping.probe --partitions 3 --replication-factor 1
+          resources:
+            limits: {memory: 512Mi}

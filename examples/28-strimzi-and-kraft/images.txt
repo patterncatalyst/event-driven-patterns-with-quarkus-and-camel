@@ -1,0 +1,6 @@
+02-event-notification order-service
+02-event-notification notification-service
+03-event-carried-state-transfer order-service
+03-event-carried-state-transfer notification-service
+04-ordering-and-partitioning order-service
+04-ordering-and-partitioning shipping-service

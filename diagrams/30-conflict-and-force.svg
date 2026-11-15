@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="30" y="80" width="200" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="130.0" y="115.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp-apps applies</text>
+<text x="130.0" y="132.5" font-size="11.5" fill="#555555" text-anchor="middle">limits.memory 384Mi</text>
+<text x="130.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">owner: edp-apps</text>
+<rect x="280" y="80" width="200" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="380.0" y="115.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp-platform applies</text>
+<text x="380.0" y="132.5" font-size="11.5" fill="#555555" text-anchor="middle">limits.memory 512Mi</text>
+<text x="380.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">conflict with edp-apps</text>
+<rect x="530" y="80" width="200" height="90" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="630.0" y="115.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Nothing changes</text>
+<text x="630.0" y="132.5" font-size="11.5" fill="#555555" text-anchor="middle">value stays 384Mi</text>
+<text x="630.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">owner: edp-apps</text>
+<rect x="280" y="240" width="200" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="380.0" y="275.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">--force-conflicts</text>
+<text x="380.0" y="292.5" font-size="11.5" fill="#555555" text-anchor="middle">value 512Mi</text>
+<text x="380.0" y="307.5" font-size="11.5" fill="#555555" text-anchor="middle">owner: edp-platform</text>
+<rect x="530" y="240" width="200" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="630.0" y="275.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp-apps applies again</text>
+<text x="630.0" y="292.5" font-size="11.5" fill="#555555" text-anchor="middle">conflict with edp-platform</text>
+<text x="630.0" y="307.5" font-size="11.5" fill="#555555" text-anchor="middle">until it forces</text>
+<rect x="780" y="240" width="190" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="875.0" y="275.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">--force-conflicts</text>
+<text x="875.0" y="292.5" font-size="11.5" fill="#555555" text-anchor="middle">value 384Mi</text>
+<text x="875.0" y="307.5" font-size="11.5" fill="#555555" text-anchor="middle">owner: edp-apps</text>
+<path d="M230,125 L280,125" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M480,125 L530,125" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M380,170 L380,240" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M480,285 L530,285" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M730,285 L780,285" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">A conflict refuses the write; forcing it takes the field from the other manager</text>
+<text x="500" y="360" font-size="13" fill="#555555" text-anchor="middle">A client-side apply skips the conflict and overwrites</text>
+</svg>
