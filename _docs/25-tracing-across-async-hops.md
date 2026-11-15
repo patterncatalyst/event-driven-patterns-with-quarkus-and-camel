@@ -9,7 +9,7 @@ duration: "55 minutes"
 
 A customer's order is placed through `POST /orders`, and an operator wants to see where it went. The request is a span with a trace id. The order then goes through a commit, the database log, Kafka Connect and a topic, and ends in `inventory-service` seconds later, in a different process, with no HTTP call between the two. Unless something carries the trace id along, the consumer starts a trace of its own and the picture ends at the commit.
 
-One trace follows an order from the request to the stock reservation, through the outbox of chapter 8 and the Debezium connector of chapter 9, in Tempo. Where the trace ends depends on one choice at the consumer, covered below.
+One trace follows an order from the request to the stock reservation, through the outbox of chapter 8 and the Debezium connector of chapter 9, in Tempo. Where the trace ends depends on one choice at the consumer.
 
 {% include excalidraw.html file="25-context-carriers" alt="Five boxes in a row: the POST /orders server span, the outbox row with its outbox-write span, the log and Connect with db-log-write and debezium-read, the Kafka record on edp.orders.placed, and the consumer span in inventory-service; under each the place the trace context is written: the traceparent HTTP header, the tracingspancontext column, a span started from the log entry, the traceparent record header, and a child of the span in the header" caption="Figure 25.1: The context rides in a different place at every hop, and each relay has to copy it" %}
 
@@ -59,7 +59,7 @@ The column holds the context as text, not as a bare `traceparent`, and the conne
 
 ## Through the outbox and Debezium
 
-Connect reads the row from the database log. The Outbox Event Router, given an OpenTelemetry SDK, starts two spans of its own: `db-log-write`, which starts at the time the change was written to the log, and `debezium-read`, which is the processing of the entry. It then writes the context of `db-log-write` into a `traceparent` header on the Kafka record.
+Connect reads the row from the database log. The Outbox Event Router, given an OpenTelemetry SDK, starts two spans of its own: `db-log-write`, which starts at the time the change was written to the log, and `debezium-read`, which is the processing of the entry. It then puts a `traceparent` header on the Kafka record. Debezium's page calls it the context of the processing span; in the runs measured, its span id is that of `db-log-write`.
 
 The published Debezium image carries the OpenTelemetry API and no SDK. Debezium's documentation says to add the OpenTelemetry Java agent to a Docker deployment, and to set `ENABLE_OTEL` so the tracing classes are put on the class path. A small init service copies the agent from Maven Central into a volume that exists for one run, and Connect loads it with `-javaagent`:
 
@@ -75,7 +75,7 @@ connect:
     - OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED=true
 ```
 
-The last two lines matter more than they look. The agent instruments Kafka producers, JDBC and the HTTP server by default. In Connect that replaced the router's `traceparent` with the context of a new trace named after the topic, so the consumer joined a trace that did not contain the order, and it flooded Tempo with Connect's own database and internal-topic traffic. With every instrumentation off and only the bridge to the OpenTelemetry API on, Connect sends the router's spans and nothing else. The connector configuration needs no tracing keys.
+The last two lines turn off the agent's default instrumentation, as Debezium's tracing page does for its own setup. The agent instruments Kafka producers, JDBC and the HTTP server by default. In Connect that replaced the router's `traceparent` with the context of a new trace named after the topic, so the consumer joined a trace that did not contain the order, and it flooded Tempo with Connect's own database and internal-topic traffic. With every instrumentation off and only the bridge to the OpenTelemetry API on, Connect sends the router's spans and nothing else. The connector configuration needs no tracing keys.
 
 The context on the record is the one the router wrote:
 
@@ -84,8 +84,6 @@ traceparent: 00-<trace id>-<span id of db-log-write>-<flags>
 ```
 
 Without the agent, Connect still publishes the event. The record has no `traceparent`, no Debezium span exists, and the consumer starts a new trace that nothing connects to the order.
-
-The consumer is next, and the consumer decides what the header means.
 
 ## Parent or link
 
@@ -135,9 +133,9 @@ A record with no `traceparent` gives a root span in both forms. The link has not
 
 {% include excalidraw.html file="25-trace-waterfall" alt="A waterfall of six spans: POST /orders and outbox-write in order-service, db-log-write and debezium-read in connect, and edp.orders.placed receive and reserve stock in inventory-service, with a dashed bar below marking the hop through the log and the relay" caption="Figure 25.3: One order as one trace; the gap before the consumer span is the time outside the services" %}
 
-The consumer span is a child of `db-log-write`, and `debezium-read` is a leaf beside it. `db-log-write` starts when the outbox insert reaches the log, and lasts until Connect has read it. From the end of `outbox-write` to the start of the consumer span, 100 orders took a median of 656 to 766 ms in each of six runs, with single orders between 579 and 829 ms. Everything before the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. A trace of only the two services would show a quiet gap there, and a trace through Connect shows how much of it is Debezium.
+The consumer span is a child of `db-log-write`, and `debezium-read` is a leaf beside it. `db-log-write` starts when the outbox insert reaches the log, and lasts until Connect has read it. From the end of `outbox-write` to the start of the consumer span, the median over 100 orders was between about 250 and 770 ms across the logged bursts, with single orders from 176 to 829 ms, always under a second. Everything before the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. A trace of only the two services would show a quiet gap there, and a trace through Connect shows how much of it is Debezium.
 
-The trace does not show why a gap is long. A stopped connector, a slow broker and a lagging consumer all appear as a longer distance between the same two spans. The trace says that the time passed and the metrics in chapter 26 say where.
+The trace does not show why a gap is long. A stopped connector, a slow broker and a lagging consumer all appear as a longer distance between the same two spans. The trace says that the time passed and metrics at the relay and the broker say where.
 
 It also shows only what carries the context. A trace is searchable by order id because both services set `order.id` on a span, and a record that bypasses the outbox, such as one produced by hand, arrives with no header and starts a new trace. Tempo itself takes some seconds to make a trace searchable after the request: about 30 s in every run measured. Searching right after the request returns nothing, and a script that queries Tempo has to poll.
 
@@ -166,7 +164,7 @@ The context in a message is a coupling. A producer that sets the header and a co
 
 A parent that spans a long delay misleads. A consumer that reads the record an hour later shows an hour-long trace whose middle is a queue, and a trace viewer will draw it as work. Link anything that is not a prompt continuation.
 
-Running a Java agent in Connect adds a dependency to the relay, a download at start, and memory: Connect used about 750 MiB after a burst of 100 orders. When the relay's own time is of no interest, a producer that copies the `traceparent` into a header itself reaches the same consumer with no change to Connect, and the trace is a single hop with a gap where Connect was.
+Running a Java agent in Connect adds a dependency to the relay, a download at start, and memory: Connect used 752 MiB after one burst of 100 orders, a single sample with no measurement of Connect without the agent. When the relay's own time is of no interest, a producer that copies the `traceparent` into a header itself reaches the same consumer with no change to Connect, and the trace is a single hop with a gap where Connect was.
 
 > **🤖 Explore with your agent**
 > "In examples/25-tracing-across-async-hops, place O-2501 through OrderResource, read the tracingspancontext column and the traceparent header on edp.orders.placed, then query Tempo for span.order.id = O-2501 and print the span ancestry down to reserve stock. Run it again with CONSUMER_TRACE=link and say which spans moved to a second trace."

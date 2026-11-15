@@ -141,8 +141,9 @@ one_trace() { # one_trace <order id>: sets TRACE when exactly one trace carries 
     # shellcheck disable=SC2086
     set -- $ids
     (( $# == 1 )) || return 1
-    # The consumer's span must be searchable too: before it is, the order's trace alone would pass as the only trace.
-    [[ -n "$(consumer_trace_of "$order")" ]] || return 1
+    # The request span and the consumer's span must both be searchable: while only one of them is, the one trace found
+    # would pass as the only trace (without Connect tracing the two are different traces).
+    [[ -n "$(order_trace_of "$order")" && -n "$(consumer_trace_of "$order")" ]] || return 1
     TRACE="$1"
 }
 trace_count_is() { # trace_count_is <order id> <n>
@@ -161,12 +162,19 @@ BURST_NOTE="$(mktemp)"
 burst_complete() { tempo complete '{ span.order.id =~ "O-251[0-9][0-9]" }' 100 2>"$BURST_NOTE" >/dev/null; }
 order_trace_of() { tempo search "{ resource.service.name = \"order-service\" && name = \"POST /orders\" && span.order.id = \"$1\" }"; }
 consumer_trace_of() { tempo search "{ resource.service.name = \"inventory-service\" && name = \"reserve stock\" && span.order.id = \"$1\" }"; }
+DIAG="$(mktemp)"
+# Every attempt overwrites DIAG with what it saw; a failed run prints the last attempt (see the end of the script).
 linked_not_parented() { # linked_not_parented <order id>: separate traces, and the consumer's root links to the db-log-write span
-    local order consumer
+    local order consumer services links span
     order="$(order_trace_of "$1")"; consumer="$(consumer_trace_of "$1")"
+    services=""; links=""; span=""
+    if [[ -n "$order" ]]; then services="$(tempo services "$order")"; span="$(tempo span-id "$order" db-log-write)"; fi
+    if [[ -n "$consumer" ]]; then links="$(tempo links "$consumer")"; fi
+    printf 'order trace: %s\nconsumer trace: %s\nservices of the order trace: %s\nlinks of the consumer trace: %s\ndb-log-write span id: %s\n' \
+        "${order//$'\n'/ }" "${consumer//$'\n'/ }" "$services" "${links//$'\n'/ | }" "$span" >"$DIAG"
     [[ -n "$order" && -n "$consumer" && "$order" != "$consumer" ]] || return 1
-    [[ "$(tempo services "$order")" == "connect order-service" ]] || return 1
-    [[ "$(tempo links "$consumer")" == "process edp.orders.placed"$'\t'"$order"$'\t'"$(tempo span-id "$order" db-log-write)" ]]
+    [[ "$services" == "connect order-service" ]] || return 1
+    [[ "$links" == "process edp.orders.placed"$'\t'"$order"$'\t'"$span" ]]
 }
 prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep '"value"' >/dev/null; }
 loki_has_line() { # loki_has_line <service> <text> <trace id>
@@ -205,8 +213,8 @@ check "a structural query finds the inventory-service span below the POST /order
 check "the reservation descends from the request: $CHAIN" poll 60 ancestry_is
 check "debezium-read is a child of db-log-write, beside the consumer span" poll 60 debezium_read_beside_consumer
 check "the record's traceparent holds the trace id of that trace and the span id of db-log-write" header_matches_trace O-2501
-check "Prometheus holds the Tempo service-graph series of the requests to order-service" \
-    poll 120 prom_holds 'traces_service_graph_request_total{server="order-service"} > 0'
+check "Prometheus holds the span-metrics series of Connect's db-log-write span" \
+    poll 120 prom_holds 'traces_spanmetrics_calls_total{service="connect",span_name="db-log-write"} > 0'
 
 echo "A burst of 100 orders"
 precondition "all 100 orders of the burst are accepted" expect "$(burst)" 100
@@ -236,7 +244,9 @@ if [[ "$PASSED" != "$TOTAL" ]]; then
         echo "$s log, last lines:" >&2
         docker logs "edp-$s" 2>&1 | tail -25 | cut -c1-260 >&2 || true
     done
+    echo "last attempt of the link check (check 20):" >&2
+    cat "$DIAG" >&2 || true
 fi
-rm -f "$BURST_NOTE"
+rm -f "$BURST_NOTE" "$DIAG"
 echo "$PASSED/$TOTAL checks passed"
 [[ "$PASSED" == "$TOTAL" ]]
