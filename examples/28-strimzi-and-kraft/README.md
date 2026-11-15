@@ -29,7 +29,7 @@ kubectl --context edp delete ns edp edp-kafka edp-lgtm
 examples/_k8s/cluster.sh down    # delete the profile
 ```
 
-`verify.sh` deletes and recreates the three namespaces first, so a run never reuses an earlier cluster. It ends with `TBD checks passed`. The first run builds six images, which takes a few minutes.
+`verify.sh` deletes and recreates the three namespaces first, so a run never reuses an earlier cluster. It ends with `39/39 checks passed`. The first run builds six images, which takes a few minutes.
 
 ## What verify.sh checks
 
@@ -55,11 +55,11 @@ Each run starts from fresh namespaces. Both switches are demo code; the failing 
 
 | Switch | Effect | Failing checks (predicted) | Measured result |
 |---|---|---|---|
-| `KAFKA_BROKERS=compose ./verify.sh` | notification-service of the chapter 02 set keeps `kafka:9094`: it cannot resolve the name, Camel fails to start, the pod never becomes ready | the set does not roll out, the address check, the notification appears, the notification content, the trace | TBD |
-| `NODE_POOLS=dual ./verify.sh` | One node holds both roles | the role check, one id each, the pod owners, the quorum and the replication view | TBD |
+| `KAFKA_BROKERS=compose ./verify.sh` | notification-service of the chapter 02 set keeps `kafka:9094`: it cannot resolve the name, Camel fails to start, the pod never becomes ready | the set does not roll out, the address check, the notification appears, the notification content, the trace | Checks 14, 16, 18, 19 and 20 fail (34/39), as predicted; the other 34 pass |
+| `NODE_POOLS=dual ./verify.sh` | One node holds both roles | the role check, one id each, the pod owners, the quorum and the replication view | Checks 5 to 9 fail (34/39), as predicted; the other 34 pass |
 
 With `KAFKA_BROKERS=compose`, the other checks pass: order-service has the right address, so the order is accepted and `edp.orders.placed` holds it, and the sets for chapters 03 and 04 run with the right addresses.
 
 ## Timings
 
-Bring-up on a fresh profile, measured in the spike: profile creation, CloudNativePG operator, Strimzi operator, Kafka Ready and CloudNativePG cluster Ready are recorded in `examples/_k8s/README.md` and the iteration log. A replaced broker pod is Ready again in `TBD(spike: 23 s)`.
+Bring-up on a fresh profile: profile creation, CloudNativePG operator, Strimzi operator, Kafka Ready and CloudNativePG cluster Ready are recorded in `examples/_k8s/README.md` and the iteration log. A replaced broker pod is Ready again in 23 s, measured from the delete command.

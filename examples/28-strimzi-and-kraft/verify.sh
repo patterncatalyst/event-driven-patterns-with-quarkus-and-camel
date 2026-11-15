@@ -150,8 +150,8 @@ check "databases edp, edp03 and edp04 exist, owned by edp" poll 90 databases_exi
 # 11 to 20: chapter 02, then 03, then 04, each alone
 echo "Chapter 02 set"
 check "chapter 02 images in the node are the images docker built" image_ids_match 02-
-check "chapter 02 Deployments use the environment names of compose.yaml" env_names_02
 check "the chapter 02 pair rolls out" rollout_02
+check "chapter 02 Deployments use the environment names of compose.yaml" env_names_02
 check "notification-service points at the Strimzi bootstrap Service" bootstrap_address_is notification-service
 check "order O-2801 is accepted with 201" expect "$(place O-2801)" 201
 check "the notification for O-2801 appears" poll 60 has_notification O-2801
@@ -162,8 +162,8 @@ remove_set "$SET02"
 
 echo "Chapter 03 set"
 check "chapter 03 images in the node are the images docker built" image_ids_match 03-
-check "chapter 03 Deployments use the environment names of compose.yaml" env_names_03
 check "the chapter 03 pair rolls out" deploy_set ../_k8s/apps/03
+check "chapter 03 Deployments use the environment names of compose.yaml" env_names_03
 check "order O-2802 is accepted with 201" expect "$(place O-2802)" 201
 check "the copy of O-2802 carries every field" poll 60 copy_is_complete O-2802
 kc -n "$NS_APPS" scale deploy/order-service --replicas=0 >/dev/null
@@ -173,8 +173,8 @@ remove_set ../_k8s/apps/03
 
 echo "Chapter 04 set"
 check "chapter 04 images in the node are the images docker built" image_ids_match 04-
-check "chapter 04 Deployments use the environment names of compose.yaml" env_names_04
 check "the chapter 04 set rolls out with two order replicas" deploy_set ../_k8s/apps/04
+check "chapter 04 Deployments use the environment names of compose.yaml" env_names_04
 check "the topics Job completes" poll 120 job_done
 check "edp.shipping.shipments has 3 partitions" expect "$(partitions_of edp.shipping.shipments)" 3
 check "the two order replicas share the three partitions" poll 90 group_is_split
@@ -184,8 +184,10 @@ check "O-2803 ends DELIVERED" poll 60 status_is O-2803 DELIVERED
 
 # 29 to 31: the broker pod is replaced, its volume and the records stay
 UID_BEFORE="$(broker_uid)"; CLAIM_BEFORE="$(broker_claim)"; OFFSETS_BEFORE="$(placed_offsets)"
+T_DEL=$SECONDS
 kc -n "$NS_KAFKA" delete "pod/edp-broker-$BROKER_ID" --wait=true >/dev/null
 check "the broker pod is replaced and Ready again" poll 240 broker_replaced
+echo "measured: broker pod deleted to Ready again in $((SECONDS - T_DEL)) s"
 check "the new pod mounts the same volume claim" expect "$(broker_claim)" "$CLAIM_BEFORE"
 check "edp.orders.placed has the same end offsets and still holds O-2801" poll 120 offsets_and_record
 

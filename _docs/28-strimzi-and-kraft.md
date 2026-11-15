@@ -119,7 +119,7 @@ It prints the controller as `LeaderId` and as the only entry in `CurrentVoters`,
 
 {% include excalidraw.html file="28-kraft-roles" alt="The controller node is the leader and the only voter of the metadata quorum; the broker node observes it and fetches metadata; applications connect to the broker through the bootstrap Service" caption="Figure 28.2: The controller holds the quorum, the broker observes it, and clients talk only to the broker" %}
 
-Dedicated controllers are what Strimzi's documentation suggests for production, and dual-role nodes for development and testing. A real cluster runs three controllers, because a quorum of one tolerates no failure: lose the controller and the cluster has no metadata leader. One controller and one broker are the smallest cluster that shows the two roles apart. Setting `roles: [controller, broker]` on a single pool gives the dual-role form, which saves a pod and a gigabyte and hides the distinction.
+Dedicated controllers are what Strimzi's documentation suggests for production, and dual-role nodes for development and testing. A majority of the controllers must be alive for the cluster to stay available, and surviving N failures takes 2N + 1 controllers (Apache Kafka, KRaft operations), so a real cluster runs at least three. One controller and one broker are the smallest cluster that shows the two roles apart. Setting `roles: [controller, broker]` on a single pool gives the dual-role form, which saves a pod and a gigabyte and hides the distinction.
 
 Replacing a broker pod shows what the operator holds. The pod is deleted, a new one with a new UID takes its name, mounts the same volume claim and keeps its node id, and the end offsets of the topics are unchanged. The identity and the data belong to the node, not to the pod.
 
@@ -171,7 +171,7 @@ cd examples/28-strimzi-and-kraft
 ./verify.sh
 ```
 
-`verify.sh` recreates the namespaces, builds and loads six images on the first run, applies Kafka as two node pools with PostgreSQL and LGTM, runs the services of chapters 2, 3 and 4 in turn, replaces the broker pod, and ends with `TBD checks passed`.
+`verify.sh` recreates the namespaces, builds and loads six images on the first run, applies Kafka as two node pools with PostgreSQL and LGTM, runs the services of chapters 2, 3 and 4 in turn, replaces the broker pod, and ends with `39/39 checks passed`.
 
 Try one change and rerun:
 
@@ -183,9 +183,9 @@ Try one change and rerun:
 
 When one broker for development is all you need and Docker is already there, compose starts faster and has fewer parts. The operator pays off when something other than you replaces, upgrades or scales the pods.
 
-When a cluster cannot run a controller and its custom resource definitions, for example a namespace-restricted team cluster, the operator is the wrong shape. Strimzi installs cluster-wide definitions, and installing them takes a cluster administrator.
+When a cluster cannot run a controller and its custom resource definitions, for example a namespace-restricted team cluster, the operator is the wrong shape. Strimzi installs cluster-wide definitions, and its documentation notes that, depending on the cluster setup, installation typically requires cluster admin privileges.
 
-The cluster built here is not fault tolerant. One controller is a quorum that tolerates no loss, and a replication factor of 1 means a lost volume is lost data. Production runs three controllers, at least three brokers, and replication factors and minimum in-sync replicas to match.
+The cluster built here is not fault tolerant. By the 2N + 1 rule one controller survives no failure, three survive one, and five survive two (Apache Kafka, KRaft operations).
 
 ## References
 

@@ -16,6 +16,11 @@ import urllib.parse
 import urllib.request
 
 
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 def get(url):
     try:
         with urllib.request.urlopen(url, timeout=10) as r:
@@ -53,7 +58,7 @@ def main():
             trace = get(f"{base}/api/traces/{tid}")
             compact = re.sub(r'"\s*:\s*"', '":"', trace)
             if trace and all(holds(compact, n) for n in names):
-                print(tid)
+                emit(tid)
                 return 0
         if time.monotonic() >= deadline:
             return 1

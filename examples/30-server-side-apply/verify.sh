@@ -75,15 +75,17 @@ precondition "order-service starts with limits.memory 384Mi" expect "$(limit)" 3
 
 # --- install: a client-side apply stores the manifest in an annotation, a server-side apply does not
 CNPG_CLIENT_OUT="$(kc apply -n cnpg-system --dry-run=server -f "$CNPG_MANIFEST" 2>&1 || true)"
+output_has() { [[ "$CNPG_CLIENT_OUT" == *"$1"* ]]; }   # the output is too large for an argument list, so it is read from the variable
 check "client-side apply of the CloudNativePG install fails with Too long on clusters.postgresql.cnpg.io" \
-    bash -c '[[ "$1" == *"clusters.postgresql.cnpg.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes"* ]]' _ "$CNPG_CLIENT_OUT"
+    output_has 'clusters.postgresql.cnpg.io" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes'
 check "the same failure on poolers.postgresql.cnpg.io" \
-    bash -c '[[ "$1" == *"poolers.postgresql.cnpg.io\" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes"* ]]' _ "$CNPG_CLIENT_OUT"
+    output_has 'poolers.postgresql.cnpg.io" is invalid: metadata.annotations: Too long: may not be more than 262144 bytes'
+# the install on this cluster was applied by edp-cluster (cluster.sh), so the dry run uses that manager
 check "server-side apply of the same manifest succeeds on the server" \
-    kc apply --server-side --dry-run=server --field-manager=edp-platform -f "$CNPG_MANIFEST"
+    kc apply --server-side --dry-run=server --field-manager=edp-cluster -f "$CNPG_MANIFEST"
 STRIMZI_CLIENT_OUT="$(kc apply -n "$NS_KAFKA" --dry-run=server -f "$STRIMZI_MANIFEST" 2>&1 || true)"
-check "client-side apply of the Strimzi install reports no Too long" \
-    bash -c '[[ "$1" != *"Too long"* ]]' _ "$STRIMZI_CLIENT_OUT"
+strimzi_not_too_long() { [[ -n "$STRIMZI_CLIENT_OUT" && "$STRIMZI_CLIENT_OUT" != *"Too long"* ]]; }
+check "client-side apply of the Strimzi install reports no Too long" strimzi_not_too_long
 
 # --- one writer: edp-apps owns the limit, a changed manifest shows as a diff, a dropped label is removed
 check "managedFields lists edp-apps as an Apply owner of limits.memory" \
@@ -133,9 +135,11 @@ check "changing strimzi.io/discovery conflicts with strimzi-kafka-operator" \
     conflict_naming "$DISCOVERY_OUT" strimzi-kafka-operator ".metadata.annotations.strimzi.io/discovery"
 kc apply --server-side --force-conflicts --field-manager=edp-foreign -f foreign/discovery.yaml >/dev/null
 check "with --force-conflicts the annotation holds the foreign value" expect "$(annotation 'strimzi\.io/discovery')" "$FOREIGN_VALUE"
+T_REC=$SECONDS
 reconcile_once 3
 restored() { local v; v="$(annotation 'strimzi\.io/discovery')"; [[ -n "$v" && "$v" != "$FOREIGN_VALUE" ]]; }
 check "the operator restores strimzi.io/discovery at its next reconciliation" poll 60 restored
+echo "measured: annotation restored $((SECONDS - T_REC)) s after the reconciliation was triggered"
 check "managedFields: strimzi-kafka-operator owns strimzi.io/discovery again and edp-foreign does not" \
     owns_only "strimzi-kafka-operator Apply" "edp-foreign Apply" svc/edp-kafka-bootstrap "$NS_KAFKA" "${DISCOVERY_PATH[@]}"
 

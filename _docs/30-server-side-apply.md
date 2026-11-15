@@ -97,7 +97,7 @@ kubectl apply --server-side --field-manager=edp-foreign -f annotation.yaml
 kubectl -n edp-kafka annotate kafka edp r=1 --overwrite     # a reconcile
 ```
 
-A change to the operator's own annotation is another matter. Without force it fails with a conflict naming `strimzi-kafka-operator`. With force it succeeds, and the operator puts its value back at the next reconciliation, in `TBD(spike: about 5 s)` after the reconcile was triggered. The operator first applies without force and, on a conflict, logs it and retries with force (Strimzi blog, Server-Side Apply in Strimzi). A tool that adds fields to Strimzi's resources is therefore safe, and a tool that edits Strimzi's fields loses.
+A change to the operator's own annotation is another matter. Without force it fails with a conflict naming `strimzi-kafka-operator`. With force it succeeds, and the operator puts its value back at the next reconciliation, 1 to 2 s after the reconcile was triggered. The operator first applies without force and, on a conflict, logs it and retries with force (Strimzi blog, Server-Side Apply in Strimzi). A tool that adds fields to Strimzi's resources is therefore safe, and a tool that edits Strimzi's fields loses.
 
 {% include excalidraw.html file="30-strimzi-ssa" alt="The Strimzi operator applies the bootstrap Service each reconciliation and owns strimzi.io/discovery; edp-foreign adds example.com/owner without a conflict; the foreign annotation survives the reconciliations and a forced change of strimzi.io/discovery is restored" caption="Figure 30.3: The operator owns its fields and leaves everyone else's alone" %}
 

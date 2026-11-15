@@ -840,3 +840,8 @@ Chapters 28 to 31. Every page below was fetched on 2026-11-15; the Strimzi docum
 9. The Kubernetes docs say "256 KiB" for annotations; the byte count 262144 and the `Too long` wording are from the v1.37.2 source, not from a docs page. Which object trips the limit on `kubectl apply -f` of a large CRD is not stated anywhere (the client-side apply annotation stores the whole object), so chapter 30 shows the measured error.
 10. The CNPG release checksums file lists the `kubectl-cnpg` archives only; `cnpg-1.30.1.yaml` has no published checksum, so the sha256 in versions.md is computed from the download.
 11. Older CNPG docs URL `cloudnative-pg.io/documentation/current/...` now only redirects (to `cloudnative-pg.io/docs/current/...`); the facts above were read from the `docs/src` files at tag v1.30.1.
+
+### r11 chapter 28 claim checks (2026-11-15, owner rule: cut what the docs do not confirm)
+- Kafka KRaft operations (https://kafka.apache.org/43/operations/kraft/), "Configuration > Controllers": "A majority of the controllers must be alive in order to maintain availability." and "With 3 controllers, the cluster can tolerate 1 controller failure; with 5 controllers, the cluster can tolerate 2 controller failures." "Deploying Considerations": 2N + 1 controllers withstand N failures. Confirmed; ch 28 quorum sentences rest on it.
+- Strimzi Deploying and Managing 1.3.1, 1.1.1: "Depending on the cluster setup, installation typically requires cluster admin privileges." Confirmed in hedged form; ch 28 now quotes the hedge.
+- "Replication factor 1 means a lost volume is lost data": not found in Kafka or Strimzi docs. Cut from ch 28, together with the unsourced production broker/min-ISR recommendation.

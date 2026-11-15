@@ -10,6 +10,11 @@ import json
 import sys
 
 
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 def effective(pod_sc, ctr_sc, key):
     return ctr_sc[key] if key in ctr_sc else pod_sc.get(key)
 
@@ -45,7 +50,7 @@ def main():
     if len(pods) < minimum:
         problems.append(f"found {len(pods)} pods, expected at least {minimum}")
     for line in problems:
-        print(line, file=sys.stderr)
+        emit(line, file=sys.stderr)
     return 1 if problems else 0
 
 

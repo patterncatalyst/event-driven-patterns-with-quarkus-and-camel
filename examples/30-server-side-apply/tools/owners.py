@@ -7,6 +7,11 @@ import json
 import sys
 
 
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 def owns(tree, segments):
     for segment in segments:
         key = segment if segment.startswith(("k:", "v:")) else "f:" + segment
@@ -20,7 +25,7 @@ def main(segments):
     doc = json.load(sys.stdin)
     for entry in doc["metadata"].get("managedFields", []):
         if owns(entry.get("fieldsV1", {}), segments):
-            print(entry["manager"], entry["operation"])
+            emit(entry["manager"], entry["operation"])
 
 
 if __name__ == "__main__":

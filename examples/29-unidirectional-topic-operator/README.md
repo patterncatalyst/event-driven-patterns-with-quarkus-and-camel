@@ -33,12 +33,12 @@ KEEP=1 ./verify.sh         # leave the namespaces in place
 
 Demo code, labelled as such in `verify.sh`, the overlays and the chapter.
 
-| Switch | Effect | Predicted failing set |
+| Switch | Effect | Failing set (measured) |
 |---|---|---|
-| `TOPIC_AUTOCREATE=on ./verify.sh` | `demo-autocreate/` sets `auto.create.topics.enable: true`, so the broker creates the undeclared topic on a send | 7 (16/17) |
-| `TOPIC_SET=missing ./verify.sh` | `demo-missing-topic/` deletes the `edp.orders.placed` resource from the rendered set, an altered copy of the kustomization. The apps are not waited for in `k8s_fresh`; the checks poll for them | 3 and 6 (15/17) |
+| `TOPIC_AUTOCREATE=on ./verify.sh` | `demo-autocreate/` sets `auto.create.topics.enable: true`, so the broker creates the undeclared topic on a send | Check 7 (16/17), as predicted |
+| `TOPIC_SET=missing ./verify.sh` | `demo-missing-topic/` deletes the `edp.orders.placed` resource from the rendered set, an altered copy of the kustomization. The apps are not waited for in `k8s_fresh`; the checks poll for them | Checks 3 and 6 (15/17), as predicted |
 
-The two switches are separate demos and cannot be combined. The predictions are re-measured in the live window and frozen there.
+The two switches are separate demos and cannot be combined. The sets were measured in the live window and are frozen here.
 
 The altered copy can be built by hand: copy `base/` to a scratch directory beside the example, remove the `edp.orders.placed` document from its `topics/kafkatopics.yaml` and build that copy. `TOPIC_SET=missing` does the same with a delete patch, which `kubectl kustomize examples/29-unidirectional-topic-operator/demo-missing-topic` renders eight `KafkaTopic` resources.
 
@@ -68,7 +68,7 @@ Only keys declared in a `KafkaTopic` are asserted. Keys it does not declare are 
 
 ## Measurements
 
-Measured in the G0 spike on profile `edp` with the 15 s interval; the live window re-measures them.
+Measured in the live window on profile `edp` with the 15 s interval; `verify.sh` prints each value on a `measured:` line.
 
-- `KafkaTopic` Ready: TBD(spike: 1.1 s). Declared retention reverted: TBD(spike: 8.2 s). Topic deleted in Kafka recreated: TBD(spike: 27.5 s). `KafkaTopic` deleted, topic gone: TBD(spike: 1.4 s). No `KafkaTopic` for a topic created in Kafka after TBD(spike: 50 s).
-- Namespace deletion with the `KafkaTopic` resources deleted first: TBD(spike: 11 s).
+- Five `KafkaTopic` resources applied to Ready: 1 s. Declared retention reverted: 23 s. Topic deleted in Kafka recreated: 25 s. `KafkaTopic` deleted, topic gone: 2 s. A topic created in Kafka still has no `KafkaTopic` at the end of the 45 s window.
+- Deleting the `KafkaTopic` resources, Kafka and the three namespaces: 43 s, with no stuck finalizer.

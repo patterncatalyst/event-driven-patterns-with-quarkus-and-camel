@@ -142,8 +142,25 @@ _delete_all_state() { # KafkaTopics first, then Kafka and node pools, then the n
         kc -n "$NS_KAFKA" delete kafkanodepool --all --wait --timeout=240s \
             || { echo "k8s: KafkaNodePools did not delete in time" >&2; return 1; }
     fi
+    if _have ns "$NS_APPS" && _have crd databases.postgresql.cnpg.io; then
+        # CNPG Databases before their Cluster, so no Database finalizer waits on a deleted instance
+        kc -n "$NS_APPS" delete database.postgresql.cnpg.io --all --wait --timeout=120s \
+            || { echo "k8s: CNPG Databases did not delete in time" >&2; return 1; }
+        kc -n "$NS_APPS" delete cluster.postgresql.cnpg.io --all --wait --timeout=120s \
+            || { echo "k8s: CNPG Cluster did not delete in time" >&2; return 1; }
+    fi
     kc delete ns "$NS_APPS" "$NS_KAFKA" "$NS_LGTM" --ignore-not-found --wait --timeout=240s \
-        || { echo "k8s: namespaces did not delete in time" >&2; kc get ns >&2 || true; return 1; }
+        || { echo "k8s: namespaces did not delete in time" >&2; _why_terminating; return 1; }
+}
+
+_why_terminating() { # print why each namespace is still Terminating: its conditions and what is left in it
+    local ns
+    for ns in "$NS_APPS" "$NS_KAFKA" "$NS_LGTM"; do
+        _have ns "$ns" || continue
+        kc get ns "$ns" -o jsonpath='{range .status.conditions[*]}{.type}: {.message}{"\n"}{end}' >&2 || true
+        kc api-resources --verbs=list --namespaced -o name 2>/dev/null \
+            | xargs -r -I{} kubectl --context "$MK_PROFILE" -n "$ns" get {} --ignore-not-found -o name 2>/dev/null >&2 || true
+    done
 }
 
 _assert_clean() {
@@ -163,7 +180,9 @@ k8s_teardown() { # delete the three namespaces (KafkaTopics first) unless KEEP=1
         echo "KEEP=1: namespaces left in place; run \`kubectl --context $MK_PROFILE delete ns $NS_APPS $NS_KAFKA $NS_LGTM\` to remove them"
         return 0
     fi
+    local t0=$SECONDS
     _delete_all_state || { echo "k8s_teardown: FAILED, state left for inspection" >&2; return 1; }
+    echo "measured: KafkaTopics, Kafka and the three namespaces deleted in $((SECONDS - t0)) s"
 }
 
 _apply() { # _apply <dir> <manager>: server-side apply; retried while new CRDs are still being established
@@ -196,6 +215,14 @@ _wait_apps() { # every Deployment in edp rolled out, every Job complete
     if [[ -n "$(kc -n "$NS_APPS" get job -o name 2>/dev/null)" ]]; then
         kc -n "$NS_APPS" wait --for=condition=complete job --all --timeout=240s >/dev/null \
             || { echo "k8s: a Job did not complete" >&2; return 1; }
+    fi
+    # A Ready pod is not yet reachable through the published NodePort: wait until the published ports answer.
+    if [[ -n "$(kc -n "$NS_APPS" get deploy -o name 2>/dev/null)" ]]; then
+        local port i
+        for port in 30080 30082; do
+            for i in $(seq 1 60); do ready "$port" >/dev/null 2>&1 && continue 2; sleep 1; done
+            echo "k8s: NodePort $port does not answer" >&2; return 1
+        done
     fi
 }
 

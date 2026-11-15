@@ -12,6 +12,11 @@
 import json
 import sys
 
+
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
 items = json.load(sys.stdin)["items"]
 by_name = {i["metadata"]["name"]: i for i in items}
 
@@ -26,20 +31,20 @@ def cond(item, kind):
 cmd = sys.argv[1]
 arg = sys.argv[2] if len(sys.argv) > 2 else ""
 if cmd == "names":
-    print("\n".join(sorted(by_name)))
+    emit("\n".join(sorted(by_name)))
 elif cmd == "not-ready":
-    print("\n".join(sorted(n for n, i in by_name.items() if cond(i, "Ready").get("status") != "True")))
+    emit("\n".join(sorted(n for n, i in by_name.items() if cond(i, "Ready").get("status") != "True")))
 elif cmd == "spec":
     spec = by_name[arg]["spec"]
-    print(spec.get("partitions"), spec.get("config", {}).get("retention.ms", "-"))
+    emit(spec.get("partitions"), spec.get("config", {}).get("retention.ms", "-"))
 elif cmd == "ready":
-    print(cond(by_name[arg], "Ready").get("status", "none"))
+    emit(cond(by_name[arg], "Ready").get("status", "none"))
 elif cmd == "reason":
     c = cond(by_name[arg], "Ready")
-    print(f'{c.get("reason", "")}|{c.get("message", "")}')
+    emit(f'{c.get("reason", "")}|{c.get("message", "")}')
 elif cmd == "unmanaged":
-    print(cond(by_name[arg], "Unmanaged").get("status", "none"))
+    emit(cond(by_name[arg], "Unmanaged").get("status", "none"))
 elif cmd == "finalizers":
-    print(" ".join(by_name[arg]["metadata"].get("finalizers", [])))
+    emit(" ".join(by_name[arg]["metadata"].get("finalizers", [])))
 elif cmd == "names-topic":
-    print("\n".join(sorted(n for n, i in by_name.items() if i["spec"].get("topicName", n) == arg)))
+    emit("\n".join(sorted(n for n, i in by_name.items() if i["spec"].get("topicName", n) == arg)))

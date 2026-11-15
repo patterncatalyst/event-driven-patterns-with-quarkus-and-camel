@@ -176,16 +176,22 @@ check "every KafkaTopic is Ready" poll 90 all_ready
 check "Kafka holds the partitions and the retention each KafkaTopic declares" kafka_matches_spec
 check "order O-2901 is placed and its notification arrives" order_notified
 check "a producer to an undeclared topic is refused and no topic is created" undeclared_refused
+T_APPLY=$SECONDS
 lab_apply
 precondition "the five scratch KafkaTopics are Ready" poll 90 lab_ready
+echo "measured: five KafkaTopics applied to Ready in $((SECONDS - T_APPLY)) s"
 check "a KafkaTopic carries the finalizer $KT_FINALIZER" expect "$(kt finalizers edp.lab.removed)" "$KT_FINALIZER"
 trigger_changes
 check "a retention declared in the KafkaTopic and changed in Kafka is reverted within three intervals" poll "$BOUND" drift_reverted
+echo "measured: retention reverted after $((SECONDS - T0)) s"
 check "a topic deleted in Kafka is recreated and its KafkaTopic is Ready again" poll "$BOUND" recreated
+echo "measured: topic recreated after $((SECONDS - T0)) s"
 check "partitions raised in Kafka make the KafkaTopic Ready=False with reason NotSupported" poll "$BOUND" growth_reported
 check "the KafkaTopic keeps 3 partitions and Kafka keeps the 6" growth_kept
 check "a topic created in Kafka gets no KafkaTopic" outside_gets_no_resource
+T_RM=$SECONDS
 check "deleting a KafkaTopic deletes the topic" delete_removes_topic
+echo "measured: KafkaTopic deleted, topic gone in $((SECONDS - T_RM)) s"
 unmanage
 check "managed=false marks the KafkaTopic Unmanaged" poll "$BOUND" unmanaged_status
 check "deleting an unmanaged KafkaTopic leaves the topic in Kafka" unmanaged_delete_keeps_topic

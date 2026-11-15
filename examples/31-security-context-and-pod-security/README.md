@@ -61,17 +61,17 @@ The order id is `O-3101`.
 
 There is no `mvn verify`: the example has no Java. `tools/restricted.py` fails on any pod that is not Running, on a container that allows privilege escalation, does not drop `ALL` capabilities, may run as root or has no `RuntimeDefault` or `Localhost` seccomp profile (on the pod or the container), and on a namespace with fewer pods than expected, so an empty namespace cannot pass.
 
-`kubectl label --dry-run=server` re-evaluates the existing pods against the new policy. `edp` and `edp-kafka` already carry the label, so `verify.sh` changes their enforce version to `latest`; `cnpg-system` and `edp-lgtm` get `restricted`. The `edp-lgtm` check is the control: it must warn, which shows the other three clean results are not an artefact of the dry run. Whether the `latest` form re-evaluates a namespace that already enforces `restricted` is read in the window (TBD).
+`kubectl label --dry-run=server` re-evaluates the existing pods against the new policy. `edp` and `edp-kafka` already carry the label, so `verify.sh` changes their enforce version to `latest`; `cnpg-system` and `edp-lgtm` get `restricted`. The `edp-lgtm` check is the control: it must warn, which shows the other three clean results are not an artefact of the dry run. The version value changes from `v1.37` to `latest` in that dry run, so the API server evaluates the existing pods again.
 
 ## Experiments
 
-Each run starts from fresh namespaces. Failing sets are TBD until the window freezes them.
+Each run starts from fresh namespaces. The failing sets were measured in the live window and are frozen here.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `APP_SECURITY=none ./verify.sh` (demo code) | The applications carry no security context | 19 to 26 predicted | The ReplicaSets report `FailedCreate` and name the four fields; no application pod exists. TBD |
-| `STRIMZI_PSP=baseline ./verify.sh` (demo code) | Strimzi uses its default provider | 8 to 12 and 26 predicted, plus application checks that depend on Kafka | The operator log holds `violates PodSecurity "restricted:v1.37"` for the Kafka pods and Kafka never becomes Ready. TBD |
+| `APP_SECURITY=none ./verify.sh` (demo code) | The applications carry no security context | Checks 19 to 26 (18/26), as predicted | The ReplicaSets report `FailedCreate` and name the four fields; no application pod exists |
+| `STRIMZI_PSP=baseline ./verify.sh` (demo code) | Strimzi uses its default provider | Checks 8 to 12 and 26 (20/26) | The operator log holds `violates PodSecurity "restricted:v1.37"` for the Kafka pods and Kafka never becomes Ready. Check 25 passes: the order is accepted without Kafka, and only the notification (26) fails |
 
 ## Measurements
 
-TBD in the live window: the time from label to a refused ReplicaSet, and whether the application checks fail with Kafka absent.
+With `APP_SECURITY=none` the `FailedCreate` event is there 1 s after the namespaces are ready. With `STRIMZI_PSP=baseline` the application checks other than the notification pass, because `order-service` accepts the order with Kafka absent.

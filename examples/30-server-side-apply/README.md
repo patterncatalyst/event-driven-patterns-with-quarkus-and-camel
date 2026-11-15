@@ -69,13 +69,14 @@ No unit tests: there is no Java. The checks read effects from the API server.
 
 ## Experiments
 
-| Switch | Effect | Predicted failing checks |
+| Switch | Effect | Failing checks (measured) |
 |---|---|---|
-| `APPLY=client ./verify.sh` (demo code) | `edp-platform` and the `edp-apps` re-apply use client-side `kubectl apply`: no conflict, ownership moves to `kubectl-client-side-apply` | 11, 12, 14, 15, 17 (20/25); to be measured in the window |
+| `APPLY=client ./verify.sh` (demo code) | `edp-platform` and the `edp-apps` re-apply use client-side `kubectl apply`: no conflict, ownership moves to `kubectl-client-side-apply` | Checks 11, 12, 14, 15 and 17 (20/25), as predicted; the other 20 pass |
 
 Other ideas: `kubectl --context edp -n edp get deploy order-service --show-managed-fields -o yaml` after a step; apply `changes/memory` as `edp-platform`.
 
 ## Measurements
 
-- Operator restores `strimzi.io/discovery`: TBD(spike: about 5 s) after a triggered reconciliation.
-- The conflict text in the chapter is the output of the spike run on Kubernetes 1.37.
+- Operator restores `strimzi.io/discovery`: 1 to 2 s (two runs) after a triggered reconciliation.
+- The conflict text in the chapter is the output of a run on Kubernetes 1.37.
+- The server-side dry run of the CloudNativePG install (check 5) uses the field manager `edp-cluster`, the one that installed it; under another manager it conflicts on `OPERATOR_NAMESPACE` of the operator Deployment.

@@ -175,13 +175,13 @@ One command block (`examples/_k8s/cluster.sh up` once in 28's setup, then `cd ex
 | 0 | Preflight: owner OK, save plan, iteration-plan r11 in progress, `.gitignore` | orchestrator | owner OK | done (kubectl upgraded to v1.37.2) |
 | 1A | Survey new pins and digests, manifest sha256s; sources rows 28 to 31; bibliography rows | exec 1A (Sonnet) | 0 | done |
 | 1B | G0 spike Q1 to Q6 on profile `edp` | exec 1B (Sonnet) | 0 | done |
-| 1C | `examples/_k8s/**` substrate; stack-guard `--minikube`; validate.py k8s branch, version exception, self-tests; CI skip for pom-less examples | orchestrator | 1B | pending |
+| 1C | `examples/_k8s/**` substrate; stack-guard `--minikube`; validate.py k8s branch, version exception, self-tests; CI skip for pom-less examples | orchestrator | 1B | done |
 | G0 | "G0 decisions" appended; Strimzi PSA witness chosen; decisions 2 and 7 from data | orchestrator | 1A to 1C | pending |
-| 2A to 2D | Chapters 28, 29, 30, 31: overlay, verify.sh, README, example page, chapter, figures | execs 2A to 2D | G0 | pending |
-| 2E | Consistency: chapter 00 Part 6 paragraph, part card, CLAUDE.md decisions draft | orchestrator | G0 | pending |
-| 3 | One live session: windows 28 to 31 serially; 2 clean N/N runs each, each experiment once with failing set frozen, one bite proof | orchestrator | 2A to 2D | pending |
-| 4 | Fixes inside the window, re-run affected chapter only | orchestrator | 3 | pending |
-| 5 | Final run on a fresh profile, 28 to 31 once each, profile deleted; static gates; claims and log; commits | orchestrator | 4 | pending |
+| 2A to 2D | Chapters 28, 29, 30, 31: overlay, verify.sh, README, example page, chapter, figures | execs 2A to 2D | G0 | done |
+| 2E | Consistency: chapter 00 Part 6 paragraph, part card, CLAUDE.md decisions draft | orchestrator | G0 | done |
+| 3 | One live session: windows 28 to 31 serially; 2 clean N/N runs each, each experiment once with failing set frozen, one bite proof | orchestrator | 2A to 2D | done (S/r11-window/WINDOW.md) |
+| 4 | Fixes inside the window, re-run affected chapter only | orchestrator | 3 | done |
+| 5 | Final run on a fresh profile, 28 to 31 once each, profile deleted; static gates; claims and log; commits | orchestrator | 4 | done; ch30 teardown timeout once, fixed in lib.sh (CNPG Databases and Cluster deleted before namespaces), re-verified in step 6 |
 | 6 | Opus validation (at most 2 repair rounds) | validator | 5 | pending |
 | 7 | Ship: PR, CI green, squash, tag r11.0, notes-only release; PRD, iteration-plan, CLAUDE.md | orchestrator | 6 | pending |
 

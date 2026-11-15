@@ -22,6 +22,7 @@ elif [[ "$STRIMZI_PSP" == baseline ]]; then
 fi
 
 k8s_fresh "$DIR"
+T_FRESH=$SECONDS
 if [[ "$STRIMZI_PSP" == baseline ]]; then   # demo code: Kafka is applied only now, so the setup waits above did not need it
     kc apply --server-side --field-manager=edp-verify -k ../_k8s/kafka >/dev/null
 fi
@@ -109,6 +110,7 @@ check "the otel-lgtm pod runs in the unlabelled edp-lgtm" \
 # --- the applications
 if [[ "$APP_SECURITY" == none ]]; then   # demo code: show the refusal the ReplicaSet reports
     poll 60 failed_create_seen || true
+    echo "measured: FailedCreate seen $((SECONDS - T_FRESH)) s after the namespaces were ready"
     echo "demo: $(kc -n edp get events --field-selector reason=FailedCreate -o 'jsonpath={.items[0].message}' | cut -c1-600)"
 fi
 check "order-service and notification-service are Available" apps_available
