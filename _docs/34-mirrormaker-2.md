@@ -102,7 +102,7 @@ The settings that make the translation work are few.
 | `emit.checkpoints.interval.seconds`, `sync.group.offsets.interval.seconds` | 5 | 60 | How often checkpoints are written and applied |
 | `refresh.groups.interval.seconds` | 5 | 600 | How often new groups are found |
 
-The intervals are short so a laptop run finishes in minutes; Strimzi's example for group sync uses a minute for checkpoints and ten minutes for finding groups (`kafka-mirror-maker-2-sync-groups.yaml`). The one that matters for correctness is `offset.lag.max`. With the default, a group on a small topic stayed behind the source on `edp-dr`: it sat at 1 on a partition where the source had committed 4, and had not moved after TBD(spike: 140 s), because a sync is emitted only when a new record arrives. With 0 the group on `edp-dr` matched the source's committed offsets TBD(spike: 11 s) after the sync was switched on. On a short topic it is the setting that makes the translation happen at all.
+The intervals are short so a laptop run finishes in minutes; Strimzi's example for group sync uses a minute for checkpoints and ten minutes for finding groups (`kafka-mirror-maker-2-sync-groups.yaml`). The one that matters for correctness is `offset.lag.max`. With the default, a group on a small topic stayed behind the source on `edp-dr`: it sat at 1 on a partition where the source had committed 4, and had not moved after 140 s, because a sync is emitted only when a new record arrives. With 0 the group on `edp-dr` matched the source's committed offsets 6 to 7 s after the sync was switched on. On a short topic it is the setting that makes the translation happen at all.
 
 Two properties of the checkpoint apply to every failover. The checkpoint connector writes a group on the target only when no consumer is active in that group there; otherwise it logs a warning and the offsets are not synchronized. And a translated offset can be earlier than the source's position, so records are read twice: Strimzi's documentation says "This duplication is expected." A consumer that fails over must tolerate a record twice, which is what the idempotent consumer of chapter 11 is for.
 
@@ -120,7 +120,7 @@ env:
     value: edp-dr-kafka-bootstrap.edp-kafka.svc:9092
 ```
 
-The service is stopped first, which leaves the group on the source inactive. Five more orders go to `edp`; nothing is notified, because nothing reads. The mirror copies them, so `edp-dr` holds ten records and the group on `edp-dr` still sits at five. The service starts again with the new address and nothing else changed: same topic, same group, same code. It becomes Ready, the five orders are notified within TBD(spike: 6 s), and the group on `edp-dr` ends at ten, five more than it started.
+The service is stopped first, which leaves the group on the source inactive. Five more orders go to `edp`; nothing is notified, because nothing reads. The mirror copies them, so `edp-dr` holds ten records and the group on `edp-dr` still sits at five. The service starts again with the new address and nothing else changed: same topic, same group, same code. It becomes Ready, the five orders are notified within 8 s, and the group on `edp-dr` ends at ten, five more than it started.
 
 That difference is the evidence that nothing was read twice. The notifications of the earlier orders stay in the notification store either way, so their presence proves nothing. The group's committed offsets do.
 
@@ -130,7 +130,7 @@ That difference is the evidence that nothing was read twice. The notifications o
 | What the group on `edp-dr` needs | Nothing, but every record is read again | The sync setting, and the source group stopped |
 | What fails over by hand | The consumer's position | The bootstrap address |
 
-With `sync.group.offsets.enabled` set to `false`, no group exists on `edp-dr` after TBD(spike: 30 s), and the service has to rely on its reset policy.
+With `sync.group.offsets.enabled` set to `false`, no group exists on `edp-dr` after the 60 s the example waits, and the service has to rely on its reset policy.
 
 ## Build, run, observe
 

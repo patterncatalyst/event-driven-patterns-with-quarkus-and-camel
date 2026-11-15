@@ -127,7 +127,7 @@ PRD §14, decided:
 - Q7: one Red Hat-branded deck via lgtm-presentation, built like CNDP's: `lgtm-presentation/` with `text/`, `edits/`, `BUILD.md`, a "Take it with you" QR slide; built last (r15).
 - Q8: Apache-2.0 code, CC BY 4.0 prose.
 - Q9: Kafka 4.3.2 everywhere, re-checked against Strimzi.
-- Q10: Parts 1 to 5 on compose, Part 6 on minikube; ch 10 shows both connector-offset forms.
+- Q10: Parts 1 to 5 on compose, Part 6 on minikube; ch 10 shows the REST form on compose, ch 35 the KafkaConnector form on Strimzi (amended 2026-11-15, r12 decision 1).
 - Q11: Narayana LRA coordinator container on compose; Camel's in-memory saga service only in tests.
 - Q12: Ollama with `qwen3:4b-instruct-2507-q4_K_M` (Apache-2.0; replaced `qwen2.5:3b`, Qwen Research License, in r09), ch 24 only.
 
@@ -213,6 +213,14 @@ PRD §14, decided:
 - Services are reached only through NodePorts published on 127.0.0.1 with `minikube start --ports`, or `kubectl exec`. `scripts/stack-guard.sh --minikube edp` refuses while a compose stack, another profile or CRC is running.
 - LGTM on minikube is the same `grafana/otel-lgtm` image as one Deployment, not the Helm LGTM charts. `edp-lgtm` stays outside Pod Security `restricted`.
 - Strimzi runs with `STRIMZI_POD_SECURITY_PROVIDER_CLASS=restricted` where namespaces enforce `restricted`; the default provider's Kafka pods are refused there.
+
+2026-11-15 (r12 plan approval, G0, window):
+
+- Chapter 10 stays frozen; its Strimzi half (connector offsets by resource) is chapter 35's `## Connector offsets in the resource`.
+- The Connect image is built by `KafkaConnect.spec.build` and pushed to an in-cluster registry (`registry:3.1.2`, emptyDir, fixed ClusterIP 10.96.100.50:5000); `cluster.sh` passes `--insecure-registry=10.96.100.50:5000` (a CIDR does not work). Nothing is pushed to an external registry. The image base is Strimzi's `quay.io/strimzi/kafka:1.3.1-kafka-4.3.2`, an exception to UBI-first because `KafkaConnect` needs Strimzi's image layout.
+- Metrics come from the Strimzi Metrics Reporter (port name `tcp-prometheus`, 9404), scraped by the otel-lgtm collector; kube-state-metrics v2.20.0 with our own config for CR status; dashboards are our own, not Strimzi's examples.
+- MirrorMaker 2 runs two Kafka clusters (`edp`, `edp-dr`) on one profile with `IdentityReplicationPolicy`; failover changes only the bootstrap address.
+- Teardown deletes KafkaConnectors and KafkaRebalances, then KafkaConnect and MM2 (waiting for their pods), before the r11 order; Connect holding replication slots otherwise hangs the CNPG pod.
 - Versions may appear in chapter 28's `## Setting up the cluster` section (validate.py allows it), besides chapter 00 and the appendices.
 
 ## Skills

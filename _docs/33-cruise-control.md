@@ -39,7 +39,7 @@ spec:
       min.samples.per.partition.metrics.window: 1
 ```
 
-The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready (measured, TBD(spike: interval 60000 works)). Chapter 28 introduced the node pools this cluster uses, and chapter 29 the `KafkaTopic` resources whose replicas are being placed. The catalog topics here have two replicas each, on a pool of two brokers.
+The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready (measured; an interval of 60000 works). Chapter 28 introduced the node pools this cluster uses, and chapter 29 the `KafkaTopic` resources whose replicas are being placed. The catalog topics here have two replicas each, on a pool of two brokers.
 
 A `KafkaRebalance` asks for a plan. Its `mode` names the case, and the label binds it to a cluster.
 
@@ -73,7 +73,7 @@ status:
     onDemandBalancednessScoreAfter: 85.69
 ```
 
-The numbers are what the proposal costs and buys: how many replicas it moves, how much data that copies, and how balanced the cluster is before and after (TBD(spike: 50 replica movements, 182 MB, score 79.77 to 85.69)). A proposal with a large `dataToMoveMB` is the signal to wait for a quiet hour. The replicas stay where they are at this point. The proposal is a status, and nothing is applied until the resource carries the approval.
+The numbers are what the proposal costs and buys: how many replicas it moves, how much data that copies, and how balanced the cluster is before and after (one run planned 50 replica movements, 182 MB and a balance score from 79.77 to 85.69; the verified runs planned 55 to 67 movements). A proposal with a large `dataToMoveMB` is the signal to wait for a quiet hour. The replicas stay where they are at this point. The proposal is a status, and nothing is applied until the resource carries the approval.
 
 ```bash
 kubectl -n edp-kafka annotate kafkarebalance add-broker-3 strimzi.io/rebalance=approve
@@ -81,7 +81,7 @@ kubectl -n edp-kafka annotate kafkarebalance add-broker-3 strimzi.io/rebalance=a
 
 The state moves to `Rebalancing`, then `Ready`, and the new broker holds replicas. The Strimzi documentation names the same states and the `refresh` annotation that discards a stale plan and computes a new one. Approval is a human decision by default. The annotation `strimzi.io/rebalance-auto-approval: "true"` on the resource removes it, and that is the exact choice a team makes when it trusts the goals more than it trusts a person at three in the morning.
 
-The state changes on the operator's reconciliation, which by default runs every two minutes (Strimzi documentation), so a rebalance of this small cluster takes minutes from the approval to `Ready` (TBD(spike: 157 s)).
+The state changes on the operator's reconciliation, which by default runs every two minutes (Strimzi documentation), so a rebalance of this small cluster takes minutes from the approval to `Ready` (98 to 99 s in the measured runs, after the proposal itself took 146 to 150 s to appear).
 
 Two things in this sequence need care. A `KafkaRebalance` applied straight after the pool grew went `NotReady` with a `NullPointerException` from Cruise Control, because Cruise Control restarts with the new broker's capacity after a scale and the request arrived before it was back. Waiting for its Deployment and then annotating the resource with `refresh` gives the plan. And a producer tool run with `kubectl exec` inside a broker container with a 768 MiB limit shares that limit, so the load that fills the topics comes from a Job pod of its own.
 
@@ -105,15 +105,15 @@ A template is a `KafkaRebalance` with the annotation `strimzi.io/rebalance-templ
 
 The order of configuration matters for a first look. With `autoRebalance` present, the pool that grows is rebalanced at once, and no empty broker is left to propose against. The manual rebalance therefore runs on a pool that has no `autoRebalance` block, and the block is added afterwards. A pool that is created is not a scaling event: the documentation says auto-rebalancing is not triggered when a node pool is created or deleted.
 
-The operator's own rebalance takes the same two-minute steps, one for the proposal and one for the rebalance, so growing from three brokers to four is complete about three and a half minutes after the pod exists (TBD(spike: 3 min 24 s from creation to Ready)).
+The operator's own rebalance runs on the same timer, so how long growing from three brokers to four takes depends on where the timer is: 47 s in one run and 347 s in another, from the scale change to the operator reporting `Idle`.
 
 {% include excalidraw.html file="33-scale-and-move" alt="Replicas per broker in three stages: two brokers that hold every replica, a pool grown to three where the new broker holds none, and after the approved rebalance where the new broker holds a share; the operator's own rebalance does the same when the pool grows once more" caption="Figure 33.2: A broker added to the pool starts empty; replicas arrive only through a rebalance" %}
 
 ## Shrinking the pool
 
-A pool that gets smaller loses a broker. Strimzi checks first whether that broker still holds replicas. Without `autoRebalance`, the check fails: the pool's `spec.replicas` is put back to its old value, the pod keeps running and the `Kafka` status carries a warning with the reason `ScaleDownPreventionCheck`. The operator's log names the broker and says it "has assigned partition-replicas". The refusal is the safe outcome, and it is repeated on every reconciliation until someone drains the broker or turns the setting on.
+A pool that gets smaller loses a broker. Strimzi checks first whether that broker still holds replicas. Without `autoRebalance`, the check fails: the broker's pod keeps running, the pool's `status.nodeIds` still lists it and the `Kafka` status carries a warning with the reason `ScaleDownPreventionCheck`. The pool's `spec.replicas` keeps the smaller number you wrote, so the example sets it back to three by hand. The operator's log names the broker and says it "has assigned partition-replicas". The refusal is the safe outcome, and it is repeated on every reconciliation until someone drains the broker or turns the setting on.
 
-With the `remove-brokers` template configured, the same scale-down is accepted. The operator creates `edp-auto-rebalancing-remove-brokers`, moves the replicas off the broker, and only then does the pod go (TBD(spike: 66 s)). Afterwards every partition has both of its replicas on the remaining brokers and none is out of sync.
+With the `remove-brokers` template configured, the same scale-down is accepted. The operator creates `edp-auto-rebalancing-remove-brokers`, moves the replicas off the broker, and only then does the pod go (8 s to 114 s from the scale change to a settled pool of three in the measured runs, again depending on the timer). Afterwards every partition has both of its replicas on the remaining brokers and none is out of sync.
 
 | Question | Manual KafkaRebalance | autoRebalance |
 |---|---|---|
@@ -129,7 +129,7 @@ cd examples/33-cruise-control
 ./verify.sh
 ```
 
-A cluster of two brokers and Cruise Control is filled by a load Job, grown to three nodes and rebalanced by a proposal that is approved, then grown to four and shrunk back to three with `autoRebalance`; the run ends with `N/N checks passed` and takes TBD minutes, most of it waiting for the operator's two-minute steps.
+A cluster of two brokers and Cruise Control is filled by a load Job, grown to three nodes and rebalanced by a proposal that is approved, then grown to four and shrunk back to three with `autoRebalance`; the run ends with `N/N checks passed` and takes 8 to 16 minutes, most of it waiting for the operator's timer.
 
 Try one change and rerun:
 

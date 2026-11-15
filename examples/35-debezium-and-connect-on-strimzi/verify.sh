@@ -70,7 +70,7 @@ no_literal_password() { # the CRs name the secret and hold none of its values
 }
 connectors_running() { connector_state order-outbox && connector_state inventory-cdc && no_literal_password; }
 slots_and_publications() {
-    [[ "$(sql "SELECT string_agg(slot_name || ':' || active, ',' ORDER BY slot_name) FROM pg_replication_slots")" == "edp_inventory:t,edp_order_outbox:t" ]] &&
+    [[ "$(sql "SELECT string_agg(slot_name || ':' || active, ',' ORDER BY slot_name) FROM pg_replication_slots")" == "edp_inventory:true,edp_order_outbox:true" ]] &&
     [[ "$(sql "SELECT string_agg(pubname || '=' || tablename, ',' ORDER BY pubname, tablename) FROM pg_publication_tables WHERE pubname LIKE 'edp\_%'")" == \
         "edp_inventory=dbz_signal,edp_inventory=inventory_item,edp_order_outbox=outboxevent" ]]
 }
@@ -115,7 +115,9 @@ put_alter_cm() { # put_alter_cm <lsn>: the new offset, in the shape the REST API
         --from-literal="offsets.json={\"offsets\":[{\"partition\":{\"server\":\"$SERVER\"},\"offset\":{\"lsn\":$1,\"lsn_proc\":$1,\"lsn_commit\":$1}}]}" \
         | kc apply --server-side --force-conflicts --field-manager=edp-verify -f - >/dev/null
 }
-alter_refused() { [[ "$(ckc get events --field-selector involvedObject.name=inventory-cdc -o 'jsonpath={.items[*].message}')" == *"not in STOPPED state"* ]]; }
+alter_refused() { # the operator logs the refusal; no Kubernetes event is written for it
+    [[ "$(kc -n "$NS_KAFKA" logs deploy/strimzi-cluster-operator 2>/dev/null)" == *"Connector is not in STOPPED state"* ]]
+}
 set_state() { act ckc patch kafkaconnector inventory-cdc --type=merge -p "{\"spec\":{\"state\":\"$1\"}}"; }
 stopped() { status_is inventory-cdc STOPPED -; }
 altered_to() { [[ "$(live_lsn)" == "$1" ]]; }
@@ -140,10 +142,17 @@ act kc apply --server-side --field-manager=edp-verify -k "$CONNECT_DIR"
 if (( DEMO )); then
     poll 240 build_failed || true
     echo "demo: $(connect_cr '{range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}' 2>/dev/null | cut -c1-400 | head -3)"
+    echo "demo: build log: $(ckc logs pod/edp-connect-connect-build 2>&1 | grep -m2 'did NOT match\|^Error' | cut -c1-60 | paste -sd'|')"
     echo "demo: build pod phase $(ckc get pod edp-connect-connect-build -o 'jsonpath={.status.phase}' 2>/dev/null || echo none)"
 else
     poll 420 connect_ready || { echo "k8s: KafkaConnect edp-connect not Ready" >&2; _diagnostics; }
     echo "measured: KafkaConnect Ready $((SECONDS - T_APPLY)) s after the apply"
+    read -r B_START B_END <<<"$(ckc get pod edp-connect-connect-build -o 'jsonpath={.status.startTime} {.status.containerStatuses[0].state.terminated.finishedAt}' 2>/dev/null || true)"
+    if [[ -n "${B_START:-}" && -n "${B_END:-}" ]]; then
+        echo "measured: the build pod ran $(( $(date -d "$B_END" +%s) - $(date -d "$B_START" +%s) )) s"
+    else
+        echo "measured: the build pod is gone once Connect is Ready"
+    fi
 fi
 check "the image edp/connect:35 was built and pushed to the registry in the cluster" image_in_registry
 check "KafkaConnect edp-connect is Ready" connect_ready
@@ -170,20 +179,24 @@ check "an update of SKU-3 arrives as a u record with quantity 79" poll "$(bound 
 check "the inventory service publishes the document SKU-3 with quantityOnHand 79 on $DOCS" poll "$(bound 60)" document_is SKU-3 79
 
 # --- offsets through the resource
+T_LIST=$SECONDS
 check "listing offsets writes them to the ConfigMap, with an lsn, and the operator removes the annotation" list_offsets
+echo "measured: list answered and the annotation removed after $((SECONDS - T_LIST)) s"
 LSN_BEFORE="$(listed_lsn || true)"
 act put_alter_cm "$(wal_position)"
 act ckc annotate kafkaconnector inventory-cdc strimzi.io/connector-offsets=alter --overwrite
 refused_and_unchanged() { alter_refused && altered_to "$LSN_BEFORE"; }
-check "an alter while the connector runs is refused with a warning and the offsets do not change" poll "$(bound 60)" refused_and_unchanged
+check "an alter while the connector runs is refused, the operator logs a warning and the offsets do not change" poll "$(bound 60)" refused_and_unchanged
 act ckc annotate kafkaconnector inventory-cdc strimzi.io/connector-offsets-
 set_state stopped
 check "state stopped stops the connector and its task" poll "$(bound 60)" stopped
 update_sku SKU-4 401
 TARGET="$(wal_position)"
 act put_alter_cm "$TARGET"
+T_ALTER=$SECONDS
 act ckc annotate kafkaconnector inventory-cdc strimzi.io/connector-offsets=alter --overwrite
 check "an alter while stopped moves the offset to the end of the WAL" poll "$(bound 60)" altered_to "$TARGET"
+echo "measured: alter while stopped applied $((SECONDS - T_ALTER)) s after the annotation"
 set_state running
 check "state running resumes the connector and its task" poll "$(bound 60)" status_is inventory-cdc RUNNING RUNNING
 update_sku SKU-5 502
@@ -193,7 +206,7 @@ check "the change made while the connector was stopped never arrives" skipped_wh
 
 # --- metrics and images
 check "Prometheus holds the connector status metric of inventory-cdc, running" \
-    poll "$(bound 90)" prom_is 'kafka_connect_connector_metrics_status_info{connector="inventory-cdc",status="running"}' 1
+    poll "$(bound 90)" prom_is 'kafka_connect_connector_metrics_status{connector="inventory-cdc",status="running"}' 1
 check "the node runs the images built from the chapter 08 and 09 Containerfiles" images_unchanged
 
 summary

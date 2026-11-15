@@ -36,7 +36,7 @@ Demo code, labelled as such in `verify.sh`, the overlay and the chapter.
 
 | Switch | Effect | Failing set |
 |---|---|---|
-| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18), predicted; to be confirmed in the live window and frozen here |
+| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18): no group appears on `edp-dr`, so the delta checks fail; the records, the connectors and the monitoring checks pass |
 
 The patch is a JSON patch because kustomize replaces a whole list of a custom resource when it merges one, and `mirrors` is a list.
 
@@ -77,9 +77,9 @@ Checks 9, 13 and 16 depend on the group offset sync. They are the negative witne
 
 ## Measurements
 
-`verify.sh` prints each value on a `measured:` line; the window fills this section.
+`verify.sh` prints each value on a `measured:` line; ranges are over the verified runs.
 
-- The `Kafka` `edp-dr` Ready: TBD(spike: 38 s). `edp-mm2` Ready after apply: TBD(spike: 63 s).
-- Group offsets on `edp-dr` after the sync setting is on, with 5 s intervals: TBD(spike: 11 s).
-- Failed over and notified: TBD(spike: 6 s).
-- Deleting the mirror, both clusters, the apps and the three namespaces: TBD(spike: 43 s).
+- The `Kafka` `edp-dr` Ready: 34 to 35 s after its creation. `edp-mm2` Ready: 68 to 72 s.
+- Group offsets on `edp-dr` after the sync setting is on, with 5 s intervals: 6 to 7 s after the records on both clusters matched.
+- From the change of the bootstrap address to the five orders notified: 7 to 8 s.
+- Deleting the mirror, both clusters, the apps and the three namespaces: 45 s to 50 s.

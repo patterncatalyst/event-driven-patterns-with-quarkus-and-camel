@@ -56,7 +56,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kafka_connect_connector_metrics_status_info{strimzi_kind=\"KafkaMirrorMaker2\",status=\"running\"}",
+          "expr": "kafka_connect_connector_metrics_status{strimzi_kind=\"KafkaMirrorMaker2\",status=\"running\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

@@ -32,7 +32,7 @@ Install minikube and kubectl at those versions on your `PATH`; the scripts compa
 examples/_k8s/cluster.sh up
 ```
 
-The script refuses to run while a compose stack, another minikube profile or OpenShift Local is running. It creates the profile with 6 CPUs and 10 GiB of memory, publishes the ports below on `127.0.0.1` only, downloads the two release manifests and checks their sha256, and installs the CloudNativePG operator. Nothing is forwarded or tunnelled: a service is reached through a published NodePort or with `kubectl exec`.
+The script refuses to run while a compose stack, another minikube profile or OpenShift Local is running. It creates the profile with 6 CPUs and 10 GiB of memory, publishes the ports below on `127.0.0.1` only, lets the node pull over plain HTTP from one in-cluster registry address, downloads the two release manifests and checks their sha256, and installs the CloudNativePG operator. Nothing is forwarded or tunnelled: a service is reached through a published NodePort or with `kubectl exec`.
 
 | Port | Service |
 |---|---|

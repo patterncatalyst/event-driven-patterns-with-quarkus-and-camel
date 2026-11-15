@@ -96,6 +96,13 @@ committed_reaches() { [[ "$(committed_sum "$DR")" == "$1" ]]; }
 precondition "both Kafka clusters, edp and edp-dr, are Ready" both_clusters_ready
 precondition "MirrorMaker 2 edp-mm2 is Ready" mm2_ready
 precondition "sync.group.offsets.enabled in the checkpoint connector is $EXPECT_SYNC" expect "$(sync_in_cr)" "$EXPECT_SYNC"
+ready_after() { # ready_after <kind> <name>: seconds from creation to the Ready condition, as the resource records them
+    local t a b
+    t="$(kc -n "$NS_KAFKA" get "$1" "$2" -o 'jsonpath={.metadata.creationTimestamp} {.status.conditions[?(@.type=="Ready")].lastTransitionTime}')" || return 1
+    read -r a b <<<"$t"
+    echo $(( $(date -d "$b" +%s) - $(date -d "$a" +%s) ))
+}
+echo "measured: edp-dr Ready $(ready_after kafka edp-dr || echo '?') s and edp-mm2 Ready $(ready_after kafkamirrormaker2 edp-mm2 || echo '?') s after their creation"
 check "the source and the checkpoint connector and their tasks are RUNNING" poll "$BOUND" connectors_running
 
 first_orders() { place_all O-3401 O-3402 O-3403 O-3404 O-3405 && poll 120 all_notified O-3401 O-3402 O-3403 O-3404 O-3405; }
@@ -110,16 +117,18 @@ check "orders O-3401 to O-3405 are placed and their notifications arrive on edp"
 check "$TOPIC exists on edp-dr under the same name" poll "$BOUND" topic_present "$DR" "$TOPIC"
 check "both clusters hold the same 5 records of $TOPIC" poll "$BOUND" ends_equal 5
 check "the offset syncs are on edp and the checkpoints on edp-dr" internal_topics_placed
+T_SYNC=$SECONDS
 check "group $GROUP exists on edp-dr with the committed offsets it has on edp" poll "$BOUND" group_on_target_matches_source 5
+echo "measured: group offsets on edp-dr $((SECONDS - T_SYNC)) s after the five orders were notified and the record counts matched"
 precondition "notification-service is stopped" consumer_stopped
 check "orders O-3406 to O-3410 are placed and nothing is notified" second_orders_unseen
 check "both clusters hold the same 10 records of $TOPIC" poll "$BOUND" ends_equal 10
 check "the group on edp-dr stays at 5 and is not ahead of the records" poll 30 target_group_not_ahead
 BEFORE="$(committed_sum "$DR" || echo 0)"
-check "notification-service runs again with only its bootstrap address changed to edp-dr" fail_over
 T_FAILOVER=$SECONDS
+check "notification-service runs again with only its bootstrap address changed to edp-dr" fail_over
 check "orders O-3406 to O-3410 are notified" second_orders_notified
-echo "measured: failed over and notified in $((SECONDS - T_FAILOVER)) s after the consumer was Ready"
+echo "measured: from the change of the bootstrap address to the five orders notified: $((SECONDS - T_FAILOVER)) s"
 check "the group on edp-dr resumes from the synced offset and reads exactly the 5 later records" resumed_from_synced_offset
 check "the MirrorMaker 2 worker reports its 2 connectors through the monitoring base" poll "$BOUND" mm2_workers_reported
 check "Grafana serves the dashboard edp-mirrormaker2" poll "$BOUND" grafana_dashboard edp-mirrormaker2

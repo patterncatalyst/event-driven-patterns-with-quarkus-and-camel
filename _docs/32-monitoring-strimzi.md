@@ -48,7 +48,7 @@ The operator exposes its own metrics without configuration, including reconcilia
 
 The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowList` is a list of regular expressions over metric names. Leave it out and Strimzi applies a curated default for the node's role; in the measured run the default list on a controller held no `kafka_controller_` and no `kafka_server_raft_` family, so the question whether there is an active controller had nothing to read. Setting the list to `kafka_.*` and `jvm_.*` answers it. A narrower list is fine if it keeps `kafka_controller_.*` and `kafka_server_raft_metrics_.*`.
 
-The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi documentation). The pods keep their names, uids and restart counts, and the endpoint changes within TBD(spike: 3 s) of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod, in the measured run about TBD(spike: 75 s) to the next Ready.
+The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi documentation). The pods keep their names, uids and restart counts, and the endpoint changes within 1 to 3 s of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod, in the measured run about 75 s to the next Ready.
 
 The collector scrapes the pods with a `prometheus` receiver. The OpenTelemetry documentation calls it a drop-in replacement for a Prometheus scrape, and it takes the same `kubernetes_sd_configs`. Chapter 26 merged a second collector configuration into otel-lgtm through `OTELCOL_EXTRA_ARGS`; this one is the same mechanism and carries both the scrape and chapter 26's lag receiver.
 
@@ -105,7 +105,7 @@ spec:
 
 The same entry exists for the `Kafka` resource and for the node pools. Strimzi ships an example configuration with its own metric prefixes, which is the place to compare names; this one uses short prefixes that read well in a query. Kube-state-metrics runs as one Deployment with a cluster role that may list and watch the CRDs and the `kafka.strimzi.io` resources. Upstream marks the feature frozen in favour of a successor, so it will not grow.
 
-The payoff is the invalid topic. A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within TBD(spike: 11 s), and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
+The payoff is the invalid topic. A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within 18 to 28 s in the measured runs, and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
 
 ## One dashboard beside the flows
 

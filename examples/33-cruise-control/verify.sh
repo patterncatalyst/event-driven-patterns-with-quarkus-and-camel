@@ -95,7 +95,8 @@ auto_idle() { # auto_idle <mode>: the operator created edp-auto-rebalancing-<mod
 }
 auto_grow() { # a scale-up with autoRebalance configured
     AUTO_SEEN=0
-    grow_to 4 && poll "$AUTO_BOUND" auto_idle add-brokers
+    grow_to 4 || { diag "grow_to 4"; return 1; }
+    poll "$AUTO_BOUND" auto_idle add-brokers || { diag "operator rebalance not Idle"; return 1; }
 }
 
 # --- preconditions and checks
@@ -134,13 +135,20 @@ scale_down_warning() {
     [[ "$(kk get kafka edp -o jsonpath='{.status.conditions[?(@.reason=="ScaleDownPreventionCheck")].message}')" == *"Reverting scale-down"* ]]
 }
 REFUSED=0
-refusal_seen() { scale_down_warning && REFUSED=1; [[ "$REFUSED" == 1 && "$(pool_replicas)" == 3 ]]; }
-scale_down_refused() { # without autoRebalance the pool is put back, and the broker with replicas stays
+refusal_seen() { scale_down_warning && REFUSED=1; [[ "$REFUSED" == 1 && "$(id_count)" == 3 ]]; }
+exec 3>&2
+diag() { # what the operator reports, on the run's stderr (fd 3, past check's redirects), when a step fails
+    { echo "--- diag: $1"; kk get kafkanodepool broker -o jsonpath='{.spec.replicas} {.status.nodeIds}{"\n"}'
+      kk get kafka edp -o jsonpath='{range .status.conditions[*]}{.type} {.status} {.reason} {.message}{"\n"}{end}{.status.autoRebalance.state}{"\n"}'
+      kk get kafkarebalance; } >&3 2>&1 || true
+}
+scale_down_refused() { # without autoRebalance the broker with replicas stays; the spec is then set back to three
     REFUSED=0
     scale_pool 2
-    poll 120 refusal_seen || return 1
-    poll 300 settled 3 || return 1
-    [[ "$(holds "$NEW_ID")" -gt 0 ]]
+    poll 120 refusal_seen || { diag "no refusal seen"; return 1; }
+    kk patch kafkanodepool broker --type merge -p '{"spec":{"replicas":3}}' >/dev/null || return 1
+    poll 300 settled 3 || { diag "not settled at three"; return 1; }
+    [[ "$(holds "$NEW_ID")" -gt 0 ]] || { diag "the broker lost its replicas"; return 1; }
 }
 configure_auto_rebalance() {
     if [[ "$AUTO_REBALANCE" == on ]]; then

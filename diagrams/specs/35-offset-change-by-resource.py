@@ -12,7 +12,7 @@ emit(
         {"x": 570, "y": 50, "w": 190, "h": 90, "style": "box", "lines": ["annotation list", "offsets.json in a", "ConfigMap"]},
         {"x": 570, "y": 250, "w": 190, "h": 90, "style": "box", "lines": ["annotation alter", "offsets from a", "ConfigMap"]},
         {"x": 810, "y": 150, "w": 160, "h": 90, "style": "ghost", "lines": ["Annotation", "removed by the", "operator"]},
-        {"x": 30, "y": 330, "w": 440, "h": 80, "style": "ink", "lines": ["alter while running", "Warning event, annotation stays,", "offsets unchanged"]},
+        {"x": 30, "y": 330, "w": 440, "h": 80, "style": "ink", "lines": ["alter while running", "operator logs a warning, annotation stays,", "offsets unchanged"]},
     ],
     edges=[
         {"x1": 200, "y1": 195, "x2": 300, "y2": 195, "amber": True},

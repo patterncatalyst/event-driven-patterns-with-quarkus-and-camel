@@ -31,7 +31,7 @@ KEEP=1 ./verify.sh         # leave the namespaces in place
 
 Demo code, labelled as such in `verify.sh`, the overlay and the chapter.
 
-| Switch | Effect | Failing set (predicted, frozen after the live window) |
+| Switch | Effect | Failing set |
 |---|---|---|
 | `METRICS=off ./verify.sh` | `demo-metrics-off/` builds the cluster with no `metricsConfig` | Checks 3, 4, 6, 7, 18, 19 and 20 (13/20): the reporter checks and the `allowList` checks. The operator, resource-state, lag and dashboard checks pass, which shows the sources are independent |
 
@@ -64,4 +64,12 @@ In-run changes to the Kafka resource use `kubectl patch --type merge`; the initi
 
 ## Measurements
 
-`TBD` until the live window: apply to the first broker sample, the delay of the `NotSupported` reading, the time for an `allowList` change to reach the endpoint, and the time to roll the pods when `metricsConfig` is removed.
+`verify.sh` prints the two timings it takes on `measured:` lines; the other two come from the cluster spike and were measured the same way.
+
+| What | Value |
+|---|---|
+| Apply to the first broker sample in Prometheus | about 80 s on a warm node (38 s to the broker pod, 38 s from there to the first `up` 1) |
+| Topic raised from 3 to 6 partitions to Ready 0 with `NotSupported` | 18 to 28 s over three runs (the Topic Operator reconciles every 15 s) |
+| `allowList` patched to the family gone from the endpoint | 1 to 3 s, pods unchanged |
+| `metricsConfig` removed (`METRICS=off`), pods rolled to Ready | about 75 s; restoring it rolls them again |
+| Deleting the topics, Kafka and the three namespaces | 42 to 45 s |

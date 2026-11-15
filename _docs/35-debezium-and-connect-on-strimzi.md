@@ -69,11 +69,11 @@ The operator starts a build pod when the resource has a `build` section. The pod
 
 The registry is a Deployment of the CNCF Distribution image in `edp-kafka`, on an emptyDir volume, behind a Service with a fixed ClusterIP inside the service range. The push is plain HTTP, so Buildah is told not to verify TLS. The pull is the node's: Strimzi references the new image by digest, and containerd on the node does not pull over HTTP from an address it has not been told to trust. The profile setup of the examples tells it, for that one address. An external registry is not needed, nothing leaves the machine, and the image disappears with the namespace, so every run builds it again.
 
-The build pod needs no extra privilege in a namespace with no Pod Security labels. Strimzi's proposal for the Buildah build says that it does not work under the restricted profile, which is one reason these namespaces carry no labels. Chapter 31 puts the other workloads under that profile.
+The build pod needs no extra privilege in a namespace with no Pod Security labels. With the namespace labelled `pod-security.kubernetes.io/enforce=restricted` the build pod is refused: the `KafkaConnect` turns NotReady with a message that the pod violates `restricted:latest` on `allowPrivilegeEscalation`, the capabilities, `runAsNonRoot` and `seccompProfile`. That is why these namespaces carry no labels. Chapter 31 puts the other workloads under that profile.
 
-A build is the slow part. The build pod runs for TBD(spike: 25 s) and the `KafkaConnect` is Ready after TBD(spike: 90 s), pull included.
+A build is the slow part. The build pod runs for about 25 s and the `KafkaConnect` is Ready 87 to 90 s after the apply, pull included.
 
-A checksum that does not match the archive stops the build: no image reaches the registry and no Connect pod starts. The `PLUGIN_SHA=wrong` switch of the example runs it, and the message the operator reports is TBD.
+A checksum that does not match the archive stops the build: no image reaches the registry and no Connect pod starts. The `PLUGIN_SHA=wrong` switch of the example runs it, and the `KafkaConnect` reports `NotReady` with the message `The Kafka Connect build failed`. The build pod ends in phase `Failed`, and its log holds `sha512sum: WARNING: 1 computed checksum did NOT match` followed by `Error: building at STEP`.
 
 ## Two connectors on CloudNativePG
 
@@ -115,13 +115,13 @@ CloudNativePG reconciles the attribute onto the role, so no SQL runs by hand, an
 
 Two measured failures belong to this combination.
 
-The captured table must be owned by the connector's role. With `publication.autocreate.mode: filtered` the connector creates a publication for the tables in `table.include.list`, and PostgreSQL allows that only to an owner (Debezium docs). A table created through `kubectl exec psql` belongs to the `postgres` superuser, and the task fails with `No table filters found for filtered publication`. The example creates the table with `SET ROLE edp`. After the owner is fixed, the annotation `strimzi.io/restart-task: "0"` restarts the failed task and it runs again in TBD(spike: 3 s). The annotation `strimzi.io/restart: "true"`, which restarts the connector, did not clear the failed task.
+The captured table must be owned by the connector's role. With `publication.autocreate.mode: filtered` the connector creates a publication for the tables in `table.include.list`, and PostgreSQL allows that only to an owner (Debezium docs). A table created through `kubectl exec psql` belongs to the `postgres` superuser, and the task fails with `No table filters found for filtered publication`. The example creates the table with `SET ROLE edp`. After the owner is fixed, the annotation `strimzi.io/restart-task: "0"` restarts the failed task and it runs again in 3 s. The annotation `strimzi.io/restart: "true"`, which restarts the connector, did not clear the failed task.
 
 Two Debezium connectors in one Connect cluster must not share a `topic.prefix`. Both of chapters 8 and 10 use `edp`. In one worker the second connector logs `Unable to register metrics as an old set with the same name` every five seconds and never takes its snapshot, because the connector's metrics name contains the prefix. The inventory connector therefore uses `edp-inventory`, with both `RegexRouter` patterns following it. The topics it writes keep their names, `edp.inventory.item-changes` and `edp.inventory.signals`.
 
 The applications are the images of chapters 8 and 9, unchanged. An order placed through `order-service` is stored with its outbox row in one transaction (chapter 8), and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header, leaving the outbox table empty. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route of chapter 9 turns it into the document on `edp.inventory.items`.
 
-The Connect pod serves its metrics on the port of the Strimzi Metrics Reporter, with `metricsConfig` set as for the brokers in chapter 32. The families start with `kafka_connect_`, and `kafka_connect_connector_metrics_status_info` carries the connector name and its state as labels. The `allowList` in the resource limits what is exposed to those families and the JVM's.
+The Connect pod serves its metrics on the port of the Strimzi Metrics Reporter, with `metricsConfig` set as for the brokers in chapter 32. The families start with `kafka_connect_`, and `kafka_connect_connector_metrics_status` carries the connector name and its state as labels. The `allowList` in the resource limits what is exposed to those families and the JVM's. Unlike on the brokers of chapter 32, a changed `allowList` on `KafkaConnect` replaces the Connect pod (a new uid in the measured run).
 
 ## Connector offsets in the resource
 
@@ -151,11 +151,11 @@ kubectl -n edp-kafka get configmap inventory-cdc-offsets -o jsonpath='{.data.off
 {"offsets":[{"partition":{"server":"edp-inventory"},"offset":{"lsn":83886944,"lsn_proc":83886944,"messageType":"UPDATE"}}]}
 ```
 
-The annotation is gone TBD(spike: 0 to 2 s) after a list. A list right after the connector starts can return `{"offsets":[]}`, because Connect stores offsets on a timer; the example sets `offset.flush.interval.ms` to one second, as chapter 10 did on compose.
+The annotation is gone 1 to 3 s after a list. A list right after the connector starts can return `{"offsets":[]}`, because Connect stores offsets on a timer; the example sets `offset.flush.interval.ms` to one second, as chapter 10 did on compose.
 
-{% include excalidraw.html file="35-offset-change-by-resource" alt="A running connector is stopped by setting state stopped; while stopped the annotation list writes offsets.json to a ConfigMap and the annotation alter reads new offsets from a ConfigMap, and the operator removes the annotation each time; state running resumes it; an alter while running leaves a Warning event, keeps the annotation and changes nothing" caption="Figure 35.2: An offset operation is an annotation on the resource, and it needs the connector stopped" %}
+{% include excalidraw.html file="35-offset-change-by-resource" alt="A running connector is stopped by setting state stopped; while stopped the annotation list writes offsets.json to a ConfigMap and the annotation alter reads new offsets from a ConfigMap, and the operator removes the annotation each time; state running resumes it; an alter while running makes the operator log a warning, keeps the annotation and changes nothing" caption="Figure 35.2: An offset operation is an annotation on the resource, and it needs the connector stopped" %}
 
-An alter is refused while the connector runs. The operator records a Warning event on the resource, `Connector is not in STOPPED state`, and leaves the annotation on the resource with the offsets unchanged. The annotation stays, and it fires later against the stopped connector with whatever the ConfigMap holds then, so the stale one is removed before the next step.
+An alter is refused while the connector runs. The operator logs a warning, `Connector is not in STOPPED state`, and writes no Kubernetes event for it. It leaves the annotation on the resource with the offsets unchanged. The annotation stays, and it fires later against the stopped connector with whatever the ConfigMap holds then, so the stale one is removed before the next step.
 
 ```bash
 kubectl -n edp-kafka patch kafkaconnector inventory-cdc --type=merge -p '{"spec":{"state":"stopped"}}'
@@ -165,7 +165,7 @@ kubectl -n edp-kafka annotate kafkaconnector inventory-cdc strimzi.io/connector-
 kubectl -n edp-kafka patch kafkaconnector inventory-cdc --type=merge -p '{"spec":{"state":"running"}}'
 ```
 
-The alter takes TBD(spike: 2 s) and Connect reads back the new position. The outcome is chapter 10's, now through the resource: a row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
+The alter takes 0 to 3 s and Connect reads back the new position. The outcome is chapter 10's, now through the resource: a row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
 
 The Connect REST status of a stopped connector shows no tasks, while the status of the resource can trail it by one poll. A connector created with `state: stopped` starts in that state (Strimzi changelog).
 
@@ -196,7 +196,7 @@ A plugin that Strimzi downloads is only as trustworthy as its checksum. The chec
 
 > **🤖 Explore with your agent**
 > "In examples/35-debezium-and-connect-on-strimzi, read connect/kafkaconnect.yaml and connectors/inventory-cdc.yaml, run ./verify.sh with KEEP=1, then set the KafkaConnector inventory-cdc to state stopped, update SKU-1 in inventory.inventory_item, alter its offset to the current WAL position through the ConfigMap inventory-cdc-offsets-alter, resume it, and read edp.inventory.item-changes. Then annotate it with the alter while it is running. Say which edits belong in the repository and what the operator leaves behind after the refused alter."
-> Check: the update made while stopped never reaches edp.inventory.item-changes, the next update does, and the refused alter leaves a Warning event and the annotation on the resource.
+> Check: the update made while stopped never reaches edp.inventory.item-changes, the next update does, and the refused alter logs a warning and the annotation stays on the resource.
 
 ## References
 

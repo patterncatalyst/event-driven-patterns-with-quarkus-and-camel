@@ -43,8 +43,8 @@ count_gt() { local n; n="$(q_count "$1")" || return 1; (( n > $2 )); }
 # --- the Kafka resource and its pods
 metrics_type() { local v; v="$(kc -n "$NS_KAFKA" get kafka edp -o jsonpath='{.spec.kafka.metricsConfig.type}')"; echo "${v:-none}"; }
 allow_list() { kc -n "$NS_KAFKA" get kafka edp -o jsonpath='{.spec.kafka.metricsConfig.values.allowList}'; }
-pools() { kc -n "$NS_KAFKA" get pods -l strimzi.io/kind=Kafka -o jsonpath='{range .items[*]}{.metadata.labels.strimzi\.io/pool-name}{"\n"}{end}' | LC_ALL=C sort | paste -sd' '; }
-pod_state() { kc -n "$NS_KAFKA" get pods -l strimzi.io/kind=Kafka -o json | python3 -I ./kafkapods.py; }
+pools() { kc -n "$NS_KAFKA" get pods -l strimzi.io/kind=Kafka,strimzi.io/pool-name -o jsonpath='{range .items[*]}{.metadata.labels.strimzi\.io/pool-name}{"\n"}{end}' | LC_ALL=C sort | paste -sd' '; }
+pod_state() { kc -n "$NS_KAFKA" get pods -l strimzi.io/kind=Kafka,strimzi.io/pool-name -o json | python3 -I ./kafkapods.py; }
 controller_pod() { kc -n "$NS_KAFKA" get pods -l strimzi.io/pool-name=controller -o jsonpath='{.items[0].metadata.name}'; }
 endpoint() { kc -n "$NS_KAFKA" exec "$1" -- curl -s -m 3 localhost:9404/metrics; }   # endpoint <pod>
 endpoint_has() { local out; out="$(endpoint "$1")" || return 1; [[ "$out" == *"$2"* ]]; }
@@ -106,13 +106,14 @@ lab_repaired() { topic_ready "$LAB" && lab_has_partitions 3; }
 
 # --- an allowList change with no restart
 BEFORE=""
+ALLOW_T0=0
 snapshot() { BEFORE="$(pod_state)"; [[ -n "$BEFORE" ]]; }
 patch_allow_list() { kc -n "$NS_KAFKA" patch kafka edp --type merge -p "{\"spec\":{\"kafka\":{\"metricsConfig\":{\"values\":{\"allowList\":$1}}}}}"; }
 narrow() { snapshot && patch_allow_list "$NARROW"; }
 family_gone() { endpoint_lacks edp-broker-0 "$BYTES_IN"; }
 family_back() { patch_allow_list "$WIDE" && poll "$TOPIC_BOUND" endpoint_has edp-broker-0 "$BYTES_IN"; }
 narrow_and_wait() { # the family is on the endpoint first, so its absence afterwards is the effect of the change
-    endpoint_has edp-broker-0 "$BYTES_IN" && narrow && poll "$TOPIC_BOUND" family_gone
+    endpoint_has edp-broker-0 "$BYTES_IN" && narrow && ALLOW_T0=$SECONDS && poll "$TOPIC_BOUND" family_gone
 }
 family_restored() { family_back && pods_unchanged; }
 pods_unchanged() { [[ -n "$BEFORE" && "$(pod_state)" == "$BEFORE" ]]; }
@@ -142,6 +143,7 @@ check "the other declared topic still reads Ready 1" topic_ready edp.orders.plac
 repair_lab >/dev/null || echo "scratch KafkaTopic was not recreated" >&2
 check "the topic is declared again and reads Ready 1 with 3 partitions" poll "$TOPIC_BOUND" lab_repaired
 check "narrowing the allowList removes the bytes-in family from the broker endpoint" narrow_and_wait
+echo "measured: the endpoint dropped the family $((SECONDS - ALLOW_T0)) s after the narrowing"
 check "the broker and controller pods keep their names, uids and restart counts" pods_unchanged
 check "restoring the allowList brings the family back, again with no restart" family_restored
 summary

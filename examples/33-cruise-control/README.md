@@ -34,9 +34,9 @@ KEEP=1 ./verify.sh
 
 Demo code, labelled in `verify.sh` and the chapter.
 
-| Switch | Effect | Predicted failing set |
+| Switch | Effect | Failing set |
 |---|---|---|
-| `AUTO_REBALANCE=off ./verify.sh` | Never adds the `autoRebalance` block or the templates, so the pool that grows to four gets no rebalance | Checks 14 and 15 (the operator's rebalance and the replicas on the added broker). The scale-down is not refused here, because the added broker is empty. To be frozen in the live window |
+| `AUTO_REBALANCE=off ./verify.sh` | Never adds the `autoRebalance` block or the templates, so the pool that grows to four gets no rebalance | Checks 14 and 15 (the operator's rebalance, which never comes, and the replicas on the added broker), 15/17. The scale-down is not refused here, because the added broker is empty: checks 16 and 17 pass |
 
 ## Tests and checks in detail
 
@@ -51,7 +51,7 @@ Demo code, labelled in `verify.sh` and the chapter.
 9. After the approve annotation the rebalance reaches `Ready` within 240 s.
 10. The new broker holds replicas and every original broker holds fewer than before.
 11. Every partition has two replicas, all in sync.
-12. Without `autoRebalance`, scaling the pool down is refused: the `Kafka` status shows `ScaleDownPreventionCheck`, the pool returns to three nodes and the new broker still holds replicas.
+12. Without `autoRebalance`, scaling the pool down is refused: the `Kafka` status shows `ScaleDownPreventionCheck`, the pool still lists three nodes (its `spec.replicas` is then set back to three) and the new broker still holds replicas.
 13. The `Kafka` resource carries the `autoRebalance` modes `add-brokers remove-brokers` (none under `AUTO_REBALANCE=off`) and is Ready.
 14. The pool grown to four is rebalanced by the operator: `edp-auto-rebalancing-add-brokers` appears with no hand-written resource and `status.autoRebalance.state` returns to `Idle` within 420 s.
 15. The added broker holds replicas and every partition is fully replicated.
@@ -60,7 +60,7 @@ Demo code, labelled in `verify.sh` and the chapter.
 
 ## Measurements
 
-Runtime numbers are filled from the live window; `verify.sh` prints each on a `measured:` line.
+`verify.sh` prints each on a `measured:` line; ranges are over the verified runs.
 
-- Pool grown to three and Ready: TBD. Proposal ready: TBD(spike: 2 s after a refresh). Approved to Ready: TBD(spike: 157 s). Operator rebalance after a scale to four: TBD(spike: 3 min 24 s from creation of the rebalance's pod to Ready). Scale-down with `remove-brokers`: TBD(spike: 66 s). Whole run: TBD.
-- Deleting Kafka, Cruise Control and the namespaces: TBD(spike: 80 s).
+- Pool grown to three and Ready: 2 to 3 s. Proposal ready: 146 to 150 s, with 55 to 67 replica movements. Approved to Ready: 98 to 99 s. Operator rebalance after a scale to four, to `Idle`: 47 s to 347 s. Scale-down with `remove-brokers`, to a settled pool of three: 8 s to 114 s. Whole run: 475 s to 978 s.
+- Deleting Kafka, Cruise Control and the namespaces: 28 s to 125 s.
