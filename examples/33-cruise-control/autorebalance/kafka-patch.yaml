@@ -1,0 +1,10 @@
+# Applied with kubectl patch --type merge after the manual rebalance (demo switch AUTO_REBALANCE=off skips it).
+spec:
+  cruiseControl:
+    autoRebalance:
+      - mode: add-brokers
+        template:
+          name: edp-add
+      - mode: remove-brokers
+        template:
+          name: edp-remove

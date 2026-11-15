@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  labels: {app: order-service}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: order-service}
+  template:
+    metadata:
+      labels: {app: order-service}
+    spec:
+      containers:
+        - name: app
+          image: localhost/edp/08-order-service:local
+          imagePullPolicy: Never
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - {name: CAMEL_COMPONENT_KAFKA_BROKERS, value: "edp-kafka-bootstrap.edp-kafka.svc:9092"}
+            - {name: QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://lgtm.edp-lgtm.svc:4318"}
+            - {name: QUARKUS_DATASOURCE_JDBC_URL, value: "jdbc:postgresql://edp-pg-rw.edp.svc:5432/edp"}
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom: {secretKeyRef: {name: edp-pg-app, key: username}}
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom: {secretKeyRef: {name: edp-pg-app, key: password}}
+          readinessProbe:
+            httpGet: {path: /q/health/ready, port: 8080}
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet: {path: /q/health/live, port: 8080}
+            periodSeconds: 10
+            initialDelaySeconds: 20
+          resources:
+            requests: {memory: 256Mi}
+            limits: {memory: 384Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  labels: {app: order-service}
+spec:
+  type: NodePort
+  selector: {app: order-service}
+  ports:
+    - {name: http, port: 8080, targetPort: 8080, nodePort: 30080}

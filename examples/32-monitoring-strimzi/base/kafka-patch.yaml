@@ -1,0 +1,9 @@
+# The Topic Operator is on so that a KafkaTopic has a Ready condition for kube-state-metrics to read.
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: edp
+spec:
+  entityOperator:
+    topicOperator:
+      reconciliationIntervalMs: 15000

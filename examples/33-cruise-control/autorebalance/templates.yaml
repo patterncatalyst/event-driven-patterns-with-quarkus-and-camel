@@ -1,0 +1,21 @@
+# Templates for auto-rebalancing: the operator copies their spec into the KafkaRebalance it creates, and sets the
+# mode and the brokers itself.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaRebalance
+metadata:
+  name: edp-add
+  labels:
+    strimzi.io/cluster: edp
+  annotations:
+    strimzi.io/rebalance-template: "true"
+spec: {}
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaRebalance
+metadata:
+  name: edp-remove
+  labels:
+    strimzi.io/cluster: edp
+  annotations:
+    strimzi.io/rebalance-template: "true"
+spec: {}

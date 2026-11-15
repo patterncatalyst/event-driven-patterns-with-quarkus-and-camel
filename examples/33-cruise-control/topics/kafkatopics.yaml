@@ -1,0 +1,39 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.orders.placed
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  partitions: 6
+  replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.inventory.reserved
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  partitions: 6
+  replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.payments.processed
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  partitions: 6
+  replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.shipping.scheduled
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  partitions: 6
+  replicas: 2

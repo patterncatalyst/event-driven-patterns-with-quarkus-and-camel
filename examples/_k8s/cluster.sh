@@ -64,6 +64,25 @@ fetch_manifest() { # fetch_manifest <url> <sha256> <relative file>
     mv "$tmp" "$file"
 }
 
+# The in-cluster registry (registry/, fixed ClusterIP) speaks plain HTTP, so the node's containerd must be allowed to pull
+# from it that way. First choice: the profile flag `minikube start --insecure-registry=<service CIDR>`. If containerd
+# has no entry for the registry address after that (a profile created without the flag, or a flag that only reaches
+# the Docker daemon), write the hosts.toml for it inside the node. Both are settings of the profile, not of the host.
+registry_pull_over_http() {
+    local addr="$REGISTRY_IP:$REGISTRY_PORT" f
+    f="/etc/containerd/certs.d/$addr/hosts.toml"
+    if docker exec "$P" test -f "$f"; then
+        echo "cluster: containerd on the node already pulls from $addr over HTTP"; return 0
+    fi
+    echo "cluster: the --insecure-registry flag left no containerd entry for $addr; writing $f in the node"
+    docker exec -i "$P" sh -c "mkdir -p /etc/containerd/certs.d/$addr && cat > $f" <<TOML
+server = "http://$addr"
+
+[host."http://$addr"]
+  capabilities = ["pull", "resolve"]
+TOML
+}
+
 cmd_up() {
     check_tools
     # shellcheck source=../../scripts/stack-guard.sh
@@ -80,9 +99,10 @@ cmd_up() {
         echo "cluster: creating profile $P ($MK_CPUS CPUs, $MK_MEMORY, Kubernetes $K8S_VERSION)"
         minikube start -p "$P" --keep-context --driver=docker --container-runtime=containerd \
             --kubernetes-version="$K8S_VERSION" --cpus="$MK_CPUS" --memory="$MK_MEMORY" --disk-size="$MK_DISK" \
-            "${ports[@]}"
+            --insecure-registry="$MK_INSECURE_REGISTRY" "${ports[@]}"
     fi
     ports_loopback_only
+    registry_pull_over_http
     fetch_manifest "$CNPG_URL" "$CNPG_SHA256" "$CNPG_FILE"
     fetch_manifest "$STRIMZI_URL" "$STRIMZI_SHA256" "$STRIMZI_FILE"
     kc apply --server-side --field-manager=edp-cluster -k "$K8S_DIR/platform/cnpg" >/dev/null

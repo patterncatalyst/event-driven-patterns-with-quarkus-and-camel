@@ -1,0 +1,7 @@
+# Component: Strimzi Metrics Reporter on the Kafka cluster edp (brokers and controllers, port 9404, /metrics).
+# List it under `components:` next to ../_k8s/kafka in `resources:`.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - path: metrics-patch.yaml
+    target: {kind: Kafka, name: edp}

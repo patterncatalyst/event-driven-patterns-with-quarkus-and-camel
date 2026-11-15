@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lgtm, namespace: edp-lgtm}
+spec:
+  template:
+    spec:
+      volumes:
+        - name: dashboards
+          configMap: null
+          projected:
+            sources:
+              - configMap: {name: edp-dashboards}
+              - configMap: {name: edp-dashboards-mm2}

@@ -1,0 +1,43 @@
+# A Connect cluster whose image Strimzi builds: the PostgreSQL connector plugin is downloaded, checked against its
+# sha512 and baked into an image that is pushed to the registry inside the cluster. The pull address is the
+# registry Service's fixed ClusterIP; the push is plain HTTP, so Buildah is told not to verify TLS.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: edp-connect
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: 1
+  bootstrapServers: edp-kafka-bootstrap.edp-kafka.svc:9092
+  groupId: edp-connect
+  offsetStorageTopic: edp-connect-offsets
+  configStorageTopic: edp-connect-configs
+  statusStorageTopic: edp-connect-status
+  config:
+    offset.storage.replication.factor: 1
+    config.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    # A read of a connector's offsets lags the connector by up to the flush interval; one second keeps it current.
+    offset.flush.interval.ms: 1000
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  metricsConfig:
+    type: strimziMetricsReporter
+    values:
+      allowList: ["kafka_connect_.*", "jvm_.*"]
+  build:
+    output:
+      type: docker
+      image: 10.96.100.50:5000/edp/connect:35
+      additionalPushOptions: ["--tls-verify=false"]
+    plugins:
+      - name: debezium-postgres
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.7.1.Final/debezium-connector-postgres-3.7.1.Final-plugin.tar.gz
+            sha512sum: d118c8eb994153c9cb687ee9071d09d07b5a03aafc03f5d898bd8ffa86ba801342be30723736f8d2803ae4a708a33295335f54d9f1af99d8c348461579a85868
+  resources:
+    requests: {memory: 768Mi}
+    limits: {memory: 1Gi}
+  jvmOptions: {-Xms: 384m, -Xmx: 384m}

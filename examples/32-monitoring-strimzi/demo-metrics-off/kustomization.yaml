@@ -1,0 +1,8 @@
+# Demo code (METRICS=off): the same cluster with no metricsConfig, so no broker or controller exposes metrics.
+# The monitoring component (collector, operator scrape, kube-state-metrics, dashboard) is unchanged.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+components:
+  - ../../_k8s/monitoring

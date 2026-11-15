@@ -1,0 +1,6 @@
+# In-cluster registry for KafkaConnect builds: 10.96.100.50:5000, plain HTTP, emptyDir (gone with the namespace).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp-kafka
+resources:
+  - registry.yaml

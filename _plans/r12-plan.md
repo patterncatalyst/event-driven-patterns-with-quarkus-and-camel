@@ -170,9 +170,9 @@ One command block (`cd examples/NN-slug && ./verify.sh`), one or two sentences e
 | 0 | Preflight: owner OK, save plan, iteration-plan r12 in progress, no stack, profile or CRC running | orchestrator | owner OK | done (owner approved all defaults) |
 | 1A | Survey the new pins (decision 4) with digests and sha512; sources rows 32 to 35 (every fact named in Findings plus chapter sources); bibliography rows; licence audit of kube-state-metrics, registry, Buildah image, Debezium plugin | exec 1A (Sonnet) | 0 | done (versions and sources r12 sections) |
 | 1B | G0 spike Q1 to Q8 on profile `edp` | exec 1B (Sonnet) | 0 | done (F1 to F34, G0-1 to G0-20) |
-| 1C | `_k8s` extension (kafka-metrics, monitoring, registry), lib.sh and cluster.sh additions, versions.env, validate.py allowances and self-tests | orchestrator | 1B in progress | pending |
+| 1C | `_k8s` extension (kafka-metrics, monitoring, registry), lib.sh and cluster.sh additions, versions.env, validate.py allowances and self-tests | orchestrator | 1B in progress | done |
 | G0 | "G0 decisions" appended; decisions 2, 9 and 11 from data; metric names, CR fields and durations frozen for the executors | orchestrator | 1A to 1C | pending |
-| 2A to 2D | Chapters 32, 33, 34, 35: overlay, verify.sh, README, example page, chapter, figures | execs 2A to 2D (Sonnet) | G0 | pending |
+| 2A to 2D | Chapters 32, 33, 34, 35: overlay, verify.sh, README, example page, chapter, figures | execs 2A to 2D (Sonnet) | G0 | done (drafted; live in step 3) |
 | 2E | Consistency: part card (Part 6 now 28 to 35), chapter 28 setup section if a pin or flag changed, CLAUDE.md decisions draft (decisions 1, 2, 3, 8), PRD Q10 amendment text | orchestrator | G0 | pending |
 | 3 | One live window, at most 2 h: 32 (about 20 min), 33 (about 35), 34 (about 25), 35 (about 30); one clean run, each demo once with the failing set frozen, one bite proof | orchestrator | 2A to 2D | pending |
 | 4 | Fixes inside the window, affected chapter re-run only | orchestrator | 3 | pending |

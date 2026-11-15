@@ -1,0 +1,23 @@
+# The bases of ../../_k8s, the chapter 02 deployments, the second cluster and MirrorMaker 2.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/namespaces
+  - ../../_k8s/strimzi
+  - ../../_k8s/kafka
+  - ../../_k8s/postgres
+  - ../../_k8s/lgtm
+  - ../../_k8s/apps/02
+  - edp-dr.yaml
+  - mirrormaker2.yaml
+components:
+  - ../../_k8s/monitoring
+  - ../../_k8s/kafka-metrics
+patches:
+  # The dashboards volume of the monitoring component becomes a projection of its ConfigMap and ours
+  - path: lgtm-dashboards-patch.yaml
+configMapGenerator:
+  - name: edp-dashboards-mm2
+    namespace: edp-lgtm
+    files: [dashboards/edp-mirrormaker2.json]
+    options: {disableNameSuffixHash: true}

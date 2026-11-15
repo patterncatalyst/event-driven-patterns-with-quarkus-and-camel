@@ -1,0 +1,11 @@
+# Demo code (PLUGIN_SHA=wrong): the same KafkaConnect with a checksum that does not match the plugin archive.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../connect
+patches:
+  - target: {kind: KafkaConnect, name: edp-connect}
+    patch: |-
+      - op: replace
+        path: /spec/build/plugins/0/artifacts/0/sha512sum
+        value: "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"

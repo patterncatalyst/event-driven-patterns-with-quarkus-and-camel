@@ -1,0 +1,34 @@
+# Chapter 35: the shared platform plus a container registry inside the cluster, the chapter 08 and 09 services and
+# the access Connect needs to read the database secret. KafkaConnect and the two KafkaConnectors are not listed
+# here: verify.sh applies connect/ and connectors/ itself, so it can time the build and create the tables the
+# connectors capture first.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../_k8s/namespaces
+  - ../_k8s/strimzi
+  - ../_k8s/kafka
+  - ../_k8s/postgres
+  - ../_k8s/lgtm
+  - ../_k8s/registry
+  - connect-secret-access.yaml
+  - apps
+components:
+  - ../_k8s/kafka-metrics
+  - ../_k8s/monitoring
+patches:
+  # Debezium connects as the application owner, which therefore needs the REPLICATION attribute. It is declared
+  # on the Cluster, not granted by hand. CloudNativePG already runs with wal_level logical.
+  - target: {group: postgresql.cnpg.io, kind: Cluster, name: edp-pg}
+    patch: |-
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata: {name: edp-pg}
+      spec:
+        managed:
+          roles:
+            - name: edp
+              ensure: present
+              login: true
+              replication: true
+              passwordSecret: {name: edp-pg-app}

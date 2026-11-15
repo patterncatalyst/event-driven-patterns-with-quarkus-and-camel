@@ -620,6 +620,28 @@ def self_test() -> int:
         results.append(("k8s example with k8s_fresh and local image passes",
                         not any("k8s_fresh" in x or "imagePullPolicy" in x for x in e), e))
 
+        # r12: the in-cluster registry reference and images pinned by digest are fully qualified and not latest
+        (ex / "connect.yaml").write_text(
+            "kind: KafkaConnect\nspec:\n  build:\n    output:\n      type: docker\n"
+            "      image: 10.96.100.50:5000/edp/connect:35\n")
+        (ex / "pinned.yaml").write_text(
+            "      - image: docker.io/library/registry:3.1.2@sha256:" + "0" * 64 + "\n")
+        e = run(r).errors
+        results.append(("registry ClusterIP image and digest-pinned image allowed",
+                        not any("image '" in x for x in e), e))
+        (ex / "connect.yaml").write_text("      - image: 10.96.100.50:5000/edp/connect:latest\n")
+        e = run(r).errors
+        results.append(("registry ClusterIP image with :latest caught", any("uses :latest" in x for x in e), e))
+        (ex / "connect.yaml").write_text("      - image: connect:35\n")
+        e = run(r).errors
+        results.append(("unqualified image caught", any("not fully qualified" in x for x in e), e))
+        (ex / "connect.yaml").write_text(
+            "topics: edp.orders.placed edp-connect-offsets edp-connect-configs edp-connect-status "
+            "mirrormaker2-cluster-offsets __consumer_offsets edp.dr.heartbeats\n")
+        e = run(r).errors
+        results.append(("Connect, MirrorMaker 2 and Cruise Control names pass the domain check",
+                        not any("freight-domain" in x for x in e), e))
+
     ok = True
     for name, passed, errs in results:
         print(f"{'ok  ' if passed else 'FAIL'} {name}")

@@ -1,0 +1,30 @@
+# The load runs in a pod of its own. A producer tool started inside a 768Mi broker container shares the broker's
+# memory limit and gets the broker killed.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: perf-load
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: perf
+          image: quay.io/strimzi/kafka:1.3.1-kafka-4.3.2
+          env:
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx128m"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              for t in edp.orders.placed edp.inventory.reserved edp.payments.processed edp.shipping.scheduled; do
+                /opt/kafka/bin/kafka-producer-perf-test.sh --topic "$t" --num-records 100000 --record-size 1024 \
+                  --throughput -1 --producer-props bootstrap.servers=edp-kafka-bootstrap:9092 | tail -1
+              done
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 384Mi
