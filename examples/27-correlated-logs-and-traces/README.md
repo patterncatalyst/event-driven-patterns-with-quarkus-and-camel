@@ -16,7 +16,7 @@ Quarkus, SmallRye Reactive Messaging, Camel Kafka (payment-service), Hibernate O
 | `PAYMENT_CANCEL_GUARD` | The refusal of a cancelled order stays, as the guard that makes the timeout case end cleanly; its switch and negative witness stay in 22 |
 | The out-of-stock order and the repeated `PaymentFailed` | Compensation variants are covered in 22 |
 
-Kept from 22: the three outboxes and the connector, the sweeper, the refusal of a payment for a cancelled order, and the gate route that holds the payment route until the cancellation consumer has no lag, because without it the refusal is a race after a restart.
+Kept from 22: the three outboxes and the connector, the sweeper, the refusal of a payment for a cancelled order, and the gate route that holds the payment route until the cancellation consumer has no lag. The gate guards the restart race of 22; it was not removed and re-run here, so this README makes no measurement of it.
 
 Added in 27: the `Correlated` bean in each service (a span with `order.id` and the `orderId` log context), the console format with the three ids, `order_saga.traceparent` recorded at placement, the sweeper's `cancel expired saga` root span with a link, and `tools/observe.py` (Tempo, Loki and Grafana over HTTP).
 
@@ -80,16 +80,16 @@ The checks read effects: the order view over HTTP, rows in the three schemas, re
 
 ## Experiments
 
-Each row changes a single thing and names the checks that fail. Check numbers are the `PASS` and `FAIL` numbers `verify.sh` prints. The sets below are the expected ones and are frozen after the runtime window.
+Each row changes a single thing and names the checks that fail. Check numbers are the `PASS` and `FAIL` numbers `verify.sh` prints. The sets below were measured and are frozen.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `SWEEPER_LINK=off ./verify.sh` (demo code) | The sweeper's trace has no link | 24 (expected) | TBD |
-| `ORDER_ID_IN_LOGS=off ./verify.sh` (demo code) | Lines carry the trace id and no `orderId` | the Loki checks by order id: 12, 13, 14 and 25 (expected) | TBD |
-| `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= ./verify.sh` (demo code) | Connect adds no span and no `traceparent` header, so each consumer starts a new trace | the trace-shape checks (expected) | TBD |
-| Order id attribute removed in `payment-service` (temporary edit, bite proof) | The trace has no payment span with the order id | 11 (expected) | TBD |
+| `SWEEPER_LINK=off ./verify.sh` (demo code) | The sweeper's trace has no link | 24 | 29/30; only the link check fails |
+| `ORDER_ID_IN_LOGS=off ./verify.sh` (demo code) | Lines carry the trace id and no `orderId` | 12, 13, 14 and 25 | 26/30; the checks that find lines by order id |
+| `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= ./verify.sh` (demo code) | The agent banner is absent from Connect's log, so precondition 3 stops the run | precondition 3 (the run ends there) | 2 of 3 checks passed, then the run stopped; the trace checks are never reached |
+| Order id attribute removed in `payment-service` (temporary edit, bite proof) | The trace has no payment span with the order id | 11 | 29/30; only the order id on spans of the three services fails, the lines still carry it |
 
-Timing witness: the cancellation of O-2704 (check 21) is observed within the 3500 ms the check allows. TBD (15 runs).
+Timing witness: in 15 fresh runs (the first 8 full, the last 7 stopped after check 21) the sweeper cancelled O-2704 within the 3500 ms the check allows every time, 288 to 2709 ms after the deadline, median 695 ms. Check 21 passed 15 of 15.
 
 ## Notes
 
