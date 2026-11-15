@@ -1,0 +1,6 @@
+# Merged over examples/_infra/compose-connect.yaml: the worker confirms offsets every second, so the replication
+# slot's confirmed position follows the connector closely and the backlog gauge reads near zero at rest.
+services:
+  connect:
+    environment:
+      - OFFSET_FLUSH_INTERVAL_MS=1000

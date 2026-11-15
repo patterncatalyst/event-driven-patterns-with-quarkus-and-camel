@@ -196,6 +196,15 @@ PRD §14, decided:
 - Each iteration runs only its new chapters live: the runtime windows, then one final run after the last repair. Earlier chapters get `mvn -B verify` when the shared domain model moves (our own artifact, needed for a fresh-clone build), not a live re-run.
 - One full serial live run of every chapter happens once, after the last chapter is written.
 
+2026-11-14 (r10 plan approval and validation):
+
+- Debezium Connect traces through the OpenTelemetry Java agent 2.33.1 (Apache-2.0), merged with `examples/_infra/compose-connect-tracing.yaml`. Only the agent's OpenTelemetry API bridge is enabled (`OTEL_INSTRUMENTATION_COMMON_DEFAULT_ENABLED=false`); its own Kafka and JDBC instrumentation replaced the outbox trace with a new root. `CONNECT_ENABLE_OTEL=false` with an empty `CONNECT_KAFKA_OPTS` is the off switch.
+- Connect's `db-log-write` and `debezium-read` are INTERNAL spans, so Tempo's service graph draws no connect edge; checks read span metrics for Connect instead.
+- Chapter 26 may have several Prometheus checks (decision 14); 25 and 27 keep one. Grafana dashboards and alert rules are provisioned from files in the example, mounted into otel-lgtm; no `_infra` change. The kafka_metrics receiver is a second collector config through `OTELCOL_EXTRA_ARGS`.
+- Outbox backlog is the replication slot's lag in bytes; a heartbeat table written by `heartbeat.action.query` and dropped by a Filter transform keeps the slot confirming after writes the connector does not capture.
+- Chapter 27 is a trimmed standalone copy of 22 (decision 9). The sweeper starts its own root span with a link to the stored `traceparent` only when it cancels; Quarkus scheduler tracing stays off.
+- 15-run timing witnesses may run a copy of verify.sh truncated after the witnessed check, after the first full runs (orchestrator, to save time).
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.

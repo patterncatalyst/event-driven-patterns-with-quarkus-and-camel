@@ -1,0 +1,85 @@
+name: edp-25
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  # Connect with the tracing override: the OpenTelemetry Java agent is copied into a run-scoped volume and loaded
+  # with -javaagent. CONNECT_TRACING=off in verify.sh turns it off (demo code).
+  - path: [../_infra/compose-connect.yaml, ../_infra/compose-connect-tracing.yaml]
+  - path: ../_infra/compose-lgtm.yaml
+
+x-app-env: &app-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+  QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+  QUARKUS_DATASOURCE_USERNAME: edp
+  QUARKUS_DATASOURCE_PASSWORD: edp
+  QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+
+x-app-depends: &app-depends
+  topics-init:
+    condition: service_completed_successfully
+  postgres:
+    condition: service_healthy
+  lgtm:
+    condition: service_healthy
+
+services:
+  # Creates the order topic with one partition, so the records of one run arrive in the order they were written.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic edp.orders.placed --partitions 1 --replication-factor 1
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: 25-tracing-across-async-hops/order-service/Containerfile
+    container_name: edp-order-service
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *app-env
+    depends_on: *app-depends
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: 25-tracing-across-async-hops/inventory-service/Containerfile
+    container_name: edp-inventory-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *app-env
+      # Demo code: link makes the consumer start a new trace that links to the record's context. It needs
+      # CONSUMER_TRACE_ENABLED=false as well, which verify.sh sets with it.
+      CONSUMER_TRACE: ${CONSUMER_TRACE:-parent}
+      CONSUMER_TRACE_ENABLED: ${CONSUMER_TRACE_ENABLED:-true}
+    depends_on: *app-depends
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp

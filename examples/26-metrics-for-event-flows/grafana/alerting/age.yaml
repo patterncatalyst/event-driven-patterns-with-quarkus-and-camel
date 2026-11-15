@@ -1,0 +1,49 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: order-flow
+    folder: edp
+    interval: 10s
+    rules:
+      # Demo code (ALERT_ON=age): the same rule on the age of events as they arrive. An age is only recorded when an
+      # event reaches the consumer, so this rule cannot fire while the flow is stuck.
+      - uid: edp-outbox-backlog
+        title: order flow stalled
+        condition: C
+        for: 20s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: Events arrive late
+        labels:
+          severity: page
+        data:
+          - refId: A
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(order_flow_event_age_max_milliseconds)
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource: {type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [20000]}
+              datasource: {type: __expr__, uid: __expr__}

@@ -1,0 +1,49 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: order-flow
+    folder: edp
+    interval: 10s
+    rules:
+      # Fires while the relay is stuck: the replication slot holds more than 16 KiB the connector has not confirmed
+      # for 20 s. The 16 KiB sits above the noise at rest and below what twenty waiting orders add.
+      - uid: edp-outbox-backlog
+        title: order flow stalled
+        condition: C
+        for: 20s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        annotations:
+          summary: Orders wait in the outbox replication slot
+        labels:
+          severity: page
+        data:
+          - refId: A
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(outbox_backlog_bytes)
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource: {type: __expr__, uid: __expr__}
+          - refId: C
+            relativeTimeRange: {from: 120, to: 0}
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: {type: gt, params: [16384]}
+              datasource: {type: __expr__, uid: __expr__}

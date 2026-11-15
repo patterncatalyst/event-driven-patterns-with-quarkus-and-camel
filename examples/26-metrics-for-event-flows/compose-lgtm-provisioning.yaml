@@ -1,0 +1,11 @@
+# Merged over examples/_infra/compose-lgtm.yaml: the dashboard, the alert rule and an extra collector pipeline that
+# asks the broker for consumer group lag. ALERT_ON=age (demo code) mounts the rule on event age instead of backlog.
+services:
+  lgtm:
+    environment:
+      - OTELCOL_EXTRA_ARGS=--config=file:/otel-lgtm/extra/kafka-metrics.yaml
+    volumes:
+      - ./otelcol:/otel-lgtm/extra:ro,Z
+      - ./grafana/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/order-flow.yaml:ro,Z
+      - ./grafana/dashboards:/prov/dashboards:ro,Z
+      - ./grafana/alerting/${ALERT_ON:-backlog}.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/order-flow.yaml:ro,Z

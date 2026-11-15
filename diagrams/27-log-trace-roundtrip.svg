@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 360" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="470" height="240" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Loki</text>
+<rect x="510" y="60" width="470" height="240" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="522" y="80" font-size="12" font-weight="700" fill="#888">Tempo</text>
+<rect x="40" y="100" width="430" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="255.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">payment-service line</text>
+<text x="255.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">orderId = O-2701, trace_id = 4bf9...</text>
+<text x="255.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">payment for O-2701: COMPLETED</text>
+<rect x="40" y="205" width="430" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="255.0" y="235.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">lines of three services</text>
+<text x="255.0" y="252.5" font-size="11.5" fill="#555555" text-anchor="middle">{service_name=~&quot;.+&quot;} | trace_id = &quot;4bf9...&quot;</text>
+<text x="255.0" y="267.5" font-size="11.5" fill="#555555" text-anchor="middle">order, inventory, payment</text>
+<rect x="530" y="100" width="430" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="745.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">trace 4bf9...</text>
+<text x="745.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">POST /orders, db-log-write,</text>
+<text x="745.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">handle event, PaymentProcessed</text>
+<rect x="530" y="205" width="430" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="745.0" y="235.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">span of payment-service</text>
+<text x="745.0" y="252.5" font-size="11.5" fill="#555555" text-anchor="middle">service.name = payment-service</text>
+<text x="745.0" y="267.5" font-size="11.5" fill="#555555" text-anchor="middle">order.id = O-2701</text>
+<path d="M470,140 L530,140" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M530,245 L470,245" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The trace id is the key in both directions</text>
+<text x="250" y="325" font-size="13" fill="#555555" text-anchor="middle">Loki derived field trace_id opens the trace</text>
+<text x="740" y="325" font-size="13" fill="#555555" text-anchor="middle">Tempo trace-to-logs query filters Loki by trace_id</text>
+</svg>

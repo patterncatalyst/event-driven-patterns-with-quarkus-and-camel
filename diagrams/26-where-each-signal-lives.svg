@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="130" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">The flow</text>
+<rect x="40" y="100" width="150" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="115.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order-service</text>
+<text x="115.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">order and outbox row</text>
+<text x="115.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">in one transaction</text>
+<rect x="225" y="100" width="150" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="300.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">replication slot</text>
+<text x="300.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">the row is already</text>
+<text x="300.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">deleted from the table</text>
+<rect x="410" y="100" width="150" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="485.0" y="125.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Connect</text>
+<text x="485.0" y="142.5" font-size="11.5" fill="#555555" text-anchor="middle">reads the slot,</text>
+<text x="485.0" y="157.5" font-size="11.5" fill="#555555" text-anchor="middle">writes the topic</text>
+<rect x="595" y="100" width="150" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="670.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
+<text x="670.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">one partition</text>
+<rect x="780" y="100" width="170" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="865.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">inventory-service</text>
+<text x="865.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">reserve, or dead letter</text>
+<rect x="225" y="250" width="150" height="100" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="300.0" y="283.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Backlog</text>
+<text x="300.0" y="300.0" font-size="11.5" fill="#555555" text-anchor="middle">bytes in the slot</text>
+<text x="300.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">not yet confirmed</text>
+<text x="300.0" y="330.0" font-size="11.5" fill="#555555" text-anchor="middle">outbox.backlog</text>
+<rect x="595" y="250" width="150" height="100" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="670.0" y="283.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Group lag</text>
+<text x="670.0" y="300.0" font-size="11.5" fill="#555555" text-anchor="middle">read at the broker</text>
+<text x="670.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">by the collector</text>
+<text x="670.0" y="330.0" font-size="11.5" fill="#555555" text-anchor="middle">kafka_metrics</text>
+<rect x="780" y="250" width="170" height="100" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="865.0" y="283.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Event age</text>
+<text x="865.0" y="300.0" font-size="11.5" fill="#555555" text-anchor="middle">now minus the time</text>
+<text x="865.0" y="315.0" font-size="11.5" fill="#555555" text-anchor="middle">stamped at commit</text>
+<text x="865.0" y="330.0" font-size="11.5" fill="#555555" text-anchor="middle">order.flow.event.age</text>
+<rect x="40" y="250" width="150" height="100" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="115.0" y="290.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Outbox table</text>
+<text x="115.0" y="307.5" font-size="11.5" fill="#555555" text-anchor="middle">always empty</text>
+<text x="115.0" y="322.5" font-size="11.5" fill="#555555" text-anchor="middle">reads 0 in a stall</text>
+<path d="M190,135 L225,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M375,135 L410,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M560,135 L595,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M745,135 L780,135" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M300,170 L300,250" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M670,170 L670,250" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M865,170 L865,250" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M115,170 L115,250" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Each signal is read where the work waits, not inside the service that is stuck</text>
+<text x="500" y="395" font-size="13" fill="#555555" text-anchor="middle">A stopped consumer reports nothing about itself; the alert fires on backlog above 16384 bytes</text>
+</svg>

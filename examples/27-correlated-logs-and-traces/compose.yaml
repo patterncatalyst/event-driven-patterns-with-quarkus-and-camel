@@ -1,0 +1,112 @@
+name: edp-27
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: [../_infra/compose-connect.yaml, ../_infra/compose-connect-tracing.yaml]
+  - path: ../_infra/compose-lgtm.yaml
+
+x-app-env: &app-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+  CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+  QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+  QUARKUS_DATASOURCE_USERNAME: edp
+  QUARKUS_DATASOURCE_PASSWORD: edp
+  QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+  # Demo code: off leaves the order id out of the log context, so a log line can be found by its trace id only.
+  ORDER_ID_IN_LOGS: ${ORDER_ID_IN_LOGS:-on}
+
+x-app-depends: &app-depends
+  topics-init:
+    condition: service_completed_successfully
+  postgres:
+    condition: service_healthy
+  lgtm:
+    condition: service_healthy
+
+services:
+  # Creates the six topics of the saga with one partition each, so the replies of an order arrive in the order they
+  # were written. Topics the connector would create get the broker default of three partitions, so they are made here.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        for t in edp.orders.placed edp.orders.cancelled edp.inventory.reserved edp.inventory.insufficient edp.payments.processed edp.payments.failed; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1
+        done
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: 27-correlated-logs-and-traces/order-service/Containerfile
+    container_name: edp-order-service
+    ports:
+      - "8080:8080"
+    environment:
+      <<: *app-env
+      # Demo code: how long a saga may wait in one state before the sweeper cancels it.
+      SAGA_PAYMENT_TIMEOUT: ${SAGA_PAYMENT_TIMEOUT:-15s}
+      # Demo code: off starts the sweeper's trace without a link to the trace of the order.
+      SWEEPER_LINK: ${SWEEPER_LINK:-on}
+    depends_on: *app-depends
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+  inventory-service:
+    build:
+      context: ..
+      dockerfile: 27-correlated-logs-and-traces/inventory-service/Containerfile
+    container_name: edp-inventory-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *app-env
+    depends_on: *app-depends
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8082/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: 27-correlated-logs-and-traces/payment-service/Containerfile
+    container_name: edp-payment-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *app-env
+      # Demo code: payments above this amount are declined.
+      PAYMENT_DECLINE_ABOVE: ${PAYMENT_DECLINE_ABOVE:-500.00}
+    depends_on: *app-depends
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8084/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp

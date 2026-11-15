@@ -49,7 +49,7 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 | UBI 10 OpenJDK | 1.24-20 | Build and runtime images for every service we package |
 | Docker Engine, Compose plugin | 29.9.3, 5.7.0 | Recorded from the reference host |
 
-Each service image is pinned by tag in `examples/_infra`.
+Each service image is pinned by tag in `examples/_infra`. Chapters that trace through Kafka Connect add the OpenTelemetry Java agent (2.33.1, Apache-2.0): an init container copies it from Maven Central into a volume that `docker compose down -v` removes, so each fresh start downloads it again.
 
 Chapter 24 runs a local model. Pull it once into its own Docker volume, which survives every `docker compose down -v`; the examples mount it read-only and never download it themselves:
 

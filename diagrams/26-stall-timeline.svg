@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="140" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Connector paused</text>
+<rect x="40" y="95" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="125.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Orders placed</text>
+<text x="125.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">table: 0 rows</text>
+<text x="125.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">topic: no new record</text>
+<rect x="235" y="95" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="320.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Backlog rises</text>
+<text x="320.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">slot holds the</text>
+<text x="320.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">unread changes</text>
+<rect x="430" y="95" width="170" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="515.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Alert: Alerting</text>
+<text x="515.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">backlog over threshold</text>
+<text x="515.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">for the pending period</text>
+<rect x="625" y="95" width="170" height="90" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="710.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Consumer is idle</text>
+<text x="710.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">no age sample,</text>
+<text x="710.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">group lag stays 0</text>
+<rect x="625" y="235" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="710.0" y="270.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Connector resumes</text>
+<text x="710.0" y="287.5" font-size="11.5" fill="#555555" text-anchor="middle">the slot is read</text>
+<text x="710.0" y="302.5" font-size="11.5" fill="#555555" text-anchor="middle">records are written</text>
+<rect x="820" y="235" width="160" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="900.0" y="270.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Events arrive old</text>
+<text x="900.0" y="287.5" font-size="11.5" fill="#555555" text-anchor="middle">event age and</text>
+<text x="900.0" y="302.5" font-size="11.5" fill="#555555" text-anchor="middle">record age both high</text>
+<rect x="430" y="235" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="515.0" y="278.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Backlog falls</text>
+<text x="515.0" y="295.0" font-size="11.5" fill="#555555" text-anchor="middle">alert: Normal</text>
+<path d="M210,140 L235,140" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M405,140 L430,140" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M600,140 L625,140" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M710,185 L710,235" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M795,280 L820,280" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M625,280 L600,280" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Only the backlog moves while the flow is stuck; age is measured on arrival</text>
+<text x="500" y="355" font-size="13" fill="#555555" text-anchor="middle">An alert on age fires after the resume, when the damage is done</text>
+</svg>
