@@ -607,3 +607,65 @@ Repairs (commit a5f4a09): `awaitReserved` has a time limit with release-and-canc
 ### r09 ship fix (2026-11-14)
 
 CI on PR #10 failed `maven (examples/02, 03, 19)`: their service poms still named domain-model 2.3.0, which the G0 bump missed (it moved the aggregator-level and single-module poms only); the local runs had passed because 2.3.0 was still in the local Maven repository. Moved the six service poms to 2.4.0; `mvn -B verify` green (02: 4 tests, 03: 7, 19: 10) and `docker compose build` green for all three (their Containerfiles install domain-model from source, so `verify.sh` would also have failed to build before the fix). No other pom names an older domain-model.
+
+## r10 windows (2026-11-14)
+
+Chapters 25 to 27, each in its own runtime window under the stack lock, fresh containers per run (`verify.sh` starts with `down -v` and `up --force-recreate --renew-anon-volumes`), no `edp-*` container left afterwards. Spikes S1 to S7 are in `<scratchpad>/r10-spikes/RESULTS.md` (findings F1 to F26). Logs are `<scratchpad>/w25-*.log`, `<scratchpad>/w26-*.log` and `<scratchpad>/w27-*.log`. Pins are frozen; nothing was re-surveyed. No stack was run for this log entry or for the claims rows.
+
+### r10 chapter 25 window: tracing across async hops
+
+| Run | Log | Result |
+|---|---|---|
+| first run | `w25-run1.log` | 19/21, fails 13 and 16 (defects, below) |
+| clean full runs | `w25-runA.log`, `w25-runB.log`, `w25-runC.log` | 22/22 each (A and B before check 7 was hardened) |
+| clean full runs, final script | `w25-loop1.log` to `w25-loop3.log` | 22/22 each |
+| experiment `CONNECT_TRACING=off` | `w25-exp-off.log` | 12/22; fails 6, 7, 8, 9, 10, 11, 12, 16, 20, 21 |
+| experiment `CONSUMER_TRACE=link` | `w25-exp-link.log` | 14/22; fails 7, 8, 9, 10, 11, 12, 16, 21 |
+| experiment: `Span.current().setAttribute` removed from `OrderResource` | `w25-exp3.log` | 19/22; fails 9, 19, 20 |
+
+15-run witness (checks 7 and 8 from a fresh stack, `w25-loop1.log` to `w25-loop15.log`): 15/15 pass, the order's trace searchable 30 to 32 s after the order was accepted. Loops 1 to 3 were full 22/22 runs; loops 4 to 15 ran a truncated copy of `verify.sh` (checks 7 and 8 only, 8/8 each).
+
+Numbers: hop through Connect, from the end of `outbox-write` to the consumer span, median 656 to 766 ms per run for 100 orders (range 579 to 829 ms); `db-log-write` 855 ms and `debezium-read` 378 ms for O-2501 (`w25-dbg2.log`); Connect 752 MiB after the burst. Connect-healthy and stack-up timings were not measured in the window, so those claims were cut.
+
+Defects fixed in the window:
+- `tools/tempo.py` `say()` called without an f-string, so the line printed the template (check 16 failed in `w25-run1.log`). Fixed with `say(f"...")`.
+- Check 13 changed meaning. The plan expected a `connect` to `inventory-service` service-graph edge. `db-log-write` and `debezium-read` are INTERNAL spans, so Tempo draws no such edge (spike F5, F6b). Check 13 now reads `traces_service_graph_request_total{server="order-service"}`. Numbering is unchanged; check 22 (an `http_server_*` metric with `service_name`) was appended.
+- Check 7 now requires the consumer span to be searchable, and a `$1` clobber bug in it was fixed. Checks 9 and 12 require a non-empty `TRACE`, because they passed vacuously under `CONNECT_TRACING=off`. Tempo poll bounds raised (checks 7, 16, 19: 240 s; 8 to 11: 60 s; 20: 120 s). `README` NOTE on the Tempo search lag added.
+
+### r10 chapter 26 window: metrics for event flows
+
+| Run | Log | Result |
+|---|---|---|
+| run 1 | `w26-run1.log` | 35/37, fails 27 and 28 (defect, below) |
+| run 2, 3, 4 (consecutive from clean) | `w26-run2.log` to `w26-run4.log` | 37/37 each |
+| bench 1 (old NOTE) | `w26-bench1.log` | 37/37 |
+| bench 2, 3, 4 (final `verify.sh`) | `w26-bench2.log` to `w26-bench4.log` | 37/37 each |
+| experiment `BACKLOG_SOURCE=table` | `w26-exp-table.log` | 35/37; fails 24, 25 |
+| experiment `ALERT_ON=age` | `w26-exp-age.log` | 35/37; fails 25, 28 |
+| `mvn -B verify` | `w26-mvn.raw` (17 tests, before the new test), `w26-mvn2.raw` | 18 tests (10 + 8), BUILD SUCCESS |
+
+15-run witness (`w26-loop-1.raw` to `w26-loop-15.raw`, trimmed script `w26-witness.sh.txt`): 15/15 each, 0 failures. Alerting after the orders were placed: median 28.9 s (14.6 to 35.1). Backlog under the threshold after the resume: median 5.2 s (4.2 to 6.3). Alert Normal after the resume: median 8.3 s (6.2 to 14.4). Backlog at rest 384 to 632 B (median 632); with twenty orders paused 24.9 to 29.4 KB (median 27.4).
+
+Burst of 500 (bench 2 to 4): lag 0 after 11,982, 2,691 and 6,857 ms; peak group lag 500 each; event age p95 21,266, 17,542 and 21,346 ms; peak backlog 37.7, 65.8 and 53.0 KB. The redrive contrast (check 20) passed in run 2 to 4 and bench 1 to 4. `verify.sh` NOTE for the burst changed to a windowed measure that waits for timers; no check changed meaning and numbering is unchanged (37 checks).
+
+Defect fixed in the window: in run 1 the backlog stayed near 108 KB after the resume and the slot was not confirmed past WAL the connector had not captured (checks 27 and 28). `dbg1`, `dbg2`, `explore` and `explore2` sampled the slot lag; `explore2`, with a heartbeat table, brought it back to 400 to 600 B. Fix: migration `V2__heartbeat.sql`, connector `heartbeat.action.query` writing to `orders.heartbeat` with `table.include.list`, a Filter transform (`TopicNameMatches` predicate) that drops the heartbeat records, and a test (`ProvisioningTest`). The G0-7 gate holds live: no fallback was needed.
+
+### r10 chapter 27 window: correlated logs and traces
+
+| Run | Log | Result |
+|---|---|---|
+| clean full runs | `w27-run1.log`, `w27-run2.log`, `w27-run3.log` | 30/30 each; O-2704 cancelled 338 ms after its deadline in run 1 |
+| experiment `SWEEPER_LINK=off` | `w27-exp-link.log` | 29/30; fails 24 |
+| experiment `ORDER_ID_IN_LOGS=off` | `w27-exp-ids.log` | 26/30; fails 12, 13, 14, 25 |
+| experiment `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS=` | `w27-exp-otel.log` | run stops at precondition 3 (no agent banner); the trace checks are never reached |
+| bite proof: `order.id` span attribute renamed in `payment-service` `Correlated` (restored) | `w27-exp-bite.log` | 29/30; fails 11 only |
+
+15-run sweeper witness (`w27-loop-01.log` to `w27-loop-15.log`): loops 1 to 8 full 30/30, loops 9 to 15 a `verify.sh` copy truncated after check 21 (21/21 each). Check 21 passed 15 of 15. The sweeper cancelled O-2704 288 to 2,709 ms after the deadline, median 695 ms (limit 3,500 ms); loops 1 to 8: 1,673, 695, 733, 607, 1,686, 656, 787 and 816 ms. No defect was found in this window. The Tempo search-lag number from the spike was not measured here and was cut from the prose.
+
+### r10 time-saving decision
+
+To save time the loop runs after the first full runs of each chapter used truncated copies of `verify.sh` (chapter 25 loops 4 to 15 stopped after check 8; chapter 27 loops 9 to 15 stopped after check 21), keeping the checks the witness is about. The full scripts ran clean in the runs listed above. In chapter 27 the 15-run no-gate test of `CancellationGateRoute` was dropped by the orchestrator: it was not measured, and the README says the gate guards the restart race of chapter 22 and makes no measurement of it (`CancellationGateTest` covers that the gate starts the payment route). The scripts the loops used are the same files minus the trailing checks; no check was changed for them.
+
+### r10 claims and sources (2026-11-14)
+
+Claims rows added: 101 for chapter 25, 106 for chapter 26 and 86 for chapter 27 (293 in all), covering every factual sentence of the three chapters and READMEs. Seven rows are `unverified` and are listed in the hand-off. `mvn -B verify` for chapters 25 and 27 has no log in the scratchpad (chapter 26 has `w26-mvn2.raw`), so their test rows cite test classes counted from source.
