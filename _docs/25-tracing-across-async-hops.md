@@ -75,7 +75,7 @@ connect:
     - OTEL_INSTRUMENTATION_OPENTELEMETRY_API_ENABLED=true
 ```
 
-The last two lines matter more than they look. The agent instruments Kafka producers, JDBC and the HTTP server by default. In Connect that replaced the router's `traceparent` with the context of a new trace named after the topic, so the consumer joined a trace that did not contain the order, and it flooded Tempo with Connect's own database and internal-topic traffic: TBD(spike: 53 traces in about 2 minutes at rest). With every instrumentation off and only the bridge to the OpenTelemetry API on, Connect sends the router's spans and nothing else. The connector configuration needs no tracing keys.
+The last two lines matter more than they look. The agent instruments Kafka producers, JDBC and the HTTP server by default. In Connect that replaced the router's `traceparent` with the context of a new trace named after the topic, so the consumer joined a trace that did not contain the order, and it flooded Tempo with Connect's own database and internal-topic traffic. With every instrumentation off and only the bridge to the OpenTelemetry API on, Connect sends the router's spans and nothing else. The connector configuration needs no tracing keys.
 
 The context on the record is the one the router wrote:
 
@@ -135,11 +135,11 @@ A record with no `traceparent` gives a root span in both forms. The link has not
 
 {% include excalidraw.html file="25-trace-waterfall" alt="A waterfall of six spans: POST /orders and outbox-write in order-service, db-log-write and debezium-read in connect, and edp.orders.placed receive and reserve stock in inventory-service, with a dashed bar below marking the hop through the log and the relay" caption="Figure 25.3: One order as one trace; the gap before the consumer span is the time outside the services" %}
 
-The consumer span is a child of `db-log-write`, and `debezium-read` is a leaf beside it. `db-log-write` starts when the outbox insert reaches the log, and lasts until Connect has read it: TBD(spike: 200 to 700 ms). Everything before the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. A trace of only the two services would show a quiet gap there, and a trace through Connect shows how much of it is Debezium.
+The consumer span is a child of `db-log-write`, and `debezium-read` is a leaf beside it. `db-log-write` starts when the outbox insert reaches the log, and lasts until Connect has read it. From the end of `outbox-write` to the start of the consumer span, 100 orders took a median of 656 to 766 ms in each of six runs, with single orders between 579 and 829 ms. Everything before the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. A trace of only the two services would show a quiet gap there, and a trace through Connect shows how much of it is Debezium.
 
 The trace does not show why a gap is long. A stopped connector, a slow broker and a lagging consumer all appear as a longer distance between the same two spans. The trace says that the time passed and the metrics in chapter 26 say where.
 
-It also shows only what carries the context. A trace is searchable by order id because both services set `order.id` on a span, and a record that bypasses the outbox, such as one produced by hand, arrives with no header and starts a new trace. Tempo itself takes some seconds to make a trace searchable after the request: TBD(spike: 20 to 40 s). Searching right after the request returns nothing, and a script that queries Tempo has to poll.
+It also shows only what carries the context. A trace is searchable by order id because both services set `order.id` on a span, and a record that bypasses the outbox, such as one produced by hand, arrives with no header and starts a new trace. Tempo itself takes some seconds to make a trace searchable after the request: about 30 s in every run measured. Searching right after the request returns nothing, and a script that queries Tempo has to poll.
 
 ## Build, run, observe
 
@@ -150,13 +150,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` places an order, finds its single trace in Tempo through TraceQL, walks the span ancestry from the request to the reservation, runs a burst of orders, and restarts inventory in link form. The Connect container downloads the agent on each fresh start. It prints `TBD/TBD checks passed`.
+`verify.sh` places an order, finds its single trace in Tempo through TraceQL, walks the span ancestry from the request to the reservation, runs a burst of orders, and restarts inventory in link form. The Connect container downloads the agent on each fresh start. It prints `22/22 checks passed`.
 
 Try one change and rerun:
 
 - `CONNECT_TRACING=off ./verify.sh` (demo code): Connect has no agent, the record has no `traceparent`, and the reservation is a trace of its own.
 - `CONSUMER_TRACE=link ./verify.sh` (demo code): the consumer starts a new trace linked to the order's, and the trace-shape checks fail.
-- Remove `Span.current().setAttribute` from `OrderResource`: the search by order id finds no trace.
+- Remove `Span.current().setAttribute` from `OrderResource`: the request span no longer carries the order id, so the structural query that starts from it finds nothing, and the trace is still found through the reservation span.
 
 ## When not to use it
 
@@ -166,7 +166,7 @@ The context in a message is a coupling. A producer that sets the header and a co
 
 A parent that spans a long delay misleads. A consumer that reads the record an hour later shows an hour-long trace whose middle is a queue, and a trace viewer will draw it as work. Link anything that is not a prompt continuation.
 
-Running a Java agent in Connect adds a dependency to the relay, a download at start, and memory: TBD(spike: Connect at rest 689 MiB with the agent). When the relay's own time is of no interest, a producer that copies the `traceparent` into a header itself reaches the same consumer with no change to Connect, and the trace is a single hop with a gap where Connect was.
+Running a Java agent in Connect adds a dependency to the relay, a download at start, and memory: Connect used about 750 MiB after a burst of 100 orders. When the relay's own time is of no interest, a producer that copies the `traceparent` into a header itself reaches the same consumer with no change to Connect, and the trace is a single hop with a gap where Connect was.
 
 > **🤖 Explore with your agent**
 > "In examples/25-tracing-across-async-hops, place O-2501 through OrderResource, read the tracingspancontext column and the traceparent header on edp.orders.placed, then query Tempo for span.order.id = O-2501 and print the span ancestry down to reserve stock. Run it again with CONSUMER_TRACE=link and say which spans moved to a second trace."

@@ -28,15 +28,15 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `TBD/TBD checks passed`. Tempo needs TBD(spike: 20 to 40 s) before a trace is searchable, so the script polls. `tools/tempo.py` reads Tempo's HTTP API for it.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `22/22 checks passed`. Tempo needs about 30 s before a trace is searchable, so the script polls. `tools/tempo.py` reads Tempo's HTTP API for it.
 
 ## What verify.sh does
 
 1. Starts the stack, registers the connector, and checks it, the one-partition topic, the readiness and consumer group of both services, the agent banner in Connect's log and the seeded stock.
-2. O-2501: stock falls by one, the record carries a `traceparent`, exactly one trace has `order.id` O-2501 with spans of three services, a structural TraceQL query finds the consumer below the request, the span ancestry is the full chain, `debezium-read` sits beside the consumer, the header holds the trace id and the `db-log-write` span id, and Prometheus holds the Tempo service-graph edge from connect to inventory-service.
+2. O-2501: stock falls by one, the record carries a `traceparent`, exactly one trace has `order.id` O-2501 with spans of three services, a structural TraceQL query finds the consumer below the request, the span ancestry is the full chain, `debezium-read` sits beside the consumer, the header holds the trace id and the `db-log-write` span id, and Prometheus holds the Tempo service-graph series of the requests to order-service.
 3. A burst of 100 orders: every trace crosses the three services. A `NOTE` line prints the median and range of the hop through Connect.
 4. inventory-service restarts in link form. O-2502 gives two traces: the order's stops at Connect, and the consumer's root span links to its `db-log-write` span.
-5. Loki holds an inventory-service line for O-2501 with the trace id of its trace.
+5. Loki holds an inventory-service line for O-2501 with the trace id of its trace, and Prometheus holds an HTTP server metric of order-service with its `service_name` label.
 
 ## Layout
 
@@ -60,8 +60,8 @@ The Maven build runs 11 tests with an in-memory span exporter against PostgreSQL
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `CONNECT_TRACING=off ./verify.sh` (demo code) | No agent in Connect | TBD | TBD |
-| `CONSUMER_TRACE=link ./verify.sh` (demo code) | The consumer starts a linked trace for the whole run | TBD | TBD |
-| Remove `Span.current().setAttribute` from `OrderResource` | The search by order id finds no trace of the order's request | TBD | TBD |
+| `CONNECT_TRACING=off ./verify.sh` (demo code) | No agent in Connect | 6, 7, 8, 9, 10, 11, 12, 16, 20, 21 (12/22 pass) | No `traceparent` on the record; the reservation is a trace of its own, so the order id finds two traces and the link check has no Connect span to point at |
+| `CONSUMER_TRACE=link ./verify.sh` (demo code) | The consumer starts a linked trace for the whole run | 7, 8, 9, 10, 11, 12, 16, 21 (14/22 pass) | Two traces per order; the link checks 19 and 20 pass |
+| Remove `Span.current().setAttribute` from `OrderResource` | The request span loses the order id | 9, 19, 20 (19/22 pass) | The trace is still found through the reservation span, which carries the order id; the structural query from the request finds nothing, and the link phase finds one trace instead of two |
 
-Measurements to take in the window: Connect healthy TBD(spike: 10 to 13 s after start), stack up TBD(spike: 29 to 31 s), Connect memory at rest TBD(spike: 689 MiB), `db-log-write` duration TBD(spike: 200 to 700 ms).
+Measurements, from the runs: the order's trace was searchable in Tempo 30 to 32 s after the order was accepted in all 15 loop runs (15 of 15 complete; the loop is checks 7 and 8, repeated 15 times from a fresh stack, three of them inside full runs). Across the full runs the hop through Connect, from the end of `outbox-write` to the consumer span, had a median of 656 to 766 ms for 100 orders (single orders 579 to 829 ms). In one run `db-log-write` lasted 855 ms and `debezium-read` 378 ms. After the burst Connect used 752 MiB of its 2 GiB limit. Check 13 reads the Tempo service-graph series of the requests to order-service: with only the OpenTelemetry API bridge enabled Connect's spans are internal, so Tempo draws no connect to inventory-service edge. Check 22 reads an application metric with its `service_name` label.
