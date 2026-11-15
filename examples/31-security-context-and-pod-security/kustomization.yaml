@@ -1,0 +1,12 @@
+# Chapter 31: every namespace the applications and Kafka run in enforces the restricted Pod Security Standard.
+# Strimzi runs with the restricted pod security provider, the applications carry the security context component,
+# and CloudNativePG pods are used as published.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - platform
+  - ../_k8s/kafka
+  - ../_k8s/strimzi-restricted
+  - ../_k8s/apps/02
+components:
+  - components/app-security

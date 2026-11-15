@@ -1,0 +1,11 @@
+# DEMO CODE (STRIMZI_PSP=baseline): Strimzi with its default pod security provider. The restricted edp-kafka
+# namespace refuses the Kafka pods, so Kafka never becomes Ready. Kafka is not listed here: verify.sh applies it
+# after the setup waits, which would otherwise stop at a Kafka that cannot become Ready.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../platform
+  - ../../../_k8s/strimzi
+  - ../../../_k8s/apps/02
+components:
+  - ../../components/app-security

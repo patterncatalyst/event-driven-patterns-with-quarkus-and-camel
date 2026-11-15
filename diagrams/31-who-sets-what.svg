@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="300" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Workload, the one that sets its security context, and the outcome</text>
+<rect x="40" y="95" width="170" height="55" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="125.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">order-service</text>
+<text x="125.0" y="137.5" font-size="11.5" fill="#555555" text-anchor="middle">notification-service</text>
+<rect x="40" y="165" width="170" height="55" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="125.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Kafka broker</text>
+<text x="125.0" y="207.5" font-size="11.5" fill="#555555" text-anchor="middle">and controller</text>
+<rect x="40" y="235" width="170" height="55" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="125.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">PostgreSQL</text>
+<text x="125.0" y="277.5" font-size="11.5" fill="#555555" text-anchor="middle">edp-pg-1</text>
+<rect x="40" y="305" width="170" height="40" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="125.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">otel-lgtm</text>
+<rect x="330" y="95" width="280" height="55" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="470.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Our Deployment</text>
+<text x="470.0" y="137.5" font-size="11.5" fill="#555555" text-anchor="middle">four fields, read-only root, /tmp emptyDir</text>
+<rect x="330" y="165" width="280" height="55" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="470.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Strimzi operator</text>
+<text x="470.0" y="207.5" font-size="11.5" fill="#555555" text-anchor="middle">restricted pod security provider</text>
+<rect x="330" y="235" width="280" height="55" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="470.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">CloudNativePG operator</text>
+<text x="470.0" y="277.5" font-size="11.5" fill="#555555" text-anchor="middle">context as published, uid 26</text>
+<rect x="330" y="305" width="280" height="40" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="470.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Image as published, no fields set</text>
+<rect x="730" y="95" width="230" height="55" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="845.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp: admitted</text>
+<rect x="730" y="165" width="230" height="55" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="845.0" y="198.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp-kafka: admitted</text>
+<rect x="730" y="235" width="230" height="55" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="845.0" y="268.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp: admitted</text>
+<rect x="730" y="305" width="230" height="40" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="845.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp-lgtm: unlabelled</text>
+<path d="M210,122 L330,122" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M210,192 L330,192" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M210,262 L330,262" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M210,325 L330,325" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M610,122 L730,122" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M610,192 L730,192" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M610,262 L730,262" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M610,325 L730,325" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Each workload gets its security context from exactly one place</text>
+<text x="500" y="395" font-size="12" fill="#555555" text-anchor="middle">A dry-run label on edp-lgtm lists the fields its pod lacks; the namespace stays unlabelled</text>
+</svg>

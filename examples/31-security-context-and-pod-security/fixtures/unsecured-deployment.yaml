@@ -1,0 +1,19 @@
+# Used by verify.sh with --dry-run=server only: a Deployment whose pod template has no security context.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unsecured
+  namespace: edp
+  labels: {app: unsecured}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: unsecured}
+  template:
+    metadata:
+      labels: {app: unsecured}
+    spec:
+      containers:
+        - name: app
+          image: localhost/edp/02-order-service:local
+          imagePullPolicy: Never

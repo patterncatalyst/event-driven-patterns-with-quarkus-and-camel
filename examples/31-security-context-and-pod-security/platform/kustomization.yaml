@@ -1,0 +1,35 @@
+# PostgreSQL and LGTM from the shared bases, with the two application namespaces labelled for Pod Security
+# Admission. edp-lgtm is left unlabelled on purpose (see the README); cnpg-system belongs to the platform tier.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/namespaces
+  - ../../_k8s/postgres
+  - ../../_k8s/lgtm
+patches:
+  - target: {kind: Namespace, name: edp}
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: edp
+        labels:
+          pod-security.kubernetes.io/enforce: restricted
+          pod-security.kubernetes.io/enforce-version: v1.37
+          pod-security.kubernetes.io/warn: restricted
+          pod-security.kubernetes.io/warn-version: v1.37
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/audit-version: v1.37
+  - target: {kind: Namespace, name: edp-kafka}
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: edp-kafka
+        labels:
+          pod-security.kubernetes.io/enforce: restricted
+          pod-security.kubernetes.io/enforce-version: v1.37
+          pod-security.kubernetes.io/warn: restricted
+          pod-security.kubernetes.io/warn-version: v1.37
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/audit-version: v1.37
