@@ -64,7 +64,7 @@ The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for eve
 "transforms.skipHeartbeat.predicate": "isHeartbeatTable"
 ```
 
-A one second offset flush on the Connect worker keeps the confirmation prompt. At rest the gauge then reads TBD_REST; twenty orders waiting behind a paused connector read about TBD_PAUSED, and a checkpoint can lift it for a few seconds. The alert threshold sits between them, at 16 KiB, and the rule's 20 second `for` clause rides out the checkpoint. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
+A one second offset flush on the Connect worker keeps the confirmation prompt. At rest the gauge then reads about 630 bytes; twenty orders waiting behind a paused connector read about about 27 KB, and a checkpoint can lift it for a few seconds. The alert threshold sits between them, at 16 KiB, and the rule's 20 second `for` clause rides out the checkpoint. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
 
 ## Lag at the broker
 
@@ -146,7 +146,7 @@ Grafana loads provisioning files at startup. The dashboard is a JSON file with s
       model: { type: threshold, expression: B, conditions: [{ evaluator: { type: gt, params: [16384] } }] }
 ```
 
-The rule has the shape Grafana's file provisioning documents: a query, a reduction and a threshold, evaluated every 10 seconds. With the connector paused the state went Normal, Pending, Alerting, and Grafana's word for a firing alert is Alerting. It reached Alerting TBD(spike: 31.8 s) after the orders were placed, and Normal again TBD(spike: 8.4 s) after the resume.
+The rule has the shape Grafana's file provisioning documents: a query, a reduction and a threshold, evaluated every 10 seconds. With the connector paused the state went Normal, Pending, Alerting, and Grafana's word for a firing alert is Alerting. It reached Alerting a median of 29 seconds after the orders were placed, and Normal again a median of 8 seconds after the resume.
 
 The rule watches backlog because backlog is the signal that grows while the flow is stuck. Lag grows too, but only after records reach the topic, and a stalled relay never lets them. Age cannot be the alert: it is recorded when an event arrives, so a rule on it fires after the resume, when the stall is over. `ALERT_ON=age` (demo code) mounts that rule instead, to show it.
 
@@ -167,12 +167,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-Compose runs Kafka, PostgreSQL, Connect and the LGTM stack with the dashboard, the alert rule and the broker receiver loaded from files, plus `order-service` and `inventory-service`; the script stops the consumer, pauses the relay and redrives dead letters, reads each effect back from Prometheus, Grafana and the broker, and ends with `TBD/TBD checks passed`.
+Compose runs Kafka, PostgreSQL, Connect and the LGTM stack with the dashboard, the alert rule and the broker receiver loaded from files, plus `order-service` and `inventory-service`; the script stops the consumer, pauses the relay and redrives dead letters, reads each effect back from Prometheus, Grafana and the broker, and ends with `37/37 checks passed`.
 
 Try one change and rerun:
 
 - `BACKLOG_SOURCE=table ./verify.sh` (demo code): the gauge counts table rows, stays at zero through the pause and the alert never fires.
-- `ALERT_ON=age ./verify.sh` (demo code): the rule watches event age and fires only after the relay resumes.
+- `ALERT_ON=age ./verify.sh` (demo code): the rule watches event age and does not fire during the pause.
 - `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`.
 
 ## When not to use it
