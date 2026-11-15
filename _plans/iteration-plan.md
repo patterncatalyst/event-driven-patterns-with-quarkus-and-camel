@@ -20,7 +20,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r08 | Enrich, join, aggregate | 19 to 21 | C | done (r08.0, 2026-11-13) |
 | r09 | Saga pattern, Camel Saga and Quarkus Flow, Drools + LangChain4j (adds LRA coordinator, Ollama) | 22 to 24 | C | done (r09.0, 2026-11-14) |
 | r10 | Observing event flows | 25 to 27 | C | done |
-| r11 | minikube + Strimzi + CloudNativePG + LGTM setup; KRaft, UTO, SSA, security context | 28 to 31 | K | planned |
+| r11 | minikube + Strimzi + CloudNativePG + LGTM setup; KRaft, UTO, SSA, security context | 28 to 31 | K | in progress |
 | r12 | Monitoring Strimzi, Cruise Control, MM2, Connect on Strimzi; chapter 10's Strimzi half | 32 to 35 | K | planned |
 | r13 | Appendices A to H (C: Kafka Streams, Flink SQL, RisingWave; E: resequencing across partitions in depth; F: deploying event-driven services on minikube; G: write-forward cache with an outbox and CDC; H: outbox on CRC) | A to H | C, K, CRC | planned |
 | r14 | Retro: QA sweep, idiomatic review, voice review, host scrub, re-survey, full re-run | all | C, K | planned |

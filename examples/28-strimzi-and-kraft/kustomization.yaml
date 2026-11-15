@@ -1,0 +1,11 @@
+# The platform for Part 6: namespaces, the Strimzi operator, Kafka as two node pools, CloudNativePG databases and LGTM.
+# The CloudNativePG operator is installed by examples/_k8s/cluster.sh (its CRDs are too large for client-side apply).
+# The application sets (chapters 02, 03 and 04) are applied by verify.sh one after another.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../_k8s/namespaces
+  - ../_k8s/strimzi
+  - ../_k8s/kafka
+  - ../_k8s/postgres
+  - ../_k8s/lgtm

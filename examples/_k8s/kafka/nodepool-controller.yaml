@@ -1,0 +1,26 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: controller
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  replicas: 1
+  roles:
+    - controller
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: 2Gi
+        deleteClaim: true
+        kraftMetadata: shared
+  resources:
+    requests:
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+  jvmOptions:
+    -Xms: 512m
+    -Xmx: 512m

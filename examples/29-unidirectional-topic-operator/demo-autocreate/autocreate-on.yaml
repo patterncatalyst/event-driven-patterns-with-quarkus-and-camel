@@ -1,0 +1,8 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: edp
+spec:
+  kafka:
+    config:
+      auto.create.topics.enable: true

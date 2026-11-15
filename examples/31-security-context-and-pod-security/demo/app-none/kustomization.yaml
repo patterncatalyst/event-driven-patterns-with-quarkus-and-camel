@@ -1,0 +1,9 @@
+# DEMO CODE (APP_SECURITY=none): the chapter 02 applications with no security context. The restricted namespace
+# refuses their pods, so the ReplicaSets report FailedCreate.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../platform
+  - ../../../_k8s/kafka
+  - ../../../_k8s/strimzi-restricted
+  - ../../../_k8s/apps/02

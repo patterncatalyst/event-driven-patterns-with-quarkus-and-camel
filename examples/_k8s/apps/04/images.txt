@@ -1,0 +1,2 @@
+04-ordering-and-partitioning order-service
+04-ordering-and-partitioning shipping-service

@@ -1,0 +1,5 @@
+# The writer edp-apps: the chapter 02 Deployments and Services, unchanged.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/apps/02

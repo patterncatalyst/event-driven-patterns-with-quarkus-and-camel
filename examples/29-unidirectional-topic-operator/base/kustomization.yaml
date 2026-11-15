@@ -1,0 +1,14 @@
+# Chapter 29: the chapter 02 pair on a Kafka cluster that has no auto-created topics. Every topic of the
+# event catalog is a KafkaTopic, reconciled one way by the Topic Operator.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/namespaces
+  - ../../_k8s/strimzi
+  - ../../_k8s/kafka
+  - ../../_k8s/postgres
+  - ../../_k8s/lgtm
+  - ../../_k8s/apps/02
+  - topics
+patches:
+  - path: kafka-patch.yaml

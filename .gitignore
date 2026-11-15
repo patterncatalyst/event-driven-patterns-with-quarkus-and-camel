@@ -54,3 +54,6 @@ __pycache__/
 
 # Editor backups
 *.bak
+examples/_k8s/platform/cnpg/cnpg-*.yaml
+examples/_k8s/strimzi/strimzi-cluster-operator-*.yaml
+examples/_k8s/.substrate-ready

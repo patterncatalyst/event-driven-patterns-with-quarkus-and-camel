@@ -683,3 +683,41 @@ Tempo's search API drops leading zeros from trace ids; `tools/tempo.py` (25) and
 | ch25 `CONNECT_TRACING=off` | `rp2-25-off.log` | 11/22; fails 6 to 13, 16, 20, 21 (the README set) |
 
 `mvn -B verify` was not re-run: no Java changed. Claims rows changed: 25-cj, 25-as, 25-ct, 26-al, 26-bo, and the line references of 25-m, 25-n, 25-u and 25-ac to 25-bu (shifted by 2). README 25 now says 15 logged bursts (15 distinct burst NOTE values in 16 logs).
+
+## r11 live window, chapters 28 to 31 (2026-11-15)
+
+minikube profile `edp` (docker driver, containerd, Kubernetes v1.37.2), fresh profile for the final run, deleted afterwards. Logs in the session scratchpad `r11-window/`, summary `WINDOW.md`. Wall clock 6553 s.
+
+| Run | Result |
+|---|---|
+| ch28 run1, run2, run3 | 28/39 (first build), 39/39, 39/39 |
+| ch29 run1, run2 | 17/17, 17/17 |
+| ch30 run1, run2 | 22/25, 25/25 |
+| ch31 run1 | 26/26 |
+| ch28 `KAFKA_BROKERS=compose` | 34/39; fails 14, 16, 18, 19, 20 |
+| ch28 `NODE_POOLS=dual` | 34/39; fails 5 to 9 |
+| ch29 `TOPIC_AUTOCREATE=on` | 16/17; fails 7 |
+| ch29 `TOPIC_SET=missing` | 15/17; fails 3, 6 |
+| ch30 `APPLY=client` | 20/25; fails 11, 12, 14, 15, 17 |
+| ch31 `APP_SECURITY=none` | 18/26; fails 19 to 26 |
+| ch31 `STRIMZI_PSP=baseline` | 20/26; fails 8 to 12, 26 |
+| Final, fresh profile: 28, 29, 30, 31 | 39/39, 17/17, 25/25, 26/26 |
+
+Fixes in the window: ch28 env-name checks after rollout; `_wait_apps` waits for NodePorts 30080 and 30082 to answer readiness; ch30 checks 3 and 4 match inside the shell (argument list too long); ch30 check 5 dry run uses manager `edp-cluster`; `emit()` helpers replace `print()` in seven helper scripts.
+
+Open after the final run: ch30 passed 25/25 but namespace `edp` stayed Terminating past 240 s, so teardown failed once (cause not captured); two re-runs tore down in 42 s and 72 s. Fix: `_delete_all_state` now deletes CNPG `Database` CRs, then the `Cluster`, before the namespaces, and `_why_terminating` prints namespace conditions and leftovers on a timeout. That change alone did not fix it (step 6 round 1 reproduced the hang: 171 s, then a 240 s timeout).
+
+### r11 validation (2026-11-15)
+
+Cause: the CNPG instance pod keeps terminating after its `Cluster` is deleted (`terminationGracePeriodSeconds` 1800 from `stopDelay`); a namespace deleted meanwhile reports "All content successfully removed, may be waiting on finalization" and is not rechecked for minutes. Fix in `_delete_all_state`: delete Deployments and Jobs in `edp` and wait for their pods, then Databases, then the Cluster, then `kubectl wait --for=delete pod -l cnpg.io/cluster`, then the namespaces. No finalizer stripped. `_why_terminating` redirect bug fixed.
+
+| Run (fresh profile, fixed lib.sh) | Result | Teardown |
+|---|---|---|
+| ch30 run1, run2, run3 | 25/25 each, exit 0 | 60 s, 52 s, 60 s |
+| ch28 | 39/39, exit 0 | 65 s |
+| ch29 | 17/17, exit 0 | 37 s |
+| ch31 | 26/26, exit 0 | 65 s |
+
+Profile deleted afterwards; `edp-ollama-models` intact. 92 claims rows added (28: 29, 29: 22, 30: 20, 31: 21); cuts and rewordings listed in the validation hand-off (forward references in 28, false client-side-apply statement in 30, unsourced lists). Bite audit: demo failing sets match the logs; checks 28/13, 21, 28 (image ids) duplicate `load_image`, 29/14 and 31/16 have no failing switch.
+
+Examples 02 to 04 unchanged since r10 (`git diff --stat ed94f19` empty).

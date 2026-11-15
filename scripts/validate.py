@@ -55,7 +55,8 @@ VERSION_RE = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")
 URL_RE = re.compile(r"https?://\S+")
 TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]\w+")
 SELFREF_RE = re.compile(r"\b(this|the) (chapter|section)\b|\bthe example shows\b|\bwe will\b", re.I)
-IMG_RE = re.compile(r"^\s*image:\s*(\S+)", re.M)
+IMG_RE = re.compile(r"^\s*-?\s*image:\s*(\S+)", re.M)
+K8S_SETUP_HEADING = "## Setting up the cluster"
 
 
 class Report:
@@ -280,7 +281,10 @@ def check_chapters(rep: Report):
             rep.err(p, None, f"at most one '{CALLOUT}' callout allowed, found {len(callouts)}")
         if len(callouts) == 1:
             check_callout_shape(rep, p, body.split("\n"), callouts[0], off)
+        section = ""
         for i, t in plines:
+            if re.match(r"##\s", t):
+                section = t.strip()
             if not t.lstrip().startswith(">"):
                 sr = SELFREF_RE.search(t)
                 if sr:
@@ -288,10 +292,12 @@ def check_chapters(rep: Report):
             m = TESTNAME_RE.search(t)
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
-            if not p.name.startswith(("00-", "a")):
+            # Versions live in chapter 00, the appendices and Part 6's setup section (chapter 28).
+            if not (p.name.startswith(("00-", "a"))
+                    or (p.name.startswith("28-") and section == K8S_SETUP_HEADING)):
                 v = VERSION_RE.search(URL_RE.sub("", t))
                 if v:
-                    rep.err(p, i + off, f"version string '{v.group(0)}' outside chapter 00 and appendices")
+                    rep.err(p, i + off, f"version string '{v.group(0)}' outside chapter 00, appendices and chapter 28's setup section")
 
 
 def check_callout_shape(rep: Report, p: Path, lines: list[str], at: int, off: int):
@@ -312,6 +318,14 @@ def check_callout_shape(rep: Report, p: Path, lines: list[str], at: int, off: in
         rep.err(p, ln, "callout must not contain a nested quote")
 
 
+VENDOR_RE = re.compile(r"/vendor/|/platform/cnpg/cnpg-[^/]*\.yaml$|/strimzi/strimzi-cluster-operator-[^/]*\.yaml$")
+
+
+def is_vendor(p: Path) -> bool:
+    """Upstream release manifests downloaded by examples/_k8s/cluster.sh (gitignored, sha256-checked)."""
+    return bool(VENDOR_RE.search(p.as_posix()))
+
+
 def check_examples(rep: Report):
     ex = rep.root / "examples"
     if not ex.is_dir():
@@ -330,13 +344,32 @@ def check_examples(rep: Report):
                 rep.err(v, None, f"bash -n failed: {r.stderr.strip()}")
             # Every live run starts from fresh containers and volumes, never a leftover stack.
             body = v.read_text(encoding="utf-8")
-            if not (re.search(r"down -v --remove-orphans", body)
+            if (d / "kustomization.yaml").is_file():
+                # Part 6: fresh namespaces on the shared minikube profile (examples/_k8s/lib.sh).
+                if not (re.search(r"^\s*(source|\.)\s+\S*_k8s/lib\.sh", body, re.M)
+                        and re.search(r"^\s*k8s_fresh\b", body, re.M)
+                        and re.search(r"\bk8s_teardown\b", body)):
+                    rep.err(v, None, "Part 6 verify.sh must source ../_k8s/lib.sh, call k8s_fresh "
+                                     "and tear down with k8s_teardown")
+            elif not (re.search(r"down -v --remove-orphans", body)
                     and re.search(r"up -d --build --force-recreate --renew-anon-volumes --wait", body)):
                 rep.err(v, None, "verify.sh must start fresh: `down -v --remove-orphans`, then "
                                  "`up -d --build --force-recreate --renew-anon-volumes --wait`")
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
-    for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml"):
+    for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
+        if "compose" in m_.name or is_vendor(m_):
+            continue
+        lines = m_.read_text(encoding="utf-8").split("\n")
+        for n, ln_ in enumerate(lines):
+            if re.match(r"\s*imagePullPolicy:\s*Never\b", ln_):
+                near = [x for x in lines[max(0, n - 8):n + 9] if re.match(r"\s*-?\s*image:", x)]
+                if not near or not all("localhost/edp/" in x for x in near):
+                    rep.err(m_, n + 1, "imagePullPolicy: Never only for localhost/edp/ images")
+    for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml",
+                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
+        if is_vendor(c) or "/target/" in c.as_posix():
+            continue
         text = c.read_text(encoding="utf-8")
         for m in IMG_RE.finditer(text):
             ref = m.group(1).strip("\"'")
@@ -559,6 +592,33 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\n## Build, run, observe\n\nOnly check 12 fails.\n")
         e = run(r).errors
         results.append(("check number in build section caught", any("check number" in x for x in e), e))
+
+        r = build("k8s-version")
+        (r / "_docs/28-demo.md").write_text(good_doc.replace("01-demo", "28-demo")
+            + "\n## Setting up the cluster\n\nminikube 1.39.0 runs it.\n\n## Other\n\nNot 1.37.2 here.\n")
+        (r / "diagrams/28-demo.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+        (r / "diagrams/28-demo.excalidraw").write_text("{}")
+        (r / "diagrams/specs/28-demo.py").write_text("")
+        e = run(r).errors
+        results.append(("ch 28 setup versions allowed, elsewhere caught",
+                        not any("1.39.0" in x for x in e) and any("1.37.2" in x for x in e), e))
+
+        r = build("k8s-example")
+        ex = r / "examples/28-demo"
+        ex.mkdir(parents=True)
+        (ex / "README.md").write_text("x")
+        (ex / "kustomization.yaml").write_text("resources: []\n")
+        (ex / "app.yaml").write_text("      - image: quay.io/x/y:1.0\n        imagePullPolicy: Never\n")
+        (ex / "verify.sh").write_text("#!/bin/bash\necho no fresh\n")
+        (ex / "verify.sh").chmod(0o755)
+        e = run(r).errors
+        results.append(("k8s verify.sh without k8s_fresh caught", any("k8s_fresh" in x for x in e), e))
+        results.append(("Never on upstream image caught", any("imagePullPolicy" in x for x in e), e))
+        (ex / "verify.sh").write_text("#!/bin/bash\nsource ../_k8s/lib.sh\nk8s_fresh .\ntrap k8s_teardown EXIT\n")
+        (ex / "app.yaml").write_text("      - image: localhost/edp/02-x:local\n        imagePullPolicy: Never\n")
+        e = run(r).errors
+        results.append(("k8s example with k8s_fresh and local image passes",
+                        not any("k8s_fresh" in x or "imagePullPolicy" in x for x in e), e))
 
     ok = True
     for name, passed, errs in results:

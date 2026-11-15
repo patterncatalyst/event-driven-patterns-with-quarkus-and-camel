@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">A pod created directly</text>
+<rect x="20" y="225" width="960" height="150" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="245" font-size="12" font-weight="700" fill="#888">A pod created by a Deployment</text>
+<rect x="40" y="95" width="170" height="90" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="125.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Namespace edp</text>
+<text x="125.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">enforce: restricted</text>
+<text x="125.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">version v1.37</text>
+<rect x="260" y="95" width="170" height="90" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="345.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">API server</text>
+<text x="345.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">Pod Security</text>
+<text x="345.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">Admission</text>
+<rect x="560" y="95" width="180" height="40" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="650.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Four fields set: admitted</text>
+<rect x="560" y="150" width="180" height="40" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="650.0" y="175.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">No fields: forbidden</text>
+<rect x="790" y="95" width="170" height="90" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="875.0" y="138.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Violations are named</text>
+<text x="875.0" y="155.0" font-size="11.5" fill="#555555" text-anchor="middle">in the error message</text>
+<rect x="40" y="260" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="125.0" y="295.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Deployment</text>
+<text x="125.0" y="312.5" font-size="11.5" fill="#555555" text-anchor="middle">no security context</text>
+<text x="125.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">accepted, with a warning</text>
+<rect x="260" y="260" width="170" height="90" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="345.0" y="295.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">ReplicaSet</text>
+<text x="345.0" y="312.5" font-size="11.5" fill="#555555" text-anchor="middle">tries to create</text>
+<text x="345.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">the pod</text>
+<rect x="480" y="260" width="170" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="565.0" y="295.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Pod refused</text>
+<text x="565.0" y="312.5" font-size="11.5" fill="#555555" text-anchor="middle">event FailedCreate</text>
+<text x="565.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">names the fields</text>
+<rect x="700" y="260" width="260" height="90" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="830.0" y="295.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">The old pod keeps running;</text>
+<text x="830.0" y="312.5" font-size="11.5" fill="#555555" text-anchor="middle">the rollout never completes</text>
+<text x="830.0" y="327.5" font-size="11.5" fill="#555555" text-anchor="middle">and no new pod appears</text>
+<path d="M210,140 L260,140" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,125 L560,115" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,155 L560,170" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M740,170 L790,150" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<path d="M210,305 L260,305" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,305 L480,305" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M650,305 L700,305" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The check runs when a pod is created, not when the namespace is labelled</text>
+<text x="500" y="392" font-size="12" fill="#555555" text-anchor="middle">Labelling a namespace with running pods only prints a warning; the next pod creation is refused</text>
+</svg>

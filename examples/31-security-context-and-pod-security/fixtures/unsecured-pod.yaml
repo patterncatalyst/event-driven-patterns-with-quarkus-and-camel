@@ -1,0 +1,11 @@
+# Used by verify.sh with --dry-run=server only: a pod with no security context.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsecured
+  namespace: edp
+spec:
+  containers:
+    - name: app
+      image: localhost/edp/02-order-service:local
+      imagePullPolicy: Never

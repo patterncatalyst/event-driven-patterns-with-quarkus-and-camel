@@ -1,0 +1,21 @@
+# One database per app set: the Flyway histories of examples 02, 03 and 04 collide in one database.
+# `edp` (example 02) is the initdb database of the Cluster; these two are declarative CNPG Database resources.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: edp03
+spec:
+  name: edp03
+  owner: edp
+  cluster:
+    name: edp-pg
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: edp04
+spec:
+  name: edp04
+  owner: edp
+  cluster:
+    name: edp-pg

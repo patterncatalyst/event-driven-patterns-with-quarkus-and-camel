@@ -1,0 +1,22 @@
+# Demo code (NODE_POOLS=dual): one dual-role node instead of a controller pool and a broker pool.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/namespaces
+  - ../../_k8s/strimzi
+  - ../../_k8s/kafka
+  - ../../_k8s/postgres
+  - ../../_k8s/lgtm
+patches:
+  - target: {kind: KafkaNodePool, name: controller}
+    patch: |-
+      $patch: delete
+      apiVersion: kafka.strimzi.io/v1
+      kind: KafkaNodePool
+      metadata:
+        name: controller
+  - target: {kind: KafkaNodePool, name: broker}
+    patch: |-
+      - op: replace
+        path: /spec/roles
+        value: [controller, broker]
