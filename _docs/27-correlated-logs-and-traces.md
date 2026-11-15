@@ -121,7 +121,7 @@ Both directions are provisioned in the bundled Grafana, so no click needs config
 
 From a ticket, search Tempo for `{ span.order.id = "O-2704" }` and open the first trace to read the path of the saga across the services. Follow the link on the sweeper's root to see what the cancellation continued. Jump from any span to the lines of that service for the same trace. Or start in Loki with `| orderId="O-2704"`, read the lines of both traces in time order, and open either.
 
-A trace is searchable some seconds after the request, not at once TBD(spike: 20 to 40 s), so a query made straight after the request can come back empty. The order id is only as good as the code that sets it: a service that skips `Correlated` still has the trace id on its lines and spans, and a search by order id skips it.
+A trace is not searchable the moment the request returns, so a query made straight after the request can come back empty. The order id is only as good as the code that sets it: a service that skips `Correlated` still has the trace id on its lines and spans, and a search by order id skips it.
 
 ## Build, run, observe
 
@@ -132,7 +132,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs Kafka, PostgreSQL, Connect with the tracing agent, the LGTM stack and the three services, follows paid, declined and timed-out orders through Tempo and Loki, and ends with `TBD/TBD checks passed`. The Connect container downloads the agent on each fresh start.
+`verify.sh` runs Kafka, PostgreSQL, Connect with the tracing agent, the LGTM stack and the three services, follows paid, declined and timed-out orders through Tempo and Loki, and ends with `30/30 checks passed`. The Connect container downloads the agent on each fresh start.
 
 Try one change and rerun:
 

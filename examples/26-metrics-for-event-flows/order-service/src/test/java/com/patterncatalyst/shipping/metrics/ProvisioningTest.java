@@ -71,4 +71,14 @@ class ProvisioningTest {
         assertTrue(config.contains("kafka_metrics:") && config.contains("metrics/kafka:"));
         assertTrue(config.contains("brokers: [\"kafka:9094\"]"));
     }
+
+    @Test
+    void theConnectorConfirmsPastUncapturedWalThroughAHeartbeatTableItCaptures() throws Exception {
+        JsonNode connector = new ObjectMapper().readTree(Files.readString(EXAMPLE.resolve("connect/order-flow-outbox.json")));
+        String migration = Files.readString(Path.of("src/main/resources/db/migration/V2__heartbeat.sql"));
+        assertTrue(migration.contains("CREATE TABLE orders.heartbeat"));
+        assertTrue(connector.get("heartbeat.action.query").asText().contains("orders.heartbeat"));
+        assertTrue(connector.get("table.include.list").asText().contains("orders.heartbeat"));
+        assertTrue(connector.get("transforms").asText().startsWith("skipHeartbeat"));
+    }
 }

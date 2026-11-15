@@ -113,7 +113,7 @@ def main(argv):
                 whole += 1
                 if hop(rows) is not None:
                     hops.append(hop(rows))
-        say(len(ids), whole)
+        say(f"{len(ids)} {whole}")
         if hops:
             say(f"NOTE: the hop through Connect, from the end of outbox-write to the consumer span: median {statistics.median(hops):.0f} ms, "
                   f"range {min(hops):.0f} to {max(hops):.0f} ms over {len(hops)} traces", stream=sys.stderr)

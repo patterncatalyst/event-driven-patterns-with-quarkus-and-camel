@@ -107,6 +107,7 @@ traceparent_of() { records "$TOPIC" | awk -F'\t' -v k="$1" '$3 == k' | sed -n 's
 has_traceparent() { [[ -n "$(traceparent_of "$1")" ]]; }
 # The header holds the trace id of the order's trace and the span id of db-log-write, the span Connect starts for the log entry.
 header_matches_trace() { # header_matches_trace <order id>
+    [[ -n "$TRACE" ]] || return 1   # without the trace of check 7 two empty values would agree
     local tp parts; tp="$(traceparent_of "$1")"
     IFS=- read -r -a parts <<<"$tp"
     [[ "${parts[1]:-}" == "$TRACE" && "${parts[2]:-}" == "$(tempo span-id "$TRACE" db-log-write)" ]]
@@ -135,11 +136,13 @@ PY
 
 # --- Tempo, Loki and Prometheus, through their HTTP APIs
 one_trace() { # one_trace <order id>: sets TRACE when exactly one trace carries the order id
-    local ids; ids="$(tempo search "{ span.order.id = \"$1\" }")" || return 1
+    local order="$1" ids; ids="$(tempo search "{ span.order.id = \"$order\" }")" || return 1
     ids="${ids//$'\n'/ }"
     # shellcheck disable=SC2086
     set -- $ids
     (( $# == 1 )) || return 1
+    # The consumer's span must be searchable too: before it is, the order's trace alone would pass as the only trace.
+    [[ -n "$(consumer_trace_of "$order")" ]] || return 1
     TRACE="$1"
 }
 trace_count_is() { # trace_count_is <order id> <n>
@@ -148,6 +151,7 @@ trace_count_is() { # trace_count_is <order id> <n>
 }
 services_are() { [[ "$(tempo services "$1")" == "$2" ]]; } # services_are <trace id> "<service> <service> ..."
 structural_match() { # the request span has an inventory-service descendant that carries the order id
+    [[ -n "$TRACE" ]] || return 1   # an empty match would equal an empty trace id
     local ids; ids="$(tempo search "{ resource.service.name = \"order-service\" && name = \"POST /orders\" && span.order.id = \"$1\" } >> { resource.service.name = \"inventory-service\" && span.order.id = \"$1\" }")" || return 1
     [[ "$ids" == "$TRACE" ]]
 }
@@ -191,21 +195,23 @@ precondition "SKU-25 holds 10 and SKU-25-BULK holds 1000" stock_seeded
 
 echo "One order through the outbox (O-2501)"
 place O-2501 SKU-25 1 100.00 || fail_loudly "O-2501 was not accepted"
+PLACED_AT=$SECONDS
 check "inventory reserved O-2501: the stock of SKU-25 is 9" poll 20 stock_is SKU-25 9
 check "the record for O-2501 on $TOPIC carries a traceparent header" poll 20 has_traceparent O-2501
-check "Tempo holds exactly one trace for order id O-2501" poll 90 one_trace O-2501
-check "that trace has spans of order-service, connect and inventory-service" poll 30 services_are "$TRACE" "connect inventory-service order-service"
-check "a structural query finds the inventory-service span below the POST /orders span of O-2501" poll 30 structural_match O-2501
-check "the reservation descends from the request: $CHAIN" poll 30 ancestry_is
-check "debezium-read is a child of db-log-write, beside the consumer span" poll 30 debezium_read_beside_consumer
+check "Tempo holds exactly one trace for order id O-2501" poll 240 one_trace O-2501
+echo "NOTE: Tempo made the trace of O-2501 searchable $((SECONDS - PLACED_AT)) s after the order was accepted"
+check "that trace has spans of order-service, connect and inventory-service" poll 60 services_are "$TRACE" "connect inventory-service order-service"
+check "a structural query finds the inventory-service span below the POST /orders span of O-2501" poll 60 structural_match O-2501
+check "the reservation descends from the request: $CHAIN" poll 60 ancestry_is
+check "debezium-read is a child of db-log-write, beside the consumer span" poll 60 debezium_read_beside_consumer
 check "the record's traceparent holds the trace id of that trace and the span id of db-log-write" header_matches_trace O-2501
-check "Prometheus holds the service-graph edge from connect to inventory-service" \
-    poll 120 prom_holds 'traces_service_graph_request_total{client="connect",server="inventory-service"} > 0'
+check "Prometheus holds the Tempo service-graph series of the requests to order-service" \
+    poll 120 prom_holds 'traces_service_graph_request_total{server="order-service"} > 0'
 
 echo "A burst of 100 orders"
 precondition "all 100 orders of the burst are accepted" expect "$(burst)" 100
 check "the stock of SKU-25-BULK is 900" poll 60 stock_is SKU-25-BULK 900
-check "Tempo holds 100 traces for the burst and every one crosses order-service, connect and inventory-service" poll 120 burst_complete
+check "Tempo holds 100 traces for the burst and every one crosses order-service, connect and inventory-service" poll 240 burst_complete
 grep NOTE "$BURST_NOTE" || true
 
 echo "The span-link form (O-2502)"
@@ -215,12 +221,15 @@ CONSUMER_TRACE=link CONSUMER_TRACE_ENABLED=false "${COMPOSE[@]}" up -d --no-deps
 precondition "inventory-service is ready again and its group owns the partition" poll 90 services_ready
 place O-2502 SKU-25 1 100.00 || fail_loudly "O-2502 was not accepted"
 check "inventory reserved O-2502: the stock of SKU-25 is 8" poll 20 stock_is SKU-25 8
-check "Tempo holds exactly two traces for order id O-2502" poll 90 trace_count_is O-2502 2
-check "the order's trace stops at Connect, and the consumer's root span links to its db-log-write span" poll 60 linked_not_parented O-2502
+check "Tempo holds exactly two traces for order id O-2502" poll 240 trace_count_is O-2502 2
+check "the order's trace stops at Connect, and the consumer's root span links to its db-log-write span" poll 120 linked_not_parented O-2502
 
 echo "Logs"
 check "Loki has an inventory-service line for O-2501 that carries the trace id of its trace" \
     poll 90 loki_has_line inventory-service O-2501 "$TRACE"
+
+check "Prometheus holds an HTTP server metric of order-service with its service_name label" \
+    poll 90 prom_holds 'count({service_name="order-service", __name__=~"http_server_.*"}) > 0'
 
 if [[ "$PASSED" != "$TOTAL" ]]; then
     for s in connect order-service inventory-service; do

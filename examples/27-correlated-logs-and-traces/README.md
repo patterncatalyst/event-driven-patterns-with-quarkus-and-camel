@@ -46,7 +46,7 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `TBD/TBD checks passed`. The Connect container downloads the OpenTelemetry Java agent into a run-scoped volume on each fresh start.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `30/30 checks passed`. The Connect container downloads the OpenTelemetry Java agent into a run-scoped volume on each fresh start.
 
 ## What verify.sh does
 
@@ -76,7 +76,7 @@ docker compose down -v
 
 The Maven build runs 24 tests against PostgreSQL and Kafka from Dev Services, with spans kept in memory (an `InMemorySpanExporter` bean): in `order-service` (14), a step runs in a span with `order.id` and the order id is in the log context while it runs and gone after; placing an order over HTTP puts the order id on a span of the request's trace; the saga stores the `traceparent` of that trace; the sweeper's trace is a root with the order id and a link to the order's trace; the cancellation event's outbox span is a child of the sweeper's root; with `SWEEPER_LINK=off` the root has no link; with `ORDER_ID_IN_LOGS=off` the log context has no order id but the span still carries it; and the transitions of the saga, the HTTP edge and the replies as Kafka records. In `inventory-service` (4): reserve and release, release twice, insufficient stock, and a record with a `traceparent` header is handled under that trace id with the order id on its span. In `payment-service` (6): a payment is taken, one above the limit is declined, one for a cancelled order is refused, the payment runs in a span with the order id, the route takes a payment from a topic record, and the gate starts the payment route.
 
-The checks read effects: the order view over HTTP, rows in the three schemas, records on the topics, consumer-group lag, the services' logs, and Tempo, Loki, Grafana and Prometheus through their HTTP APIs. Tempo makes a trace searchable some seconds after the request TBD(spike: 20 to 40 s), so the trace checks poll for up to 90 seconds. Every recreate waits for readiness and the consumer groups; outputs are polled, never slept on.
+The checks read effects: the order view over HTTP, rows in the three schemas, records on the topics, consumer-group lag, the services' logs, and Tempo, Loki, Grafana and Prometheus through their HTTP APIs. Tempo does not make a trace searchable the moment the request returns, so the trace checks poll for up to 90 seconds. Every recreate waits for readiness and the consumer groups; outputs are polled, never slept on.
 
 ## Experiments
 

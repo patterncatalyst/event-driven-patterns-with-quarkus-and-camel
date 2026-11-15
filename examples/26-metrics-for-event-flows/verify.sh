@@ -189,6 +189,7 @@ metrics_present() {
 }
 restarted_and_caught_up() { lag_is 0 && stock_is SKU-26 939; }
 counted_is() { [[ "$(age_count event_age)" == "$1" && "$(age_count record_age)" == "$1" ]]; } # counted_is <n>: n arrivals counted since the last restart
+age_counted_since_baseline() { (( $(age_count event_age) - BURST_BASE >= $1 )); } # age_counted_since_baseline <n>
 waited_ms() { (( $(now_ms) - $1 >= $2 )); } # waited_ms <since ms> <at least ms>
 
 # --- age checks: counts and buckets of the two timers, as differences from a baseline taken before the step
@@ -287,11 +288,17 @@ check "the 20 drained events are older than 30 s by event age" poll 60 over_30s 
 check "the 20 drained records are older than 30 s by record age too: the record timestamp is the commit time" poll 60 over_30s record_age 20
 
 echo "A burst of 500 orders"
+BURST_BASE="$(age_count event_age)"
 BURST_START="$(now_ms)"
 precondition "all 500 orders of the burst are accepted" expect "$(burst 260000 500)" 500
 check "all 500 are reserved: stock of SKU-26 is 419" poll 120 stock_is SKU-26 419
 check "the broker's group lag returns to 0" poll 60 lag_is 0
-echo "NOTE: lag 0 again $(( $(now_ms) - BURST_START )) ms after the burst started; peak group lag $(prom_num "max_over_time(sum(kafka_consumer_group_lag_ratio{group=\"$GROUP\"})[5m:5s])"), peak backlog $(prom_num 'max_over_time(max(outbox_backlog_bytes)[5m:5s])') bytes, event age p95 $(prom_num 'histogram_quantile(0.95, sum by (le) (increase(order_flow_event_age_milliseconds_bucket[5m])))') ms"
+LAG0_MS=$(( $(now_ms) - BURST_START ))
+# The numbers below are a note, not a check: wait until the timers have counted the burst and the exporters have run once more.
+poll 60 age_counted_since_baseline 500 || true
+sleep 12
+BURST_S=$(( ($(now_ms) - BURST_START) / 1000 + 5 )) # the window of the burst, so the stall earlier in the run is not in the numbers
+echo "NOTE: lag 0 again ${LAG0_MS} ms after the burst started; over the burst: peak group lag $(prom_num "max_over_time(sum(kafka_consumer_group_lag_ratio{group=\"$GROUP\"})[${BURST_S}s:5s])"), peak backlog $(prom_num "max_over_time(max(outbox_backlog_bytes)[${BURST_S}s:5s])") bytes, event age p95 $(prom_num "histogram_quantile(0.95, sum by (le) (increase(order_flow_event_age_milliseconds_bucket[${BURST_S}s])))") ms"
 
 echo "Dashboard and observability"
 check "every query of the provisioned dashboard returns a series" poll 90 panel_queries_return_data

@@ -19,7 +19,7 @@ Nothing is wrong inside any one service. The work is stuck between them: in a re
 
 A service's metrics describe the service: requests handled, errors, latency, queue depth of its own threads. An event flow also has places that belong to no service. The outbox sits between a commit and a topic (chapter 8). The topic sits between a producer and a group. A dead letter topic holds what a consumer gave up on (chapter 13). When any of them stops moving, the services on both sides stay healthy, because each one is waiting for the other.
 
-The obvious readings fail in a specific way. The outbox table has no rows to count, because the extension deletes each row in the transaction that inserts it. Debezium's streaming metrics report the lag of the last event it read, which read TBD(spike: 41 ms) after a 25 second pause with an order waiting. A consumer's own lag metric disappears with the consumer. And the age of an event, measured on arrival, says nothing until something arrives.
+The obvious readings fail in a specific way. The outbox table has no rows to count, because the extension deletes each row in the transaction that inserts it. A consumer's own lag metric disappears with the consumer. And the age of an event, measured on arrival, says nothing until something arrives.
 
 ### The solution
 
@@ -54,7 +54,17 @@ public class OutboxBacklog implements MeterBinder {
 
 A `MeterBinder` bean is bound to the registry at startup, and Prometheus holds the gauge as `outbox_backlog_bytes`. The table is the wrong place to look: with `remove-after-insert` it holds zero rows however many orders wait, and `BACKLOG_SOURCE=table` (demo code) swaps the query to count them, to show a gauge that stays flat through a stall.
 
-The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector only confirms a position when it processes an event or a heartbeat. Two settings keep the reading near zero at rest: `heartbeat.interval.ms` on the connector, so a quiet slot still advances, and a one second offset flush on the Connect worker. At rest the gauge then reads TBD(spike: 576 B); twenty orders waiting behind a paused connector read about TBD(spike: 27 KB). The alert threshold sits between the two, at 16 KiB. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
+The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector confirms a position only when it processes a captured change. Inventory updates and checkpoints land after the last order's event, and a plain heartbeat does not confirm them: in the first runs the gauge stayed near 108 KB after the relay resumed and the alert stayed up for minutes. The connector's `heartbeat.action.query` writes one row a second to a table the connector captures, so the confirmed position follows the write position, and a Filter transform drops those records before they reach a topic.
+
+```json
+"heartbeat.interval.ms": "1000",
+"heartbeat.action.query": "INSERT INTO orders.heartbeat (id, beat) VALUES (1, now()) ON CONFLICT (id) DO UPDATE SET beat = now()",
+"transforms": "skipHeartbeat,outbox",
+"transforms.skipHeartbeat.type": "org.apache.kafka.connect.transforms.Filter",
+"transforms.skipHeartbeat.predicate": "isHeartbeatTable"
+```
+
+A one second offset flush on the Connect worker keeps the confirmation prompt. At rest the gauge then reads TBD_REST; twenty orders waiting behind a paused connector read about TBD_PAUSED, and a checkpoint can lift it for a few seconds. The alert threshold sits between them, at 16 KiB, and the rule's 20 second `for` clause rides out the checkpoint. Right after a start the first captured event, not the heartbeat, pulls the slot forward, so a warm-up order precedes any reading at rest.
 
 ## Lag at the broker
 
@@ -101,13 +111,13 @@ void record(ConsumerRecord<?, ?> record, Instant now) {
 }
 ```
 
-Behind a Debezium outbox the two agree. The router stamps the record with the commit time, not the time it read the change: with the connector paused for 30 seconds the record timestamp was the placement time plus TBD(spike: 78 ms). A stall at the relay therefore shows up in record age, which is what chapter 16's projection lag relies on, and event age adds nothing there.
+Behind a Debezium outbox the two agree. The router stamps the record with the commit time, not the time it read the change: with the connector paused for 35 seconds, the twenty drained records were older than 30 seconds by record age as well as by event age. A stall at the relay therefore shows up in record age, which is what chapter 16's projection lag relies on, and event age adds nothing there.
 
 They part when a record is written again. A dead letter keeps the original headers, so `occurredAt` travels with it, but a redrive publishes a new record and the broker stamps a new timestamp. The redriven record reads young by record age and old by event age.
 
 {% include excalidraw.html file="26-event-age-redrive" alt="A record fails in inventory-service and goes to the dead letter topic with its headers; the redrive writes it again with a new record time and the same occurredAt, so record age reads small and event age reads the wait" caption="Figure 26.2: A redrive resets the record timestamp and keeps the event time" %}
 
-A customer who waited an hour for a reservation did wait an hour, and event age says so. Record age says the order was young when it arrived the second time. Both timers use explicit buckets, because the OTLP export carries no percentile histogram of its own: `publishPercentileHistogram()` produced a single `+Inf` bucket, and `histogram_quantile` over it returns NaN.
+A customer who waited an hour for a reservation did wait an hour, and event age says so. Record age says the order was young when it arrived the second time. Both timers declare explicit buckets at 1, 5, 30 and 120 seconds, and the dashboard's percentile panels read them.
 
 ## Dead letters as a rate
 
