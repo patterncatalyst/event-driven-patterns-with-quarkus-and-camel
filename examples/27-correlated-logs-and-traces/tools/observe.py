@@ -66,7 +66,7 @@ def spans(trace):
 def trace_ids(order):
     query = '{ span.order.id = "%s" }' % order
     found = get(f"{TEMPO}/api/search?" + urllib.parse.urlencode({"q": query, "limit": 20}))
-    return sorted({t["traceID"] for t in found.get("traces", [])})
+    return sorted({t["traceID"].zfill(32) for t in found.get("traces", [])})
 
 
 def loki(query):

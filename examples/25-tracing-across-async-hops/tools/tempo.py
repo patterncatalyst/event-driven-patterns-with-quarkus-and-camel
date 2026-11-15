@@ -42,7 +42,7 @@ def hexid(value):
 
 
 def search(q, limit=100):
-    return [t["traceID"] for t in get("/api/search", q=q, limit=limit).get("traces", [])]
+    return [t["traceID"].zfill(32) for t in get("/api/search", q=q, limit=limit).get("traces", [])]
 
 
 def spans(trace_id):
