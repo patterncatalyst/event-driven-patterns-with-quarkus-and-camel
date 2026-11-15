@@ -3,7 +3,7 @@ title: "Correlated logs and traces"
 order: 27
 part: observing-event-flows
 permalink: /docs/27-correlated-logs-and-traces/
-description: "An operator holds an order id, and the tools hold trace ids and log lines. The order id goes on every span and every log line, the trace id goes on every log line, and a trace that a timer starts links to the trace it continues, so one question finds everything about one order."
+description: "An operator holds an order id, and the tools hold trace ids and log lines. The order id goes on every span and in the log context of every handler, the trace id goes on every log line, and a trace that a timer starts links to the trace it continues, so one question finds everything about one order."
 duration: "55 minutes"
 ---
 
@@ -11,7 +11,7 @@ Someone phones to say that order O-2701 never got its payment. They have an orde
 
 Three habits close the gap. The order id is set on every span and in the log context of every handler. The trace id is on every log line. A trace that a timer starts links to the trace it continues. With those three, a search by order id returns the trace and its logs, and a log line leads to its trace and back.
 
-{% include excalidraw.html file="27-one-order-many-signals" alt="order-service, Connect, inventory-service and payment-service in a row inside one trace, each service marked with order.id and orderId, with arrows to Tempo, queried by span.order.id, and to Loki, queried by orderId, where every line holds the trace id" caption="Figure 27.1: A business id on every span and every log line, a trace id on every log line" %}
+{% include excalidraw.html file="27-one-order-many-signals" alt="order-service, Connect, inventory-service and payment-service in a row inside one trace, each service marked with order.id and orderId, with arrows to Tempo, queried by span.order.id, and to Loki, queried by orderId, where every line holds the trace id" caption="Figure 27.1: A business id on every span and in every handler's log line, a trace id on every log line" %}
 
 ## Pattern: Correlation identifier across signals
 
@@ -25,7 +25,7 @@ Three things break the link. The first is the handler that runs after a message 
 
 **Put the business identifier on every span and in the log context of every handler, put the trace identifier on every log line, and link any trace that a timer starts to the trace it continues.**
 
-This is Hohpe and Woolf's Correlation Identifier used for something other than a reply: a token that travels with the work so that related things can be matched. Their pattern is written for request and reply, so using it for traces and logs is an extension of it, not a quotation. The three keys have different jobs.
+This is Hohpe and Woolf's Correlation Identifier used for something other than a reply: a token that travels with the work so that related things can be matched. Their pattern is written for request and reply; here the same idea is applied to traces and logs. The three keys have different jobs.
 
 | Key | Set by | Finds | Where it is stored |
 |---|---|---|---|
@@ -104,7 +104,7 @@ try (Scope scope = span.makeCurrent(); LogContext ignored = correlated.logContex
 
 `placed` is the span context parsed back from the stored `traceparent`. The cancellation event is written to the outbox inside the scope, so the outbox span, the relay and the release in inventory all hang from the sweeper's root, and the order id is on the root. Quarkus can also make every scheduled run a trace of its own. That is off by default, and it makes a trace of every run, once a second here, so the sweeper starts a span only when it cancels a saga.
 
-A search by `order.id` returns both traces for a timed-out order, and the link on the second leads to the first. Without the link the search still returns both, because the order id is on both. The order id finds the traces, and the link says which one the other continues.
+A search by `order.id` returns both traces for a timed-out order, and the link on the second leads to the first. Without the link the search still returns both, because the order id is on both.
 
 | | Parent | Link |
 |---|---|---|
@@ -132,13 +132,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` runs Kafka, PostgreSQL, Connect with the tracing agent, the LGTM stack and the three services, follows paid, declined and timed-out orders through Tempo and Loki, and ends with `30/30 checks passed`. The Connect container downloads the agent on each fresh start.
+`verify.sh` runs Kafka, PostgreSQL, Connect with the tracing agent, the LGTM stack and the three services, follows paid, declined and timed-out orders through Tempo and Loki, and ends with `31/31 checks passed`. The Connect container downloads the agent on each fresh start.
 
 Try one change and rerun:
 
 - `SWEEPER_LINK=off ./verify.sh` (demo code): the sweeper's trace has no link, and only the link check fails.
 - `ORDER_ID_IN_LOGS=off ./verify.sh` (demo code): the lines have trace ids and no `orderId`, so the log queries by order id come back empty.
-- `KEEP=1 ./verify.sh`, then in Grafana Explore run `{service_name=~".+"} | orderId="O-2704"` (demo code): the lines of both traces, each with a link to its trace.
+- `KEEP=1 ./verify.sh`, then in Grafana Explore run `{service_name=~".+"} | orderId="O-2704"`: the lines of both traces, each with a link to its trace.
 
 ## When not to use it
 

@@ -93,6 +93,17 @@ class CorrelationTest {
     }
 
     @Test
+    void aSagaPlacedWithNoStoredTraceContextIsCancelledInATraceWithNoLink() {
+        String id = Fixtures.newId();
+        post(id);
+        Fixtures.forgetTrace(id);
+        expireInSweeper(id);
+        SpanData sweep = Spans.await(exporter, "cancel expired saga", id);
+        assertEquals(0, sweep.getLinks().size());
+        assertEquals("CANCELLED", Fixtures.orderStatus(id));
+    }
+
+    @Test
     void theCancellationEventIsWrittenInsideTheSweepersTrace() {
         String id = Fixtures.newId();
         post(id);

@@ -46,17 +46,18 @@ KEEP=1 ./verify.sh # leave the stack up; Grafana is on http://localhost:3000
 docker compose down -v
 ```
 
-`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `30/30 checks passed`. The Connect container downloads the OpenTelemetry Java agent into a run-scoped volume on each fresh start.
+`verify.sh` refuses to start while another stack is running, removes any earlier containers and volumes before it starts, and stops this stack on exit unless `KEEP=1`. It ends with `31/31 checks passed`. The Connect container downloads the OpenTelemetry Java agent into a run-scoped volume on each fresh start.
 
 ## What verify.sh does
 
-1. Starts the stack, registers the connector over the three outbox tables and waits for it, the six one-partition topics, the nine consumer groups, the agent banner in Connect's log and the seeded stock.
-2. O-2701 is PAID. Tempo holds exactly one trace for `span.order.id = "O-2701"`, with spans of order-service, connect, inventory-service and payment-service and the consumer span of order-service for PaymentProcessed, and each of the three services has a span of its own with the order id.
+1. Starts the stack, registers the connector over the three outbox tables and waits for it, the six one-partition topics, the nine consumer groups, the agent banner in Connect's log (absent when `CONNECT_ENABLE_OTEL=false`) and the seeded stock.
+2. O-2701 is PAID. Tempo holds exactly one trace for `span.order.id = "O-2701"` (counted only after the spans a correct run holds are searchable: the request, the PaymentProcessed consumer and the handler spans of payment-service and inventory-service), with spans of order-service, connect, inventory-service and payment-service and the consumer span of order-service for PaymentProcessed, and each of the three services has a span of its own with the order id.
 3. Loki holds lines with `orderId` O-2701 from the three services, every one with the trace id of that trace. A payment-service line leads to a trace that holds `POST /orders`, and the trace id leads to lines of at least three services.
 4. O-2703 is declined and cancelled, the stock is released, and the release is a span of the one trace of O-2703.
-5. payment-service is stopped. O-2704 is reserved and waits; the sweeper cancels it after its deadline (a `NOTE` line prints how long after). Tempo holds exactly two traces for it, the one the sweeper started links to the trace of `POST /orders`, and Loki's lines of O-2704 name two trace ids.
+5. payment-service is stopped. O-2704 is reserved and waits; the sweeper cancels it after its deadline (a `NOTE` line prints how long after). Tempo holds exactly two traces for it (counted after the request, the sweeper's root and the release are searchable), the one the sweeper started links to the trace of `POST /orders`, and Loki's lines of O-2704 name two trace ids.
 6. payment-service returns, waits until its cancellation consumer has no lag and refuses the waiting reservation: its log says so, there is no payment row and no payment event.
 7. Grafana has the `trace_id` derived field on Loki and the trace-to-logs link on Tempo; Prometheus holds `saga_outcomes_total` for compensated and timed-out orders.
+8. Check 31: by trace id, Loki returns the payment route's own line, "taking the payment for O-2701"; by `orderId`, it returns the line from inside the payment and not that one.
 
 ## Layout
 
@@ -74,7 +75,7 @@ docker compose down -v
 
 ## Tests and checks in detail
 
-The Maven build runs 24 tests against PostgreSQL and Kafka from Dev Services, with spans kept in memory (an `InMemorySpanExporter` bean): in `order-service` (14), a step runs in a span with `order.id` and the order id is in the log context while it runs and gone after; placing an order over HTTP puts the order id on a span of the request's trace; the saga stores the `traceparent` of that trace; the sweeper's trace is a root with the order id and a link to the order's trace; the cancellation event's outbox span is a child of the sweeper's root; with `SWEEPER_LINK=off` the root has no link; with `ORDER_ID_IN_LOGS=off` the log context has no order id but the span still carries it; and the transitions of the saga, the HTTP edge and the replies as Kafka records. In `inventory-service` (4): reserve and release, release twice, insufficient stock, and a record with a `traceparent` header is handled under that trace id with the order id on its span. In `payment-service` (6): a payment is taken, one above the limit is declined, one for a cancelled order is refused, the payment runs in a span with the order id, the route takes a payment from a topic record, and the gate starts the payment route.
+The Maven build runs 25 tests against PostgreSQL and Kafka from Dev Services, with spans kept in memory (an `InMemorySpanExporter` bean): in `order-service` (15), a step runs in a span with `order.id` and the order id is in the log context while it runs and gone after; placing an order over HTTP puts the order id on a span of the request's trace; the saga stores the `traceparent` of that trace; the sweeper's trace is a root with the order id and a link to the order's trace; a saga with no stored `traceparent` is cancelled in a trace with no link; the cancellation event's outbox span is a child of the sweeper's root; with `SWEEPER_LINK=off` the root has no link; with `ORDER_ID_IN_LOGS=off` the log context has no order id but the span still carries it; and the transitions of the saga, the HTTP edge and the replies as Kafka records. In `inventory-service` (4): reserve and release, release twice, insufficient stock, and a record with a `traceparent` header is handled under that trace id with the order id on its span. In `payment-service` (6): a payment is taken, one above the limit is declined, one for a cancelled order is refused, the payment runs in a span with the order id, the route takes a payment from a topic record, and the gate starts the payment route.
 
 The checks read effects: the order view over HTTP, rows in the three schemas, records on the topics, consumer-group lag, the services' logs, and Tempo, Loki, Grafana and Prometheus through their HTTP APIs. Tempo does not make a trace searchable the moment the request returns, so the trace checks poll for up to 90 seconds. Every recreate waits for readiness and the consumer groups; outputs are polled, never slept on.
 
@@ -84,13 +85,13 @@ Each row changes a single thing and names the checks that fail. Check numbers ar
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `SWEEPER_LINK=off ./verify.sh` (demo code) | The sweeper's trace has no link | 24 | 29/30; only the link check fails |
-| `ORDER_ID_IN_LOGS=off ./verify.sh` (demo code) | Lines carry the trace id and no `orderId` | 12, 13, 14 and 25 | 26/30; the checks that find lines by order id |
-| `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= ./verify.sh` (demo code) | The agent banner is absent from Connect's log, so precondition 3 stops the run | precondition 3 (the run ends there) | 2 of 3 checks passed, then the run stopped; the trace checks are never reached |
-| Order id attribute removed in `payment-service` (temporary edit, bite proof) | The trace has no payment span with the order id | 11 | 29/30; only the order id on spans of the three services fails, the lines still carry it |
+| `SWEEPER_LINK=off ./verify.sh` (demo code) | The sweeper's trace has no link | 24 | 30/31; only the link check fails |
+| `ORDER_ID_IN_LOGS=off ./verify.sh` (demo code) | Lines carry the trace id and no `orderId` | 12, 13, 14, 25 and 31 | 26/31; the checks that find lines by order id |
+| `CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= ./verify.sh` (demo code) | Connect runs without the agent: precondition 3 expects the banner to be absent, and the run goes to the end. The trace context is lost at the relay, so the order is several traces | 8, 9, 10, 13, 14, 15, 17, 18, 23, 25 and 31 in both runs; 24 failed in one of the two | 19/31 and 20/31; the checks that need one trace per order or a trace id on every line of it fail, and the checks of the log lines, the stock and the payments pass |
+| Order id attribute removed in `payment-service` (temporary edit, bite proof) | The trace has no payment span with the order id | 11 | 29/30 (measured before check 31 was added); only the order id on spans of the three services fails, the lines still carry it, so check 31 reads the same lines and passes |
 
 Timing witness: in 15 fresh runs (the first 8 full, the last 7 stopped after check 21) the sweeper cancelled O-2704 within the 3500 ms the check allows every time, 288 to 2709 ms after the deadline, median 695 ms. Check 21 passed 15 of 15.
 
 ## Notes
 
-The order id is a span attribute and a log attribute, never a Loki label or a metric label. The scheduler's own tracing (`quarkus.scheduler.tracing.enabled`) is left off: it makes a trace of every run, and the sweeper starts a span only when it cancels a saga. The sweeper's link is only as good as the stored `traceparent`: an order placed with no active span has none, and its cancellation trace has no link.
+The order id is a span attribute and a log attribute, never a Loki label or a metric label. The scheduler's own tracing (`quarkus.scheduler.tracing.enabled`) is left off: it makes a trace of every run, and the sweeper starts a span only when it cancels a saga. The sweeper's link is only as good as the stored `traceparent`: an order placed with no active span has none, and its cancellation trace has no link. The sweeper reads the expired sagas with `FOR UPDATE SKIP LOCKED` and cancels them in the same transaction, so a row it holds is a row it cancels: the `cancel expired saga` span does not start a trace for a saga that a reply decided first (that saga is skipped or no longer matches the query).

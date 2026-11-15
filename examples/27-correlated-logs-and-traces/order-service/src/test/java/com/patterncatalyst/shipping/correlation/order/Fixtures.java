@@ -53,6 +53,11 @@ final class Fixtures {
                 Instant.now().minusSeconds(60), orderId));
     }
 
+    /** The saga as if the order had been placed with no active span: no stored traceparent. */
+    static void forgetTrace(String orderId) {
+        QuarkusTransaction.requiringNew().run(() -> SagaEntity.update("traceparent = null where orderId = ?1", orderId));
+    }
+
     static long outbox(EntityManager em, String type, String orderId) {
         return QuarkusTransaction.requiringNew().call(() -> ((Number) em.createNativeQuery(
                 "select count(*) from orders.outboxevent where type = ?1 and aggregateid = ?2")

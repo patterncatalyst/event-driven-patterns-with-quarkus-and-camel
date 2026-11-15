@@ -10,6 +10,8 @@ Exit status 0 means the condition holds. Commands that print, print one fact per
   log-lines <order>            "<service> <trace id>" for every Loki line with orderId = <order>
   log-services <trace>         service names of the Loki lines with trace_id = <trace>
   log-trace <service> <order>  the trace ids of that service's lines for the order
+  lines-by-trace <service> <trace>   the text of that service's Loki lines with trace_id = <trace>
+  lines-by-order <service> <order>   the text of that service's Loki lines with orderId = <order>
   grafana-links                the Loki trace_id derived field and the Tempo trace-to-logs link are provisioned
 """
 import base64
@@ -103,6 +105,10 @@ def main(argv):
         out("\n".join(sorted({r[0] for r in loki('{service_name=~".+"} | trace_id="%s"' % args[0])})))
     elif command == "log-trace":
         out("\n".join(sorted({r[1] for r in loki('{service_name="%s"} | orderId="%s"' % (args[0], args[1]))})))
+    elif command == "lines-by-trace":
+        out("\n".join(r[2] for r in loki('{service_name="%s"} | trace_id="%s"' % (args[0], args[1]))))
+    elif command == "lines-by-order":
+        out("\n".join(r[2] for r in loki('{service_name="%s"} | orderId="%s"' % (args[0], args[1]))))
     elif command == "grafana-links":
         derived = get(f"{GRAFANA}/api/datasources/uid/loki")["jsonData"].get("derivedFields", [])
         to_logs = get(f"{GRAFANA}/api/datasources/uid/tempo")["jsonData"].get("tracesToLogsV2", {})

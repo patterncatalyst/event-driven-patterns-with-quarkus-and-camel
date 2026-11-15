@@ -1,4 +1,4 @@
-"""One order crossing four processes: every span carries order.id and every log line carries orderId and the trace id, so Tempo and Loki answer the same question."""
+"""One order crossing four processes: every span carries order.id, every handler's log line carries orderId, and every log line carries the trace id, so Tempo and Loki answer the same question."""
 
 from generate_diagram import emit
 
@@ -28,7 +28,7 @@ emit(
     ],
     notes=[
         {"x": 500, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-         "text": "A business id on every span and every log line, a trace id on every log line"},
+         "text": "A business id on every span and in every handler's log line, a trace id on every log line"},
         {"x": 500, "y": 425, "anchor": "middle", "size": 13, "color": "#555555",
          "text": "The trace context carries the order through Connect"},
     ],

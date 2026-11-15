@@ -2,7 +2,8 @@
 # Starts the stack, registers the one outbox connector and follows orders through Tempo and Loki: one order is one trace
 # across three services and the Connect relay, every log line of it carries that trace id and the order id, a log line
 # leads to its trace and the trace to its log lines, and an order that the sweeper cancels is two traces, the second
-# linked to the first. SWEEPER_LINK=off and ORDER_ID_IN_LOGS=off are the negative witnesses (see the README).
+# linked to the first. SWEEPER_LINK=off, ORDER_ID_IN_LOGS=off and CONNECT_ENABLE_OTEL=false CONNECT_KAFKA_OPTS= (Connect
+# without the agent) are the negative witnesses (see the README).
 # KEEP=1 leaves the stack running afterwards.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -136,11 +137,30 @@ payment_down() { ! curl -sf http://localhost:8084/q/health/ready >/dev/null && n
 reserved_and_waiting() { saga_is O-2704 AWAITING_PAYMENT && stock_is SKU-27 8; }
 cancellation_published_and_released() { [[ "$(record_count edp.orders.cancelled O-2704)" == 1 ]] && reservation_is O-2704 RELEASED && stock_is SKU-27 9; }
 payment_groups_caught_up() { lag_is payment-reserved 0 && lag_is payment-cancelled 0; }
-connect_traces() { docker logs edp-connect 2>&1 | grep -F "opentelemetry-javaagent - version" >/dev/null; }
+# The agent logs its banner once per start. With CONNECT_ENABLE_OTEL=false (the negative witness) the banner must be absent.
+agent_state_matches() {
+    if [[ "${CONNECT_ENABLE_OTEL:-true}" == "false" ]]; then ! log_has connect "opentelemetry-javaagent - version"
+    else log_has connect "opentelemetry-javaagent - version"; fi
+}
 
 # --- Tempo and Loki through their HTTP APIs. A trace is searchable 20 to 40 s after the request, so these poll.
 trace_count_is() { [[ "$("${OBSERVE[@]}" trace-ids "$1" | wc -l)" == "$2" ]]; }                 # trace_count_is <order> <n>
-the_trace() { "${OBSERVE[@]}" trace-ids "$1" | head -n 1; }                                       # the_trace <order>
+the_trace() { # the_trace <order>: the id of the order's trace, only when there is exactly one
+    local ids; ids="$("${OBSERVE[@]}" trace-ids "$1")"; [[ -n "$ids" && "$ids" != *$'\n'* ]] && echo "$ids"
+}
+# The trace search lists a trace as soon as one of its spans is indexed, so a count taken then can be too small.
+# trace_count_settled counts only after the spans that a correct run holds for the order are searchable somewhere in its traces.
+span_searchable() { # span_searchable <order> <service> <name prefix>: some trace of the order has that span
+    local t; for t in $("${OBSERVE[@]}" trace-ids "$1"); do "${OBSERVE[@]}" has-span "$t" "$2" "$3" && return 0; done; return 1
+}
+required_spans_searchable() { # required_spans_searchable <order> <service:name prefix>...
+    local o="$1" spec; shift
+    for spec in "$@"; do span_searchable "$o" "${spec%%:*}" "${spec#*:}" || return 1; done
+}
+trace_count_settled() { # trace_count_settled <order> <n> <service:name prefix>...: wait for the required spans, then count once
+    local o="$1" n="$2"; shift 2
+    poll 90 required_spans_searchable "$o" "$@" && trace_count_is "$o" "$n"
+}
 trace_has_services() { # trace_has_services <order> <service...>: the one trace has spans of every service
     local t svcs; t="$(the_trace "$1")"; shift; [[ -n "$t" ]] || return 1
     svcs="$("${OBSERVE[@]}" services "$t")"
@@ -179,6 +199,11 @@ sweeper_links_back() { # sweeper_links_back <order>: the trace that starts at th
 logs_of_both_traces() { # logs_of_both_traces <order>: Loki lines of the order name two different trace ids
     [[ "$("${OBSERVE[@]}" log-lines "$1" | awk '{print $2}' | sort -u | wc -l)" == 2 ]]
 }
+route_line_lacks_order_id() { # route_line_lacks_order_id <order>: by trace id payment-service has the route line, by orderId it does not
+    local t by_trace by_order; t="$(the_trace "$1")"; [[ -n "$t" ]] || return 1
+    by_trace="$("${OBSERVE[@]}" lines-by-trace payment-service "$t")"; by_order="$("${OBSERVE[@]}" lines-by-order payment-service "$1")"
+    [[ "$by_trace" == *"taking the payment for $1"* && -n "$by_order" && "$by_order" != *"taking the payment for $1"* ]]
+}
 prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep '"value"' >/dev/null; }
 
 echo "Starting the stack"
@@ -195,7 +220,7 @@ curl -sf -X PUT -H 'Content-Type: application/json' --data @"$CONNECTOR_JSON" "$
 echo "Infrastructure"
 precondition "the connector $CONNECTOR is RUNNING over the three outbox tables and the six topics have one partition each" poll 60 topology_ready
 precondition "the three services are ready and their nine consumer groups each own a partition" poll 90 groups_assigned
-precondition "Connect started with the tracing agent" poll 30 connect_traces
+precondition "Connect started with the tracing agent (CONNECT_ENABLE_OTEL=false: without it)" poll 30 agent_state_matches
 precondition "SKU-27 holds 10" stock_seeded
 precondition "no saga exists yet" expect "$(sql "SELECT count(*) FROM orders.order_saga")" 0
 
@@ -203,7 +228,9 @@ echo "One order, one trace (O-2701)"
 place O-2701 SKU-27 1 100.00 || fail_loudly "O-2701 was not accepted"
 check "O-2701 is PAID within 15 s and its saga is COMPLETED" poll 15 view_is O-2701 status/saga PAID/COMPLETED
 check "stock of SKU-27 is 9 and the payment is COMPLETED" poll 10 happy_effects
-check "Tempo holds exactly one trace with the order id O-2701" poll 90 trace_count_is O-2701 1
+check "Tempo holds exactly one trace with the order id O-2701" \
+    trace_count_settled O-2701 1 "order-service:POST /orders" "order-service:edp.payments.processed" "payment-service:handle event" \
+    "inventory-service:handle event"
 check "that trace has spans of order-service, connect, inventory-service and payment-service" \
     poll 60 trace_has_services O-2701 order-service connect inventory-service payment-service
 check "the same trace has the consumer span of order-service for PaymentProcessed" \
@@ -222,7 +249,8 @@ place O-2703 SKU-27 1 900.00 || fail_loudly "O-2703 was not accepted"
 check "O-2703 is CANCELLED with reason PAYMENT_DECLINED and its stock is back at 9" poll 20 declined_compensated
 check "the release in inventory-service is a span of the one trace of O-2703" \
     poll 90 trace_has_span O-2703 inventory-service "edp.orders.cancelled"
-check "Tempo holds exactly one trace with the order id O-2703" trace_count_is O-2703 1
+check "Tempo holds exactly one trace with the order id O-2703" \
+    trace_count_settled O-2703 1 "order-service:POST /orders" "inventory-service:edp.orders.cancelled"
 
 echo "A payment-service that does not answer (O-2704)"
 "${COMPOSE[@]}" stop payment-service >/dev/null
@@ -233,7 +261,8 @@ DEADLINE_2704="$(deadline_ms O-2704)"
 check "the sweeper cancels O-2704 with reason TIMED_OUT, within ${TIMEOUT_SLACK_MS} ms after its deadline" cancelled_on_time O-2704 "$DEADLINE_2704"
 echo "NOTE: O-2704 was observed cancelled ${DELTA_MS:-unknown} ms after its deadline"
 check "OrderCancelled is on the topic and the stock of SKU-27 is back at 9" poll 30 cancellation_published_and_released
-check "Tempo holds exactly two traces with the order id O-2704" poll 90 trace_count_is O-2704 2
+check "Tempo holds exactly two traces with the order id O-2704" \
+    trace_count_settled O-2704 2 "order-service:POST /orders" "order-service:cancel expired saga" "inventory-service:edp.orders.cancelled"
 check "the trace the sweeper started links to the trace of POST /orders" poll 30 sweeper_links_back O-2704
 check "Loki lines of O-2704 name two trace ids: the request and the sweeper" poll 60 logs_of_both_traces O-2704
 "${COMPOSE[@]}" up -d --no-deps --wait payment-service
@@ -247,6 +276,10 @@ echo "Observability"
 check "Grafana has the trace_id link from Loki to Tempo and the link from Tempo to Loki" "${OBSERVE[@]}" grafana-links
 check "Prometheus holds saga_outcomes_total from order-service for compensated and timed-out orders, at least 2" \
     poll 90 prom_holds 'sum(max_over_time(saga_outcomes_total{outcome=~"compensated|timed-out",service_name="order-service"}[1h])) >= 2'
+
+echo "Which lines carry the order id"
+check "payment-service's line from the route names the trace and lacks orderId; the line from inside the payment has both" \
+    poll 30 route_line_lacks_order_id O-2701
 
 if [[ "$PASSED" != "$TOTAL" ]]; then
     for s in order-service inventory-service payment-service; do
