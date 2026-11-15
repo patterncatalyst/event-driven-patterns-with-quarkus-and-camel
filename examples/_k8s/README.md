@@ -45,7 +45,7 @@ All on 127.0.0.1.
 
 ## Fresh state
 
-Every `verify.sh` starts with `k8s_fresh`. It deletes the KafkaTopics first, then the Kafka and node pool resources, then the namespaces `edp`, `edp-kafka` and `edp-lgtm`, each with a timeout that fails loudly; a stuck finalizer stops the run and is never stripped. It then asserts that no namespace is Terminating and no volume is still bound, applies the example with `kubectl apply --server-side --field-manager=edp-verify -k .` and waits in tiers: Strimzi operator, Kafka, CloudNativePG cluster and databases, otel-lgtm, then every Deployment in `edp`. `k8s_teardown` in the EXIT trap deletes the namespaces again unless `KEEP=1`. What stays per profile: CRDs, cluster-scoped RBAC, the CloudNativePG operator in `cnpg-system` and the node's image cache.
+Every `verify.sh` starts with `k8s_fresh`. It deletes the KafkaTopics first, then the Kafka and node pool resources, then the Deployments and Jobs in `edp`, then the CloudNativePG `Database` resources and the `Cluster`, waiting until its instance pod is gone, then the namespaces `edp`, `edp-kafka` and `edp-lgtm`, each with a timeout that fails loudly; a stuck finalizer stops the run and is never stripped. It then asserts that no namespace is Terminating and no volume is still bound, applies the example with `kubectl apply --server-side --field-manager=edp-verify -k .` and waits in tiers: Strimzi operator, Kafka, CloudNativePG cluster and databases, otel-lgtm, then every Deployment in `edp`. `k8s_teardown` in the EXIT trap deletes the namespaces again unless `KEEP=1`. What stays per profile: CRDs, cluster-scoped RBAC, the CloudNativePG operator in `cnpg-system` and the node's image cache.
 
 ## Namespaces
 

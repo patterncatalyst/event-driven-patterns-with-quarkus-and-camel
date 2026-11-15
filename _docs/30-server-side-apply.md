@@ -9,7 +9,7 @@ duration: "50 minutes"
 
 The application manifests set a memory limit of 384Mi on `order-service`. A platform team raises it to 512Mi with a patch, and the next deployment of the application manifests puts it back to 384Mi. Nothing reports an error. The pod restarts twice and the last writer wins.
 
-With `kubectl apply` as most people first learn it, the cluster has no idea who wrote which field. The same gap shows when a manifest is too big to apply at all: the install of CloudNativePG, the PostgreSQL operator of chapter 28, fails before it creates anything.
+With `kubectl apply` as most people first learn it, nothing on the cluster refuses a second writer. The same gap shows when a manifest is too big to apply at all: the install of CloudNativePG, the PostgreSQL operator of chapter 28, fails before it creates anything.
 
 {% include excalidraw.html file="30-field-managers" alt="Two writers, edp-apps with the app manifests and edp-platform with a memory patch, apply to the Deployment order-service; the API server records the owner of every field in managedFields, and limits.memory has one owner at a time" caption="Figure 30.1: The API server records an owner for every field a manager applies" %}
 
@@ -26,7 +26,7 @@ CustomResourceDefinition.apiextensions.k8s.io "clusters.postgresql.cnpg.io" is i
 metadata.annotations: Too long: may not be more than 262144 bytes
 ```
 
-The other consequence is that the server cannot tell two writers apart. A second tool that sets a field the first one owns overwrites it, and the first tool overwrites it back on its next run. The problem is not the tools. A field has no owner, so nothing can refuse a write or explain a change.
+The other consequence is that the server refuses neither of two writers. A second tool that sets a field the first one owns overwrites it, and the first tool overwrites it back on its next run. A client-side apply is an ordinary update: the server records which manager made it, moves the field to that manager and refuses nothing.
 
 ### The solution
 
@@ -36,7 +36,7 @@ The apply is a request to the API server, not a patch computed on the client. Th
 
 ### How Kubernetes and Strimzi model it
 
-Ownership is stored in `metadata.managedFields`: one entry per manager and operation, with the owned paths. `kubectl get --show-managed-fields` prints it. Chapter 28's Strimzi operator is one more manager. In current releases it applies its `Service`, `ServiceAccount`, `ConfigMap`, `Ingress` and `PersistentVolumeClaim` resources server-side and the setting cannot be turned off (Strimzi changelog). The Kafka cluster of chapter 28 and the topics of chapter 29 are Strimzi resources, so their owned fields behave as the next sections show.
+Ownership is stored in `metadata.managedFields`: one entry per manager and operation, with the owned paths. `kubectl get --show-managed-fields` prints it. Chapter 28's Strimzi operator is one more manager. In current releases it applies its `Service`, `ServiceAccount`, `ConfigMap`, `Ingress` and `PersistentVolumeClaim` resources server-side and the setting cannot be turned off (Strimzi changelog). The bootstrap Service of chapter 28's Kafka cluster is one of them.
 
 ## Installing the operators
 
@@ -80,7 +80,7 @@ error: Apply failed with 1 conflict: conflict with "edp-apps":
 
 {% include excalidraw.html file="30-conflict-and-force" alt="edp-apps applies limits.memory 384Mi and owns it; edp-platform applies 512Mi and conflicts, nothing changes; with force-conflicts the value is 512Mi and edp-platform is the owner; edp-apps applies again, conflicts with edp-platform and takes the field back by forcing" caption="Figure 30.2: A conflict refuses the write, and forcing it moves the field to the writer that forced" %}
 
-The message names the manager and the field. With `--force-conflicts` the value becomes 512Mi, and `managedFields` shows `edp-platform` as the owner of `limits.memory` and `edp-apps` as the owner of everything else. The next apply of the application manifests conflicts the other way, with `edp-platform` named, and takes the field back only when it forces. Forcing is a decision with a name on it. Two teams that both set the same value avoid the conflict altogether, because shared fields do not conflict.
+The message names the manager and the field. With `--force-conflicts` the value becomes 512Mi, and `managedFields` shows `edp-platform` as the owner of `limits.memory` and no longer lists `edp-apps` for it. The next apply of the application manifests conflicts the other way, with `edp-platform` named, and takes the field back only when it forces. Forcing is a decision with a name on it. Two managers that apply the same value share the field without a conflict; a later change by either one then conflicts with the other.
 
 The client-side form has no such step. A `kubectl apply -f` of the same value over a field the server-side applier owns reports `configured`, prints a warning about the missing last-applied annotation and takes the field under the manager `kubectl-client-side-apply`. The next server-side apply of `edp-apps` then conflicts with that manager. Mixing the two forms on one object is the way to lose track of owners.
 
@@ -101,7 +101,7 @@ A change to the operator's own annotation is another matter. Without force it fa
 
 {% include excalidraw.html file="30-strimzi-ssa" alt="The Strimzi operator applies the bootstrap Service each reconciliation and owns strimzi.io/discovery; edp-foreign adds example.com/owner without a conflict; the foreign annotation survives the reconciliations and a forced change of strimzi.io/discovery is restored" caption="Figure 30.3: The operator owns its fields and leaves everyone else's alone" %}
 
-The edit that belongs to the operator goes into the resource it reads. A service type, a listener or a label that Strimzi should set comes from the `Kafka` or `KafkaNodePool` resource, not from a patch on the `Service` it creates. A `KafkaTopic` of chapter 29 is the same case: the resource is the source of truth and a change made elsewhere is reverted.
+The edit that belongs to the operator goes into the resource it reads, the `Kafka` or `KafkaNodePool`, not into a patch on the `Service` it creates: a forced change to a field it owns there is put back. A `KafkaTopic` of chapter 29 is the same case: the resource is the source of truth and a change made elsewhere is reverted.
 
 ## Build, run, observe
 
@@ -125,7 +125,7 @@ A manifest applied once by one person to a throwaway cluster needs no owner. `ku
 
 Server-side apply is not a coordination tool. It reports a conflict between managers that apply the same field with different values. It does not say which value is right, and `--force-conflicts` in a pipeline that runs without a person turns the report off. Settle who owns a field before the second manager exists, and keep the force for a decision.
 
-Objects created by a client-side apply or by `kubectl edit` carry managers of their own. The first server-side apply takes over their fields without a conflict under the default manager name, and a different name opts out of that transfer (Kubernetes, Server-Side Apply).
+Objects created by a client-side apply carry the manager `kubectl-client-side-apply`. The first `kubectl apply --server-side` under kubectl's default manager name takes over their fields without a conflict, and a different name, such as `edp-apps`, opts out of that transfer and conflicts instead (Kubernetes, Server-Side Apply).
 
 > **🤖 Explore with your agent**
 > "In examples/30-server-side-apply, apply apps as edp-apps, then apply platform as edp-platform without and with --force-conflicts, and read the owners of limits.memory on Deployment order-service from managedFields each time. Then add an annotation to the Service edp-kafka-bootstrap as edp-foreign and change strimzi.io/discovery with and without force. Say which writer owns each field after every step and which apply should never be forced."

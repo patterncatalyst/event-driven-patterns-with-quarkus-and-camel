@@ -19,7 +19,7 @@ A process that an attacker takes over inherits all of it. A namespace label turn
 
 Kubernetes ships three Pod Security Standards. Privileged is unrestricted, Baseline blocks the known escalations, and Restricted follows current hardening practice: a non-root user, no privilege escalation, every capability dropped and a seccomp profile. Nothing applies one until a namespace asks.
 
-The obvious fix is to tell each team to write a good security context. It fails in the way every convention does: one Deployment forgets, and nothing notices until an audit. A second problem is that most pods in a cluster are not written by the team. An operator creates the Kafka brokers and the PostgreSQL instances, and the operator decides what their security context is.
+The obvious fix is to tell each team to write a good security context. It depends on every team remembering: one Deployment forgets, and nothing notices until an audit. A second problem is that most pods in a cluster are not written by the team. An operator creates the Kafka brokers and the PostgreSQL instances, and the operator decides what their security context is.
 
 ### The solution
 
@@ -85,9 +85,9 @@ The four fields, plus a read-only root filesystem, go in one patch that every De
   value: [{name: tmp, emptyDir: {}}]
 ```
 
-`runAsNonRoot` can only be verified when the image names a numeric user, and the UBI OpenJDK images do: they run as user 185. The pods report `185` for `id -u`, with no `runAsUser` in the spec.
+The UBI OpenJDK images name a numeric user, 185, so the kubelet can check `runAsNonRoot` against the image. The pods report `185` for `id -u`, with no `runAsUser` in the spec.
 
-`readOnlyRootFilesystem` is not part of the Restricted standard, and it is the field that most often breaks an application. An `emptyDir` on `/tmp` gives the process its one writable path. Writing under `/deployments` then fails with `Read-only file system`, writing under `/tmp` works, and both applications start with no change to their source or their images.
+`readOnlyRootFilesystem` is not part of the Restricted standard. An `emptyDir` on `/tmp` gives the process its one writable path. Writing under `/deployments` then fails with `Read-only file system`, writing under `/tmp` works, and both applications start with no change to their source or their images.
 
 ## Strimzi pods
 
@@ -112,7 +112,7 @@ Running the default provider under the label shows the refusal. A run that block
 
 ## CloudNativePG pods
 
-The PostgreSQL pods need nothing from the example. The CloudNativePG operator pod runs as a non-root user with a read-only root filesystem and the `RuntimeDefault` seccomp profile, and the instance pod does too. The instance runs as the `postgres` user, uid 26, which is the user of the operand image. The `initdb` job pod that bootstraps the cluster is admitted in a restricted `edp` as well, and the cluster comes up Ready.
+The PostgreSQL pods need no change. The CloudNativePG operator pod runs as a non-root user with a read-only root filesystem and the `RuntimeDefault` seccomp profile, and the instance pod does too. The instance runs as the `postgres` user, uid 26, which is the user of the operand image. The `initdb` job pod that bootstraps the cluster is admitted in a restricted `edp` as well, and the cluster comes up Ready.
 
 The CloudNativePG documentation says that no component requires root, and the pods bear it out. The operator namespace `cnpg-system` is the platform tier of chapter 28, applied once per cluster and shared by every example, so it stays as it is. A server dry-run label asks the API server what labelling it would do.
 
@@ -151,7 +151,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-A cluster for one person's laptop experiments gains little from a rule that refuses their own pods, and Baseline is the lower step that still blocks the known escalations. A workload that needs a host path, a privileged container or a Linux capability cannot live under Restricted at all, and it belongs in a namespace labelled for what it needs, with the reason written beside the label.
+A cluster for one person's laptop experiments gains little from a rule that refuses their own pods, and Baseline is the lower step that still blocks the known escalations. A workload that needs a host path, a privileged container or a Linux capability other than `NET_BIND_SERVICE` cannot live under Restricted at all, and it belongs in a namespace labelled for what it needs, with the reason written beside the label.
 
 The level checks pod specs and nothing else. It does not scan images, limit network paths or constrain what a non-root process may do with the permissions it has. A restricted pod with a database password in its environment is restricted and exposed.
 

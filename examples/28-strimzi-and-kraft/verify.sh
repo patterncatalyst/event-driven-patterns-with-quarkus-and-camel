@@ -134,7 +134,7 @@ precondition "the NodePorts are published on 127.0.0.1 only" ports_on_loopback
 precondition "the CloudNativePG operator is Available" available cnpg-system cnpg-controller-manager
 precondition "the Strimzi operator is Available" available "$NS_KAFKA" strimzi-cluster-operator
 
-# 4 to 10: Kafka as two KRaft node pools
+# 4 to 12: Kafka as two KRaft node pools, then PostgreSQL
 check "Kafka edp is Ready for its current generation" kafka_ready
 BROKER_ID="$(jp "$NS_KAFKA" kafkanodepool/broker '{.status.nodeIds[*]}' 2>/dev/null || true)"
 CTRL_ID="$(jp "$NS_KAFKA" kafkanodepool/controller '{.status.nodeIds[*]}' 2>/dev/null || true)"
@@ -147,7 +147,7 @@ check "Kafka runs the version the spec asks for, the version of the compose brok
 check "CloudNativePG Cluster edp-pg is Ready" poll 180 pg_ready
 check "databases edp, edp03 and edp04 exist, owned by edp" poll 90 databases_exist
 
-# 11 to 20: chapter 02, then 03, then 04, each alone
+# 13 to 36: chapter 02, then 03, then 04, each alone
 echo "Chapter 02 set"
 check "chapter 02 images in the node are the images docker built" image_ids_match 02-
 check "the chapter 02 pair rolls out" rollout_02
@@ -182,7 +182,7 @@ check "shipment events for O-2803 are published" curl -sf -X POST "$SHIP/shipmen
 check "O-2803 is applied in lifecycle order" poll 60 history_is O-2803
 check "O-2803 ends DELIVERED" poll 60 status_is O-2803 DELIVERED
 
-# 29 to 31: the broker pod is replaced, its volume and the records stay
+# 37 to 39: the broker pod is replaced, its volume and the records stay
 UID_BEFORE="$(broker_uid)"; CLAIM_BEFORE="$(broker_claim)"; OFFSETS_BEFORE="$(placed_offsets)"
 T_DEL=$SECONDS
 kc -n "$NS_KAFKA" delete "pod/edp-broker-$BROKER_ID" --wait=true >/dev/null

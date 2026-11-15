@@ -75,15 +75,15 @@ The same property makes a missing resource visible. Leave `edp.orders.placed` ou
 
 ## Drift
 
-A topic can be changed in Kafka by anyone with the tools, and the resource does not hear about it until the next full pass. A retention that the resource declares as `3600000` and that is altered with `kafka-configs.sh --alter` is back at `3600000` after 23 s in the measured run with the 15 second interval; the time depends on where in the cycle the change lands, and the check allows three intervals. The keys in `spec.config` are the ones to rely on, and a configuration that matters belongs in the resource.
+A topic can be changed in Kafka by anyone with the tools, and the resource does not hear about it until the next full pass. A retention that the resource declares as `3600000` and that is altered with `kafka-configs.sh --alter` is back at `3600000` 6 to 23 s later in three measured runs with the 15 second interval; the time depends on where in the cycle the change lands. The keys in `spec.config` are the ones to rely on, and a configuration that matters belongs in the resource.
 
 Partitions are the exception that cannot be reverted. Kafka does not shrink a topic, so when the partitions are raised in Kafka to 6 while the resource says 3, the operator cannot make the topic match. The `KafkaTopic` stays at `Ready=False` with reason `NotSupported` and the message `Decreasing partitions not supported`. The spec still says 3, the topic keeps 6, and the status stays False until the resource and the topic agree. The mismatch is reported, not repaired.
 
-A topic deleted in Kafka is recreated from its resource, 25 s after the deletion in the measured run, with the same interval. The recreated topic is a new topic with a new id.
+A topic deleted in Kafka is recreated from its resource, 8 to 25 s after the deletion in the same three runs. The recreated topic is a new topic with a new id.
 
 ## Deletion and unmanaged topics
 
-The operator puts a finalizer, `strimzi.io/topic-operator`, on every `KafkaTopic`, so Kubernetes keeps the resource until the operator has removed the topic. Deleting the resource deletes the topic, 2 s later in the measured run. The documentation points out the other side: when the operator is not running, a resource with the finalizer cannot be deleted, and a namespace holding such resources stays in `Terminating`. Delete the `KafkaTopic` resources before the operator or the namespace, so the operator can remove its finalizers.
+The operator puts a finalizer, `strimzi.io/topic-operator`, on every `KafkaTopic`, so Kubernetes keeps the resource until the operator has removed the topic. Deleting the resource deletes the topic, 1 to 2 s later in the measured runs. The documentation points out the other side: when the operator is not running, a resource with the finalizer cannot be deleted, and a namespace holding such resources stays in `Terminating`. Delete the `KafkaTopic` resources before the operator or the namespace, so the operator can remove its finalizers.
 
 A topic that must outlive its resource is made unmanaged first.
 
@@ -126,7 +126,7 @@ Try one change and rerun:
 
 A topic that an application creates at run time, one per tenant or per job, has no resource written in advance. Declaring each of them means generating resources from the same source that creates the tenant, and that is more machinery than the list is worth.
 
-One Topic Operator watches one namespace, and one namespace should be watched by only one Topic Operator. Topics for teams in several namespaces need an operator and a cluster binding for each, or a single namespace for the resources.
+One Topic Operator watches one namespace, and one namespace should be watched by only one Topic Operator. Topics declared in several namespaces need a Topic Operator for each namespace, or one namespace for all the resources.
 
 Teams that administer topics with Kafka's own tools will see their edits reverted on the next pass. Either the resources become the only way to change a topic or the operator is not the right tool.
 

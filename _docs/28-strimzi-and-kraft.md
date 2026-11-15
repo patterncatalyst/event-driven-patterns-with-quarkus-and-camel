@@ -39,7 +39,7 @@ The script refuses to run while a compose stack, another minikube profile or Ope
 | 30080 and 30082 | The two application ports of whichever set is deployed |
 | 30300, 30320, 30100, 30909 | Grafana, Tempo, Loki, Prometheus |
 
-`examples/_k8s/README.md` holds the rest: the namespaces, the fresh-state rule and how to add an example. Run `cluster.sh down` when you are done; one profile at a time is all the host is asked to carry.
+`examples/_k8s/README.md` holds the rest: the namespaces, the fresh-state rule and how to add an example. Run `cluster.sh down` when you are done; the scripts run one profile at a time.
 
 ## Pattern: Operator-managed Kafka
 
@@ -79,7 +79,7 @@ spec:
       offsets.topic.replication.factor: 1
 ```
 
-The replication factors are 1 because the cluster has one broker. That is a choice for a laptop, and the next section says what it costs. Auto-creation stays on, as in the compose stack; a later chapter turns it off.
+The replication factors are 1 because the cluster has one broker. That is a choice for a laptop. Auto-creation stays on, as in the compose stack.
 
 The operator creates a Service named `edp-kafka-bootstrap` for the `plain` listener. That name is the address every client in the cluster uses, and it does not change when a broker pod is replaced.
 

@@ -182,7 +182,7 @@ One command block (`examples/_k8s/cluster.sh up` once in 28's setup, then `cd ex
 | 3 | One live session: windows 28 to 31 serially; 2 clean N/N runs each, each experiment once with failing set frozen, one bite proof | orchestrator | 2A to 2D | done (S/r11-window/WINDOW.md) |
 | 4 | Fixes inside the window, re-run affected chapter only | orchestrator | 3 | done |
 | 5 | Final run on a fresh profile, 28 to 31 once each, profile deleted; static gates; claims and log; commits | orchestrator | 4 | done; ch30 teardown timeout once, fixed in lib.sh (CNPG Databases and Cluster deleted before namespaces), re-verified in step 6 |
-| 6 | Opus validation (at most 2 repair rounds) | validator | 5 | pending |
+| 6 | Opus validation (at most 2 repair rounds) | validator | 5 | done (1 round; teardown cause fixed) |
 | 7 | Ship: PR, CI green, squash, tag r11.0, notes-only release; PRD, iteration-plan, CLAUDE.md | orchestrator | 6 | pending |
 
 Executor rules as in r10: no git writes; no edits to `claims.md`, `verification-log.md`, `CLAUDE.md`, `examples/_k8s`, `examples/_infra`, `scripts/`, `domain-model`; no cluster in step 2; logs through `host_ids.py filter`.

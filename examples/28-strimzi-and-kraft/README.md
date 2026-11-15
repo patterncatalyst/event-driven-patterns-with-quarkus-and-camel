@@ -62,4 +62,4 @@ With `KAFKA_BROKERS=compose`, the other checks pass: order-service has the right
 
 ## Timings
 
-Bring-up on a fresh profile: profile creation, CloudNativePG operator, Strimzi operator, Kafka Ready and CloudNativePG cluster Ready are recorded in `examples/_k8s/README.md` and the iteration log. A replaced broker pod is Ready again in 23 s, measured from the delete command.
+`examples/_k8s/cluster.sh up` on a fresh profile, with the CloudNativePG operator Available, took 39 to 45 s. A replaced broker pod is Ready again in 23 s, measured from the delete command.

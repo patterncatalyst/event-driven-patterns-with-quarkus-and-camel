@@ -705,6 +705,19 @@ minikube profile `edp` (docker driver, containerd, Kubernetes v1.37.2), fresh pr
 
 Fixes in the window: ch28 env-name checks after rollout; `_wait_apps` waits for NodePorts 30080 and 30082 to answer readiness; ch30 checks 3 and 4 match inside the shell (argument list too long); ch30 check 5 dry run uses manager `edp-cluster`; `emit()` helpers replace `print()` in seven helper scripts.
 
-Open after the final run: ch30 passed 25/25 but namespace `edp` stayed Terminating past 240 s, so teardown failed once (cause not captured); two re-runs tore down in 42 s and 72 s. Fix: `_delete_all_state` now deletes CNPG `Database` CRs, then the `Cluster`, before the namespaces, and `_why_terminating` prints namespace conditions and leftovers on a timeout. Re-verified in step 6.
+Open after the final run: ch30 passed 25/25 but namespace `edp` stayed Terminating past 240 s, so teardown failed once (cause not captured); two re-runs tore down in 42 s and 72 s. Fix: `_delete_all_state` now deletes CNPG `Database` CRs, then the `Cluster`, before the namespaces, and `_why_terminating` prints namespace conditions and leftovers on a timeout. That change alone did not fix it (step 6 round 1 reproduced the hang: 171 s, then a 240 s timeout).
+
+### r11 validation (2026-11-15)
+
+Cause: the CNPG instance pod keeps terminating after its `Cluster` is deleted (`terminationGracePeriodSeconds` 1800 from `stopDelay`); a namespace deleted meanwhile reports "All content successfully removed, may be waiting on finalization" and is not rechecked for minutes. Fix in `_delete_all_state`: delete Deployments and Jobs in `edp` and wait for their pods, then Databases, then the Cluster, then `kubectl wait --for=delete pod -l cnpg.io/cluster`, then the namespaces. No finalizer stripped. `_why_terminating` redirect bug fixed.
+
+| Run (fresh profile, fixed lib.sh) | Result | Teardown |
+|---|---|---|
+| ch30 run1, run2, run3 | 25/25 each, exit 0 | 60 s, 52 s, 60 s |
+| ch28 | 39/39, exit 0 | 65 s |
+| ch29 | 17/17, exit 0 | 37 s |
+| ch31 | 26/26, exit 0 | 65 s |
+
+Profile deleted afterwards; `edp-ollama-models` intact. 92 claims rows added (28: 29, 29: 22, 30: 20, 31: 21); cuts and rewordings listed in the validation hand-off (forward references in 28, false client-side-apply statement in 30, unsourced lists). Bite audit: demo failing sets match the logs; checks 28/13, 21, 28 (image ids) duplicate `load_image`, 29/14 and 31/16 have no failing switch.
 
 Examples 02 to 04 unchanged since r10 (`git diff --stat ed94f19` empty).

@@ -40,7 +40,7 @@ Demo code, labelled as such in `verify.sh`, the overlays and the chapter.
 
 The two switches are separate demos and cannot be combined. The sets were measured in the live window and are frozen here.
 
-The altered copy can be built by hand: copy `base/` to a scratch directory beside the example, remove the `edp.orders.placed` document from its `topics/kafkatopics.yaml` and build that copy. `TOPIC_SET=missing` does the same with a delete patch, which `kubectl kustomize examples/29-unidirectional-topic-operator/demo-missing-topic` renders eight `KafkaTopic` resources.
+The altered copy can be built by hand: copy `base/` to a scratch directory beside the example, remove the `edp.orders.placed` document from its `topics/kafkatopics.yaml` and build that copy. `TOPIC_SET=missing` does the same with a delete patch: `kubectl kustomize examples/29-unidirectional-topic-operator/demo-missing-topic` renders eight `KafkaTopic` resources.
 
 ## Tests and checks in detail
 
@@ -68,7 +68,7 @@ Only keys declared in a `KafkaTopic` are asserted. Keys it does not declare are 
 
 ## Measurements
 
-Measured in the live window on profile `edp` with the 15 s interval; `verify.sh` prints each value on a `measured:` line.
+Measured in three runs (two in the live window, one on a fresh profile) on profile `edp` with the 15 s interval; `verify.sh` prints each value on a `measured:` line.
 
-- Five `KafkaTopic` resources applied to Ready: 1 s. Declared retention reverted: 23 s. Topic deleted in Kafka recreated: 25 s. `KafkaTopic` deleted, topic gone: 2 s. A topic created in Kafka still has no `KafkaTopic` at the end of the 45 s window.
-- Deleting the `KafkaTopic` resources, Kafka and the three namespaces: 43 s, with no stuck finalizer.
+- Five `KafkaTopic` resources applied to Ready: 1 s. Declared retention reverted: 6 to 23 s. Topic deleted in Kafka recreated: 8 to 25 s. `KafkaTopic` deleted, topic gone: 1 to 2 s. A topic created in Kafka still has no `KafkaTopic` at the end of the 45 s window.
+- Deleting the `KafkaTopic` resources, Kafka and the three namespaces: 33 to 43 s, with no stuck finalizer.

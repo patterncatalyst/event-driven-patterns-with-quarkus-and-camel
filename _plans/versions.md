@@ -64,8 +64,8 @@ Rule: latest stable upstream, exact pins, no prerelease, no floating tag. Every 
 | OpenTelemetry Java agent | io.opentelemetry.javaagent:opentelemetry-javaagent:2.33.1 | 2026-11-14 | https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/maven-metadata.xml | Newest final: Maven Central metadata lists `<latest>` and `<release>` 2.33.1 (lastUpdated 2026-10-26; jar last-modified 2026-10-26, 26,507,624 bytes); the previous releases are 2.33.0, 2.32.0, 2.31.1. Apache-2.0 (LICENSE of open-telemetry/opentelemetry-java-instrumentation; GitHub licence field `Apache-2.0`). New in r10 (owner decision 1): Debezium tracing in the published Connect image needs the agent; pinned once, frozen thereafter. |
 | Apache Flink | survey at first use | not yet | https://flink.apache.org/downloads/ | |
 | RisingWave | survey at first use (r13) | not yet | https://github.com/risingwavelabs/risingwave/releases | |
-| minikube | survey at first use (r11) | not yet | https://github.com/kubernetes/minikube/releases | Indicative only: latest release seen 2026-11-10 was v1.39.0. |
-| Kubernetes | survey at first use (r11) | not yet | https://github.com/kubernetes/kubernetes/releases | Indicative only: latest release seen 2026-11-10 was v1.37.2. |
+| minikube | v1.39.0 | 2026-11-15 (r11) | https://github.com/kubernetes/minikube/releases | Surveyed in r11; see the r11 rows. |
+| Kubernetes | v1.37.2 | 2026-11-15 (r11) | https://github.com/kubernetes/kubernetes/releases | Surveyed in r11; see the r11 rows. |
 
 ## Kafka choice against Strimzi
 

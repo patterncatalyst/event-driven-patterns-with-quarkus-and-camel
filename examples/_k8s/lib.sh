@@ -142,12 +142,24 @@ _delete_all_state() { # KafkaTopics first, then Kafka and node pools, then the n
         kc -n "$NS_KAFKA" delete kafkanodepool --all --wait --timeout=240s \
             || { echo "k8s: KafkaNodePools did not delete in time" >&2; return 1; }
     fi
+    if _have ns "$NS_APPS"; then
+        # The applications first, so no client holds a connection while PostgreSQL shuts down
+        kc -n "$NS_APPS" delete deploy,job --all --wait --timeout=120s >/dev/null \
+            || { echo "k8s: application Deployments did not delete in time" >&2; return 1; }
+        kc -n "$NS_APPS" wait --for=delete pod -l '!cnpg.io/cluster' --timeout=120s >/dev/null 2>&1 \
+            || { echo "k8s: application pods did not terminate in time" >&2; return 1; }
+    fi
     if _have ns "$NS_APPS" && _have crd databases.postgresql.cnpg.io; then
         # CNPG Databases before their Cluster, so no Database finalizer waits on a deleted instance
         kc -n "$NS_APPS" delete database.postgresql.cnpg.io --all --wait --timeout=120s \
             || { echo "k8s: CNPG Databases did not delete in time" >&2; return 1; }
         kc -n "$NS_APPS" delete cluster.postgresql.cnpg.io --all --wait --timeout=120s \
             || { echo "k8s: CNPG Cluster did not delete in time" >&2; return 1; }
+        # The instance pod is garbage collected after its Cluster and carries CloudNativePG's long termination
+        # grace period (stopDelay, 1800 s). A namespace deleted while such a pod is still terminating is not
+        # rechecked by the namespace controller until much later, so wait until the pod is gone.
+        kc -n "$NS_APPS" wait --for=delete pod -l cnpg.io/cluster --timeout=240s >/dev/null 2>&1 \
+            || { echo "k8s: CNPG instance pods did not terminate in time" >&2; return 1; }
     fi
     kc delete ns "$NS_APPS" "$NS_KAFKA" "$NS_LGTM" --ignore-not-found --wait --timeout=240s \
         || { echo "k8s: namespaces did not delete in time" >&2; _why_terminating; return 1; }
@@ -159,7 +171,7 @@ _why_terminating() { # print why each namespace is still Terminating: its condit
         _have ns "$ns" || continue
         kc get ns "$ns" -o jsonpath='{range .status.conditions[*]}{.type}: {.message}{"\n"}{end}' >&2 || true
         kc api-resources --verbs=list --namespaced -o name 2>/dev/null \
-            | xargs -r -I{} kubectl --context "$MK_PROFILE" -n "$ns" get {} --ignore-not-found -o name 2>/dev/null >&2 || true
+            | xargs -r -I{} kubectl --context "$MK_PROFILE" -n "$ns" get {} --ignore-not-found -o name >&2 2>/dev/null || true
     done
 }
 
