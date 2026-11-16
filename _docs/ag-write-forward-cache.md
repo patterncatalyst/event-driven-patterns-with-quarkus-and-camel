@@ -9,7 +9,7 @@ description: "A cache that the request writes cannot commit with the database. A
 duration: "50 minutes"
 ---
 
-`order-service` answers `GET /orders/{id}` thousands of times for every order it places. PostgreSQL can answer them, but the reads are cheap to move: the order is small, it changes rarely, and the answer is the same for everyone. Put it in Redis. The question is who writes it there. The obvious answer is the request that changes the order: save the row, set the key. It is the dual write of the transactional outbox with Redis in place of Kafka, and it fails the same two ways.
+`order-service` answers `GET /orders/{id}` for every order it places, and a read-heavy service answers it many times over. PostgreSQL can answer them, but the reads are cheap to move: the order is small, it changes rarely, and the answer is the same for everyone. Put it in Redis. The question is who writes it there. The obvious answer is the request that changes the order: save the row, set the key. It is the dual write of the transactional outbox with Redis in place of Kafka, and it fails the same two ways.
 
 {% include excalidraw.html file="ag-write-forward-path" alt="POST /orders writes the order row and the outbox row in one transaction; Debezium and the EventRouter publish the full state to edp.orders.placed and edp.orders.cancelled; a Camel route applies it to a Redis hash behind a version guard; GET /orders/{id} reads Redis only" caption="Figure G.1: The request writes PostgreSQL, the events write Redis, the read endpoint reads Redis" %}
 
@@ -25,7 +25,7 @@ PostgreSQL and Redis have no shared transaction. A request that writes both can 
 
 The request writes the order and, in the same transaction, an outbox row that carries the full state of the order. A log-tailing relay publishes the row, and a consumer applies it to the cache. The read side never writes to the cache and never falls back to the database, so a stale answer is visible as stale, and a miss is a miss. Every change increments a version, and the cache keeps an entry only if its version is higher than the one it holds. That makes the consumer idempotent and makes a replay of old events harmless.
 
-The shape is CQRS with a key-value store as the read model. The Azure Architecture Center's Materialized View pattern describes the same idea: views prepared over the source data for the queries that need them. The difference from a projection into a table is the guard: Redis has no `ON CONFLICT ... WHERE`, so the comparison has to be made atomically in the client.
+The shape is CQRS with a key-value store as the read model. The Azure Architecture Center's Materialized View pattern describes the same idea: views prepared over the source data for the queries that need them. The difference from a projection into a table is the guard: Redis has no `ON CONFLICT ... WHERE`, so the comparison has to be made with `WATCH` and `MULTI` from the client, or in a Lua script on the server.
 
 ### How Quarkus and Camel model it
 
@@ -58,7 +58,7 @@ do {
 } while (discarded);
 ```
 
-If another writer touches the key between the read and the commit, Redis discards the transaction and the loop reads again. The alternative is a short Lua script run with `EVAL`, which makes the same comparison in one round trip. Both leave the same state after a replay. The typed form needs no script text in the Java code, and that is why it is shown here.
+If another writer touches the key between the read and the commit, Redis discards the transaction and the loop reads again. The alternative is a short Lua script run with `EVAL`, which makes the comparison on the server in one round trip. The typed form needs no script text in the Java code, and that is why it is shown here.
 
 Redis runs as the unmodified upstream image, `redis:8.10.3-alpine`, used under the AGPLv3 option of the tri-licence that Redis 8 is published under (RSALv2, SSPLv1 or AGPLv3), the only one of the three that is open source. It runs with no persistence, so a restart is a real cache loss. Quarkus Dev Services starts Redis 7 unless `quarkus.redis.devservices.image-name` names the same image, so the property is set.
 
@@ -66,7 +66,7 @@ Redis runs as the unmodified upstream image, `redis:8.10.3-alpine`, used under t
 
 ## How stale the cache is
 
-The cache is behind by the time an event needs to travel: the commit, the log, the connector, the topic, the route, Redis. Measured from the answer to `POST /orders` to the first read that finds the order in Redis, the median delay was 491 to 496 ms and the slowest of 20 orders 499 to 875 ms across runs, and most of it is the connector's polling interval, not Kafka or Redis. A read that follows its own write at once usually misses. The request that wrote the order is the place to confirm it; the cache catches up.
+The cache is behind by the time an event needs to travel: the commit, the log, the connector, the topic, the route, Redis. Measured from the answer to `POST /orders` to the first read that finds the order in Redis, the median delay was 491 to 496 ms and the slowest of 20 orders 499 to 875 ms across runs, which is the size of the connector's `poll.interval.ms`, 500 ms by default. The polling interval is the likely cause; no run separated it from the time in Kafka and the route. A read that follows its own write at once usually misses. The request that wrote the order is the place to confirm it; the cache catches up.
 
 With Connect stopped, the order is committed and readable from PostgreSQL, and the cache has no answer for it. The staleness is the outage. When Connect returns, the backlog arrives in commit order and the cache catches up without any intervention. A service that must never answer from a stale cache reads the source for the orders it just wrote; one that can tolerate a few hundred milliseconds does not need to.
 
@@ -76,9 +76,9 @@ A cache without persistence is gone when Redis restarts. `order-service` keeps a
 
 {% include excalidraw.html file="ag-rebuild-by-replay" alt="Redis restarts and holds no keys; order-service keeps accepting orders; a new consumer group reads edp.orders.cancelled and edp.orders.placed from the earliest offset and the version guard keeps the newest version of every order" caption="Figure G.2: A new consumer group replays both topics and the guard keeps the newest state" %}
 
-The repair is to read the topics again. A new value for `cache.group` starts a consumer group with no offsets, `autoOffsetReset=earliest` reads both topics from the start, and the version guard turns the replay into the newest state of every order, whichever topic the records arrive from. The full state in each event is what makes this work: no event depends on an earlier one. It took 1 to 2 s to refill 27 orders after the service started answering requests. The replay also repairs the events that could not be applied while Redis was down.
+The repair is to read the topics again. A new value for `cache.group` starts a consumer group with no offsets, `autoOffsetReset=earliest` reads both topics from the start, and the version guard turns the replay into the newest state of every order, whichever topic the records arrive from. The full state in each event is what makes this work: no event depends on an earlier one. It took 1 to 2 s to refill 27 orders after the service started answering requests, in two runs timed in whole seconds. The replay also repairs the events that could not be applied while Redis was down.
 
-The guard is what keeps the replay safe. Two topics are read by one consumer, and nothing orders a record of `edp.orders.cancelled` against one of `edp.orders.placed`. If the placed record for an order arrives after its cancelled record, a cache without the guard shows the order as placed again. With `CACHE_GUARD=off` (demo code) and a replay of the cancelled topic followed by the placed topic, the cancelled orders went back to PLACED at version 1; with the guard they stayed CANCELLED at version 2. The two-phase form is the one to rely on: a single group reading both topics ended correct by luck of fetch order.
+The guard is what keeps the replay safe. Two topics are read by one consumer, and nothing orders a record of `edp.orders.cancelled` against one of `edp.orders.placed`. If the placed record for an order arrives after its cancelled record, a cache without the guard shows the order as placed again. With `CACHE_GUARD=off` (demo code) and a replay of the cancelled topic followed by the placed topic, the cancelled orders no longer read CANCELLED at version 2, and the check for that fails; with the guard they stayed CANCELLED at version 2. Only the two-phase check witnesses the guard. With the guard off everywhere, the plain replay by a fresh group and the rebuild still passed in the run made, because one group reading two topics can end correct by the order its fetches happen to return.
 
 The replay reaches as far back as the topics retain, so retention bounds how old an order can be and still be rebuilt.
 
@@ -118,15 +118,15 @@ A cache that mirrors one table is a projection; when the view joins several owne
 
 ## References
 
-- Quarkus, [Redis client guide](https://quarkus.io/version/3.40/guides/redis) and [Redis Dev Services](https://quarkus.io/version/3.40/guides/redis-dev-services)
+- Quarkus, [Redis client guide](https://quarkus.io/version/3.40/guides/redis), [Redis client reference](https://quarkus.io/version/3.40/guides/redis-reference) (section 5.8, Use Redis transactions: the optimistic locking pattern) and [Redis Dev Services](https://quarkus.io/version/3.40/guides/redis-dev-services)
 - Redis, [Licenses](https://redis.io/legal/licenses/) and the [LICENSE.txt of 8.10.3](https://github.com/redis/redis/blob/8.10.3/LICENSE.txt)
-- Debezium documentation, [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
+- Debezium documentation, [Debezium connector for PostgreSQL](https://debezium.io/documentation/reference/stable/connectors/postgresql.html) (`poll.interval.ms`) and [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
 - KIP-98, [Exactly Once Delivery and Transactional Messaging](https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging)
 - Microsoft Azure Architecture Center, [Cache-Aside pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside) and [Materialized View pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/materialized-view)
 - Chris Richardson, [Pattern: Transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html), microservices.io
 - Enterprise Integration Patterns with Camel, Appendix D: [Redis for Integration](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/22-appendix-redis/)
 - [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }}): the dual write and the outbox row
-- [Exactly once with Kafka transactions]({{ '/docs/12-exactly-once-with-kafka-transactions/' | relative_url }}): what a Kafka transaction covers
-- [Event-carried state transfer]({{ '/docs/03-event-carried-state-transfer/' | relative_url }}): full state in the event
+- [Exactly-once with Kafka transactions]({{ '/docs/12-exactly-once-with-kafka-transactions/' | relative_url }}): what a Kafka transaction covers
+- [Event-carried state transfer and claim check]({{ '/docs/03-event-carried-state-transfer/' | relative_url }}): full state in the event
 - [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }}): no order across topics
 - [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }}): the read model and retention

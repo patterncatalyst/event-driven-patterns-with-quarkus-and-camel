@@ -20,7 +20,7 @@ mvn -B verify
 
 ## What to observe
 
-1. **Lag, not disagreement.** The cache trails each commit by the connector's polling interval and never holds an order PostgreSQL does not.
+1. **Lag, not disagreement.** The cache trails each commit by a few hundred milliseconds and never holds an order PostgreSQL does not.
 2. **No database fallback.** With Connect stopped, a committed order is a 404 from the cache.
 3. **A cache loss is repaired by replay.** A restarted Redis is refilled by a new consumer group reading both topics.
 4. **The guard matters.** A replay of older events after newer ones leaves cancelled orders cancelled.

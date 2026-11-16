@@ -63,6 +63,8 @@ Lawrence's code is Node.js and TypeScript, and none of it is ported.
     <tr><td><a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/saga" rel="noopener">Saga design pattern</a>, Azure Architecture Center</td><td>Microsoft</td><td>Compensable, pivot and retryable transactions; the semantic lock and commutative updates as countermeasures</td></tr>
     <tr><td><a href="https://microservices.io/patterns/data/saga.html" rel="noopener">Pattern: Saga</a></td><td>Chris Richardson</td><td>A saga as a sequence of local transactions with compensating transactions, choreography and orchestration, and the lack of isolation</td></tr>
     <tr><td><a href="https://doi.org/10.1145/38713.38742" rel="noopener">Sagas</a>, Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data, pages 249 to 259</td><td>Hector Garcia-Molina, Kenneth Salem</td><td>The origin of the saga</td></tr>
+    <tr><td><a href="https://martinfowler.com/bliki/ParallelChange.html" rel="noopener">Parallel Change</a></td><td>Danilo Sato</td><td>Expand, migrate, contract: changing an interface in three phases, 2014</td></tr>
+    <tr><td><a href="https://doi.org/10.1109/C-M.1978.218136" rel="noopener">Hints on Test Data Selection: Help for the Practicing Programmer</a>, IEEE Computer 11(4), 1978</td><td>R. A. DeMillo, R. J. Lipton, F. G. Sayward</td><td>Mutation testing, the idea behind proving a check by breaking the code it guards</td></tr>
   </tbody>
 </table>
 
@@ -191,6 +193,11 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://docs.risingwave.com/ingestion/sources/kafka" rel="noopener">RisingWave Kafka source</a></td><td>Creating a source over a Kafka topic</td></tr>
     <tr><td><a href="https://docs.risingwave.com/processing/sql/time-windows" rel="noopener">RisingWave time windows</a></td><td>The tumble() function</td></tr>
     <tr><td><a href="https://docs.risingwave.com/processing/emit-on-window-close" rel="noopener">RisingWave emit on window close</a></td><td>Final window results written once</td></tr>
+    <tr><td><a href="https://docs.risingwave.com/get-started/premium-features" rel="noopener">RisingWave premium features</a></td><td>Premium features need a licence key and are not used; the Community Edition is Apache-2.0</td></tr>
+    <tr><td><a href="https://pinot.apache.org/" rel="noopener">Apache Pinot</a> and <a href="https://druid.apache.org/" rel="noopener">Apache Druid</a></td><td>Analytical databases over event data, named as a different job from a windowed count</td></tr>
+    <tr><td><a href="https://www.confluent.io/confluent-community-license/" rel="noopener">Confluent Community License</a></td><td>The licence of ksqlDB, which excludes it from the engines used</td></tr>
+    <tr><td><a href="https://raw.githubusercontent.com/MaterializeInc/materialize/main/LICENSE" rel="noopener">Materialize LICENSE</a></td><td>The Business Source License, which excludes Materialize from the engines used</td></tr>
+    <tr><td><a href="https://pitest.org/" rel="noopener">PIT</a></td><td>Mutation testing for Java and the JVM</td></tr>
     <tr><td><a href="https://redis.io/legal/licenses/" rel="noopener">Redis licences</a></td><td>The Redis 8 tri-licence and the AGPLv3 option</td></tr>
     <tr><td><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" rel="noopener">Kubernetes Deployments</a></td><td>RollingUpdate and Recreate strategies</td></tr>
     <tr><td><a href="https://www.apicur.io/registry/docs/" rel="noopener">Apicurio Registry</a></td><td>Schema registry and compatibility rules</td></tr>

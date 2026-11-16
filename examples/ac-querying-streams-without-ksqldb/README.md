@@ -1,6 +1,6 @@
 # Appendix C: Querying streams without ksqlDB
 
-One question, asked of three open source engines on the same input: deliveries per carrier per tumbling minute of event time, from `edp.shipping.delivered`. Kafka Streams answers through an interactive query on a window store (`delivery-counts-service`, `GET /counts`). Flink SQL writes closed windows to the upsert-kafka topic `edp.shipping.delivery-counts-flink`. RisingWave keeps two materialized views, `counts_rw` (updating) and `counts_rw_final` (`EMIT ON WINDOW CLOSE`, which RisingWave marks experimental), queried with `psql` from the PostgreSQL container. No premium feature is used.
+One question, asked of three open source engines on the same input: deliveries per carrier per tumbling minute of event time, from `edp.shipping.delivered`. Kafka Streams answers through an interactive query on a window store (`delivery-counts-service`, `GET /counts`). Flink SQL writes closed windows to the upsert-kafka topic `edp.shipping.delivery-counts-flink`. RisingWave keeps two materialized views, `counts_rw` (updating) and `counts_rw_final` (`EMIT ON WINDOW CLOSE`), queried with `psql` from the PostgreSQL container. No premium feature is used.
 
 The lateness is one number, `LATENESS_SECONDS` (default 10): the Kafka Streams grace and both watermark delays.
 
@@ -43,16 +43,16 @@ Event times are seconds after a minute boundary ten minutes in the past (`counts
 
 ## Measurements
 
-Two runs with the default lateness, printed as `NOTE` lines by `verify.sh`.
+Three clean runs with the default lateness (18/18 each), printed as `NOTE` lines by `verify.sh`. The submit and DDL times and the memory sample are printed in two of the three; the demo run with `KS_GRACE_SECONDS=0` is not used.
 
 | Item | Value |
 |---|---|
-| Last record to closed windows, Kafka Streams | 20 ms |
-| Flink | 4.3 s |
+| Last record to closed windows, Kafka Streams | 20 ms (three runs) |
+| Flink | 4.3 to 4.4 s |
 | RisingWave | 4.4 s |
 | RisingWave `EMIT ON WINDOW CLOSE` | 4.5 s |
-| Memory in use by all containers, one `docker stats` sample before the observability checks | 2.08 GiB |
-| Flink job submit | 4.9 to 5.1 s |
+| Memory in use by all containers, one `docker stats` sample before the observability checks | 2.08 and 2.09 GiB |
+| Flink job submit | 5.0 to 5.1 s |
 | RisingWave DDL | 2.4 s |
 
 ## Layout

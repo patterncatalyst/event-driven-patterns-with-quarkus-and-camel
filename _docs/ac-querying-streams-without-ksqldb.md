@@ -23,7 +23,7 @@ The input is one JSON record per delivery on a single-partition topic:
 {"orderId":"O-3801","carrier":"FASTLINE","deliveredAt":"2026-11-16T15:23:05Z"}
 ```
 
-The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Event time, stream time and grace work the same way in all three engines here.
+The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Each engine takes event time from `deliveredAt`, and each closes a window by a lateness bound; how the bound advances differs, as the late-records section shows.
 
 Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression. It is one number in one place, and each engine receives it.
 
@@ -99,7 +99,7 @@ docker exec -e PGPASSWORD= edp-postgres psql -h risingwave -p 4566 -U root -d de
   -c "select * from counts_rw order by window_start, carrier"
 ```
 
-By default RisingWave emits on update: a window shows partial counts while it is open. `EMIT ON WINDOW CLOSE` holds a window back until the watermark passes its end, as the Flink job does, and RisingWave's documentation recommends it when the downstream is append-only, like Kafka. RisingWave flags the clause as experimental, and the second view `counts_rw_final` uses it for that reason alone: to show the same final-result form on the same input.
+By default RisingWave emits on update: a window shows partial counts while it is open. `EMIT ON WINDOW CLOSE` holds a window back until the watermark passes its end, as the Flink job does, and RisingWave's documentation recommends it when the downstream is append-only, like Kafka. The second view, `counts_rw_final`, uses the clause to show the same final-result form on the same input.
 
 The Community Edition is Apache-2.0. Premium features need a licence key, and none is used: a plain Kafka source, `tumble()` and the emit clause are not on the premium list. Run as `single_node`, RisingWave needs a small configuration file that caps the compactor's memory, or it stops at startup under a 4 GiB limit.
 
@@ -131,7 +131,7 @@ None of the three tells the reader about a dropped record in its answer. Kafka S
 | Runs as | Inside the service's JVM | Two JVMs, JobManager and TaskManager | One process |
 | Licence | Apache-2.0 (Apache Kafka) | Apache-2.0 | Apache-2.0 (Community Edition) |
 
-Kafka Streams fits when one service owns the question and already runs Kafka Streams: the count is an endpoint of that service and adds no system. Flink fits when the answer is itself an event stream for other consumers, or when the processing needs more than SQL. RisingWave fits when people ask questions of the windows that nobody has written yet. Bellemare's chapter on streaming SQL covers the same family of tools.
+Kafka Streams fits when one service owns the question and already runs Kafka Streams: the count is an endpoint of that service and adds no system. Flink fits when the answer is itself an event stream for other consumers, or when the processing needs more than SQL. RisingWave fits when people ask questions of the windows that nobody has written yet.
 
 Apache Pinot, which describes itself as a distributed OLAP database, and Apache Druid, which describes itself as an analytics database for streaming and batch data, are databases for analytical queries over event data. That is a different job from a windowed count, and neither is run here.
 

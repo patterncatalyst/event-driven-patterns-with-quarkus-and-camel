@@ -5,7 +5,7 @@ permalink: /examples/aa-testing-event-driven-code/
 description: "One notification route tested against a real Kafka from Dev Services, with its HTTP source stubbed by the test application, an AdviceWith route test, first-match and drain assertions, and a harness that proves each guard by running altered copies."
 ---
 
-[`examples/aa-testing-event-driven-code/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/aa-testing-event-driven-code) holds one Camel route that reads `OrderPlaced`, fetches the order over HTTP, drops a repeated event id, skips a cancelled order and publishes a notification keyed by the order id. It accompanies [Appendix A: Testing event-driven code]({{ '/docs/aa-testing-event-driven-code/' | relative_url }}).
+[`examples/aa-testing-event-driven-code/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/aa-testing-event-driven-code) holds one Camel route that reads `OrderPlaced`, drops a repeated event id, fetches the order over HTTP, skips a cancelled order and publishes a notification keyed by the order id. It accompanies [Appendix A: Testing event-driven code]({{ '/docs/aa-testing-event-driven-code/' | relative_url }}).
 
 It uses Quarkus, Camel Quarkus (Kafka, HTTP, Jackson), `camel-quarkus-junit` with `AdviceWith`, KafkaCompanion and Kafka Dev Services. No compose stack runs.
 

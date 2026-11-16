@@ -9,7 +9,7 @@ description: "Every pattern of the book on one map by part, the terms the chapte
 duration: "20 minutes"
 ---
 
-Thirty-five chapters name about forty patterns and a larger set of Kafka, Debezium, Kubernetes and Camel terms. A reader who holds a problem needs the pattern, a reader who meets a word needs its meaning, and a reader who knows Enterprise Integration Patterns with Camel (EIP Camel) needs to know which of its chapters goes with which of these. Three tables answer those questions.
+The map holds 37 patterns, one or more from every chapter except 5, 6 and 10, which tune producers, consumers and connector offsets. Alongside them the chapters use a larger set of Kafka, Debezium, Kubernetes and Camel terms. A reader who holds a problem needs the pattern, a reader who meets a word needs its meaning, and a reader who knows Enterprise Integration Patterns with Camel (EIP Camel) needs to know which of its chapters goes with which of these. Three tables answer those questions.
 
 ## The map
 
@@ -42,7 +42,7 @@ Pick a pattern by the symptom:
 | Aggregate | One object, reached through its root, that owns every rule about one entity and rebuilds from its own events | 14 |
 | Backlog | Changes in the replication slot that the connector has not yet confirmed | 26 |
 | Claim check | A reference to a large payload kept in a store outside the message | 3 |
-| Compaction | Topic cleanup that keeps the newest record for each key | 3, 19 |
+| Compaction | Topic cleanup that keeps the newest record for each key | 9, 19 |
 | Compensation | A new event or command that undoes the business effect of an earlier committed step | 22 |
 | Connector | A Kafka Connect task that moves records between Kafka and another system | 9, 10 |
 | Consumer group | Consumers that share a topic's partitions, one partition to one member | 6 |
@@ -76,7 +76,7 @@ Pick a pattern by the symptom:
 | Tombstone | A record with a key and no value that marks a deletion | 9 |
 | Trace context | The trace and span ids carried in a message so the next hop can continue or link the trace | 25 |
 | Upcast | Convert a stored event to the current shape when it is read | 18 |
-| Watermark | A bound on lateness: records older than it no longer join an open window | 21 |
+| Watermark | A bound on lateness: records older than it no longer join an open window | Appendix C |
 
 ## EIP Camel by pattern and event
 
@@ -106,26 +106,29 @@ EIP Camel teaches the patterns in Camel on one runtime; this book repeats those 
 
 Event sourcing, CQRS and schema evolution (chapters 14 to 18) and the claim check have no chapter of their own in EIP Camel.
 
-The same events appear in many chapters. The catalog below lists the chapters in which each appears.
+The same events appear in many chapters. The catalog below lists the chapters from 1 to 27 whose text or example names each event. Chapter 4 publishes its shipment events on `edp.shipping.shipments`; the topics below are the ones the other chapters use.
 
 | Event | Topic | Chapters |
 |---|---|---|
-| OrderPlaced | edp.orders.placed | 2, 3, 5, 8, 11, 13, 16, 17, 18, 26 |
-| OrderCancelled | edp.orders.cancelled | 22, 23 |
-| InventoryReserved | edp.inventory.reserved | 12, 20, 22, 23 |
-| InventoryInsufficient | edp.inventory.insufficient | 22, 23 |
-| PaymentProcessed | edp.payments.processed | 12, 20, 22, 23 |
-| PaymentFailed | edp.payments.failed | 22, 23 |
-| ShipmentScheduled | edp.shipping.scheduled | 4, 16, 19, 21 |
+| OrderPlaced | edp.orders.placed | 1, 2, 3, 5, 8, 11, 13, 14, 16, 17, 18, 22, 25, 26, 27 |
+| OrderCancelled | edp.orders.cancelled | 1, 3, 14, 16, 17, 18, 22, 23, 27 |
+| InventoryReserved | edp.inventory.reserved | 12, 15, 20, 22, 23, 27 |
+| InventoryInsufficient | edp.inventory.insufficient | 22, 23, 27 |
+| PaymentProcessed | edp.payments.processed | 12, 14, 16, 20, 22, 23, 27 |
+| PaymentFailed | edp.payments.failed | 22, 23, 27 |
+| ShipmentScheduled | edp.shipping.scheduled | 4, 14, 16, 19, 21 |
 | ShipmentInTransit | edp.shipping.in-transit | 4, 16 |
 | ShipmentDelivered | edp.shipping.delivered | 4, 16 |
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/), Addison-Wesley, 2003: the pattern catalog the map follows
-- [*Enterprise Integration Patterns with Camel*](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/): the chapters linked above
+- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/), Addison-Wesley, 2003: most of the map's messaging patterns (Resequencer, Competing Consumers, Idempotent Receiver, Transactional Client, Dead Letter Channel, Content Enricher, Claim Check, the message types)
+- [*Enterprise Integration Patterns with Camel*](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/): the chapters linked above
 - *Cloud-Native Design Patterns*, [Appendix D: Sagas](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/17-appendix-d-sagas/): the pattern in a sibling book
+- Martin Fowler, [*What do you mean by "Event-Driven"?*](https://martinfowler.com/articles/201701-event-driven.html): Event Notification and Event-carried State Transfer; [*Event Sourcing*](https://martinfowler.com/eaaDev/EventSourcing.html) and [*CQRS*](https://martinfowler.com/bliki/CQRS.html); [*DDD Aggregate*](https://martinfowler.com/bliki/DDD_Aggregate.html), the aggregate as one unit behind a root
+- Chris Richardson, [Transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html), [Transaction log tailing](https://microservices.io/patterns/data/transaction-log-tailing.html) and [Saga](https://microservices.io/patterns/data/saga.html)
+- Hector Garcia-Molina and Kenneth Salem, [*Sagas*](https://doi.org/10.1145/38713.38742), ACM SIGMOD, 1987: the origin of the saga
 - Apache Kafka, [Documentation](https://kafka.apache.org/documentation/): consumer groups, offsets, transactions, compaction
 - Debezium, [Documentation](https://debezium.io/documentation/reference/stable/): slots, snapshots, tombstones, replica identity
-- Strimzi, [Documentation](https://strimzi.io/docs/operators/latest/): node pools, operators, resources
+- Strimzi, [Documentation](https://strimzi.io/docs/operators/latest/overview.html): node pools, operators, resources
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025: event time, stream time and watermarks

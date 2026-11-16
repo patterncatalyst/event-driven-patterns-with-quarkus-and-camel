@@ -9,7 +9,7 @@ description: "A per-order buffer in PostgreSQL works because an order's events s
 duration: "50 minutes"
 ---
 
-An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. That buffer puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
+An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. A per-order buffer in PostgreSQL puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
@@ -47,7 +47,7 @@ The apply route writes one row per event to PostgreSQL through a Panache entity,
 
 The stream form can only release an event when it knows the event before it. That works when the numbers form one run without gaps across everything the resequencer sees: 1, 2, 3 and so on over all orders. A single sequencer that stamps every event before it is published gives that run. The first event has no predecessor to confirm it, so even correctly ordered input leaves after the timeout.
 
-The per-order number does not give the run. Order O-1 has events 1, 2, 3 and so does O-2, so the stream form sees the same value from different orders. Events with equal numbers collide, an event whose number is not the successor of the last released waits for a predecessor that belongs to a different order, and most of the input is held and never released, with nothing logged: 9 of 12 in every run. `SEQUENCE_BY=order` (demo code) drives the stream form with the per-order number to show it.
+The per-order number does not give the run. Order O-1 has events 1, 2, 3 and so does O-2, so the stream form sees the same value from different orders. Events with equal numbers collide. Camel's resequencer does not support duplicate messages, so an event whose number it already holds is dropped as a duplicate, with nothing logged. Only the three distinct numbers survive: 3 of 12 events are applied and 9 are lost in each run measured. `SEQUENCE_BY=order` (demo code) drives the stream form with the per-order number to show it.
 
 The batch form sorts by order id and sequence, which is the per-order key it can use. Its limit is the batch. A batch of six that holds an order's event 2 and not its event 1 releases event 2, and event 1 arrives in the next batch and is applied after it. Sorting within a batch makes disorder rarer. It does not remove it, and a batch that closes on time instead of size makes the boundary depend on the clock.
 
@@ -55,7 +55,7 @@ The batch form sorts by order id and sequence, which is the per-order key it can
 
 ## Gaps, timeouts and lost events
 
-Events 13, 14, 15, 17 and 18 arrive and 16 does not. The stream form applies 13, 14 and 15 at once, because each is the successor of the one before. It holds 17 and 18 until the timeout, then releases them and moves on. Camel documents the rule: on a timeout the resequencer disregards the current expected sequence number and moves to the next. If 16 was lost, nothing in the pipeline says so. The gap is skipped, and the order that needed 16 carries on without it.
+Events 13, 14, 15, 17 and 18 arrive and 16 does not. The stream form applies 13, 14 and 15 at once, because each is the successor of the one before. It holds 17 and 18 until the timeout, then releases them and moves on. Camel documents the rule: after a timeout the resequencer stops waiting for the number it expected and goes on to the next one. Nothing is logged for the gap, and if 16 was lost, no message says so. The gap is skipped, and the order that needed 16 carries on without it.
 
 If 16 turns up afterwards, `rejectOld` decides. Off, the default, the late event is applied when it arrives, after 17 and 18, so the apply order is 13, 14, 15, 17, 18, 16. On, the resequencer throws, and the route's error handler decides what to do with an event that arrived too late to be placed. Which is right depends on what the consumer can do with an event out of order: a last-write-wins status regresses, so refusing it is safer, while an append-only history can take it and record it.
 
@@ -63,9 +63,9 @@ The timeout is the latency of every gap. A short one gives up on slow events and
 
 ## Restarts and memory bounds
 
-The stream form's capacity bounds how many events it holds, 1000 by default. When the limit is reached the consumer thread blocks inside the resequencer until the timeout releases something or the gap fills. It does not release early and it does not raise, so the consumer stops polling and the group's lag grows. Backpressure is a useful property for a buffer, and it needs a timeout short enough that the stopped consumer is not mistaken for a dead one.
+The stream form's capacity bounds how many events it holds, 1000 by default. When the limit is reached the consumer thread blocks inside the resequencer until the timeout releases something or the gap fills. It does not release early and it does not raise, so the consumer stops polling and the group's lag grows. Backpressure is a useful property for a buffer, and it needs a timeout short enough that the stopped consumer does not pass `max.poll.interval.ms`, after which Kafka treats it as failed and rebalances the group.
 
-The held events live only in the process. The Camel Kafka consumer commits offsets on a timer through the Kafka client's auto-commit, whether or not the resequencer has released the events it read. Records held when the service stops have therefore already been acknowledged, and a restarted consumer resumes after them: they are neither released nor read again. A normal shutdown does not flush them, and a killed process loses them the same way.
+The held events live only in the process. The Camel Kafka consumer commits offsets on a timer through the Kafka client's auto-commit, whether or not the resequencer has released the events it read. Records held when the service stops have therefore already been acknowledged, and a restarted consumer resumes after them: they are neither released nor read again. A normal shutdown does not flush them.
 
 {% include excalidraw.html file="ae-restart-loss" alt="Events 502 to 506 are consumed and their offset committed, the resequencer holds them while 501 is missing, a restart empties its memory, and afterwards only 501 is applied; the per-order buffer in PostgreSQL keeps held rows across the restart" caption="Figure E.3: Held records are lost when their offsets were committed before they were released" %}
 

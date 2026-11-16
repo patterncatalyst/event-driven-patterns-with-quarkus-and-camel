@@ -161,6 +161,10 @@ arrival_scrambled() { # the twelve events of the first scenario arrived, and not
     local a; a="$(arrived | awk '$1 >= 1 && $1 <= 12' | tr '\n' ' ')"
     [[ "$(wc -w <<<"$a")" == 12 && "$a" != "$(seq -s' ' 1 12) " ]]
 }
+first_arrival_ms() { # when the service logged its first "arrived" line, from the container log's own timestamps
+    local t; t="$(docker logs --timestamps "$APP" 2>&1 | grep -m1 'arrived g=' | cut -d' ' -f1)" || return 1
+    [[ -n "$t" ]] && date -d "$t" +%s%3N
+}
 logged_rejection() { logs | grep -F "rejected $1" >/dev/null; }
 nothing_logged() { [[ -z "$(logs | grep -E ' ERROR |rejected O-' || true)" ]]; }
 
@@ -189,7 +193,6 @@ check "the schema holds the applied-events table and the migration history" \
 echo "Stream form, global sequence: twelve events of four orders, three topics, two producers"
 # Global order: 1 O-4001 scheduled, 2 O-4002 s, 3 O-4001 in-transit, 4 O-4003 s, 5 O-4002 t, 6 O-4001 delivered,
 # 7 O-4004 s, 8 O-4003 t, 9 O-4002 d, 10 O-4004 t, 11 O-4003 d, 12 O-4004 d.
-T1=$(now_ms)
 { ev k1 O-4001 3 6; ev k2 O-4002 3 9; ev k3 O-4003 3 11; ev k4 O-4004 3 12; } | produce "$IN_D" &
 PA=$!
 { ev k5 O-4001 2 3; ev k6 O-4002 2 5; ev k7 O-4003 2 8; ev k8 O-4004 2 10; } | produce "$IN_T" &
@@ -200,13 +203,14 @@ precondition "the twelve events reached the service out of global order" poll 60
 check "the twelve events are applied in global order 1 to 12" poll 40 applied_is 1 12 "$(seq_list 1 12)"
 check "on the shipments topic every order holds its events 1, 2, 3 in that order" poll 40 every_order_in_sequence
 check "every order's events sit in one partition of the shipments topic" every_order_in_one_partition
-first_release_waited() { (( $(applied_ms min "BETWEEN 1 AND 12") - T1 >= TIMEOUT_MS - 200 )); }
+first_release_waited() { (( $(applied_ms min "BETWEEN 1 AND 12") - $(first_arrival_ms) >= TIMEOUT_MS - 200 )); }
 check "the first release waits for the timeout: no event has a predecessor to confirm it" first_release_waited
 
 echo "A gap: 16 is lost, 13, 14, 15, 17 and 18 arrive"
 T2=$(now_ms)
 { ev k13 O-4007 1 15; ev k14 O-4005 1 13; ev k15 O-4009 1 18; ev k16 O-4006 1 14; ev k17 O-4008 1 17; } | produce "$IN_S"
-check "the events after the gap are applied in order and 16 is absent" poll 40 applied_is 13 18 "13,14,15,17,18"
+gap_skipped_silently() { applied_is 13 18 "13,14,15,17,18" && nothing_logged; }
+check "the events after the gap are applied in order, 16 is absent and nothing is logged about it" poll 40 gap_skipped_silently
 gap_waited() { (( $(applied_ms min "= 17") - $(applied_ms max "= 15") >= TIMEOUT_MS / 2 )); }
 check "13 to 15 are released at once and 17 and 18 wait for the timeout" gap_waited
 echo "Late: 16 arrives after 18 was applied (rejectOld is off)"
@@ -264,8 +268,9 @@ blocked_while_held() { # for six seconds: records are unconsumed and nothing is 
 }
 check "with the buffer full the consumer stops: records stay unconsumed and nothing is applied before the timeout" blocked_while_held
 released_at_timeout() { (( $(applied_ms min "BETWEEN 402 AND 412") - T5 >= CAP_TIMEOUT_MS - 1000 )); }
-check "the timeout releases all eleven in order, no error" \
-    poll 40 applied_is 402 412 "$(seq_list 402 412)"
+released_in_order_without_error() { applied_is 402 412 "$(seq_list 402 412)" && nothing_logged; }
+check "the timeout releases all eleven in order, with no error logged" \
+    poll 40 released_in_order_without_error
 check "nothing was released before the timeout" released_at_timeout
 
 echo "Restart while holding: 502 to 506 held, 501 missing, timeout 60 s"

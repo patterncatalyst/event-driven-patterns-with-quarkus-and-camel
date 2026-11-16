@@ -58,8 +58,8 @@ The Maven build runs three tests: the stream form on a scrambled global sequence
 | 5 | applied in global order 1 to 12 |
 | 6 | on the shipments topic every order holds its events 1, 2, 3 in order |
 | 7 | every order's events sit in one partition of the shipments topic |
-| 8 | the first release waits for the timeout |
-| 9 | the events after the gap are applied in order and 16 is absent |
+| 8 | the first release waits for the timeout, timed from the first `arrived` log line |
+| 9 | the events after the gap are applied in order, 16 is absent and nothing is logged about it |
 | 10 | 13 to 15 are released at once, 17 and 18 wait for the timeout |
 | 11 | the late event is applied when it arrives, after 18 |
 | 12 | per-order number: some events are never applied and nothing is logged |
@@ -68,21 +68,21 @@ The Maven build runs three tests: the stream form on a scrambled global sequence
 | 15 | each batch of six is sorted by order and sequence |
 | 16 | an order split over two batches is applied out of order |
 | 17 | with the buffer full the consumer stops: records stay unconsumed, nothing is applied (sampled for six seconds) |
-| 18 | all eleven released in order at the timeout |
+| 18 | all eleven released in order at the timeout, with no error logged |
 | 19 | nothing was released before the timeout |
 | 20 | five events held and committed, none applied (precondition) |
 | 21 | after the restart only the missing event is applied |
 | 22 | Tempo has a trace for order-service |
 | 23 | Loki has logs for order-service |
 
-In the per-order scenario, 3 of the 12 events are applied and 9 are never released, in every run.
+In the per-order scenario, 3 of the 12 events are applied and 9 are never applied, in each of the seven runs measured (the check asserts at least one and fewer than twelve).
 
 ## Experiments
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
 | `RESEQUENCER=none ./verify.sh` | Demo code: events are applied as they arrive, in the first two scenarios | 5, 6, 7, 8, 9, 10, 11 | 16/23 pass |
-| `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` | Demo code: the first two scenarios run on the per-order number with a 500 ms timeout | 5, 6, 7, 9, 10, 11 | 17/23 pass |
+| `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` | Demo code: the first two scenarios run on the per-order number with a 500 ms timeout | 5, 6, 7, 8, 9, 10, 11 | 16/23 pass |
 
 ## Layout
 

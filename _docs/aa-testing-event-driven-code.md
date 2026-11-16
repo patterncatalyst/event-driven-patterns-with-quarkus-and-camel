@@ -11,13 +11,13 @@ duration: "45 minutes"
 
 A synchronous service fails loudly: an exception, a status code, a stack trace. An event-driven one fails by omission. The notification that never left, the second one that did, the record keyed by the wrong field, the event applied before the one it depends on. A test that sends a message and waits for an answer passes on all of these.
 
-Event-driven tests run on a real broker. This appendix collects the techniques they share.
+Event-driven tests run on a real broker.
 
 {% include excalidraw.html file="aa-bite-cycle" alt="A green suite, a patch that alters one guard on a copy, a run of the broker-backed class, and exactly one named test failing, after which the copy is dropped; a dashed arrow notes that a test that stays green is not guarding what it names" caption="Figure A.1: A check is proved by breaking the code it guards" %}
 
 ## Real brokers in tests
 
-A mock of a broker answers the way its author expects, which is the one thing a test of messaging cannot afford. Quarkus Dev Services starts the real dependency for a Quarkus test and wires its address into the configuration, so the tests meet the same Kafka and PostgreSQL the compose stack runs. The images are pinned to the stack's:
+A mock of a broker answers the way its author expects, which is the one thing a test of messaging cannot afford. Quarkus Dev Services starts the real dependency for a Quarkus test and wires its address into the configuration, so the tests meet a real Kafka and a real PostgreSQL. The Kafka image is the compose stack's, and PostgreSQL has the stack's version from the stock image:
 
 ```properties
 quarkus.kafka.devservices.image-name=docker.io/apache/kafka:4.3.2
@@ -45,13 +45,13 @@ public class StubOrderService {
 }
 ```
 
-The `%test` profile points `order-service.url` at `http://localhost:8183`. A test decides what the source answers by writing to the map, and nothing outside the JVM has to run. The same stub makes the source answer, refuse and report CANCELLED.
+The `%test` profile points `order-service.url` at `http://localhost:8183`. A test decides what the source answers by writing to the map, and nothing outside the JVM has to run. The same stub makes the source answer and report CANCELLED.
 
 ## A check that bites
 
 A test that has never failed has not shown that it can. The route has three guards: a repeated event id is dropped, a cancelled order gets no notification, and the notification is keyed by the order id. Each guard is a line a refactoring can delete while every test stays green, if the test for it is weak.
 
-So a guard is proved the other way round. A patch removes it from a copy of the module, the tests run against the copy, and the named test must fail:
+So a guard is proved the other way round, which is mutation testing: DeMillo, Lipton and Sayward proposed it in 1978, and PIT automates it for the JVM. A tool generates its mutants; here three hand-written patches are the mutants. Each patch removes a guard from a copy of the module, the tests run against the copy, and the named test must fail:
 
 ```diff
 {% raw %}
@@ -65,7 +65,7 @@ So a guard is proved the other way round. A patch removes it from a copy of the 
 
 Each patch is an altered copy of the route, applied under `target/bites/` and never to the source. `verify.sh` runs the broker-backed class on each copy and reads the Surefire reports: the set of failed tests must equal the one test that names the guard. A copy that fails two tests means a test is coupled to something it does not name. A copy that fails none means a guard is unprotected.
 
-The harness costs one Maven run per patch, about the length of the suite itself, so it runs in `verify.sh` and in CI and not on every save. Write a bite for the guards a wrong release would hurt most: deduplication, the opt-out, the key, the retry policy.
+The harness costs one Maven run per patch, about the length of the suite itself, so it runs from `verify.sh` and not on every save. Write a bite for the guards a wrong release would hurt most: deduplication, the opt-out, the key, the retry policy.
 
 ## Asserting on topics
 
@@ -102,7 +102,7 @@ The window has to outlast the route, and every drain costs the whole window, so 
 
 An ordering test that passes because the records happened to arrive in order proves nothing, and on a three-partition topic it is easy to write one. Two habits prevent it.
 
-The oracle must not be the code under test. One technique computes the partition a key must land on with Kafka's own `Utils.murmur2` in a helper (`Placement.expected`), publishes six different order ids and compare each record's partition with the prediction. A key that hashes everything to one partition would pass a test that compared the application with itself.
+The oracle must not be the code under test. One technique computes the partition a key must land on with Kafka's own `Utils.murmur2` in a helper (`Placement.expected`), publishes six different order ids and compares each record's partition with the prediction. A key that hashes everything to one partition would pass a test that compared the application with itself.
 
 The arrival order must be written down. The fixtures in that example send a delivered event before a scheduled one, through a producer of the test's own, and assert the order's final status. Waiting for the application to produce the interleaving it needs is how a test of ordering becomes a test of timing.
 
@@ -150,7 +150,7 @@ A schema is a contract between a producer and consumers that do not deploy toget
 
 The tests above run inside one JVM. What crosses processes needs a stack: a connector that has to read a replication slot, a trace that has to reach Tempo, a consumer that has to survive a recreate. For these, `verify.sh` starts the compose stack fresh, checks the observable effect and keeps a negative witness for each guard, a check that fails when the guard is removed.
 
-Observability follows the same split. The tracing, metrics and log-correlation examples assert the spans, the metrics and the log correlation in process with an in-memory exporter, where the test controls everything. Their `verify.sh` then asks Tempo and Loki through their HTTP APIs, which holds the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
+Observability follows the same split. The tracing and log-correlation examples assert the spans and the log correlation in process with an in-memory exporter, and the metrics example reads a `SimpleMeterRegistry`, where the test controls everything. Their `verify.sh` then asks Tempo and Loki, and for metrics Grafana's rules API, through HTTP, which holds the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
 
 ## Build, run, observe
 
@@ -175,14 +175,16 @@ Try one change and rerun:
 ## References
 
 - Quarkus, [Testing your application](https://quarkus.io/version/3.40/guides/getting-started-testing) and [Dev Services overview](https://quarkus.io/version/3.40/guides/dev-services)
-- Quarkus, [Using Apache Kafka with Reactive Messaging](https://quarkus.io/version/3.40/guides/kafka): the Kafka Companion library
+- Quarkus, [Apache Kafka reference guide](https://quarkus.io/version/3.40/guides/kafka): the Kafka Companion library
+- R. A. DeMillo, R. J. Lipton and F. G. Sayward, [*Hints on Test Data Selection: Help for the Practicing Programmer*](https://doi.org/10.1109/C-M.1978.218136), IEEE Computer 11(4), 1978: mutation testing
+- [PIT](https://pitest.org/): mutation testing for Java and the JVM
 - Apache Camel Quarkus, [Testing](https://camel.apache.org/camel-quarkus/3.40.x/user-guide/testing.html): `CamelQuarkusTestSupport` and AdviceWith
 - Apicurio Registry, [Registry content rules](https://www.apicur.io/registry/docs/apicurio-registry/3.3.x/getting-started/assembly-intro-to-registry-rules.html) and [compatibility modes](https://www.apicur.io/registry/docs/apicurio-registry/3.3.x/getting-started/assembly-registry-compatibility-modes.html)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 20: Testing Event-Driven Microservices
 - *Enterprise Integration Patterns with Camel*, [Appendix S: Testing Strategies for Camel Quarkus](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/37-appendix-testing-strategies/)
-- The stubbed source: `examples/02-event-notification`, with the [event notification]({{ '/docs/02-event-notification/' | relative_url }}) page
-- Ordering tests: `examples/04-ordering-and-partitioning`, with [ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }})
-- The inbox race test: `examples/11-idempotent-consumer-and-inbox`, with [idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
-- The registry rule test: `examples/18-schema-evolution-and-upcasting`, with [schema evolution and upcasting]({{ '/docs/18-schema-evolution-and-upcasting/' | relative_url }})
-- KafkaCompanion: `examples/21-aggregate`, with [aggregate]({{ '/docs/21-aggregate/' | relative_url }})
-- Traces, metrics and logs: `examples/25-tracing-across-async-hops`, `examples/26-metrics-for-event-flows` and `examples/27-correlated-logs-and-traces`, with their pages ([tracing]({{ '/docs/25-tracing-across-async-hops/' | relative_url }}), [metrics]({{ '/docs/26-metrics-for-event-flows/' | relative_url }}), [logs]({{ '/docs/27-correlated-logs-and-traces/' | relative_url }}))
+- The stubbed source: `examples/02-event-notification`, with the [Event notification]({{ '/docs/02-event-notification/' | relative_url }}) page
+- Ordering tests: `examples/04-ordering-and-partitioning`, with [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }})
+- The inbox race test: `examples/11-idempotent-consumer-and-inbox`, with [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
+- The registry rule test: `examples/18-schema-evolution-and-upcasting`, with [Schema evolution and upcasting]({{ '/docs/18-schema-evolution-and-upcasting/' | relative_url }})
+- KafkaCompanion: `examples/21-aggregate`, with [Aggregate]({{ '/docs/21-aggregate/' | relative_url }})
+- Traces, metrics and logs: `examples/25-tracing-across-async-hops`, `examples/26-metrics-for-event-flows` and `examples/27-correlated-logs-and-traces`, with their pages ([Tracing across async hops]({{ '/docs/25-tracing-across-async-hops/' | relative_url }}), [Metrics for event flows]({{ '/docs/26-metrics-for-event-flows/' | relative_url }}), [Correlated logs and traces]({{ '/docs/27-correlated-logs-and-traces/' | relative_url }}))
