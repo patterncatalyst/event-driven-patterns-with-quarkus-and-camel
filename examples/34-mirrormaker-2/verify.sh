@@ -39,6 +39,11 @@ place() { # place <id>
 }
 place_all() { local id; for id in "$@"; do [[ "$(place "$id")" == 201 ]] || return 1; done; }
 has_notification() { local out; out="$(curl -sf -m 5 "$NOTIFY/notifications?orderId=$1")" || return 1; [[ -n "$out" && "$out" != "[]" ]]; }
+notification_count() { # the number of notifications stored for an order
+    local out; out="$(curl -sf -m 5 "$NOTIFY/notifications?orderId=$1")" || return 1
+    python3 -I -c 'import json, sys; print(len(json.load(sys.stdin)))' <<<"$out"
+}
+each_notified_once() { local id; for id in "$@"; do [[ "$(notification_count "$id")" == 1 ]] || return 1; done; }
 all_notified() { local id; for id in "$@"; do has_notification "$id" || return 1; done; }
 none_notified() { local id; for id in "$@"; do ! has_notification "$id" || return 1; done; }
 
@@ -109,8 +114,10 @@ first_orders() { place_all O-3401 O-3402 O-3403 O-3404 O-3405 && poll 120 all_no
 second_orders_unseen() { place_all O-3406 O-3407 O-3408 O-3409 O-3410 && none_notified O-3406 O-3407 O-3408 O-3409 O-3410; }
 second_orders_notified() { poll 90 all_notified O-3406 O-3407 O-3408 O-3409 O-3410; }
 target_group_not_ahead() { local d e; d="$(committed_sum "$DR")" && e="$(end_offset_sum "$DR")" && [[ "$d" == 5 && "$d" -le "$e" ]]; }
-resumed_from_synced_offset() { # the group reaches the end, having read exactly the records placed after the stop
-    poll "$BOUND" committed_reaches 10 && [[ "$(( $(committed_sum "$DR") - BEFORE ))" == 5 ]]
+resumed_from_synced_offset() { # the group reaches the end, having read exactly the records placed after the stop,
+    # and every one of the ten orders has exactly one stored notification (a re-read would store a second row)
+    poll "$BOUND" committed_reaches 10 && [[ "$(( $(committed_sum "$DR") - BEFORE ))" == 5 ]] \
+        && each_notified_once O-3401 O-3402 O-3403 O-3404 O-3405 O-3406 O-3407 O-3408 O-3409 O-3410
 }
 
 check "orders O-3401 to O-3405 are placed and their notifications arrive on edp" first_orders
@@ -129,7 +136,7 @@ T_FAILOVER=$SECONDS
 check "notification-service runs again with only its bootstrap address changed to edp-dr" fail_over
 check "orders O-3406 to O-3410 are notified" second_orders_notified
 echo "measured: from the change of the bootstrap address to the five orders notified: $((SECONDS - T_FAILOVER)) s"
-check "the group on edp-dr resumes from the synced offset and reads exactly the 5 later records" resumed_from_synced_offset
+check "the group on edp-dr resumes from the synced offset, reads exactly the 5 later records, and each of the 10 orders has one notification" resumed_from_synced_offset
 check "the MirrorMaker 2 worker reports its 2 connectors through the monitoring base" poll "$BOUND" mm2_workers_reported
 check "Grafana serves the dashboard edp-mirrormaker2" poll "$BOUND" grafana_dashboard edp-mirrormaker2
 summary

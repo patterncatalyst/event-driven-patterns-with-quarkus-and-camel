@@ -743,3 +743,17 @@ Fixes in the window: ch32 pool selector adds `strimzi.io/pool-name` (the entity 
 G0-20 measured: restricted Pod Security refuses the build pod (allowPrivilegeEscalation, capabilities, runAsNonRoot, seccompProfile) and KafkaConnect goes NotReady; an allowList change on KafkaConnect replaces the Connect pod (brokers do not roll); MM2 reporter metrics present (`connector_count` 2, `mirrorsourceconnector_record_count`, `_replication_latency_ms`); curl present in the broker image. Not re-measured (spike values kept): first broker sample about 80 s, metricsConfig removal roll about 75 s, build pod 25 s, restart-task 3 s, default `offset.lag.max` lag 140 s.
 
 Profile deleted afterwards (`minikube profile list` empty); `edp-ollama-models` intact; chapters 00 to 31 unchanged (`git diff --stat 2fa9cf3` over their examples empty).
+
+### r12 validation round 1 and repair (2026-11-15)
+
+Validator: fresh-profile runs 20/20, 17/17, 18/18, 25/25; verdict FIX (34 check 16 vacuous by live bite: a full re-read left the offset delta at 5 with two notifications per order; missing r12 attribution; 33 check 6 passed before the new broker and Cruise Control were Ready; self-references; one 125 s teardown).
+
+Repair: 34 check 16 asserts exactly one notification per order plus the delta; bibliography rows and inline authors added; 33 waits for the new broker pod and a Cruise Control pod created after it (pool grown 48 to 49 s, proposal 90 to 101 s); 33 check 16 waits until the operator's `edp-auto-rebalancing-remove-brokers` KafkaRebalance is gone (cause of the 125 s teardown: 120 s operator timer, inferred from log timing), teardown afterwards 11 s; 35 check 18 reads the operator log since the annotation, scoped to `inventory-cdc`, and asserts the annotation stays; 32 checks 19 and 20 wait for `observedGeneration`; promq.py folded into `_k8s/tools/prom.py`; kube-state-metrics config via configMapGenerator.
+
+| Run (recreated profile) | Result | Teardown |
+|---|---|---|
+| ch34 `OFFSET_SYNC=off` | 15/18; fails 9, 13, 16 | 35 s |
+| Final 32, 34, 35 | 20/20, 18/18, 25/25, exit 0 | 38 s, 46 s, 43 s |
+| ch33 after the shrink fix | 17/17, exit 0 (774 s) | 11 s |
+
+Chapters 28 to 31 do not use the changed `_k8s/monitoring` or `tools/prom.py`; lib.sh untouched, so no re-run of 28.

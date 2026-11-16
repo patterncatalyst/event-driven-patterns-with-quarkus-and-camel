@@ -39,7 +39,7 @@ spec:
       min.samples.per.partition.metrics.window: 1
 ```
 
-The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready (measured; an interval of 60000 works). Chapter 28 introduced the node pools this cluster uses, and chapter 29 the `KafkaTopic` resources whose replicas are being placed. The catalog topics here have two replicas each, on a pool of two brokers.
+The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready; an interval of 60000 works. Chapter 28 introduced the node pools this cluster uses, and chapter 29 the `KafkaTopic` resources whose replicas are being placed. The catalog topics here have two replicas each, on a pool of two brokers.
 
 A `KafkaRebalance` asks for a plan. Its `mode` names the case, and the label binds it to a cluster.
 
@@ -55,7 +55,7 @@ spec:
   brokers: [3]
 ```
 
-Which id to write is not obvious. Node ids are shared by all pools of a cluster, and the controller of this cluster already holds one, so a pool that grows from two brokers to three gets the next free id, not the third number of a sequence. The id comes from `status.nodeIds` of the pool, which is also what the verification reads.
+Which id to write is not obvious. Node ids are shared by all pools of a cluster, and the controller of this cluster already holds one, so a pool that grows from two brokers to three gets the next free id, not the third number of a sequence. The id comes from `status.nodeIds` of the pool.
 
 ## A proposal, then an approval
 
@@ -73,17 +73,17 @@ status:
     onDemandBalancednessScoreAfter: 85.69
 ```
 
-The numbers are what the proposal costs and buys: how many replicas it moves, how much data that copies, and how balanced the cluster is before and after (one run planned 50 replica movements, 182 MB and a balance score from 79.77 to 85.69; the verified runs planned 55 to 67 movements). A proposal with a large `dataToMoveMB` is the signal to wait for a quiet hour. The replicas stay where they are at this point. The proposal is a status, and nothing is applied until the resource carries the approval.
+The numbers are what the proposal costs and buys: how many replicas it moves, how much data that copies, and how balanced the cluster is before and after. A proposal with a large `dataToMoveMB` is the signal to wait for a quiet hour. The replicas stay where they are at this point. The proposal is a status, and nothing is applied until the resource carries the approval.
 
 ```bash
 kubectl -n edp-kafka annotate kafkarebalance add-broker-3 strimzi.io/rebalance=approve
 ```
 
-The state moves to `Rebalancing`, then `Ready`, and the new broker holds replicas. The Strimzi documentation names the same states and the `refresh` annotation that discards a stale plan and computes a new one. Approval is a human decision by default. The annotation `strimzi.io/rebalance-auto-approval: "true"` on the resource removes it, and that is the exact choice a team makes when it trusts the goals more than it trusts a person at three in the morning.
+The state moves to `Rebalancing`, then `Ready`, and the new broker holds replicas. The Strimzi documentation names the same states and the `refresh` annotation that discards a stale plan and computes a new one. Approval is a human decision by default. The annotation `strimzi.io/rebalance-auto-approval: "true"` on the resource removes it, and that is the choice a team makes when it trusts the goals enough to skip the review.
 
-The state changes on the operator's reconciliation, which by default runs every two minutes (Strimzi documentation), so a rebalance of this small cluster takes minutes from the approval to `Ready` (98 to 99 s in the measured runs, after the proposal itself took 146 to 150 s to appear).
+The state changes on the operator's reconciliation, which by default runs every two minutes (Strimzi documentation), so a rebalance of a small cluster takes minutes from the approval to `Ready`.
 
-Two things in this sequence need care. A `KafkaRebalance` applied straight after the pool grew went `NotReady` with a `NullPointerException` from Cruise Control, because Cruise Control restarts with the new broker's capacity after a scale and the request arrived before it was back. Waiting for its Deployment and then annotating the resource with `refresh` gives the plan. And a producer tool run with `kubectl exec` inside a broker container with a 768 MiB limit shares that limit, so the load that fills the topics comes from a Job pod of its own.
+Cruise Control restarts with the new broker's capacity after a scale, so a `KafkaRebalance` applied before it is back goes `NotReady`; wait for its Deployment, then annotate the resource with `refresh` to get the plan. The load that fills the topics comes from a Job pod of its own, because a producer tool run with `kubectl exec` inside a broker container shares the broker's 768 MiB limit.
 
 ## Rebalancing when the pool grows
 
@@ -101,19 +101,19 @@ spec:
           name: edp-remove
 ```
 
-A template is a `KafkaRebalance` with the annotation `strimzi.io/rebalance-template: "true"` and, as the Strimzi blog on auto-rebalancing explains, its `mode` and `brokers` are ignored: the operator fills them in. The trigger is a change of `spec.replicas` of an existing node pool. Strimzi creates a resource named after the cluster and the mode, `edp-auto-rebalancing-add-brokers`, requests the proposal, approves it and applies it. The progress is in `status.autoRebalance` of the `Kafka` resource, which reports `RebalanceOnScaleUp` and then `Idle`, and the generated `KafkaRebalance` is deleted when it is done (measured).
+A template is a `KafkaRebalance` with the annotation `strimzi.io/rebalance-template: "true"` and, as the Strimzi blog on auto-rebalancing explains, its `mode` and `brokers` are ignored: the operator fills them in. The trigger is a change of `spec.replicas` of an existing node pool. Strimzi creates a resource named after the cluster and the mode, `edp-auto-rebalancing-add-brokers`, requests the proposal, approves it and applies it. The progress is in `status.autoRebalance` of the `Kafka` resource, which reports `RebalanceOnScaleUp` and then `Idle`, and the generated `KafkaRebalance` is deleted when it is done.
 
 The order of configuration matters for a first look. With `autoRebalance` present, the pool that grows is rebalanced at once, and no empty broker is left to propose against. The manual rebalance therefore runs on a pool that has no `autoRebalance` block, and the block is added afterwards. A pool that is created is not a scaling event: the documentation says auto-rebalancing is not triggered when a node pool is created or deleted.
 
-The operator's own rebalance runs on the same timer, so how long growing from three brokers to four takes depends on where the timer is: 47 s in one run and 347 s in another, from the scale change to the operator reporting `Idle`.
+The operator's own rebalance runs on the same timer, so how long growing from three brokers to four takes depends on where the timer is: from the scale change to the operator reporting `Idle` it takes anywhere from under a minute to several minutes.
 
 {% include excalidraw.html file="33-scale-and-move" alt="Replicas per broker in three stages: two brokers that hold every replica, a pool grown to three where the new broker holds none, and after the approved rebalance where the new broker holds a share; the operator's own rebalance does the same when the pool grows once more" caption="Figure 33.2: A broker added to the pool starts empty; replicas arrive only through a rebalance" %}
 
 ## Shrinking the pool
 
-A pool that gets smaller loses a broker. Strimzi checks first whether that broker still holds replicas. Without `autoRebalance`, the check fails: the broker's pod keeps running, the pool's `status.nodeIds` still lists it and the `Kafka` status carries a warning with the reason `ScaleDownPreventionCheck`. The pool's `spec.replicas` keeps the smaller number you wrote, so the example sets it back to three by hand. The operator's log names the broker and says it "has assigned partition-replicas". The refusal is the safe outcome, and it is repeated on every reconciliation until someone drains the broker or turns the setting on.
+A pool that gets smaller loses a broker. Strimzi checks first whether that broker still holds replicas. Without `autoRebalance`, the check fails: the broker's pod keeps running, the pool's `status.nodeIds` still lists it and the `Kafka` status carries a warning with the reason `ScaleDownPreventionCheck`. The pool's `spec.replicas` keeps the smaller number you wrote, so the pool is set back to three by hand. The operator's log names the broker and says it "has assigned partition-replicas". The refusal is the safe outcome, and it is repeated on every reconciliation until someone drains the broker or turns the setting on.
 
-With the `remove-brokers` template configured, the same scale-down is accepted. The operator creates `edp-auto-rebalancing-remove-brokers`, moves the replicas off the broker, and only then does the pod go (8 s to 114 s from the scale change to a settled pool of three in the measured runs, again depending on the timer). Afterwards every partition has both of its replicas on the remaining brokers and none is out of sync.
+With the `remove-brokers` template configured, the same scale-down is accepted. The operator creates `edp-auto-rebalancing-remove-brokers`, moves the replicas off the broker, and only then does the pod go (from seconds to a couple of minutes to a settled pool of three, again depending on the timer). Afterwards every partition has both of its replicas on the remaining brokers and none is out of sync.
 
 | Question | Manual KafkaRebalance | autoRebalance |
 |---|---|---|
@@ -129,7 +129,7 @@ cd examples/33-cruise-control
 ./verify.sh
 ```
 
-A cluster of two brokers and Cruise Control is filled by a load Job, grown to three nodes and rebalanced by a proposal that is approved, then grown to four and shrunk back to three with `autoRebalance`; the run ends with `N/N checks passed` and takes 8 to 16 minutes, most of it waiting for the operator's timer.
+A cluster of two brokers and Cruise Control is filled by a load Job, grown to three nodes and rebalanced by a proposal that is approved, then grown to four and shrunk back to three with `autoRebalance`; the run ends with `17/17 checks passed`.
 
 Try one change and rerun:
 

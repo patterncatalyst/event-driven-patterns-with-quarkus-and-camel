@@ -20,7 +20,7 @@ cd examples/33-cruise-control
 
 1. **An empty broker.** After the pool grows, the new broker holds no replica.
 2. **A proposal that moves nothing.** The `KafkaRebalance` reaches `ProposalReady`, and the placement is unchanged until the approve annotation is set.
-3. **A refused scale-down.** Without `autoRebalance` the pool is put back and the `Kafka` status carries `ScaleDownPreventionCheck`.
+3. **A refused scale-down.** Without `autoRebalance` the broker keeps running, the pool still lists it and the `Kafka` status carries `ScaleDownPreventionCheck`.
 4. **The operator's own rebalance.** With `autoRebalance`, a larger pool is rebalanced and a smaller one is drained before the pod is removed.
 
 ## Infrastructure

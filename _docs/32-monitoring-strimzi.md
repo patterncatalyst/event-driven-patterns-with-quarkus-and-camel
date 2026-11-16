@@ -17,7 +17,7 @@ On Kubernetes the cluster is also a set of resources that an operator keeps true
 
 ### The problem
 
-An operator-managed cluster has three layers that fail independently. The JVMs run or do not. The operator reconciles or does not. A resource is accepted or is stuck with a condition that says why. Reading the first layer used to mean a JMX exporter and its mapping rules. Reading none of the second and third leaves the questions an operator is there to answer: is it reconciling, and is the topic I just declared the one Kafka has?
+An operator-managed cluster has three layers that fail independently. The JVMs run or do not. The operator reconciles or does not. A resource is accepted or is stuck with a condition that says why. Reading the first layer used to mean a JMX exporter and its mapping rules (Owen Corrigan, Strimzi blog). Reading none of the second and third leaves the questions an operator is there to answer: is it reconciling, and is the topic I just declared the one Kafka has?
 
 Chapter 29 showed the case. Raise the partitions of a declared topic in Kafka and the resource turns `Ready=False`, reason `NotSupported`, while every broker stays healthy. Nothing in the flow breaks. Only the resource knows.
 
@@ -29,7 +29,7 @@ One store and one query language then answer questions that cross the layers: th
 
 ### How Strimzi models it
 
-Metrics for Kafka are one stanza on the `Kafka` resource. The Strimzi Metrics Reporter implements Kafka's `MetricsReporter` interface and serves Prometheus text itself, with fixed metric names and no JMX in between (Strimzi blog, 2025). It is switched on for brokers and controllers alike.
+Metrics for Kafka are one stanza on the `Kafka` resource. The Strimzi Metrics Reporter implements Kafka's `MetricsReporter` interface and serves Prometheus text itself, with fixed metric names and no JMX in between (Owen Corrigan, Using Strimzi Metrics Reporter to expose Kafka metrics in Prometheus format, Strimzi blog). It is switched on for brokers and controllers alike.
 
 ```yaml
 spec:
@@ -42,13 +42,13 @@ spec:
           - "jvm_.*"
 ```
 
-The operator exposes its own metrics without configuration, including reconciliation counts and durations (Strimzi documentation). Resource state is the third source. Strimzi's operator used to export some of it and no longer does; the Strimzi guidance is to read it with kube-state-metrics, which can turn the status of any custom resource into series (Strimzi blog, 2025; proposal 087).
+The operator exposes its own metrics without configuration, including reconciliation counts and durations (Strimzi, Deploying and Managing Strimzi). Resource state is the third source. Strimzi's operator used to export some of it and no longer does; the Strimzi guidance is to read it with kube-state-metrics, which can turn the status of any custom resource into series (Sebastian Gaiser, Monitoring of custom resources, Strimzi blog; Strimzi proposal 087).
 
 ## Brokers and controllers
 
-The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowList` is a list of regular expressions over metric names. Leave it out and Strimzi applies a curated default for the node's role; in the measured run the default list on a controller held no `kafka_controller_` and no `kafka_server_raft_` family, so the question whether there is an active controller had nothing to read. Setting the list to `kafka_.*` and `jvm_.*` answers it. A narrower list is fine if it keeps `kafka_controller_.*` and `kafka_server_raft_metrics_.*`.
+The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowList` is a list of regular expressions over metric names. Leave it out and Strimzi applies a curated default for the node's role; the default list on a controller holds no `kafka_controller_` and no `kafka_server_raft_` family, so the question whether there is an active controller had nothing to read. Setting the list to `kafka_.*` and `jvm_.*` answers it. A narrower list is fine if it keeps `kafka_controller_.*` and `kafka_server_raft_metrics_.*`.
 
-The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi documentation). The pods keep their names, uids and restart counts, and the endpoint changes within 1 to 3 s of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod, in the measured run about 75 s to the next Ready.
+The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi, Configuring Strimzi). The pods keep their names, uids and restart counts, and the endpoint changes within seconds of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod.
 
 The collector scrapes the pods with a `prometheus` receiver. The OpenTelemetry documentation calls it a drop-in replacement for a Prometheus scrape, and it takes the same `kubernetes_sd_configs`. Chapter 26 merged a second collector configuration into otel-lgtm through `OTELCOL_EXTRA_ARGS`; this one is the same mechanism and carries both the scrape and chapter 26's lag receiver.
 
@@ -84,7 +84,7 @@ Bytes in is a counter, so a panel plots `rate(...)`. The series without a `topic
 
 The operator is a pod with its own endpoint, scraped the same way on port 8080. `strimzi_reconciliations_total{kind="Kafka"}` counts the reconciliations of Kafka resources, and a counter that stops climbing while a resource sits unready is the first thing to read. `strimzi_reconciliations_successful_total` and the duration histograms sit beside it.
 
-A resource that the operator cannot reconcile is not visible there. It is visible in its status, and kube-state-metrics reads status. Its custom-resource-state configuration names a kind, a path inside it and how to turn the value into a gauge. Kube-state-metrics supports this through a configuration file and a flag that restricts it to those resources (kube-state-metrics documentation). The configuration is ours and small: a condition per kind, with `True` read as 1 and `False` as 0.
+A resource that the operator cannot reconcile is not visible there. It is visible in its status, and kube-state-metrics reads status. Its custom-resource-state configuration names a kind, a path inside it and how to turn the value into a gauge. Kube-state-metrics supports this through a configuration file and a flag that restricts it to those resources (kube-state-metrics documentation). The configuration is small: a condition per kind, with `True` read as 1 and `False` as 0.
 
 ```yaml
 kind: CustomResourceStateMetrics
@@ -105,7 +105,7 @@ spec:
 
 The same entry exists for the `Kafka` resource and for the node pools. Strimzi ships an example configuration with its own metric prefixes, which is the place to compare names; this one uses short prefixes that read well in a query. Kube-state-metrics runs as one Deployment with a cluster role that may list and watch the CRDs and the `kafka.strimzi.io` resources. Upstream marks the feature frozen in favour of a successor, so it will not grow.
 
-The payoff is the invalid topic. A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within 18 to 28 s in the measured runs, and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
+The payoff is the invalid topic. A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within about 40 s, and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
 
 ## One dashboard beside the flows
 
@@ -143,7 +143,7 @@ Kafka comes up with the reporter on both pools, the pair of chapter 2 places ten
 
 ## When not to use it
 
-A cluster with one broker and one consumer rarely needs more than lag. The reporter, the scrape and kube-state-metrics are three more things to run and to keep named correctly, and a dashboard nobody reads is cost without signal.
+A cluster with one broker and one consumer rarely needs more than lag. The reporter, the scrape and kube-state-metrics are three more things to run and to keep named correctly.
 
 The names are the reporter's, fixed and few. A narrowed `allowList` hides a signal without any error: take out the controller families and the active-controller panel is empty, which looks the same as a cluster that has no controller.
 
@@ -155,8 +155,9 @@ Kube-state-metrics adds a cluster role that can read every Strimzi resource, and
 
 ## References
 
-- Strimzi, [Deploying and Managing](https://strimzi.io/docs/operators/latest/deploying.html), the metrics sections (enabling the Metrics Reporter, the `allowList`, the operator's metrics and kube-state-metrics), and [Using the Strimzi Metrics Reporter](https://strimzi.io/blog/2025/10/06/strimzi-metrics-reporter/) (2025)
-- Strimzi, [Monitoring of custom resources](https://strimzi.io/blog/2025/10/01/monitoring-of-custom-resources/) (2025), [proposal 087](https://github.com/strimzi/proposals/blob/main/087-monitoring-of-custom-resources.md) and the [changelog](https://github.com/strimzi/strimzi-kafka-operator/blob/main/CHANGELOG.md) (resource state metrics removed from the operator)
+- Strimzi, [Deploying and Managing Strimzi](https://strimzi.io/docs/operators/latest/deploying.html), the metrics sections (enabling the Metrics Reporter, the operator's metrics and kube-state-metrics), and [Configuring Strimzi](https://strimzi.io/docs/operators/latest/configuring.html), using the Strimzi Metrics Reporter (the `allowList` that applies without a rolling update)
+- Owen Corrigan, [Using Strimzi Metrics Reporter to expose Kafka metrics in Prometheus format](https://strimzi.io/blog/2025/10/06/strimzi-metrics-reporter/) (Strimzi blog, 2025)
+- Sebastian Gaiser, [Monitoring of custom resources](https://strimzi.io/blog/2025/10/01/monitoring-of-custom-resources/) (Strimzi blog, 2025), Strimzi [proposal 087](https://github.com/strimzi/proposals/blob/main/087-monitoring-of-custom-resources.md) and the [changelog](https://github.com/strimzi/strimzi-kafka-operator/blob/main/CHANGELOG.md) (resource state metrics removed from the operator)
 - kube-state-metrics, [custom resource state metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/metrics/extend/customresourcestate-metrics.md)
 - OpenTelemetry Collector contrib, [Prometheus receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver)
 - Grafana, [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) (custom dashboards, `OTELCOL_EXTRA_ARGS`)

@@ -21,7 +21,7 @@ fi
 
 PROPOSAL_BOUND=240   # a proposal, and an approved rebalance, each within four minutes
 AUTO_BOUND=420       # pod start, then the operator's proposal, approval and rebalance
-DOWN_BOUND=300
+DOWN_BOUND=420
 HOLD=20              # seconds a proposal is watched to move nothing
 TOPICS=(edp.inventory.reserved edp.orders.placed edp.payments.processed edp.shipping.scheduled)
 PARTITIONS=$(( ${#TOPICS[@]} * 6 ))
@@ -48,10 +48,20 @@ new_id() { # the one id in the pool that was not there before scale_pool
     done
     return 1
 }
-grow_to() { # grow_to <n>: scale, wait for the pool, Kafka and Cruise Control, set NEW_ID
+broker_ready() { # the pod of the added broker is Ready
+    [[ "$(kk get pod "edp-broker-$1" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" == True ]]
+}
+cruise_control_restarted() { # one Cruise Control pod, Ready, created after the added broker's pod: it models the new broker
+    local b out
+    b="$(kk get pod "edp-broker-$1" -o 'jsonpath={.metadata.creationTimestamp}')" || return 1
+    out="$(kk get pod -l app.kubernetes.io/name=cruise-control -o 'jsonpath={range .items[*]}{.metadata.creationTimestamp} {.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}')" || return 1
+    [[ "$(wc -l <<<"$out")" == 1 && "$out" == *" True" && "${out%% *}" > "$b" ]]
+}
+grow_to() { # grow_to <n>: scale; wait for the pool, the new broker pod, Kafka and the restarted Cruise Control; set NEW_ID
     scale_pool "$1"
     poll 420 settled "$1" || return 1
-    NEW_ID="$(new_id)" && [[ -n "$NEW_ID" ]]
+    NEW_ID="$(new_id)" && [[ -n "$NEW_ID" ]] || return 1
+    poll 420 broker_ready "$NEW_ID" && poll 420 cruise_control_restarted "$NEW_ID" && poll 120 settled "$1"
 }
 
 # --- where the replicas are
@@ -92,6 +102,9 @@ auto_idle() { # auto_idle <mode>: the operator created edp-auto-rebalancing-<mod
     local rb="edp-auto-rebalancing-$1"
     if kk get kafkarebalance "$rb" >/dev/null 2>&1; then AUTO_SEEN=1; return 1; fi
     [[ "$AUTO_SEEN" == 1 && "$(kk get kafka edp -o jsonpath='{.status.autoRebalance.state}')" == Idle ]]
+}
+auto_removed() { # auto_removed <mode>: the operator's generated KafkaRebalance is gone and the cluster is Idle
+    ! kk get kafkarebalance "edp-auto-rebalancing-$1" >/dev/null 2>&1 && [[ "$(kk get kafka edp -o jsonpath='{.status.autoRebalance.state}')" == Idle ]]
 }
 auto_grow() { # a scale-up with autoRebalance configured
     AUTO_SEEN=0
@@ -158,9 +171,10 @@ configure_auto_rebalance() {
     [[ "$(autorebalance_modes)" == "$EXPECT_MODES" ]] && poll 240 kafka_ready edp && cc_available
 }
 new_broker_holds_replicas() { [[ -n "$NEW_ID" && "$(holds "$NEW_ID")" -gt 0 ]] && poll 90 healthy; }
-shrink_pool() {
+shrink_pool() { # the pool is back at three; with autoRebalance the operator has also deleted its generated KafkaRebalance
     scale_pool 3
-    poll "$DOWN_BOUND" settled 3
+    poll "$DOWN_BOUND" settled 3 || return 1
+    [[ "$AUTO_REBALANCE" == off ]] || poll "$DOWN_BOUND" auto_removed remove-brokers
 }
 drained() { # every replica is on a broker that is still in the pool, none is missing, all in sync
     local ids; ids="$(sorted_ids)"
@@ -178,8 +192,8 @@ check "a load Job writes 100000 records to each of the four topics" load_written
 BEFORE_ALL="$(placement)"
 check "every replica sits on the two original brokers: $OLD_IDS" expect "$BEFORE_ALL" "$(for id in $OLD_IDS; do printf '%s=%s ' "$id" "$PARTITIONS"; done | sed 's/ $//')"
 T0=$SECONDS
-check "after the pool grows to three, the new broker holds no replica" new_broker_empty
-echo "measured: pool grown to three nodes and Ready in $((SECONDS - T0)) s; new broker id $NEW_ID"
+check "after the pool grows to three, the new broker pod, Kafka and Cruise Control are Ready again and the new broker holds no replica" new_broker_empty
+echo "measured: pool grown to three nodes, the new broker and Cruise Control Ready in $((SECONDS - T0)) s; new broker id $NEW_ID"
 BEFORE="$(placement)"
 T0=$SECONDS
 check "an add-brokers KafkaRebalance for the new broker reaches ProposalReady with replica movements" proposal_with_moves
@@ -197,7 +211,7 @@ check "the operator rebalances a pool that grows to four with no KafkaRebalance 
 echo "measured: pool grown to four, operator rebalance Idle after $((SECONDS - T0)) s"
 check "the added broker holds replicas and every partition is fully replicated" new_broker_holds_replicas
 T0=$SECONDS
-check "the pool shrinks back to three nodes" shrink_pool
+check "the pool shrinks back to three nodes and the operator removes its own KafkaRebalance when it is done" shrink_pool
 echo "measured: pool back at three nodes and Ready after $((SECONDS - T0)) s"
 check "after the scale-down every replica is on a remaining broker and in sync" drained
 summary

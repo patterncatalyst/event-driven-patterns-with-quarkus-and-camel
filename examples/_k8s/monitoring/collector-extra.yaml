@@ -30,10 +30,9 @@ receivers:
             - source_labels: [__meta_kubernetes_pod_label_name]
               regex: strimzi-cluster-operator
               action: keep
-            - source_labels: [__meta_kubernetes_pod_ip]
-              regex: (.+)
-              replacement: $1:8080
-              target_label: __address__
+            - source_labels: [__meta_kubernetes_pod_container_port_name]
+              regex: http
+              action: keep
             - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
         - job_name: kube-state-metrics
           scrape_interval: 10s

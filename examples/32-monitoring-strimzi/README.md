@@ -14,8 +14,7 @@ Manifests only: a kustomize overlay on `examples/_k8s` and no Java or pom. The c
 | `base/topics/kafkatopics.yaml` | One `KafkaTopic`, `edp.orders.placed`, 3 partitions |
 | `demo-metrics-off/` | Demo code: the base with the monitoring component and without the reporter component |
 | `images.txt` | The two chapter 2 images loaded into the node |
-| `promq.py` | One instant query against Prometheus, prints the sum or the series count (`python3 -I`) |
-| `kafkapods.py`, `kafkatopic_state.py` | Pod names, uids and restart counts; KafkaTopic conditions (`python3 -I`) |
+| `kafkapods.py`, `kafkatopic_state.py` | Pod names, uids and restart counts; KafkaTopic conditions (`python3 -I`). Prometheus is queried with `../_k8s/tools/prom.py` |
 
 ## Run
 
@@ -57,8 +56,8 @@ Metric names are those the reporter, the operator and kube-state-metrics produce
 16. `edp.orders.placed` still reads Ready 1 at that moment.
 17. After the resource is deleted and declared again, the topic reads Ready 1 with 3 partitions.
 18. After the `allowList` is patched to `kafka_network_.*` and `jvm_.*`, the broker endpoint no longer holds the bytes-in family (it held it before the patch).
-19. The Kafka pods keep their names, uids and restart counts across the patch.
-20. After the `allowList` is restored the family is back and the pods are still unchanged.
+19. Once the operator has reconciled the change (the `Kafka` resource is Ready with `observedGeneration` equal to `generation`), the Kafka pods keep their names, uids and restart counts.
+20. After the `allowList` is restored the family is back and, once the resource is reconciled again, the pods are still unchanged.
 
 In-run changes to the Kafka resource use `kubectl patch --type merge`; the initial apply is server-side.
 
@@ -69,7 +68,7 @@ In-run changes to the Kafka resource use `kubectl patch --type merge`; the initi
 | What | Value |
 |---|---|
 | Apply to the first broker sample in Prometheus | about 80 s on a warm node (38 s to the broker pod, 38 s from there to the first `up` 1) |
-| Topic raised from 3 to 6 partitions to Ready 0 with `NotSupported` | 18 to 28 s over three runs (the Topic Operator reconciles every 15 s) |
+| Topic raised from 3 to 6 partitions to Ready 0 with `NotSupported` | 18 to 39 s over six runs (the Topic Operator reconciles every 15 s) |
 | `allowList` patched to the family gone from the endpoint | 1 to 3 s, pods unchanged |
 | `metricsConfig` removed (`METRICS=off`), pods rolled to Ready | about 75 s; restoring it rolls them again |
-| Deleting the topics, Kafka and the three namespaces | 42 to 45 s |
+| Deleting the topics, Kafka and the three namespaces | 38 to 45 s |

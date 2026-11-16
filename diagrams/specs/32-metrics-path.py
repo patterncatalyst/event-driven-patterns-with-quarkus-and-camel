@@ -15,7 +15,7 @@ emit(
         {"x": 40, "y": 175, "w": 290, "h": 55, "style": "box", "lines": ["Strimzi cluster operator", "reconciliations on port 8080"]},
         {"x": 40, "y": 250, "w": 290, "h": 55, "style": "ghost", "lines": ["Kafka, KafkaNodePool, KafkaTopic", "status conditions"]},
         {"x": 40, "y": 325, "w": 290, "h": 55, "style": "box", "lines": ["Kafka bootstrap", "group lag, asked from the broker"]},
-        {"x": 420, "y": 250, "w": 250, "h": 55, "style": "box", "lines": ["kube-state-metrics", "our CustomResourceStateMetrics"]},
+        {"x": 420, "y": 250, "w": 250, "h": 55, "style": "box", "lines": ["kube-state-metrics", "CustomResourceStateMetrics config"]},
         {"x": 420, "y": 130, "w": 250, "h": 70, "style": "accent", "lines": ["otel-lgtm collector", "prometheus receiver", "kafka_metrics receiver"]},
         {"x": 740, "y": 130, "w": 220, "h": 70, "style": "ink", "lines": ["Prometheus", "one query language"]},
         {"x": 740, "y": 290, "w": 220, "h": 55, "style": "ghost", "lines": ["Grafana", "dashboard edp-strimzi"]},

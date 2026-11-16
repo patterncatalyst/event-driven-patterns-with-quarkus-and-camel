@@ -28,7 +28,7 @@ The new broker's id is read from `status.nodeIds` of the pool and never written 
 KEEP=1 ./verify.sh
 ```
 
-`verify.sh` deletes and recreates the namespaces, applies the overlay with `--server-side` and ends with `N/N checks passed`. Cruise Control is reached through the operator only; nothing is forwarded.
+`verify.sh` deletes and recreates the namespaces, applies the overlay with `--server-side` and ends with `17/17 checks passed`. Cruise Control is reached through the operator only; nothing is forwarded.
 
 ## Demo switch
 
@@ -45,7 +45,7 @@ Demo code, labelled in `verify.sh` and the chapter.
 3. The four catalog topics are `KafkaTopic` resources with two replicas and are Ready.
 4. The load Job completes and reports 100000 records for each of the four topics.
 5. Every replica sits on the two original brokers (the ids read from the pool).
-6. After the pool grows to three, with the Kafka resource and Cruise Control ready again, the new broker holds no replica.
+6. After the pool grows to three, the new broker pod is Ready, Kafka is Ready and a Cruise Control pod created after the broker's pod is Ready, the new broker holds no replica.
 7. An `add-brokers` `KafkaRebalance` for the new broker reaches `ProposalReady` within 240 s with `numReplicaMovements` above 0; a `NotReady` state is refreshed.
 8. The replica placement is unchanged for 20 s while the proposal waits.
 9. After the approve annotation the rebalance reaches `Ready` within 240 s.
@@ -55,12 +55,12 @@ Demo code, labelled in `verify.sh` and the chapter.
 13. The `Kafka` resource carries the `autoRebalance` modes `add-brokers remove-brokers` (none under `AUTO_REBALANCE=off`) and is Ready.
 14. The pool grown to four is rebalanced by the operator: `edp-auto-rebalancing-add-brokers` appears with no hand-written resource and `status.autoRebalance.state` returns to `Idle` within 420 s.
 15. The added broker holds replicas and every partition is fully replicated.
-16. The pool shrinks back to three nodes within 300 s.
+16. The pool shrinks back to three nodes within 420 s, and the operator has deleted its generated `edp-auto-rebalancing-remove-brokers` and reports `Idle`.
 17. Every replica is on a remaining broker, the pool has three nodes and all replicas are in sync.
 
 ## Measurements
 
 `verify.sh` prints each on a `measured:` line; ranges are over the verified runs.
 
-- Pool grown to three and Ready: 2 to 3 s. Proposal ready: 146 to 150 s, with 55 to 67 replica movements. Approved to Ready: 98 to 99 s. Operator rebalance after a scale to four, to `Idle`: 47 s to 347 s. Scale-down with `remove-brokers`, to a settled pool of three: 8 s to 114 s. Whole run: 475 s to 978 s.
-- Deleting Kafka, Cruise Control and the namespaces: 28 s to 125 s.
+- Pool grown to three, with the new broker pod Ready and Cruise Control restarted: 48 to 49 s. Proposal ready, measured from there: 90 to 101 s, with 55 to 62 replica movements. Approved to Ready: 97 to 98 s. Operator rebalance after a scale to four, to `Idle`: 227 s to 348 s (47 s in an earlier run), depending on the operator's timer. Scale-down with `remove-brokers`, to a settled pool of three with the generated resource removed: 113 s to 137 s (8 s in an earlier run). Whole run: 760 s to 978 s.
+- Deleting Kafka, Cruise Control and the namespaces: 11 s to 27 s. Two earlier runs, both after an operator rebalance that waited for the timer, took 125 s: the generated `edp-auto-rebalancing-remove-brokers` was still present at the end and is removed on the operator's next periodic reconciliation (120 s), which `kubectl delete --wait` then waited for. The run now waits for the operator to remove it (check 16) before it ends.

@@ -1,4 +1,4 @@
-# kube-state-metrics with our own CustomResourceStateMetrics: Ready conditions and a few status fields of the Strimzi
+# kube-state-metrics with a CustomResourceStateMetrics configuration (kube-state-metrics-crs.yaml, generated into a ConfigMap by the kustomization): Ready conditions and a few status fields of the Strimzi
 # resources. Strimzi's example configuration is cited in the chapter, not copied.
 apiVersion: v1
 kind: ServiceAccount
@@ -22,95 +22,6 @@ roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: edp-kube
 subjects:
   - {kind: ServiceAccount, name: kube-state-metrics, namespace: edp-lgtm}
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata: {name: kube-state-metrics-crs, namespace: edp-lgtm}
-data:
-  crs.yaml: |
-    kind: CustomResourceStateMetrics
-    spec:
-      resources:
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: Kafka}
-          metricNamePrefix: edp_kafka
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: Kafka status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type], reason: [reason]}
-                  valueFrom: [status]
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaNodePool}
-          metricNamePrefix: edp_kafkanodepool
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: replicas
-              help: node pool replicas in status
-              each:
-                type: Gauge
-                gauge: {path: [status, replicas]}
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaTopic}
-          metricNamePrefix: edp_kafkatopic
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: KafkaTopic status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type], reason: [reason]}
-                  valueFrom: [status]
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaRebalance}
-          metricNamePrefix: edp_kafkarebalance
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: KafkaRebalance status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type]}
-                  valueFrom: [status]
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaConnector}
-          metricNamePrefix: edp_kafkaconnector
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: KafkaConnector status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type], reason: [reason]}
-                  valueFrom: [status]
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaConnect}
-          metricNamePrefix: edp_kafkaconnect
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: KafkaConnect status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type], reason: [reason]}
-                  valueFrom: [status]
-        - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaMirrorMaker2}
-          metricNamePrefix: edp_kafkamirrormaker2
-          labelsFromPath: {name: [metadata, name]}
-          metrics:
-            - name: condition
-              help: KafkaMirrorMaker2 status conditions (1 when True)
-              each:
-                type: Gauge
-                gauge:
-                  path: [status, conditions]
-                  labelsFromPath: {type: [type], reason: [reason]}
-                  valueFrom: [status]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -133,7 +44,7 @@ spec:
           readinessProbe: {httpGet: {path: /readyz, port: 8081}, periodSeconds: 5}
           volumeMounts: [{name: crs, mountPath: /config}]
           resources: {requests: {memory: 64Mi}, limits: {memory: 128Mi}}
-      volumes: [{name: crs, configMap: {name: kube-state-metrics-crs}}]
+      volumes: [{name: crs, configMap: {name: kube-state-metrics-crs}}]  # generated from kube-state-metrics-crs.yaml
 ---
 apiVersion: v1
 kind: Service

@@ -105,7 +105,7 @@ Images are built from the compose build context (`examples/`, the Containerfile 
 | `kafka_exec_on <pod> <tool> <args...>`, `kafka_raw_on <pod> ...` | a Kafka CLI tool in any broker pod (the second cluster's, a scaled-up broker); `kafka_exec` and `kafka_raw` are the same on `edp-broker-0` |
 | `kafka_ready <name>` | the Kafka resource's generation is observed and it is Ready |
 | `connect_get <path> [pod]` | read-only `curl` against a Connect worker through `kubectl exec`, for status and offsets; changes go through the resources |
-| `prom_query <promql>` | prints the value of a one-series result, or the series count; fails on no data (`tools/prom.py`) |
+| `prom_query <promql>` | prints the value of a one-series result, or the series count; fails on no data (`tools/prom.py`, which also takes a third argument `sum` or `count`) |
 | `grafana_dashboard <uid>` | the provisioned dashboard is served (HTTP 200) |
 | `psql_exec <db> -` | SQL from standard input (`exec -i`) |
 | `load_image <slug> -` | an example with one image from `examples/<slug>/Containerfile`; `images.txt` carries `<slug> - <name>` and the image is `localhost/edp/<NN>-<name>:local` |

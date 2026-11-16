@@ -67,14 +67,14 @@ There is no `mvn verify`; the example has no Java. The checks read effects:
 - `O-3501` leaves one record on `edp.orders.placed` keyed `O-3501` with the header `eventType: OrderPlaced`. The outbox table is empty and the order row exists. A second `O-3501` is refused with 409 and the topic still holds one record after a few seconds.
 - The snapshot is five `r` records. An update of `SKU-3` to 79 arrives as a `u` record and as the document `SKU-3` with `quantityOnHand` 79.
 - Listing offsets writes `offsets.json` to the ConfigMap `inventory-cdc-offsets`, with an `lsn`, and the annotation disappears.
-- An alter while the connector runs is refused: the operator logs a warning, `Connector is not in STOPPED state` (it writes no Kubernetes event), and the offsets read from Connect are unchanged. The annotation stays on the resource and `verify.sh` removes it before the next step.
+- An alter while the connector runs is refused: since the annotation was set, the operator log holds `Altering offsets of connector inventory-cdc` followed by the warning `Connector is not in STOPPED state` (it writes no Kubernetes event), the annotation still reads `alter`, and the offsets read from Connect are unchanged. `verify.sh` removes the annotation before the next step.
 - With `spec.state: stopped` the REST status is `STOPPED` with no task. `SKU-4` is set to 401 while it is stopped. An alter to the current WAL position, from the ConfigMap `inventory-cdc-offsets-alter`, is read back from Connect as that position. After `spec.state: running`, the update of `SKU-5` to 502 arrives and the update of `SKU-4` to 401 never does.
 - `kafka_connect_connector_metrics_status{connector="inventory-cdc",status="running"}` is 1 in Prometheus.
 - The image IDs on the node equal the ones built from the chapter 08 and 09 Containerfiles.
 
 ## Experiments
 
-Each run starts from fresh namespaces. The failing set is a prediction until the live window freezes it.
+Each run starts from fresh namespaces.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
@@ -86,10 +86,10 @@ Checks 10 and 12 pass because the order is stored and the outbox row is removed 
 
 | What | Value |
 |---|---|
-| `KafkaConnect` Ready after the apply, build included | 87 to 90 s |
+| `KafkaConnect` Ready after the apply, build included | 82 to 99 s (the build pod itself ran about 25 s in a cluster spike; it is gone once Connect is Ready) |
 | Annotation removed after a list | 1 to 3 s |
 | Alter while stopped, applied | 0 to 3 s |
-| Namespace teardown with Connect and both connectors | 42 to 47 s |
+| Namespace teardown with Connect and both connectors | 42 to 48 s |
 
 ## Versions and licences
 

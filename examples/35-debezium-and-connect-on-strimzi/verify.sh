@@ -32,6 +32,12 @@ SERVER=edp-inventory            # the source partition of inventory-cdc: its top
 OFFSETS_CM=inventory-cdc-offsets
 ALTER_CM=inventory-cdc-offsets-alter
 
+# The plugin URL and checksum are written in connect/kafkaconnect.yaml for the reader and pinned in versions.env;
+# a difference between the two stops the run before anything is built.
+for pin in "$DEBEZIUM_PLUGIN_URL" "$DEBEZIUM_PLUGIN_SHA512"; do
+    grep -qF -- "$pin" connect/kafkaconnect.yaml || { echo "connect/kafkaconnect.yaml and _k8s/versions.env disagree on the plugin pin" >&2; exit 1; }
+done
+
 k8s_fresh .
 
 # --- helpers
@@ -115,9 +121,14 @@ put_alter_cm() { # put_alter_cm <lsn>: the new offset, in the shape the REST API
         --from-literal="offsets.json={\"offsets\":[{\"partition\":{\"server\":\"$SERVER\"},\"offset\":{\"lsn\":$1,\"lsn_proc\":$1,\"lsn_commit\":$1}}]}" \
         | kc apply --server-side --force-conflicts --field-manager=edp-verify -f - >/dev/null
 }
-alter_refused() { # the operator logs the refusal; no Kubernetes event is written for it
-    [[ "$(kc -n "$NS_KAFKA" logs deploy/strimzi-cluster-operator 2>/dev/null)" == *"Connector is not in STOPPED state"* ]]
+ALTER_SINCE=""
+alter_refused() { # the operator logs the refusal for this connector since the annotation was set; no Kubernetes event is written
+    # the warning line names the KafkaConnect; the line before it names the connector
+    local out; out="$(kc -n "$NS_KAFKA" logs deploy/strimzi-cluster-operator --since-time="$ALTER_SINCE" 2>/dev/null \
+        | grep -F -A1 "Altering offsets of connector inventory-cdc" || true)"
+    [[ "$out" == *"Connector is not in STOPPED state"* ]]
 }
+annotation_is_alter() { [[ "$(ckc get kafkaconnector inventory-cdc -o 'jsonpath={.metadata.annotations.strimzi\.io/connector-offsets}')" == alter ]]; }
 set_state() { act ckc patch kafkaconnector inventory-cdc --type=merge -p "{\"spec\":{\"state\":\"$1\"}}"; }
 stopped() { status_is inventory-cdc STOPPED -; }
 altered_to() { [[ "$(live_lsn)" == "$1" ]]; }
@@ -184,9 +195,10 @@ check "listing offsets writes them to the ConfigMap, with an lsn, and the operat
 echo "measured: list answered and the annotation removed after $((SECONDS - T_LIST)) s"
 LSN_BEFORE="$(listed_lsn || true)"
 act put_alter_cm "$(wal_position)"
+ALTER_SINCE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 act ckc annotate kafkaconnector inventory-cdc strimzi.io/connector-offsets=alter --overwrite
-refused_and_unchanged() { alter_refused && altered_to "$LSN_BEFORE"; }
-check "an alter while the connector runs is refused, the operator logs a warning and the offsets do not change" poll "$(bound 60)" refused_and_unchanged
+refused_and_unchanged() { alter_refused && annotation_is_alter && altered_to "$LSN_BEFORE"; }
+check "an alter while the connector runs is refused: the operator logs a warning for inventory-cdc, the annotation stays and the offsets do not change" poll "$(bound 60)" refused_and_unchanged
 act ckc annotate kafkaconnector inventory-cdc strimzi.io/connector-offsets-
 set_state stopped
 check "state stopped stops the connector and its task" poll "$(bound 60)" stopped

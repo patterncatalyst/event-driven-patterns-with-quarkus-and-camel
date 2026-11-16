@@ -28,7 +28,7 @@ The chapter 02 pair publishes and reads `edp.orders.placed`, which is in `Topics
 KEEP=1 ./verify.sh         # leave the namespaces in place
 ```
 
-`verify.sh` deletes and recreates the namespaces `edp`, `edp-kafka` and `edp-lgtm`, applies the overlay with `--server-side`, and ends with `N/N checks passed` (N is 18). Both clusters and the mirror are reached through `kubectl exec` and loopback NodePorts only. The order ids are `O-3401` to `O-3410`.
+`verify.sh` deletes and recreates the namespaces `edp`, `edp-kafka` and `edp-lgtm`, applies the overlay with `--server-side`, and ends with `18/18 checks passed`. Both clusters and the mirror are reached through `kubectl exec` and loopback NodePorts only. The order ids are `O-3401` to `O-3410`.
 
 ## Demo switches
 
@@ -36,7 +36,7 @@ Demo code, labelled as such in `verify.sh`, the overlay and the chapter.
 
 | Switch | Effect | Failing set |
 |---|---|---|
-| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18): no group appears on `edp-dr`, so the delta checks fail; the records, the connectors and the monitoring checks pass |
+| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18): no group appears on `edp-dr`, so the delta checks fail and the earlier orders are notified twice; the records, the connectors and the monitoring checks pass |
 
 The patch is a JSON patch because kustomize replaces a whole list of a custom resource when it merges one, and `mirrors` is a list.
 
@@ -47,12 +47,12 @@ The patch is a JSON patch because kustomize replaces a whole list of a custom re
 3. Places five orders on `edp` and waits for their notifications, then checks the copy on `edp-dr`: same topic name, same number of records, and the internal topics where they are expected.
 4. Checks that the group `notification-service` exists on `edp-dr` with the committed offsets it has on `edp`.
 5. Stops `notification-service` (precondition), places five more orders, checks that nobody is notified and that `edp-dr` holds all ten records, and that the group there did not move.
-6. Starts `notification-service` with `CAMEL_COMPONENT_KAFKA_BROKERS` set to the `edp-dr` bootstrap address and nothing else changed, and checks the five orders are notified and the group on `edp-dr` advanced by exactly five.
+6. Starts `notification-service` with `CAMEL_COMPONENT_KAFKA_BROKERS` set to the `edp-dr` bootstrap address and nothing else changed, and checks the five orders are notified, the group on `edp-dr` advanced by exactly five and every order has one notification.
 7. Checks that the mirror's worker reports its two connectors through the monitoring component of chapter 32 and that Grafana serves the dashboard of this example.
 
 ## Tests and checks in detail
 
-There is no `mvn verify`: the example has no Java. Offsets are read with `kafka-consumer-groups.sh` and `kafka-get-offsets.sh` in `edp-broker-0` and `edp-dr-dual-0`; the committed offset of a partition the group has never committed is counted as 0. The notification store is a database, so it cannot show that an order was not read twice; the committed-offset difference can.
+There is no `mvn verify`: the example has no Java. Offsets are read with `kafka-consumer-groups.sh` and `kafka-get-offsets.sh` in `edp-broker-0` and `edp-dr-dual-0`; the committed offset of a partition the group has never committed is counted as 0. `notification-service` stores one row for every record it reads, so a count of notifications per order shows a record read twice, and the difference of the committed offsets shows how many records the group read.
 
 1. Precondition: `edp` and `edp-dr` are Ready.
 2. Precondition: `edp-mm2` is Ready.
@@ -69,7 +69,7 @@ There is no `mvn verify`: the example has no Java. Offsets are read with `kafka-
 13. The group on `edp-dr` is at 5 and not ahead of the records there.
 14. `notification-service` is Ready again with `CAMEL_COMPONENT_KAFKA_BROKERS` equal to the `edp-dr` bootstrap address.
 15. The notifications of `O-3406` to `O-3410` arrive.
-16. The group on `edp-dr` reaches 10 and has advanced by exactly 5 since check 13.
+16. The group on `edp-dr` reaches 10 and has advanced by exactly 5 since check 13, and each of `O-3401` to `O-3410` has exactly one notification.
 17. `kafka_connect_connect_worker_metrics_connector_count{strimzi_kind="KafkaMirrorMaker2"}` is 2 in Prometheus.
 18. Grafana serves the dashboard `edp-mirrormaker2`.
 
@@ -79,7 +79,7 @@ Checks 9, 13 and 16 depend on the group offset sync. They are the negative witne
 
 `verify.sh` prints each value on a `measured:` line; ranges are over the verified runs.
 
-- The `Kafka` `edp-dr` Ready: 34 to 35 s after its creation. `edp-mm2` Ready: 68 to 72 s.
-- Group offsets on `edp-dr` after the sync setting is on, with 5 s intervals: 6 to 7 s after the records on both clusters matched.
+- The `Kafka` `edp-dr` Ready: 33 to 37 s after its creation. `edp-mm2` Ready: 68 to 74 s.
+- Group offsets on `edp-dr` with 5 s intervals and `offset.lag.max: 0`: 6 to 7 s after the five orders were notified and the record counts on both clusters matched. With the default `offset.lag.max` of 100, a cluster spike found the group still behind the source after 140 s.
 - From the change of the bootstrap address to the five orders notified: 7 to 8 s.
-- Deleting the mirror, both clusters, the apps and the three namespaces: 45 s to 50 s.
+- Deleting the mirror, both clusters, the apps and the three namespaces: 33 to 68 s.

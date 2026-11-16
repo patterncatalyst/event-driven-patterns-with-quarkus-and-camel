@@ -30,7 +30,7 @@ fi
 k8s_fresh "$DIR"
 
 # --- Prometheus, through the published NodePort
-q() { python3 -I ./promq.py "$PROM" "$1" "$2"; }            # q <sum|count> <promql>
+q() { python3 -I "$_LIB_DIR/tools/prom.py" "$PROM" "$2" "$1"; }   # q <sum|count> <promql>
 q_sum() { q sum "$1"; }
 q_count() { q count "$1"; }
 num() { [[ "$1" != none ]] && echo "$1" || echo 0; }
@@ -115,8 +115,11 @@ family_back() { patch_allow_list "$WIDE" && poll "$TOPIC_BOUND" endpoint_has edp
 narrow_and_wait() { # the family is on the endpoint first, so its absence afterwards is the effect of the change
     endpoint_has edp-broker-0 "$BYTES_IN" && narrow && ALLOW_T0=$SECONDS && poll "$TOPIC_BOUND" family_gone
 }
-family_restored() { family_back && pods_unchanged; }
 pods_unchanged() { [[ -n "$BEFORE" && "$(pod_state)" == "$BEFORE" ]]; }
+reconciled_and_unchanged() { # read the pods only once the operator has reconciled the change, so a roll would show
+    poll "$TOPIC_BOUND" kafka_ready edp && pods_unchanged
+}
+family_restored() { family_back && reconciled_and_unchanged; }
 
 # --- the checks
 precondition "the Kafka resource has metricsConfig type $EXPECT_TYPE" expect "$(metrics_type)" "$EXPECT_TYPE"
@@ -144,6 +147,6 @@ repair_lab >/dev/null || echo "scratch KafkaTopic was not recreated" >&2
 check "the topic is declared again and reads Ready 1 with 3 partitions" poll "$TOPIC_BOUND" lab_repaired
 check "narrowing the allowList removes the bytes-in family from the broker endpoint" narrow_and_wait
 echo "measured: the endpoint dropped the family $((SECONDS - ALLOW_T0)) s after the narrowing"
-check "the broker and controller pods keep their names, uids and restart counts" pods_unchanged
+check "the broker and controller pods keep their names, uids and restart counts" reconciled_and_unchanged
 check "restoring the allowList brings the family back, again with no restart" family_restored
 summary
