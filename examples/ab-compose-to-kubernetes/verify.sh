@@ -135,7 +135,7 @@ compare_half() {
     while read -r key; do
         check "$key differs as expected" "${CFG[@]}" differs "$key" "$c" "$k"
     done < <("${CFG[@]}" keys allowed)
-    check "no other setting differs" "${CFG[@]}" others "$c" "$k"
+    check "none of the 18 compared keys differs beyond the four allowed" "${CFG[@]}" others "$c" "$k"
     check "the appendix explains every allowed difference" "${CFG[@]}" documented "$DOC"
     summary
 }

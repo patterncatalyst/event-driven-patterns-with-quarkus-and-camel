@@ -1,6 +1,6 @@
 # Appendix B: Compose to Kubernetes
 
-The same Kafka and PostgreSQL, described twice: as the compose services of `examples/_infra` and as the `Kafka`, `KafkaNodePool` and CloudNativePG `Cluster` resources of `examples/_k8s`. Each target starts fresh and is read through its own running system, `kafka-configs.sh --describe --all` for the broker and `SHOW` for PostgreSQL. A third step compares the two captures against a list of expected differences.
+The same Kafka and PostgreSQL, described twice: as the compose services of `examples/_infra` and as the `Kafka`, `KafkaNodePool` and CloudNativePG `Cluster` resources of `examples/_k8s`. Each target starts fresh and is read through its own running system, `kafka-configs.sh --describe --all` for the broker and `current_setting()` for PostgreSQL. A third step compares the two captures against a list of expected differences.
 
 There is no Java and no image. The files of `_infra` and `_k8s` are used as they are.
 
@@ -45,7 +45,7 @@ Compose and Kubernetes captures read 13 broker settings (`num.partitions`, `defa
 
 `verify.sh k8s` (9 checks): 1 and 2 as above (the broker pod and node id come from `status.nodeIds`); 3 the same witness with the controller's node id; 4 the Kafka resource reports the version it was asked for; 5 and 6 as above against `spec.kafka.config`; 7 the Cluster manifest (`kubectl kustomize ../_k8s/postgres`, rendered as written, because the operator adds `wal_level` and `max_replication_slots` to the live resource) sets none of the four PostgreSQL parameters compared; 8 each reports the CloudNativePG or PostgreSQL default; 9 major.minor equals the Cluster image tag's.
 
-`verify.sh compare` (23 checks): 1 and 2 both captures exist and are complete (an empty capture stops the run); 3 to 17 each of 15 settings is equal on both targets (ten broker keys, `max_wal_senders`, `max_connections`, `wal_level`, `server_version` on major.minor, the Kafka version); 18 to 21 each of the four allowed differences has exactly its expected pair of values; 22 no other setting differs; 23 `_docs/ab-compose-to-kubernetes.md` names every allowed key. The checks print `9/9`, `9/9` and `23/23 checks passed`.
+`verify.sh compare` (23 checks): 1 and 2 both captures exist and are complete (an empty capture stops the run); 3 to 17 each of 15 settings is equal on both targets (ten broker keys, `max_wal_senders`, `max_connections`, `wal_level`, `server_version` on major.minor, the Kafka version); 18 to 21 each of the four allowed differences has exactly its expected pair of values; 22 none of the 18 compared keys differs beyond the four allowed (it follows from 3 to 21 and guards the key lists); 23 `_docs/ab-compose-to-kubernetes.md` names every allowed key. The checks print `9/9`, `9/9` and `23/23 checks passed`.
 
 ## Allowed differences
 

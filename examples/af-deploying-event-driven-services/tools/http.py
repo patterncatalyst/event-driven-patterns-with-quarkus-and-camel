@@ -4,7 +4,7 @@
                                                          4 threads, about 80 requests/s in all, a new connection each;
                                                          creates the flowing file once the first request is answered
   http.py post <order id>                                one POST of that order id; prints the status (a retry of an accepted order)
-  http.py report <out-file>                              requests, failed, 5xx and the time of the first and last request
+  http.py report <out-file>                              requests, failed (split into reset, timeout and refused), 5xx and the time of the first and last request
   http.py once <out-file>...                             reads kafka-console-consumer output (key, tab, value) on stdin
                                                          and checks one event per 201 and none for a failed request
 The out file has one line per request: <time> <order id> <status or error name>.
@@ -19,6 +19,7 @@ import threading
 import time
 
 PORT = 30080  # the NodePort published on 127.0.0.1
+RESETS = ("ConnectionResetError", "RemoteDisconnected", "BrokenPipeError", "ConnectionAbortedError")
 
 
 def load(first, secs, out, flowing=None):
@@ -40,7 +41,7 @@ def load(first, secs, out, flowing=None):
                 c.request("POST", "/orders", body, {"Content-Type": "application/json", "Connection": "close"})
                 code = str(c.getresponse().status)
                 c.close()
-            except Exception as e:  # a reset, a refused connection or a timeout is a failed request
+            except Exception as e:  # a reset, a refused connection or a timeout is a failed request, counted by its exception name
                 code = type(e).__name__
             with lock:
                 results.append((t, oid, code))
@@ -80,8 +81,11 @@ def report(path):
     rows = read(path)
     failed = sum(1 for r in rows if r[2] != "201")
     five = sum(1 for r in rows if re.fullmatch(r"5\d\d", r[2]))
+    reset = sum(1 for r in rows if r[2] in RESETS)
+    timeout = sum(1 for r in rows if r[2] in ("TimeoutError", "timeout"))
+    refused = sum(1 for r in rows if r[2] == "ConnectionRefusedError")
     times = [float(r[0]) for r in rows]
-    out(f"requests={len(rows)} failed={failed} status5xx={five} first={min(times):.3f} last={max(times):.3f}")
+    out(f"requests={len(rows)} failed={failed} reset={reset} timeout={timeout} refused={refused} status5xx={five} first={min(times):.3f} last={max(times):.3f}")
 
 
 def once(paths, text):

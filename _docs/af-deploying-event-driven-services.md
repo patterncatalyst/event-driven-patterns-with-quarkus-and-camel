@@ -9,7 +9,7 @@ description: "A deployment stops consumers that own partitions. A stop and resta
 duration: "60 minutes"
 ---
 
-A consumer in a group owns partitions. Stopping it hands them to another member or to nobody, a record it read and had not committed is read again, and a record it could not store may be skipped without a trace. Whether a change loses records, repeats them or only delays them depends on how the pods are replaced and on whether the new code reads what the old code wrote.
+A consumer in a group owns partitions. Stopping it hands them to another member or to nobody, a record it read and had not committed can be read again, and a record it could not store may be skipped, leaving only an error line in the log. Whether a change loses records, repeats them or only delays them depends on how the pods are replaced and on whether the new code reads what the old code wrote.
 
 The strategies below run on a minikube cluster with two existing images, unchanged: a notification-service, whose group, protocol and client id come from the environment, and an order-service that answers `POST /orders`. A producer Job sends numbered records (`O-41000` and up) at a fixed rate, so a record that is missing, repeated or read by two groups is found by its id.
 
@@ -19,19 +19,19 @@ The Deployment strategy `Recreate` kills every existing pod before it creates ne
 
 {% include excalidraw.html file="af-stop-before" alt="A producer Job writes to edp.orders.placed, whose three partitions are each read by one pod of the group, and every record becomes one row in PostgreSQL" caption="Figure F.1: A stop and restart starts from a group that is keeping up" %}
 
-Nothing is lost, because the topic holds what the producer sent while no consumer ran. The stop costs time: the backlog grows by the producer's rate for as long as the new pods need to start.
+Nothing is lost, because the topic holds what the producer sent while no consumer ran. The stop costs time: the backlog grows for as long as the new pods need to start.
 
 {% include excalidraw.html file="af-stop-gap" alt="During the gap the producer keeps sending, the topic's backlog grows, no pod exists and no row is written" caption="Figure F.2: The topic keeps the records while no consumer runs" %}
 
-New pods rejoin the group, read from the committed offset and drain the backlog faster than it grew. The offset trails the last processed record, because the Kafka client commits on a timer, the Camel Kafka default. Records processed after the last commit are processed again, and the `attempts` column of the notification table reads 2 for them. An idempotent consumer makes the repeat harmless.
+New pods rejoin the group, read from the committed offset and drain the backlog faster than it grew. The offset trails the last processed record, because the Kafka client commits on a timer, the Camel Kafka default. A record processed after the last commit can be processed again, and the `attempts` column of the notification table reads 2 for it. How many repeat depends on timing and can be none. An idempotent consumer makes the repeat harmless.
 
-{% include excalidraw.html file="af-stop-after" alt="New pods resume each partition from the committed offset; every record has a row and records after the last commit have attempts 2" caption="Figure F.3: Nothing is lost; some records are processed twice" %}
+{% include excalidraw.html file="af-stop-after" alt="New pods resume each partition from the committed offset; every record has a row and records after the last commit have attempts 2" caption="Figure F.3: Nothing is lost; records after the last commit may be processed twice" %}
 
 Choose a stop and restart when the old and the new version must not run together, or when a gap of one pod start is acceptable.
 
 ## Rolling update of a consumer group
 
-A rolling update replaces pods in steps. With `maxSurge: 1` and `maxUnavailable: 0` the Deployment starts a new pod, waits for it to be ready, then removes an old one, so the group never has fewer than three serving members.
+A rolling update replaces pods in steps. With `maxSurge: 1` and `maxUnavailable: 0` the Deployment starts a new pod, waits for it to be ready, then removes an old one, so the Deployment never has fewer than three available pods.
 
 ```yaml
 strategy:
@@ -41,15 +41,15 @@ strategy:
 
 {% include excalidraw.html file="af-roll-before" alt="Three pods of revision 1 each own one partition of edp.orders.placed under group notify-roll, with a RollingUpdate strategy of maxSurge 1 and maxUnavailable 0" caption="Figure F.4: A rolling update starts from three serving members" %}
 
-Each start and each stop changes the group's membership, and a membership change is a rebalance. Partitions move between members, and the member that gives one up has committed only as far as its last commit, so the records after that point go to the new owner again.
+Each start and each stop changes the group's membership, and a membership change is a rebalance. Partitions move between members, and the member that gives one up has committed only as far as its last commit, so the records after that point can go to the new owner again.
 
 {% include excalidraw.html file="af-roll-mid" alt="Two revision 1 pods keep their partitions, a third leaves once a revision 2 pod has joined, and the rebalance moves a partition and delivers uncommitted records again" caption="Figure F.5: Every membership change moves partitions" %}
 
 Under the classic group protocol the members take part in the rebalance. With the consumer protocol of KIP-848 the group coordinator on the broker drives it, declaring an assignment and reconciling each member toward it (Apache Kafka, KIP-848). The notification-service selects the protocol with `GROUP_PROTOCOL`, and the image runs under either one unchanged. Neither protocol guarantees that no record is repeated: a record read and not yet committed when its partition moves is delivered again, so the repeat is bounded by what was processed since the last commit at each move.
 
-{% include excalidraw.html file="af-roll-after" alt="Three pods of revision 2 own the partitions; every record has a row and some have attempts 2" caption="Figure F.6: At least once: nothing missing, a bounded number repeated" %}
+{% include excalidraw.html file="af-roll-after" alt="Three pods of revision 2 own the partitions; every record has a row and a record read again has attempts 2" caption="Figure F.6: At least once: nothing missing, a bounded number, possibly none, repeated" %}
 
-A readiness probe lets a new pod join only when it can work, and `maxUnavailable: 0` keeps capacity from dropping.
+A readiness probe decides when the Deployment counts a new pod as available and lets the rollout continue. The pod joins the group when the application starts, whatever the probe reports, and `maxUnavailable: 0` keeps capacity from dropping.
 
 ## Rolling update of a service under requests
 
@@ -59,7 +59,7 @@ A service behind a Kubernetes Service has no group to rebalance. The risk is at 
 
 The order-service answers `POST /orders` and publishes one event per accepted order. During a rolling update with a readiness probe, requests in flight on a pod that is removed can fail at the connection level, as a reset or a timeout, and the client has to retry them. No request was answered with a 5xx status. The publish happens before the response, so a request that fails publishes nothing, and each 201 left exactly one event, never none and never two. A retry of an order that was accepted is refused with 409 on its id, so a retry cannot publish a second event.
 
-Quarkus can drain running requests: `quarkus.shutdown.timeout` waits for them, and `quarkus.shutdown.delay` keeps serving while the readiness probe reports down (Quarkus, all configuration). Both are environment variables on the Deployment, `QUARKUS_SHUTDOWN_TIMEOUT` and `QUARKUS_SHUTDOWN_DELAY`. The guarantee does not depend on them: it rests on the client's retry and on the id that makes the retry safe.
+Quarkus can drain running requests: `quarkus.shutdown.timeout` waits for them, and `quarkus.shutdown.delay` keeps serving while the readiness probe reports down, but only when `quarkus.shutdown.delay-enabled` is true, a build-time property that defaults to false (Quarkus, all configuration). The Deployment sets none of them, because the image stays as built. The guarantee does not depend on them: it rests on the client's retry and on the id that makes the retry safe.
 
 ## A breaking schema change
 
@@ -67,7 +67,7 @@ The notification-service reads `orderId`. A producer that renames it to `orderRe
 
 {% include excalidraw.html file="af-schema-breaking" alt="A producer sends orderRef instead of orderId; the topic accepts it, the v1 consumer's insert fails because order_id is null, the offset is committed anyway so group lag is zero, no row exists and the only trace is an error line in the log" caption="Figure F.8: A breaking change is a silent loss" %}
 
-The record is read, the insert fails on the missing value, Camel logs `Failed delivery` and the route moves on. The offset is committed, the lag is zero and the row does not exist. A dashboard on lag stays green, and the only repair is to produce the record again. A schema registry with a compatibility rule refuses such a change at the producer; plain JSON on a topic has no such gate.
+The record is read, the insert fails on the missing value, Camel logs `Failed delivery` and the route moves on. The offset is committed, the lag is zero and the row does not exist. A dashboard on lag stays green. Plain JSON on a topic has no gate between producer and consumer: the broker accepts whatever the producer sends.
 
 An additive change takes two compatible steps and a third that removes, the expand and contract sequence that Danilo Sato describes as ParallelChange. First the producer expands: it sends both `orderId` and `orderRef`. The old consumer reads the field it knows and ignores the other, and consumers of the new version read `orderRef`. Every record is stored.
 
@@ -81,7 +81,7 @@ When a change cannot be made compatible, the new shape gets a new topic. A migra
 
 {% include excalidraw.html file="af-schema-new-topic" alt="A migration consumer reads the old v1 topic and writes a new v2 topic; the v2 producer writes the new topic, v2 consumers read it, and the v1 producer stops after the cut" caption="Figure F.11: An incompatible change gets its own topic" %}
 
-It costs a topic, a consumer and a window with two sources of truth. The notification-service image reads fixed topics, so this path is drawn and not run.
+It costs a topic, a consumer and a window with two sources of truth, and it is drawn, not run, because the notification-service reads fixed topics.
 
 ## Blue-green consumers: cut-over and rollback
 
@@ -89,7 +89,7 @@ Blue-green runs the new version beside the old one and moves the load in one ste
 
 {% include excalidraw.html file="af-bg-blue-live" alt="Blue runs three replicas under group notify-blue with committed offsets; green has zero replicas, a different group and no offsets" caption="Figure F.12: One consumer group per colour" %}
 
-A new group has no offsets, so green would replay the topic or skip what blue had not yet read. The cut-over gives green blue's position instead. Kafka resets the offsets of a group only while its consumers are inactive, accepts a CSV file of values, and the group may not have existed before (Apache Kafka, basic operations).
+A new group has no offsets, so green would replay the topic or skip what blue had not yet read. The cut-over gives green blue's position instead. Kafka resets the offsets of a group only while its consumers are inactive, and accepts a CSV file of values (Apache Kafka, basic operations). The target group can be new: it needs no members and no earlier offsets.
 
 ```bash
 kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group notify-blue \
@@ -98,17 +98,15 @@ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group notify-green 
   --reset-offsets --from-file offsets.csv --execute
 ```
 
-The export has one `topic,partition,offset` line per partition and no header. The cut-over is four steps: scale blue to zero and wait for its group to be Empty, which takes seconds because members leave the group on shutdown; export; import; scale green up.
+The export has one `topic,partition,offset` line per partition and no header. The cut-over is four steps: scale blue to zero and wait for its group to be Empty, which its members reach by leaving the group on shutdown; export; import; scale green up.
 
 {% include excalidraw.html file="af-bg-cutover" alt="Four steps in order: scale blue to 0, export blue's offsets, import them into green's group, scale green to 3; records after blue's last commit are processed again by green" caption="Figure F.13: Green starts where blue's commits ended" %}
 
-Nothing goes missing, because green starts where blue's commits ended. Some records are read twice: blue processed records after its last commit, green starts at that commit, and both groups store them. The overlap is bounded by the commit interval and is not zero. A consumer that cannot tolerate it needs an idempotent consumer.
+Nothing goes missing, because green starts where blue's commits ended. Records can be read twice: blue processed records after its last commit, green starts at that commit, and both groups store them. The overlap is bounded by what blue processed in its last commit interval, and it can be zero.
 
 Rollback is the same four steps the other way: stop green, copy green's offsets to blue's group, start blue. Blue's group exists and holds older offsets, and the import replaces them, so blue resumes after what green processed. Without the copy a new group replays the topic and an old group resumes at its old position, reading everything since the cut-over again.
 
 {% include excalidraw.html file="af-bg-rollback" alt="Green is live and blue is at zero replicas with older offsets; the rollback scales green to 0, exports green's offsets, imports them into blue's existing group and scales blue to 3" caption="Figure F.14: Rollback is a cut-over in the other direction" %}
-
-The cost is two groups of capacity while both exist and a copy step between the stop and the start.
 
 ## Build, run, observe
 
@@ -135,7 +133,7 @@ A client of a rolling service has to expect failed requests, because a connectio
 
 > **🤖 Explore with your agent**
 > "In examples/af-deploying-event-driven-services, run verify.sh with OFFSET_COPY=off, then query notifications.notification for the groups notify-blue and notify-green in the id range O-51000 to O-54999. List the ids both groups hold and say why green re-read them. Then read group_offsets_copy in examples/_k8s/lib.sh and state what it exports from the source group, what it imports into the target, and why the source group must have no members."
-> Check: with OFFSET_COPY=off the two groups share every id blue had processed before the cut-over and no id is missing; with the copy they share only the records after blue's last commit, below 600.
+> Check: with OFFSET_COPY=off the two groups share every id blue had processed before the cut-over and no id is missing; with the copy they share only the records after blue's last commit, at most what blue wrote in its last commit interval.
 
 ## References
 
@@ -145,4 +143,9 @@ A client of a rolling service has to expect failed requests, because a connectio
 - Quarkus, [All configuration](https://quarkus.io/version/3.40/guides/all-config) (`quarkus.shutdown.timeout`, `quarkus.shutdown.delay`)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 21: Deploying Event-Driven Microservices
 - Danilo Sato, [ParallelChange](https://martinfowler.com/bliki/ParallelChange.html), martinfowler.com, 2014: expand, migrate and contract
-- Chapter 2 for the order-service, chapter 6 for the notification-service and its consumer settings, chapter 11 for the idempotent consumer, chapter 12 for transactions, chapter 18 for schema evolution, chapter 28 for the cluster
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }}): the order-service
+- [Optimizing subscribers]({{ '/docs/06-optimizing-subscribers/' | relative_url }}): the notification-service and its consumer settings
+- [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }}): making a repeat harmless
+- [Exactly-once with Kafka transactions]({{ '/docs/12-exactly-once-with-kafka-transactions/' | relative_url }}): transactions
+- [Schema evolution and upcasting]({{ '/docs/18-schema-evolution-and-upcasting/' | relative_url }}): schema evolution
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }}): the cluster

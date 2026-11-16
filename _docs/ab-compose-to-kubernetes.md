@@ -11,7 +11,7 @@ duration: "45 minutes"
 
 Moving a service from compose to Kubernetes changes its addresses. The settings underneath it move too, and nothing reports it when one is lost. A service that creates its topics by sending to them relies on `auto.create.topics.enable` and on `num.partitions`. A Debezium connector relies on logical WAL and on a free replication slot. A share group relies on broker settings that the compose file sets, two of them because one broker cannot satisfy their defaults. Each is one line in a compose file, and each has to find a new home in a resource that the reader did not write.
 
-Reading the two files side by side finds the lines that were copied. It does not find the ones an operator adds or changes, because the operator's defaults are not in either file. CloudNativePG sets `wal_level` to `logical` by default, and the compose file has to ask for it on the command line. The only complete view is the running system's own answer: start each target fresh, ask Kafka and PostgreSQL for their effective settings and compare the two sets of answers.
+Reading the two files side by side finds the lines that were copied. It does not find the ones an operator adds or changes, because the operator's defaults are not in either file. CloudNativePG defaults `wal_level` to `logical`, so the Cluster needs no line for it, while the compose file has to ask for it on the command line. The only complete view is the running system's own answer: start each target fresh, ask Kafka and PostgreSQL for their effective settings and compare the two sets of answers.
 
 {% include excalidraw.html file="ab-same-config-two-targets" alt="Two columns. Compose: a kafka container with broker and controller roles, the KAFKA environment, a postgres container run by start.sh and its command line flags, named volumes. Kubernetes: a Kafka resource with two node pools, the spec.kafka.config block, a CloudNativePG Cluster, no postgresql parameters, persistent-claim storage" caption="Figure B.1: Each compose setting has a place in a Kubernetes resource, or a default that replaces it" %}
 
@@ -70,7 +70,7 @@ Strimzi does not let a `Kafka` resource set everything. Its documentation says t
 
 ## PostgreSQL: one container, then a CloudNativePG Cluster
 
-The compose database runs CloudNativePG's operand image by hand. The image has no entrypoint, so a start script runs `initdb` on the first start and then execs `postgres` with three settings on the command line.
+The compose database runs CloudNativePG's operand image by hand. The image has no entrypoint, so a start script runs `initdb` on the first start and then execs `postgres` with four settings on the command line.
 
 ```yaml
 # examples/_infra/compose-postgres.yaml
@@ -112,7 +112,7 @@ One difference sits outside the settings. Debezium on Kubernetes connects as the
 
 {% include excalidraw.html file="ab-capture-and-compare" alt="verify.sh compose and verify.sh k8s each start their target fresh and write a capture of 13 broker settings and 5 PostgreSQL settings; verify.sh compare reads both captures and reports each setting as equal, as an allowed difference or as a failure" caption="Figure B.2: Both targets are read from the running systems and compared against one list of expected differences" %}
 
-The capture is a fixed list of keys, read the same way on both sides: `kafka-configs.sh --describe --all` for the broker, and `SHOW` through `psql` for PostgreSQL. On compose the tools run in the `edp-kafka` and `edp-postgres` containers with `docker exec`, on Kubernetes in the broker and instance pods with `kubectl exec`. The comparison runs against files and starts nothing. Thirteen broker keys and five PostgreSQL keys are compared, plus the Kafka version.
+The capture is a fixed list of keys, read the same way on both sides: `kafka-configs.sh --describe --all` for the broker, and `current_setting()` through `psql` for PostgreSQL. On compose the tools run in the `edp-kafka` and `edp-postgres` containers with `docker exec`, on Kubernetes in the broker and instance pods with `kubectl exec`. The comparison runs against files and starts nothing. Thirteen broker keys and five PostgreSQL keys are compared, plus the Kafka version.
 
 | Equal on both targets | Value |
 |---|---|
@@ -173,4 +173,8 @@ Try one change and rerun:
 - Apache Kafka, [Broker configs](https://kafka.apache.org/43/configuration/broker-configs/): the defaults of the keys compared, `group.coordinator.rebalance.protocols` and the share coordinator state topic
 - CloudNativePG, [PostgreSQL configuration](https://cloudnative-pg.io/docs/1.30/postgresql_conf/): global defaults, user parameters and fixed parameters
 - PostgreSQL, [Connections and Authentication](https://www.postgresql.org/docs/18/runtime-config-connection.html) (`max_connections`) and [Replication](https://www.postgresql.org/docs/18/runtime-config-replication.html) (`max_wal_senders`, `max_replication_slots`): the PostgreSQL defaults
-- Chapter 0 for the compose stack, chapter 28 for the Kafka resource and node pools, chapter 35 for the replication role, chapter 7 for share groups and chapter 9 for replication slots
+- [Prerequisites and stacks]({{ '/docs/00-prerequisites-and-stacks/' | relative_url }}): the compose stack
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }}): the Kafka resource and node pools
+- [Debezium and Connect on Strimzi]({{ '/docs/35-debezium-and-connect-on-strimzi/' | relative_url }}): the replication role
+- [Queues for Kafka]({{ '/docs/07-queues-for-kafka/' | relative_url }}): share groups
+- [Log tailing with Debezium]({{ '/docs/09-log-tailing-with-debezium/' | relative_url }}): replication slots

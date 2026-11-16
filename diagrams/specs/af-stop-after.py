@@ -14,7 +14,7 @@ emit(
         {"x": 330, "y": 90, "w": 200, "h": 46, "style": "user", "lines": ["new pod", "resumes partition 0"]},
         {"x": 330, "y": 150, "w": 200, "h": 46, "style": "user", "lines": ["new pod", "resumes partition 1"]},
         {"x": 330, "y": 210, "w": 200, "h": 46, "style": "user", "lines": ["new pod", "resumes partition 2"]},
-        {"x": 640, "y": 110, "w": 320, "h": 100, "style": "accent", "lines": ["notifications.notification", "every record has a row", "attempts is 2 for records after the last commit"]},
+        {"x": 640, "y": 110, "w": 320, "h": 100, "style": "accent", "lines": ["notifications.notification", "every record has a row", "a record read again has attempts 2"]},
     ],
     edges=[
         {"x1": 230, "y1": 150, "x2": 330, "y2": 113},
@@ -26,8 +26,8 @@ emit(
     ],
     notes=[
         {"x": 500, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-         "text": "Nothing is lost; some records are processed twice"},
+         "text": "Nothing is lost; records after the last commit may be processed twice"},
         {"x": 500, "y": 296, "anchor": "middle", "size": 12, "color": "#555555",
-         "text": "The client commits on a timer, so the last processed records were not yet committed"},
+         "text": "The client commits on a timer, so records after the last commit can be read again"},
     ],
 )

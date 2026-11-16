@@ -1,4 +1,4 @@
-"""After a rolling update: three pods of revision 2, every record has a row and some were delivered twice."""
+"""After a rolling update: three pods of revision 2, every record has a row and some may have been delivered twice."""
 
 from generate_diagram import emit
 
@@ -14,7 +14,7 @@ emit(
         {"x": 330, "y": 90, "w": 220, "h": 46, "style": "user", "lines": ["revision 2 pod", "owns a partition"]},
         {"x": 330, "y": 150, "w": 220, "h": 46, "style": "user", "lines": ["revision 2 pod", "owns a partition"]},
         {"x": 330, "y": 210, "w": 220, "h": 46, "style": "user", "lines": ["revision 2 pod", "owns a partition"]},
-        {"x": 680, "y": 110, "w": 280, "h": 100, "style": "accent", "lines": ["notifications.notification", "every record has a row", "attempts is 2 for repeated records"]},
+        {"x": 680, "y": 110, "w": 280, "h": 100, "style": "accent", "lines": ["notifications.notification", "every record has a row", "a record read again has attempts 2"]},
     ],
     edges=[
         {"x1": 230, "y1": 150, "x2": 330, "y2": 113},
@@ -26,7 +26,7 @@ emit(
     ],
     notes=[
         {"x": 500, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-         "text": "At least once: nothing missing, a bounded number repeated"},
+         "text": "At least once: nothing missing, a bounded number, possibly none, repeated"},
         {"x": 500, "y": 296, "anchor": "middle", "size": 12, "color": "#555555",
          "text": "The repeat is bounded by what was processed since the last commit at each move"},
     ],

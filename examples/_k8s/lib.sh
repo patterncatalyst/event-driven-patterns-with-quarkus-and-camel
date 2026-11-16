@@ -87,7 +87,8 @@ kafka_raw_on() { # kafka_raw_on <pod> <tool> <args...>: a tool that takes no --b
 kafka_exec() { kafka_exec_on edp-broker-0 "$@"; } # the substrate's broker
 kafka_raw() { kafka_raw_on edp-broker-0 "$@"; }
 group_empty() { # group_empty <group>: the consumer group has no active member (state Empty or Dead)
-    kafka_exec kafka-consumer-groups.sh --describe --group "$1" --state 2>/dev/null | grep -Eq '[[:space:]](Empty|Dead)[[:space:]]'
+    local out; out="$(kafka_exec kafka-consumer-groups.sh --describe --group "$1" --state 2>/dev/null)" || return 1
+    [[ "$out" =~ [[:space:]](Empty|Dead)([[:space:]]|$) ]]
 }
 group_offsets_copy() { # group_offsets_copy <from> <to>: copy committed offsets between two inactive groups
     # kafka-consumer-groups.sh exports `topic,partition,offset` (no header, no group column) and imports it

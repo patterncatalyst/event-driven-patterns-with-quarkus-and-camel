@@ -2,12 +2,12 @@
 title: "Deploying event-driven services on minikube"
 order: 41
 permalink: /examples/af-deploying-event-driven-services/
-description: "The chapter 06 notification-service and the chapter 02 order-service, unchanged, replaced by a stop and restart, a rolling update, a schema change and a blue-green cut-over under a producer that numbers every record."
+description: "The event notification service and the order service, unchanged, replaced by a stop and restart, a rolling update, a schema change and a blue-green cut-over under a producer that numbers every record."
 ---
 
 [`examples/af-deploying-event-driven-services/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/af-deploying-event-driven-services) changes two running services in five ways while a producer Job sends uniquely numbered records at a fixed rate. It accompanies [Appendix F]({{ '/docs/af-deploying-event-driven-services/' | relative_url }}).
 
-It is a kustomize overlay over the shared Part 6 cluster setup and a `verify.sh`, with no Java. The services are the chapter 06 notification-service and the chapter 02 order-service, built from their own Containerfiles and loaded into the node unchanged.
+It is a kustomize overlay over the shared minikube setup in `examples/_k8s` and a `verify.sh`, with no Java. The services are the notification-service and the order-service, built from their own Containerfiles and loaded into the node unchanged.
 
 ```bash
 examples/_k8s/cluster.sh up

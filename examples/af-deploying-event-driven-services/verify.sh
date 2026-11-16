@@ -22,7 +22,8 @@ OFFSET_COPY="${OFFSET_COPY:-on}"               # off (demo code): green and blue
 [[ "$GROUP_PROTOCOL" == classic ]] && echo "demo code: the rolling update runs on the classic group protocol"
 [[ "$OFFSET_COPY" == off ]] && echo "demo code: the blue-green cut-over and rollback copy no offsets"
 
-CEILING=600            # records: 6 s of input at 100 records/s, the ceiling for a repeated delivery or a re-read
+COMMIT_S=5             # Camel's auto-commit interval for the Kafka consumer, left at its default
+SLACK_S=2              # the client commits inside poll(), after the batch in hand: allow two seconds on top of the interval
 TOPIC=edp.orders.placed
 RATE=100
 
@@ -52,6 +53,27 @@ union_ids() { sql "SELECT count(DISTINCT order_id) FROM notifications.notificati
 union_eq() { [[ "$(union_ids "$1" "$2" "$3" "$4" 2>/dev/null || echo -1)" == "$5" ]]; }
 both_ids() { sql "SELECT count(*) FROM (SELECT order_id FROM notifications.notification WHERE group_id IN ('$1','$2') AND $RANGE $3 AND $4 GROUP BY order_id HAVING count(DISTINCT group_id) = 2) s"; }
 longest_gap() { sql "SELECT coalesce(round(max(extract(epoch FROM g))::numeric, 1), 0) FROM (SELECT processed_at - lag(processed_at) OVER (ORDER BY processed_at) AS g FROM notifications.notification WHERE group_id='$1' AND $RANGE $2 AND $3) s"; }
+# audit.write_log is a verify.sh instrument: a trigger on the notification table records every insert and update, so
+# the replica that wrote a record the first time stays visible after a repeat has overwritten the row.
+install_audit() {
+    [[ "$(sql "SELECT to_regclass('notifications.notification') IS NOT NULL")" == t ]] || return 1
+    sql "CREATE SCHEMA IF NOT EXISTS audit;
+         CREATE TABLE IF NOT EXISTS audit.write_log (group_id text, kafka_partition int, kafka_offset bigint, order_id text, replica text, written_at timestamptz DEFAULT clock_timestamp());
+         CREATE OR REPLACE FUNCTION audit.log_write() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS \$f\$
+           BEGIN INSERT INTO audit.write_log (group_id, kafka_partition, kafka_offset, order_id, replica) VALUES (NEW.group_id, NEW.kafka_partition, NEW.kafka_offset, NEW.order_id, NEW.replica); RETURN NEW; END \$f\$;
+         DROP TRIGGER IF EXISTS write_log ON notifications.notification;
+         CREATE TRIGGER write_log AFTER INSERT OR UPDATE ON notifications.notification FOR EACH ROW EXECUTE FUNCTION audit.log_write();" >/dev/null
+}
+# budget <group> <lo> <hi> <keep-final-owner: yes|no>: the most records a replica can have processed after its last commit
+# on a partition: the writes it made in the last COMMIT_S+SLACK_S seconds before its last write there, summed over the
+# replicas that gave the partition up (the replica that wrote last on a partition still holds it when keep-final is no).
+budget() {
+    sql "WITH w AS (SELECT kafka_partition p, replica r, written_at t FROM audit.write_log WHERE group_id='$1' AND $RANGE $2 AND $3),
+              l AS (SELECT p, r, max(t) lt FROM w GROUP BY p, r),
+              f AS (SELECT DISTINCT ON (p) p, r FROM w ORDER BY p, t DESC)
+         SELECT coalesce(sum((SELECT count(*) FROM w WHERE w.p = l.p AND w.r = l.r AND w.t > l.lt - interval '$((COMMIT_S + SLACK_S)) seconds')), 0)
+         FROM l WHERE '$4' = 'yes' OR (l.p, l.r) NOT IN (SELECT p, r FROM f)"
+}
 total_rows() { sql "SELECT count(*) FROM notifications.notification WHERE group_id='$1'"; }
 
 settled() { # settled <bound seconds> <group>: the group's row count is positive and unchanged for 8 polls
@@ -99,6 +121,7 @@ done
 precondition "Kafka edp is Ready" kafka_ready edp
 precondition "the three input topics have three partitions" topics_ok
 precondition "the node runs the chapter 06 and chapter 02 images, unchanged" images_unchanged
+poll 180 install_audit || { echo "the notification table did not appear" >&2; exit 1; }
 
 # --- stop and restart: Recreate
 echo "--- stop and restart"
@@ -115,7 +138,8 @@ check "the group has no lag once it has caught up" poll 90 lag_zero notify-stop
 miss="$(rows notify-stop "$LO" "$HI" || true)"; echo "measured: $miss of 3000 ids have a row"
 check "every record sent through the stop has a row" expect "$miss" 3000
 rep="$(repeated notify-stop "$LO" "$HI" || true)"; echo "measured: $rep records delivered again"
-check "the records delivered again stay below $CEILING" le "$rep" "$CEILING"
+bound="$(budget notify-stop "$LO" "$HI" no || true)"; echo "measured: bound from the old replicas' last commit interval $bound"
+check "the records delivered again stay within what the old replicas wrote in their last commit interval" le "$rep" "$bound"
 
 # --- rolling update of the consumer group
 echo "--- rolling update of the consumer group ($GROUP_PROTOCOL protocol)"
@@ -143,7 +167,8 @@ check "rows of the range were written by the old pods and by the new ones" both_
 miss="$(rows notify-roll "$LO" "$HI" || true)"; echo "measured: $miss of 3000 ids have a row"
 check "every record sent through the rolling update has a row" expect "$miss" 3000
 rep="$(repeated notify-roll "$LO" "$HI" || true)"; echo "measured: $rep records delivered again"
-check "the records delivered again stay below $CEILING" le "$rep" "$CEILING"
+bound="$(budget notify-roll "$LO" "$HI" no || true)"; echo "measured: bound from the old replicas' last commit interval $bound"
+check "the records delivered again stay within what the old replicas wrote in their last commit interval" le "$rep" "$bound"
 
 # --- a breaking schema change, then a compatible one
 echo "--- schema change"
@@ -190,7 +215,8 @@ settled 300 notify-green || echo "WARN: green did not settle" >&2
 u="$(union_ids notify-blue notify-green "$LO" "$HI" || true)"; echo "measured: $u of 4000 ids have a row in blue or green"
 check "every record sent through the cut-over has a row in blue or green" expect "$u" 4000
 b="$(both_ids notify-blue notify-green "$LO" "$HI" || true)"; echo "measured: $b ids were processed by both groups"
-check "the ids processed by both groups stay below $CEILING" le "$b" "$CEILING"
+bound="$(budget notify-blue "$LO" "$HI" yes || true)"; echo "measured: bound from blue's last commit interval $bound"
+check "the ids processed by both groups stay within what blue wrote in its last commit interval" le "$b" "$bound"
 
 LO=55000; HI=$((LO + RATE * 30 - 1))
 produce prod-rb "$TOPIC" "$RATE" 30 "$LO" v1
@@ -209,7 +235,8 @@ settled 300 notify-blue || echo "WARN: blue did not settle" >&2
 u="$(union_ids notify-blue notify-green "$LO" "$HI" || true)"; echo "measured: $u of 3000 ids have a row in blue or green"
 check "every record sent through the rollback has a row in blue or green" expect "$u" 3000
 b="$(both_ids notify-blue notify-green "$LO" "$HI" || true)"; echo "measured: $b ids were processed by both groups"
-check "the ids processed by both groups stay below $CEILING" le "$b" "$CEILING"
+bound="$(budget notify-green "$LO" "$HI" yes || true)"; echo "measured: bound from green's last commit interval $bound"
+check "the ids processed by both groups stay within what green wrote in its last commit interval" le "$b" "$bound"
 
 # --- rolling update of the order-service under HTTP requests
 echo "--- rolling update of the order-service"

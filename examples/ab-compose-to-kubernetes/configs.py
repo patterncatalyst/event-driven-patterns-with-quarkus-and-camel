@@ -9,6 +9,12 @@ import re
 import sys
 from pathlib import Path
 
+
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 # Broker keys: 13, from `kafka-configs.sh --describe --all` on one broker.
 KAFKA_KEYS = [
     "auto.create.topics.enable",
@@ -90,12 +96,12 @@ def cmd_kafka():
         if m and m.group(1) in KAFKA_KEYS:
             found[m.group(1)] = m.group(2)
     for k in sorted(found):
-        print(f"{k}={found[k]}")
+        emit(f"{k}={found[k]}")
 
 
 def cmd_sql():
     keys = ", ".join(f"'{k}'" for k in PG_KEYS)
-    print(f"SELECT format('%s=%s', k, current_setting(k)) FROM unnest(ARRAY[{keys}]) AS k ORDER BY k;")
+    emit(f"SELECT format('%s=%s', k, current_setting(k)) FROM unnest(ARRAY[{keys}]) AS k ORDER BY k;")
 
 
 def cmd_complete(kind, path):
@@ -109,7 +115,7 @@ def cmd_get(path, key):
     got = read_pairs(path)
     if key not in got:
         return 1
-    print(got[key])
+    emit(got[key])
     return 0
 
 
@@ -167,7 +173,7 @@ def cmd_explicit(source, src_file, part, capture):
         return 1
     bad = [(k, v) for k, v in pairs if got.get(k) != v]
     for k, v in bad:
-        print(f"{k}: reports {got.get(k)!r}, expected {v!r}", file=sys.stderr)
+        emit(f"{k}: reports {got.get(k)!r}, expected {v!r}", file=sys.stderr)
     return 0 if got and not bad else 1
 
 
@@ -198,7 +204,7 @@ def cmd_others(compose_dir, k8s_dir):
         return 1
     diff = {k for k in keys if norm(k, a[k]) != norm(k, b[k])}
     for k in sorted(diff - set(ALLOWED)):
-        print(f"unlisted difference: {k}: {a[k]!r} vs {b[k]!r}", file=sys.stderr)
+        emit(f"unlisted difference: {k}: {a[k]!r} vs {b[k]!r}", file=sys.stderr)
     return 0 if diff == set(ALLOWED) else 1
 
 
@@ -213,7 +219,7 @@ def cmd_keys(name):
         keys = [k for k in KAFKA_KEYS + PG_KEYS if k not in ALLOWED] + ["kafka_version"]
     else:
         keys = {"kafka": KAFKA_KEYS, "pg": PG_KEYS, "allowed": sorted(ALLOWED)}[name]
-    print("\n".join(keys))
+    emit("\n".join(keys))
     return 0
 
 
