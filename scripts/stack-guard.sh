@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Source from an example's verify.sh:  source "$(dirname "$0")/../../scripts/stack-guard.sh" <compose-project>
 # One stack at a time: returns/exits non-zero when containers from another compose project
-# (label com.docker.compose.project) or a minikube node container are running. Never stops anything.
+# (label com.docker.compose.project), a minikube node container or a running CRC instance are found.
+# Never stops anything.
 # Containers named quarkus-agent-mcp* are tooling and are ignored.
 # Part 6:  source scripts/stack-guard.sh --minikube <profile>
 #   refuses when any compose-project container, another minikube profile's node, or a running
@@ -35,7 +36,7 @@ while IFS='|' read -r _sg_name _sg_proj _sg_kic; do
         _sg_bad+=("$_sg_name (minikube node)")
     fi
 done < <(docker ps --format '{{.Names}}|{{.Label "com.docker.compose.project"}}|{{.Label "name.minikube.sigs.k8s.io"}}')
-if [[ -n "$_sg_mk" ]] && command -v crc >/dev/null 2>&1 \
+if command -v crc >/dev/null 2>&1 \
         && crc status 2>/dev/null | grep -Eq '^(CRC VM|OpenShift):[[:space:]]+Running'; then
     _sg_bad+=("CRC (crc status reports Running)")
 fi

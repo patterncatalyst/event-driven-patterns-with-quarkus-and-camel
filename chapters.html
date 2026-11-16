@@ -31,7 +31,7 @@ permalink: /docs/00-index/
         {%- for doc in part_chapters -%}
         <li>
           <a href="{{ doc.url | relative_url }}">
-            <span class="toc-list__num">{{ doc.order }}</span>
+            <span class="toc-list__num">{{ doc.marker | default: doc.order }}</span>
             <span>{{ doc.title }}</span>
           </a>
           {%- if doc.description -%}<small>{{ doc.description }}</small>{%- endif -%}
