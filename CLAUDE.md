@@ -78,7 +78,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - No em dashes or en dashes anywhere reader-facing (chapters, READMEs, example pages, figures, deck). Use commas, colons, parentheses or "to".
 - No self-reference ("this chapter", "the example shows"), no test names in prose, no line-by-line code narration. State the behaviour.
 - Versions appear only on setup surfaces (chapter 00, appendices), except where the version is the feature.
-- Each chapter stands alone. No per-chapter verification footer; run records live in `_plans/verification-log.md`.
+- Each chapter stands alone (owner rule, 2026-11-16): no reference to another chapter, appendix or part of this book anywhere in the prose, back or forward, and no links to other pages in the prose. A page states what it needs in its own words; related pages are linked only under `## References`. Appendix D (pattern map and cross-reference) is exempt; chapter numbers of other books cited as sources are allowed. `validate.py` enforces it. No per-chapter verification footer; run records live in `_plans/verification-log.md`.
 
 ## Example contract
 

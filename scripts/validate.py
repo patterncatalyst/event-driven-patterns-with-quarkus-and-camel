@@ -54,6 +54,12 @@ DASH_RE = re.compile("[—–]")
 VERSION_RE = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")
 URL_RE = re.compile(r"https?://\S+")
 TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]\w+")
+# Owner rule 2026-11-16: every page stands alone. No reference to another chapter, appendix or part of this
+# book in prose (back or forward); related pages are linked only under `## References`. Appendix D (the
+# pattern map and cross-reference) is exempt. Chapter numbers of other books, cited as sources, are allowed.
+XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-H])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
+XREF_SOURCE_RE = re.compile(r"EIP Camel|Enterprise Integration Patterns|Bellemare|Lawrence|Kleppmann|Vernon|Hohpe|Fowler|"
+                            r"Richardson|Young|Narkhede|Shapira|Stopford|Seymour|Riccomini|Bellemare's|\*[A-Z][^*]+\*,? (ch|chapter)", re.I)
 SELFREF_RE = re.compile(r"\b(this|the) (chapter|section)\b|\bthe example shows\b|\bwe will\b", re.I)
 IMG_RE = re.compile(r"^\s*-?\s*image:\s*(\S+)", re.M)
 K8S_SETUP_HEADING = "## Setting up the cluster"
@@ -292,6 +298,11 @@ def check_chapters(rep: Report):
             m = TESTNAME_RE.search(t)
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
+            if not p.name.startswith("ad-") and not section.lower().startswith("## references"):
+                x = XREF_RE.search(t)
+                if x and not XREF_SOURCE_RE.search(t):
+                    rep.err(p, i + off, f"cross-reference '{x.group(0)}' in prose: each page stands alone; "
+                                        "link related pages only under ## References")
             # Versions live in chapter 00, the appendices and Part 6's setup section (chapter 28).
             if not (p.name.startswith(("00-", "a"))
                     or (p.name.startswith("28-") and section == K8S_SETUP_HEADING)):
@@ -589,6 +600,17 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
         e = run(r).errors
         results.append(("port-forward caught", any("forwarding" in x for x in e), e))
+
+        r = build("xref")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nA Kafka transaction (chapter 12) stops at the cluster.\n"
+                                            "\n## References\n\n- Chapter 12, exactly once.\n")
+        e = run(r).errors
+        results.append(("cross-reference in prose caught, allowed under References",
+                        any("cross-reference" in x and ":21" in x or "cross-reference" in x for x in e)
+                        and sum("cross-reference" in x for x in e) == 1, e))
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nBellemare's chapter 14 calls it streaming SQL.\n")
+        e = run(r).errors
+        results.append(("another book's chapter cited as a source allowed", not any("cross-reference" in x for x in e), e))
 
         r = build("domain")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nA Consignment is booked.\n")
