@@ -178,7 +178,7 @@ One command block (`cd examples/NN-slug && ./verify.sh`), one or two sentences e
 | 4 | Fixes inside the window, affected chapter re-run only | orchestrator | 3 | done (fixes in 32, 33, 34, 35; see verification log) |
 | 5 | Final run on a fresh profile, 32 to 35 once each, profile deleted; static gates; claims and log; commits | orchestrator | 4 | done (final fresh run 20/20, 17/17, 18/18, 25/25; profile deleted) |
 | 6 | Opus validation (at most 2 repair rounds) | validator | 5 | done (round 1 FIX, repair, round 2 PASS; M1 and lows fixed by orchestrator) |
-| 7 | Ship: PR, CI green, squash, tag r12.0, notes-only release; PRD, iteration-plan, CLAUDE.md | orchestrator | 6 | pending |
+| 7 | Ship: PR, CI green, squash, tag r12.0, notes-only release; PRD, iteration-plan, CLAUDE.md | orchestrator | 6 | done (PR #13, r12.0) |
 
 Executor rules as in r11: no git writes; no edits to `claims.md`, `verification-log.md`, `CLAUDE.md`, `examples/_k8s`, `examples/_infra`, `scripts/`, `domain-model` or any earlier example; no cluster in step 2 (only `kubectl kustomize` and static checks); logs through `host_ids.py filter`; every cluster or docker action under `flock -w 7200 <scratchpad>/stack.lock`. Executors 2A to 2D own only `examples/NN-*`, `_docs/NN-*`, `_example_pages/NN-*` and `diagrams/specs/NN-*` (plus their outputs).
 
