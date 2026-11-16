@@ -29,7 +29,7 @@ Three decisions make it safe. The events stay the only record: a projection is a
 
 ### How Quarkus models it
 
-`OrderAggregate` is the event-sourced order aggregate with smaller payloads and an `OrderDelivered` event: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
+`OrderAggregate` is an event-sourced order aggregate: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
 
 `ReplayReport` reads every event stream by stream and folds one aggregate at a time:
 
@@ -74,7 +74,7 @@ ORDER BY events.tx_id, events.position
 LIMIT :lim
 ```
 
-The `events` table is the event store's with one column added, `tx_id xid8 NOT NULL DEFAULT pg_current_xact_id()`, the transaction that wrote the row. `GET /reports/shipments-per-carrier?source=replay` or `source=projection` serves either path; the projection answer also reports `lagEvents`, the committed events past the checkpoint, and a gauge of the same number leaves for Prometheus.
+The `events` table has a `tx_id xid8 NOT NULL DEFAULT pg_current_xact_id()` column, the transaction that wrote the row. `GET /reports/shipments-per-carrier?source=replay` or `source=projection` serves either path; the projection answer also reports `lagEvents`, the committed events past the checkpoint, and a gauge of the same number leaves for Prometheus.
 
 ## The same question, two ways
 

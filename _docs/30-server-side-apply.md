@@ -47,7 +47,7 @@ kubectl apply --dry-run=server -f cnpg.yaml                  # Too long
 kubectl apply --server-side --dry-run=server -f cnpg.yaml    # accepted
 ```
 
-The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades). Every apply in these examples uses `--server-side`.
+The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades). Every apply in this example uses `--server-side`.
 
 ## Two writers on one Deployment
 

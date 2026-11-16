@@ -99,7 +99,7 @@ A batch per carrier closes at 5 shipments or after 10 seconds without a new one,
 
 A late record is no special case. It joins whatever batch is open when it arrives, so the shipment stamped 09:05 that Kafka Streams dropped leaves on a batch of its own. An out-of-order shipment sits in the batch with its neighbours in arrival order, with shipments from the next slot.
 
-Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and their timeouts. The in-memory default would lose them. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
+Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and their timeouts. Camel's default in-memory repository is not persistent. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
 
 | | Kafka Streams | Camel Aggregator |
 |---|---|---|

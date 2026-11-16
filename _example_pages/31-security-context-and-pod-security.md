@@ -2,12 +2,12 @@
 title: "Security context and pod security"
 order: 31
 permalink: /examples/31-security-context-and-pod-security/
-description: "Two namespaces that enforce the restricted Pod Security Standard, with the chapter 02 applications carrying an explicit security context, Strimzi on its restricted provider, CloudNativePG as published and otel-lgtm outside the rule."
+description: "Two namespaces that enforce the restricted Pod Security Standard, with the `order-service` and `notification-service` carrying an explicit security context, Strimzi on its restricted provider, CloudNativePG as published and otel-lgtm outside the rule."
 ---
 
-[`examples/31-security-context-and-pod-security/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/31-security-context-and-pod-security) labels `edp` and `edp-kafka` for the restricted level and runs Kafka, PostgreSQL and the two chapter 02 services under it. It accompanies [Security context and pod security]({{ '/docs/31-security-context-and-pod-security/' | relative_url }}).
+[`examples/31-security-context-and-pod-security/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/31-security-context-and-pod-security) labels `edp` and `edp-kafka` for the restricted level and runs Kafka, PostgreSQL and the `order-service` and `notification-service` under it. It accompanies [Security context and pod security]({{ '/docs/31-security-context-and-pod-security/' | relative_url }}).
 
-It is a kustomize overlay over the shared Part 6 cluster setup and a `verify.sh`, with no Java. The services are the chapter 02 images.
+It is a kustomize overlay over the shared minikube cluster setup in `examples/_k8s` and a `verify.sh`, with no Java. The services are the unchanged `order-service` and `notification-service` images.
 
 ```bash
 cd examples/31-security-context-and-pod-security

@@ -7,13 +7,13 @@ description: "A Kafka broker on Kubernetes needs a stable node id, its own volum
 duration: "60 minutes"
 ---
 
-The compose stack of the earlier examples starts one Kafka container, and its address is `kafka:9094` because compose names the container. On Kubernetes a broker is a pod that can be deleted at any moment. It has to come back with the same node id, find its own data and be reachable by a name that does not change when the pod does. Something has to hold those rules.
+A compose stack starts one Kafka container, and its address is `kafka:9094` because compose names the container. On Kubernetes a broker is a pod that can be deleted at any moment. It has to come back with the same node id, find its own data and be reachable by a name that does not change when the pod does. Something has to hold those rules.
 
-These examples run the same patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
+The examples in this part run the same event-driven patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
 
 ## Setting up the cluster
 
-One minikube profile named `edp` serves every Kubernetes example. Every version is an exact pin, and the table below is the only place in the chapters that lists them.
+One minikube profile named `edp` serves every Kubernetes example. Every version is an exact pin, and the table below lists them.
 
 | Component | Version | Note |
 |---|---|---|

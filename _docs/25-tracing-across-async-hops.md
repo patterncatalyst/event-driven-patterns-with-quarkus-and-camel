@@ -29,7 +29,7 @@ The context is the W3C `traceparent`: a version, a trace id, the id of the paren
 
 ### How Quarkus models it
 
-`order-service` sets the order id on the request span, then writes the order and the event in one transaction, as in the transactional outbox:
+`order-service` sets the order id on the request span, then writes the order and the event in one transaction:
 
 ```java
 @POST
@@ -55,7 +55,7 @@ CREATE TABLE orders.outboxevent (
 );
 ```
 
-The column holds the context as text, not as a bare `traceparent`, and the connector reads it from there. A standard outbox table already has the column.
+The column holds the context as text, not as a bare `traceparent`, and the connector reads it from there. The Debezium outbox extension's table has the column.
 
 ## Through the outbox and Debezium
 

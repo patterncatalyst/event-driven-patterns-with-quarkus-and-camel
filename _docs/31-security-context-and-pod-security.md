@@ -61,7 +61,7 @@ runAsNonRoot != true (pod or container "app" must set securityContext.runAsNonRo
 seccompProfile (pod or container "app" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
 ```
 
-The Deployment reports `ReplicaFailure` and the old pod keeps serving. That is the case worth testing before a label goes on a namespace that already holds pods: labelling it prints a warning for each running pod that would fail and evicts nothing, and the refusal arrives with the next pod creation, which is usually a rollout at a bad hour. Applying the unsecured manifest with server-side apply, as server-side apply does, prints `would violate PodSecurity` as well.
+The Deployment reports `ReplicaFailure` and the old pod keeps serving. That is the case worth testing before a label goes on a namespace that already holds pods: labelling it prints a warning for each running pod that would fail and evicts nothing, and the refusal arrives with the next pod creation, which is usually a rollout at a bad hour. A server-side apply of the unsecured manifest also prints `would violate PodSecurity`.
 
 The four fields, plus a read-only root filesystem, go in one patch that every Deployment in `edp` receives.
 
@@ -114,7 +114,7 @@ Running the default provider under the label shows the refusal. A run that block
 
 The PostgreSQL pods need no change. The CloudNativePG operator pod runs as a non-root user with a read-only root filesystem and the `RuntimeDefault` seccomp profile, and the instance pod does too. The instance runs as the `postgres` user, uid 26, which is the user of the operand image. The `initdb` job pod that bootstraps the cluster is admitted in a restricted `edp` as well, and the cluster comes up Ready.
 
-The CloudNativePG documentation says that no component requires root, and the pods bear it out. The operator namespace `cnpg-system` is part of the platform tier, applied once per cluster and shared by every example, so it stays as it is. A server dry-run label asks the API server what labelling it would do.
+The CloudNativePG documentation says that no component requires root, and the pods bear it out. The operator namespace `cnpg-system` is part of the platform tier, applied once per cluster and shared by every namespace on the cluster, so it stays as it is. A server dry-run label asks the API server what labelling it would do.
 
 ```bash
 kubectl label --dry-run=server --overwrite ns cnpg-system pod-security.kubernetes.io/enforce=restricted

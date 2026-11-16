@@ -58,11 +58,27 @@ TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]
 # book in prose (back or forward); related pages are linked only under `## References`. Appendix D (the
 # pattern map and cross-reference) is exempt. Chapter numbers of other books, cited as sources, are allowed.
 XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-H])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
+# Cross-references written in words: "the previous chapter", "the outbox chapter", "earlier chapters", "Part three".
+XREF_WORD_RE = re.compile(
+    r"\b(?:the\s+)?(?:previous|preceding|prior|next|following|earlier|later|last|first)\s+(?:chapters?|appendix|appendices|parts?)\b"
+    r"|\bthe\s+(?!same\b)[\w-]+(?:\s+[\w-]+)?\s+(?:chapter|appendix)\b"
+    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-H]|one|two|three|four|five|six|seven|eight)\b"
+    r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b", re.I)
+ACCOMPANIES_RE = re.compile(r"accompanies \[[^\]]*\]\(\{\{[^)]*\)")
 XREF_SOURCE_RE = re.compile(r"EIP Camel|Enterprise Integration Patterns|Bellemare|Lawrence|Kleppmann|Vernon|Hohpe|Fowler|"
-                            r"Richardson|Young|Narkhede|Shapira|Stopford|Seymour|Riccomini|Bellemare's|\*[A-Z][^*]+\*,? (ch|chapter)", re.I)
+                            r"Richardson|(?-i:Young)|Narkhede|Shapira|Stopford|Seymour|Riccomini|Bellemare's|\*[A-Z][^*]+\*,? (ch|chapter)", re.I)
 SELFREF_RE = re.compile(r"\b(this|the) (chapter|section)\b|\bthe example shows\b|\bwe will\b", re.I)
 IMG_RE = re.compile(r"^\s*-?\s*image:\s*(\S+)", re.M)
 K8S_SETUP_HEADING = "## Setting up the cluster"
+
+
+def xref_hit(t: str) -> str | None:
+    """The first cross-reference in a prose line, or None. A chapter of another book cited as a source is allowed."""
+    for rx in (XREF_RE, XREF_WORD_RE):
+        for x in rx.finditer(t):
+            if not XREF_SOURCE_RE.search(t[max(0, x.start() - 90):x.start() + len(x.group(0)) + 40]):
+                return x.group(0)
+    return None
 
 
 class Report:
@@ -270,6 +286,23 @@ def check_bro(rep: Report, p: Path, plines, off: int):
             rep.err(p, i + off, f"check number or run statistic '{m.group(0)}' in '{BRO_HEAD}' (belongs in the README)")
 
 
+def check_example_pages(rep: Report):
+    """The cross-reference rule also covers the example pages (_example_pages/*.md prose)."""
+    for p in files(rep.root, "_example_pages/*.md"):
+        fm, body, off = split_front(p.read_text(encoding="utf-8"))
+        section = ""
+        for i, t in prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S)):
+            if re.match(r"##\s", t):
+                section = t.strip()
+            if section.lower().startswith("## references"):
+                continue
+            # the one link an example page may carry is to the page it accompanies
+            hit = xref_hit(ACCOMPANIES_RE.sub("accompanies this page", t))
+            if hit:
+                rep.err(p, i + off, f"cross-reference '{hit}' in example page prose: each page stands alone; "
+                                    "link related pages only under ## References")
+
+
 def check_chapters(rep: Report):
     for p in files(rep.root, "_docs/*.md"):
         text = p.read_text(encoding="utf-8")
@@ -303,13 +336,10 @@ def check_chapters(rep: Report):
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
             if not p.name.startswith("ad-") and not section.lower().startswith("## references"):
-                for x in XREF_RE.finditer(t):
-                    # a chapter of another book cited as a source: its title or author shortly before the number
-                    if XREF_SOURCE_RE.search(t[max(0, x.start() - 90):x.start()]):
-                        continue
-                    rep.err(p, i + off, f"cross-reference '{x.group(0)}' in prose: each page stands alone; "
+                hit = xref_hit(t)
+                if hit:
+                    rep.err(p, i + off, f"cross-reference '{hit}' in prose: each page stands alone; "
                                         "link related pages only under ## References")
-                    break
             # Versions live in chapter 00, the appendices and Part 6's setup section (chapter 28).
             if not (p.name.startswith(("00-", "a"))
                     or (p.name.startswith("28-") and section == K8S_SETUP_HEADING)):
@@ -553,7 +583,7 @@ def check_domain_names(rep: Report):
                 rep.err(p, i, f"banned freight-domain name '{m.group(0)}' (use the order-to-delivery domain)")
 
 
-CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters,
+CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters, check_example_pages,
           check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_domain_names]
 
 
@@ -613,11 +643,37 @@ def self_test() -> int:
                                             "\n## References\n\n- Chapter 12, exactly once.\n")
         e = run(r).errors
         results.append(("cross-reference in prose caught, allowed under References",
-                        any("cross-reference" in x and ":21" in x or "cross-reference" in x for x in e)
-                        and sum("cross-reference" in x for x in e) == 1, e))
+                        sum("cross-reference" in x for x in e) == 1, e))
         (r / "_docs/01-demo.md").write_text(good_doc + "\nBellemare's chapter 14 calls it streaming SQL.\n")
         e = run(r).errors
         results.append(("another book's chapter cited as a source allowed", not any("cross-reference" in x for x in e), e))
+
+        for label, sentence in (("previous chapter", "The previous chapter showed it."),
+                                ("next chapters", "The next chapters extend it."),
+                                ("the outbox chapter", "See the outbox chapter for the table."),
+                                ("earlier chapters", "As the earlier chapters did."),
+                                ("Part three", "Part three covers it."),
+                                ("Parts 2 and 3", "Parts 2 and 3 cover it.")):
+            r = build("xref-words-" + label.replace(" ", "-"))
+            (r / "_docs/01-demo.md").write_text(good_doc + "\n" + sentence + "\n")
+            e = run(r).errors
+            results.append((f"cross-reference in words caught: {label}", any("cross-reference" in x for x in e), e))
+        r = build("xref-words-ok")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nBellemare's previous chapter calls it streaming SQL. The young parts of a spare part stay.\n"
+                                            "\n## References\n\n- The previous chapter, listed.\n")
+        e = run(r).errors
+        results.append(("words allowed for another book's chapter, under References and in 'young'/'part'",
+                        not any("cross-reference" in x for x in e), e))
+        r = build("xref-example")
+        (r / "_example_pages").mkdir()
+        (r / "_example_pages/01-demo.md").write_text("---\ntitle: x\n---\n\nIt reuses the services of chapter 2.\n")
+        e = run(r).errors
+        results.append(("cross-reference in an example page caught",
+                        any("cross-reference" in x and "_example_pages" in x for x in e), e))
+        (r / "_example_pages/01-demo.md").write_text(
+            "---\ntitle: x\n---\n\nIt accompanies [Demo]({{ '/docs/01-demo/' | relative_url }}).\n")
+        e = run(r).errors
+        results.append(("the accompanying link of an example page allowed", not any("cross-reference" in x for x in e), e))
 
         r = build("domain")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nA Consignment is booked.\n")

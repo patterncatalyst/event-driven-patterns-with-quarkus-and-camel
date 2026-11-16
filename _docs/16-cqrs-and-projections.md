@@ -7,7 +7,7 @@ description: "A reader asks questions the write model was not built for. A proje
 duration: "55 minutes"
 ---
 
-The `Order` aggregate answers one question: may this command happen. It replays one stream to answer it. A customer asks something else: where are all my orders, and where is the one I paid for on Monday? The answer needs facts that live in three services, for many orders at once, and the aggregate holds none of them. `order-service` here is only the answering side, a read model fed by the topics the order, payment and shipping services already publish.
+An event-sourced `Order` aggregate answers one question: may this command happen. It replays one stream to answer it. A customer asks something else: where are all my orders, and where is the one I paid for on Monday? The answer needs facts that live in three services, for many orders at once, and the aggregate holds none of them. `order-service` here is only the answering side, a read model fed by the topics the order, payment and shipping services already publish.
 
 {% include excalidraw.html file="16-command-query-split" alt="Order, payment and shipping services publish to six public topics; the projector in the query side applies each event to the order_view table with a guarded upsert, and the two query endpoints read only that table; the lag window sits between the topics and the view" caption="Figure 16.1: Writers publish, the projector applies, readers query only the view" %}
 

@@ -7,7 +7,7 @@ description: "A broker that creates topics on first use turns a typo into a new 
 duration: "50 minutes"
 ---
 
-The Strimzi Kafka cluster lets the broker create a topic the first time anyone sends to it, and a Job creates the topics the examples need. Both work, and neither leaves a list. A producer configured with `edp.orders.plcaed` gets a new topic, a healthy send and a consumer that waits for events that never come. A topic created by hand with two partitions in one environment has three in the next.
+The Strimzi Kafka cluster lets the broker create a topic the first time anyone sends to it, and a Job creates this cluster's topics. Both work, and neither leaves a list. A producer configured with `edp.orders.plcaed` gets a new topic, a healthy send and a consumer that waits for events that never come. A topic created by hand with two partitions in one environment has three in the next.
 
 The list of topics a system needs is part of the system. Kubernetes already keeps lists of things and compares them with what runs, so the topics can live there too.
 

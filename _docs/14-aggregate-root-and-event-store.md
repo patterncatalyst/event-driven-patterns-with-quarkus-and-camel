@@ -7,7 +7,7 @@ description: "An order is the stream of its own events. One object owns every ru
 duration: "55 minutes"
 ---
 
-A plain event table with a unique version can settle a race between two writers. There the rules live in a service bean that checks a status change rather than in an object rebuilt from the stream, the losing writer gets 409 and nothing decides again, and the events never reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
+A plain event table with a unique version settles a race between two writers, but the loser just gets 409: nothing decides again, the rules sit in a service bean that checks a status change, and the events never reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
 
 {% include excalidraw.html file="14-aggregate-command-cycle" alt="A command is loaded against the stream, the aggregate is rebuilt, the command is decided and the events are appended at the loaded version plus one in one transaction with an outbox row for OrderPlaced and OrderCancelled; Debezium carries those two to edp.orders.placed and edp.orders.cancelled" caption="Figure 14.1: One command, one transaction, and two public events out" %}
 

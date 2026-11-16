@@ -128,7 +128,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-A window is for facts that happen close together. If the second fact can come a week later, a window either grows into a large store or drops the pair. A fact that changes slowly and is looked up (the carrier reference) is a table, and the lookup is a table join without a window.
+A window is for facts that happen close together. If the second fact can come a week later, a window either grows into a large store or drops the pair. A fact that changes slowly and is looked up (a slowly changing reference such as carrier data) is a table, and the lookup is a table join without a window.
 
 If the two facts already sit in one database, a SQL join answers the question with no state to keep. If the correlation is short, live and low in volume, and arrival time is close enough to event time, the Camel aggregator is the lighter choice: no local store, no changelog, no partition rule. A Streams join also keeps both sides for longer than the window itself, so a long window on a busy topic is a large store.
 

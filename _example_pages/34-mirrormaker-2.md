@@ -5,9 +5,9 @@ permalink: /examples/34-mirrormaker-2/
 description: "A second Kafka cluster beside the first, a MirrorMaker 2 that copies the event catalog's topics and the consumer group offsets from one to the other, and a consumer that fails over by changing its bootstrap address and resumes from the translated offset."
 ---
 
-[`examples/34-mirrormaker-2/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/34-mirrormaker-2) is a manifest overlay on the minikube substrate of chapter 28: the Kafka cluster `edp`, a second cluster `edp-dr` with one dual-role node, a `KafkaMirrorMaker2` from `edp` to `edp-dr`, the monitoring of chapter 32, and the services of chapter 2. It accompanies [MirrorMaker 2]({{ '/docs/34-mirrormaker-2/' | relative_url }}).
+[`examples/34-mirrormaker-2/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/34-mirrormaker-2) is a manifest overlay on the shared minikube setup in `examples/_k8s`: the Kafka cluster `edp`, a second cluster `edp-dr` with one dual-role node, a `KafkaMirrorMaker2` from `edp` to `edp-dr`, the Strimzi monitoring, and the `order-service` and `notification-service`. It accompanies [MirrorMaker 2]({{ '/docs/34-mirrormaker-2/' | relative_url }}).
 
-It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image and the unchanged chapter 2 images.
+It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image and the unchanged `order-service` and `notification-service` images.
 
 ```bash
 cd examples/34-mirrormaker-2
@@ -25,4 +25,4 @@ cd examples/34-mirrormaker-2
 
 ## Infrastructure
 
-The cluster, PostgreSQL, LGTM, metrics and monitoring bases of `examples/_k8s`, the second cluster and the mirror, one dashboard, and the chapter 2 deployments.
+The cluster, PostgreSQL, LGTM, metrics and monitoring bases of `examples/_k8s`, the second cluster and the mirror, one dashboard, and the `order-service` and `notification-service` deployments.

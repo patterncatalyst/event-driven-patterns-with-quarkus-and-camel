@@ -5,9 +5,9 @@ permalink: /examples/29-unidirectional-topic-operator/
 description: "The nine topics of the event catalog as KafkaTopic resources on a Kafka cluster with auto-creation off, with the Topic Operator's reconciliation of drift, deletion, unmanaged topics and topics created outside Kubernetes checked against the cluster."
 ---
 
-[`examples/29-unidirectional-topic-operator/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/29-unidirectional-topic-operator) is a manifest overlay on the minikube substrate of chapter 28: the Kafka cluster with the Topic Operator switched on and auto-creation off, nine `KafkaTopic` resources, and the services of chapter 2. It accompanies [Unidirectional Topic Operator]({{ '/docs/29-unidirectional-topic-operator/' | relative_url }}).
+[`examples/29-unidirectional-topic-operator/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/29-unidirectional-topic-operator) is a manifest overlay on the shared minikube setup in `examples/_k8s`: the Kafka cluster with the Topic Operator switched on and auto-creation off, nine `KafkaTopic` resources, and the `order-service` and `notification-service`. It accompanies [Unidirectional Topic Operator]({{ '/docs/29-unidirectional-topic-operator/' | relative_url }}).
 
-It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image and the unchanged chapter 2 images.
+It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image and the unchanged `order-service` and `notification-service` images.
 
 ```bash
 cd examples/29-unidirectional-topic-operator
@@ -25,4 +25,4 @@ cd examples/29-unidirectional-topic-operator
 
 ## Infrastructure
 
-The cluster, PostgreSQL and LGTM bases of `examples/_k8s`, one patch to the `Kafka` resource, and the chapter 2 deployments.
+The cluster, PostgreSQL and LGTM bases of `examples/_k8s`, one patch to the `Kafka` resource, and the `order-service` and `notification-service` deployments.

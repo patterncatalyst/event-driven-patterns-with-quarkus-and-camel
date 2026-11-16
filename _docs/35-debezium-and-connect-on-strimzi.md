@@ -3,11 +3,11 @@ title: "Debezium and Connect on Strimzi"
 order: 35
 part: running-on-kubernetes-with-strimzi
 permalink: /docs/35-debezium-and-connect-on-strimzi/
-description: "On compose a connector is a JSON file somebody PUTs to a REST API, its plugin is whatever the running image holds and an offset change is a curl. On Strimzi the Connect image is built from a resource, each connector is a resource and an offset operation is an annotation on it."
+description: "On a plain Docker setup a connector is a JSON file somebody PUTs to a REST API, its plugin is whatever the running image holds and an offset change is a curl. On Strimzi the Connect image is built from a resource, each connector is a resource and an offset operation is an annotation on it."
 duration: "60 minutes"
 ---
 
-The connectors of the compose examples are JSON files. A script PUTs each one to the Connect REST API, the plugin comes from whatever image the compose file names, and a change to an offset is a `curl` that someone has to remember to repeat in the next environment. Nothing in the repository says which connectors should exist, and nothing notices when one is missing.
+A connector on a compose stack is a JSON file. A script PUTs each one to the Connect REST API, the plugin comes from whatever image the compose file names, and a change to an offset is a `curl` that someone has to remember to repeat in the next environment. Nothing in the repository says which connectors should exist, and nothing notices when one is missing.
 
 On Kubernetes the operator that runs Kafka can run Connect too, and it can hold the three things that the REST API leaves outside the repository: the worker image, the connectors and their offsets.
 
@@ -17,9 +17,9 @@ On Kubernetes the operator that runs Kafka can run Connect too, and it can hold 
 
 ### The problem
 
-A Connect worker image has to contain the connector plugins, and the image people reach for first, `quay.io/debezium/connect` on compose, is built and run by Debezium, not by the operator. The operator runs its own image layout, so the `KafkaConnect` image is built from Strimzi's Kafka image plus the plugin. A connector is then a second artifact, a JSON document sent over HTTP to a running worker. The repository holds the file and the cluster holds the effect, and the two drift apart the first time someone edits a connector through the API.
+A Connect worker image has to contain the connector plugins, and the image people reach for first, `quay.io/debezium/connect`, is built and run by Debezium, not by the operator. The operator runs its own image layout, so the `KafkaConnect` image is built from Strimzi's Kafka image plus the plugin. A connector is then a second artifact, a JSON document sent over HTTP to a running worker. The repository holds the file and the cluster holds the effect, and the two drift apart the first time someone edits a connector through the API.
 
-Offsets add a third. On compose they were changed with `PATCH` and `DELETE` on the REST API. A change made that way leaves no trace in the repository and no record of who made it.
+Offsets add a third. Through the Connect REST API they are changed with `PATCH` and `DELETE`. A change made that way leaves no trace in the repository and no record of who made it.
 
 ### The solution
 
@@ -61,7 +61,7 @@ spec:
             sha512sum: <the checksum of that archive>
 ```
 
-The group id and the three storage topics sit at the top of `spec`, not under `config`. The offsets topic is the one read on compose, `edp-connect-offsets`, now created in the Strimzi Kafka cluster.
+The group id and the three storage topics sit at the top of `spec`, not under `config`. The offsets topic is `edp-connect-offsets`, created in the Strimzi Kafka cluster.
 
 ## Building the Connect image
 
@@ -77,7 +77,7 @@ A checksum that does not match the archive stops the build: no image reaches the
 
 ## Two connectors on CloudNativePG
 
-The two connectors are the outbox and offsets connectors from compose. Two lines change in each: the host, now the read-write Service of the CloudNativePG cluster, and the credentials, now references that the config provider resolves inside the Connect pod.
+The two connectors are `order-outbox`, an outbox Event Router connector, and `inventory-cdc`, a log-tailing connector for `inventory.inventory_item`. Two lines change in each: the host, now the read-write Service of the CloudNativePG cluster, and the credentials, now references that the config provider resolves inside the Connect pod.
 
 ```yaml
 apiVersion: kafka.strimzi.io/v1
@@ -119,13 +119,13 @@ The captured table must be owned by the connector's role. With `publication.auto
 
 Two Debezium connectors in one Connect cluster must not share a `topic.prefix`. Both compose connectors use `edp`. In one worker the second connector logs `Unable to register metrics as an old set with the same name` every five seconds and never takes its snapshot, because the connector's metrics name contains the prefix. The inventory connector therefore uses `edp-inventory`, with both `RegexRouter` patterns following it. The topics it writes keep their names, `edp.inventory.item-changes` and `edp.inventory.signals`.
 
-The applications are the outbox and log tail images from compose, unchanged. An order placed through `order-service` is stored with its outbox row in one transaction, and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header. The service, not the connector, empties the outbox table: it deletes the row in the transaction that inserted it. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route turns it into the document on `edp.inventory.items`.
+The applications are `order-service`, which writes an outbox row with each order, and `inventory-service`, which owns the table the second connector tails. An order placed through `order-service` is stored with its outbox row in one transaction, and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header. The service, not the connector, empties the outbox table: it deletes the row in the transaction that inserted it. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route turns it into the document on `edp.inventory.items`.
 
 The Connect pod serves its metrics on the port of the Strimzi Metrics Reporter, with `metricsConfig` set as for the brokers. The families start with `kafka_connect_`, and `kafka_connect_connector_metrics_status` carries the connector name and its state as labels. The `allowList` in the resource limits what is exposed to those families and the JVM's. Unlike on the brokers, a changed `allowList` on `KafkaConnect` replaces the Connect pod.
 
 ## Connector offsets in the resource
 
-On compose the offsets were listed with `GET` and altered with `PATCH` while the connector was stopped and read the consequences: an alter forward skips changes, and an alter backward does not rewind. Strimzi wraps the same three calls in the resource (Kate Stanley, Managing Connector Offsets, Strimzi blog; KIP-875).
+The Connect REST API lists offsets with `GET` and alters them with `PATCH` while the connector is stopped. Strimzi wraps the same three calls in the resource (Kate Stanley, Managing Connector Offsets, Strimzi blog; KIP-875).
 
 The `KafkaConnector` names two ConfigMaps, one the operator writes and one it reads:
 
@@ -151,7 +151,7 @@ kubectl -n edp-kafka get configmap inventory-cdc-offsets -o jsonpath='{.data.off
 {"offsets":[{"partition":{"server":"edp-inventory"},"offset":{"lsn":83886944,"lsn_proc":83886944,"messageType":"UPDATE"}}]}
 ```
 
-The annotation is gone within seconds of a list. A list right after the connector starts can return `{"offsets":[]}`, because Connect stores offsets on a timer; `offset.flush.interval.ms` is set to one second, as on compose.
+The annotation is gone within seconds of a list. A list right after the connector starts can return `{"offsets":[]}`, because Connect stores offsets on a timer; `offset.flush.interval.ms` is set to one second.
 
 {% include excalidraw.html file="35-offset-change-by-resource" alt="A running connector is stopped by setting state stopped; while stopped the annotation list writes offsets.json to a ConfigMap and the annotation alter reads new offsets from a ConfigMap, and the operator removes the annotation each time; state running resumes it; an alter while running makes the operator log a warning, keeps the annotation and changes nothing" caption="Figure 35.2: An offset operation is an annotation on the resource, and it needs the connector stopped" %}
 
@@ -165,7 +165,7 @@ kubectl -n edp-kafka annotate kafkaconnector inventory-cdc strimzi.io/connector-
 kubectl -n edp-kafka patch kafkaconnector inventory-cdc --type=merge -p '{"spec":{"state":"running"}}'
 ```
 
-Connect reads back the new position within seconds. The outcome is the same as on compose, now through the resource: a row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
+Connect reads back the new position within seconds. The outcome: a row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
 
 The Connect REST status of a stopped connector shows no tasks, while the status of the resource can trail it by one poll. A connector created with `state: stopped` starts in that state (Strimzi changelog).
 
@@ -186,7 +186,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-A connector tried once on a laptop needs no resource. The REST API and a JSON file are faster, and the compose examples use them for that.
+A connector tried once on a laptop needs no resource. The REST API and a JSON file are faster, and a compose stack serves that use.
 
 The registry here is an emptyDir behind a fixed address, and it is gone with its namespace. It rebuilds the image on every run, which is the point of a test and a cost in a cluster that restarts its Connect pods often; a registry with persistent storage and a trusted certificate takes its place there, and `--tls-verify=false` goes away.
 

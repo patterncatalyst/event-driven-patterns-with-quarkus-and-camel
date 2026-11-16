@@ -49,7 +49,7 @@ A failed call is retried three times, and then the exchange fails. With `breakOn
 
 ## The same enrichment as a stream-table join
 
-The second form moves the reference data to the receiver. `edp.shipping.carriers` is a compacted topic with one record per carrier, so it keeps the latest reference for each and nothing older. `shipping-service` is the owner and publishes the table's changes to it. A Kafka Streams `GlobalKTable` reads the whole topic into a local store on every instance, and the stream of shipments joins against it:
+The second form moves the reference data to the receiver. `edp.shipping.carriers` is a compacted topic with one record per carrier, so it keeps the latest reference for each and nothing older. `shipping-service` owns the reference. Here the records are produced to the topic directly; in production the owner publishes them from its table with an outbox or log tailing. A Kafka Streams `GlobalKTable` reads the whole topic into a local store on every instance, and the stream of shipments joins against it:
 
 ```java
 GlobalKTable<String, CarrierReference> carriers = builder.globalTable(Topics.SHIPPING_CARRIERS,
@@ -62,7 +62,7 @@ builder.stream(Topics.SHIPPING_SCHEDULED, Consumed.with(Serdes.String(), schedul
         .to(Topics.SHIPPING_SCHEDULED_ENRICHED, Produced.with(Serdes.String(), enriched));
 ```
 
-The first lambda says where to look: the join key is a field of the value, not the record key, which is the order id. That is what a global table is for. A `KTable` joins on the record key, so joining shipments on a table keyed by carrier matches nothing, and it would need a re-keying and a repartition topic for two rows. The global table needs no co-partitioning because every instance holds every partition of the reference topic. It also costs a full copy of the topic on every instance, which suits a small table and not a large one. The local copy is the same idea as an `order_copy` table, held by Kafka Streams instead of a database.
+The first lambda says where to look: the join key is a field of the value, not the record key, which is the order id. That is what a global table is for. A `KTable` joins on the record key, so joining shipments on a table keyed by carrier matches nothing, and it would need a re-keying and a repartition topic for two rows. The global table needs no co-partitioning because every instance holds every partition of the reference topic. It also costs a full copy of the topic on every instance, which suits a small table and not a large one. The local copy is the same idea as a table copy of the owner's rows kept in a service's own database, held by Kafka Streams instead.
 
 The join is a left join. A shipment whose carrier has no reference is forwarded with an empty mode and link; an inner join would drop it, and nothing would show that a customer was never told.
 

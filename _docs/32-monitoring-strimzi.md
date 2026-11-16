@@ -7,7 +7,7 @@ description: "A Kafka cluster that an operator runs hides its JVMs behind resour
 duration: "50 minutes"
 ---
 
-Consumer lag, event age and relay backlog say that something is stuck and not why. A broker that spends its time in garbage collection, a cluster with no active controller and a topic the operator cannot reconcile all show up there as the same thing, a number that stops falling.
+Consumer lag, event age and relay backlog say that something is stuck and not why. A broker that spends its time in garbage collection, a cluster with no active controller and a topic the operator cannot reconcile all show up in those numbers as the same thing, a number that stops falling.
 
 On Kubernetes the cluster is also a set of resources that an operator keeps true, and each of those can be wrong without any pod failing. The signals that explain a stuck flow come from three places: the Kafka processes, the operator, and the status of the resources the operator manages.
 
@@ -19,7 +19,7 @@ On Kubernetes the cluster is also a set of resources that an operator keeps true
 
 An operator-managed cluster has three layers that fail independently. The JVMs run or do not. The operator reconciles or does not. A resource is accepted or is stuck with a condition that says why. Reading the first layer used to mean a JMX exporter and its mapping rules (Owen Corrigan, Strimzi blog). Reading none of the second and third leaves the questions an operator is there to answer: is it reconciling, and is the topic I just declared the one Kafka has?
 
-Take an example. Raise the partitions of a declared topic in Kafka and the resource turns `Ready=False`, reason `NotSupported`, while every broker stays healthy. Nothing in the flow breaks. Only the resource knows.
+Raise the partitions of a declared topic in Kafka and the resource turns `Ready=False`, reason `NotSupported`, while every broker stays healthy. Nothing in the flow breaks. Only the resource knows.
 
 ### The solution
 

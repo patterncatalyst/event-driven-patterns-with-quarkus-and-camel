@@ -110,7 +110,7 @@ Groups come from `groupsPattern`, minus the connector's default exclusions, `con
 
 ## Failing a consumer over
 
-The consumer is the `notification-service`. Five orders have been notified on `edp`, and the group there has committed the five records. `edp-dr` holds the same five records and, after a few seconds, the same group with the same committed offsets, before any consumer has connected to it.
+`notification-service` is the consumer. Five orders have been notified on `edp`, and the group there has committed the five records. `edp-dr` holds the same five records and, after a few seconds, the same group with the same committed offsets, before any consumer has connected to it.
 
 The failover is a stop and a start with one new value.
 
