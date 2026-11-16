@@ -105,6 +105,8 @@ Images are built from the compose build context (`examples/`, the Containerfile 
 | `kafka_exec_on <pod> <tool> <args...>`, `kafka_raw_on <pod> ...` | a Kafka CLI tool in any broker pod (the second cluster's, a scaled-up broker); `kafka_exec` and `kafka_raw` are the same on `edp-broker-0` |
 | `kafka_ready <name>` | the Kafka resource's generation is observed and it is Ready |
 | `connect_get <path> [pod]` | read-only `curl` against a Connect worker through `kubectl exec`, for status and offsets; changes go through the resources |
+| `group_empty <group>` | the consumer group has no active member (Empty or Dead) |
+| `group_offsets_copy <from> <to>` | copies committed offsets between two inactive groups through `kafka-consumer-groups.sh --export` and `--from-file`; refuses while `<from>` has members |
 | `prom_query <promql>` | prints the value of a one-series result, or the series count; fails on no data (`tools/prom.py`, which also takes a third argument `sum` or `count`) |
 | `grafana_dashboard <uid>` | the provisioned dashboard is served (HTTP 200) |
 | `psql_exec <db> -` | SQL from standard input (`exec -i`) |
