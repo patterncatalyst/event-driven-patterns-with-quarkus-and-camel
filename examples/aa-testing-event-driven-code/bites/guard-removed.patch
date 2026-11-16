@@ -1,0 +1,10 @@
+--- a/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
++++ b/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
+@@ -27,7 +27,6 @@
+                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+                 .toD("{{order-service.url}}/orders/${header.orderId}?bridgeEndpoint=true")
+                 .unmarshal().json(FetchedOrder.class)
+-                .filter(simple("${body.status} != 'CANCELLED'")) // GUARD
+                 .bean("notificationLog", "record(${exchangeProperty.event.eventId}, ${header.orderId}, ${body})")
+                 .setHeader(KafkaConstants.KEY, simple("${body.orderId}")) // KEY
+                 .marshal().json()

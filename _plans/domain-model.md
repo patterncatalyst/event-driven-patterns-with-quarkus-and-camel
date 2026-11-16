@@ -79,7 +79,7 @@ Chapter 04 adds one ordered stream topic, `edp.shipping.shipments`, keyed by ord
 
 Chapter 09 adds two more non-catalog topics: `edp.inventory.item-changes` (raw Debezium change envelopes of the legacy `inventory_item` table) and `edp.inventory.items` (compacted `InventoryItem` state documents keyed by sku). Neither is in `Topics.ALL`.
 
-Appendix C adds one non-catalog topic: `edp.shipping.delivery-counts-flink` (the Flink SQL job's upsert-kafka output, ShipmentDelivered counts per carrier per tumbling window). Appendix E reuses `edp.shipping.shipments`. No domain-model code change.
+Appendix C adds one non-catalog topic: `edp.shipping.delivery-counts-flink` (the Flink SQL job's upsert-kafka output, ShipmentDelivered counts per carrier per tumbling window). Appendix A adds the example-local `edp.orders.notified` (the notification route's output). Appendix E reuses `edp.shipping.shipments`. No domain-model code change.
 
 Chapter 13 adds `edp.orders.placed-dlq`, not in `Topics.ALL`.
 

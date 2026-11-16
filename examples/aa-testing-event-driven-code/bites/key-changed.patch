@@ -1,0 +1,11 @@
+--- a/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
++++ b/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
+@@ -29,7 +29,7 @@
+                 .unmarshal().json(FetchedOrder.class)
+                 .filter(simple("${body.status} != 'CANCELLED'")) // GUARD
+                 .bean("notificationLog", "record(${exchangeProperty.event.eventId}, ${header.orderId}, ${body})")
+-                .setHeader(KafkaConstants.KEY, simple("${body.orderId}")) // KEY
++                .setHeader(KafkaConstants.KEY, simple("${body.customerId}")) // KEY
+                 .marshal().json()
+                 .to("kafka:" + NOTIFIED);
+     }
