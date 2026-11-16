@@ -1,0 +1,58 @@
+name: edp-ac
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-lgtm.yaml
+  - path: ../_infra/compose-flink.yaml
+  - path: ../_infra/compose-risingwave.yaml
+
+services:
+  # Creates the input topic and the Flink output topic, one partition each, then exits. One partition means one
+  # reader per engine, so event time and watermarks advance in the order the records were produced. PostgreSQL is
+  # here for its psql client, which asks RisingWave; no host client is assumed.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for t in edp.shipping.delivered edp.shipping.delivery-counts-flink; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1
+        done
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  delivery-counts-service:
+    build:
+      context: ..
+      dockerfile: ac-querying-streams-without-ksqldb/delivery-counts-service/Containerfile
+    container_name: edp-delivery-counts
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+      QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      # Demo code: KS_GRACE_SECONDS=0 gives Kafka Streams a smaller lateness than Flink and RisingWave.
+      KS_GRACE_SECONDS: ${KS_GRACE_SECONDS:-${LATENESS_SECONDS:-10}}
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      lgtm:
+        condition: service_healthy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
