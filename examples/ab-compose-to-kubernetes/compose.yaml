@@ -1,0 +1,6 @@
+name: edp-ab
+
+# Kafka and PostgreSQL exactly as the compose chapters run them; nothing else.
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
