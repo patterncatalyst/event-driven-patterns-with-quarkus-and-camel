@@ -779,3 +779,19 @@ Fresh containers for every run; logs in `<scratchpad>/r13-window-c/`.
 | C `KS_GRACE_SECONDS=0` | 12/18; fails 5, 6, 10, 11, 13, 16 |
 
 Fixes: G guard switch applied only to the older-after-newer scenario, so checks 17 and 21 no longer depend on fetch order; E capacity scenario sends 402 to 406 first and waits until consumed before 407 to 412 (timeout 20 s); `emit()` replaces `print()` in helpers. Measured: G staleness fastest 413 to 487 ms, median 491 to 496 ms, slowest 499 to 875 ms (dual median 3 ms); G rebuild of 27 orders 1 to 2 s; C first closed-window answer Kafka Streams 20 ms, Flink 4.3 s, RisingWave 4.4 s; C memory in use 2.08 GiB (one sample). Cut: G compaction remark, E "auto-commit off re-reads everything". C Pinot and Druid line sourced from their home pages.
+
+### r13 minikube window (2026-11-16): Appendices B and F
+
+Fresh profile `edp`, recreated for the final runs, deleted at the end; logs in `<scratchpad>/r13-window-k/`.
+
+| Run | Result |
+|---|---|
+| B compose, final | 9/9, 9/9 |
+| B k8s (after fix), final | 9/9, 9/9 |
+| B compare, final | 23/23, 23/23 |
+| B `DRIFT=partitions` | compose 8/9 (fails 5); compare 21/23 (fails 7, 22) |
+| F (after fixes), final | 30/30, 30/30 |
+| F `GROUP_PROTOCOL=classic` | 29/30; fails 8 |
+| F `OFFSET_COPY=off` | 26/30; fails 19, 21, 23, 25 |
+
+Fixes: B check 7 reads the PostgreSQL manifest as written (CloudNativePG adds `wal_level` and `max_replication_slots` to the live Cluster); F check 8 parses the GROUP/TYPE table; F fixed sleep replaced by a poll; the 409 on a retried accepted order asserted inside check 30. Measured: stop gap 5.1 to 7.5 s, 53 to 70 redelivered; rolling update (consumer protocol) 47 to 372 redelivered (559 in the copy-off run, ceiling 600); cut-over overlap 0 to 450, rollback 0 to 290; green live 12 to 17 s after blue scale-down; HTTP rollout 5 to 8 of about 2,385 requests failed, no 5xx. Sources fetched: PostgreSQL 18 runtime config pages; Danilo Sato, ParallelChange (martinfowler.com, 2014).

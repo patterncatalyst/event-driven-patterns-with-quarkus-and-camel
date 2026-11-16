@@ -1,6 +1,9 @@
 """HTTP load against order-service and what it left on the topic.
 
-  http.py load <first-id-number> <seconds> <out-file>   4 threads, about 80 requests/s in all, a new connection each
+  http.py load <first-id-number> <seconds> <out-file> [<flowing-file>]
+                                                         4 threads, about 80 requests/s in all, a new connection each;
+                                                         creates the flowing file once the first request is answered
+  http.py post <order id>                                one POST of that order id; prints the status (a retry of an accepted order)
   http.py report <out-file>                              requests, failed, 5xx and the time of the first and last request
   http.py once <out-file>...                             reads kafka-console-consumer output (key, tab, value) on stdin
                                                          and checks one event per 201 and none for a failed request
@@ -18,7 +21,7 @@ import time
 PORT = 30080  # the NodePort published on 127.0.0.1
 
 
-def load(first, secs, out):
+def load(first, secs, out, flowing=None):
     lock = threading.Lock()
     counter = [first]
     results = []
@@ -41,6 +44,8 @@ def load(first, secs, out):
                 code = type(e).__name__
             with lock:
                 results.append((t, oid, code))
+                if flowing:
+                    open(flowing, "a").close()
             time.sleep(max(0, 0.05 - (time.time() - t)))
 
     threads = [threading.Thread(target=worker) for _ in range(4)]
@@ -51,6 +56,15 @@ def load(first, secs, out):
     with open(out, "w", encoding="utf-8") as f:
         for t, oid, code in results:
             f.write(f"{t:.3f} {oid} {code}\n")
+
+
+def post(oid):
+    body = json.dumps({"id": oid, "customerId": "C-1", "itemSku": "SKU-1", "quantity": 1, "amount": 9.99})
+    c = http.client.HTTPConnection("127.0.0.1", PORT, timeout=10)
+    c.request("POST", "/orders", body, {"Content-Type": "application/json", "Connection": "close"})
+    status = c.getresponse().status
+    c.close()
+    return status
 
 
 def out(line):
@@ -87,7 +101,9 @@ def once(paths, text):
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "load":
-        load(int(sys.argv[2]), float(sys.argv[3]), sys.argv[4])
+        load(int(sys.argv[2]), float(sys.argv[3]), sys.argv[4], sys.argv[5] if len(sys.argv) > 5 else None)
+    elif cmd == "post":
+        sys.stdout.write(f"{post(sys.argv[2])}\n")
     elif cmd == "report":
         report(sys.argv[2])
     elif cmd == "once":

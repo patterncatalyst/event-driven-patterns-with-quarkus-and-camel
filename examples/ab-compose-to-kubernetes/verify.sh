@@ -108,15 +108,15 @@ k8s_half() {
     local d="$CAP/k8s" bid cid
     bid="$(node_id broker)"; cid="$(node_id controller)"
     kc -n "$NS_KAFKA" get kafka edp -o json > "$d/kafka-resource.json"
-    kc -n "$NS_APPS" get cluster.postgresql.cnpg.io edp-pg -o json > "$d/cluster.json"
+    kc kustomize ../_k8s/postgres | kc create --dry-run=client -f - -o json > "$d/cluster-manifest.json"
     precondition "Kafka answers and its capture holds all 13 settings" poll 60 capture_until_complete kafka "$d/kafka.txt" k8s_kafka "edp-broker-$bid" "$bid"
     precondition "PostgreSQL answers and its capture holds all 5 settings" poll 60 capture_until_complete pg "$d/pg.txt" k8s_pg
     check "a node id that is not a broker gives an empty capture, and the capture check rejects it" witness_rejects_empty k8s_kafka "edp-broker-$bid" "$cid"
     check "the Kafka resource reports the version it was asked for" kafka_version_reported
     check "every setting the Kafka resource sets is what the broker reports" "${CFG[@]}" explicit kafka-resource "$d/kafka-resource.json" set "$d/kafka.txt"
     check "every setting it leaves unset is the Kafka default" "${CFG[@]}" explicit kafka-resource "$d/kafka-resource.json" unset "$d/kafka.txt"
-    check "the Cluster sets none of the four PostgreSQL parameters compared" "${CFG[@]}" explicit cluster "$d/cluster.json" set "$d/pg.txt"
-    check "every parameter reports the CloudNativePG or PostgreSQL default" "${CFG[@]}" explicit cluster "$d/cluster.json" unset "$d/pg.txt"
+    check "the Cluster manifest sets none of the four PostgreSQL parameters compared" "${CFG[@]}" explicit cluster "$d/cluster-manifest.json" set "$d/pg.txt"
+    check "every parameter reports the CloudNativePG or PostgreSQL default" "${CFG[@]}" explicit cluster "$d/cluster-manifest.json" unset "$d/pg.txt"
     check "PostgreSQL's major.minor is the Cluster image tag's" "${CFG[@]}" version "$d/pg.txt" "$(kc -n "$NS_APPS" get cluster.postgresql.cnpg.io edp-pg -o jsonpath='{.spec.imageName}')"
     summary
 }

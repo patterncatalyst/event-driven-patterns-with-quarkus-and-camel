@@ -9,7 +9,7 @@ description: "A compose file and a set of Kubernetes resources describe the same
 duration: "45 minutes"
 ---
 
-Chapter 28 moved services from compose to Kubernetes by changing their addresses. The settings underneath them move too, and nothing reports it when one is lost. A service that creates its topics by sending to them relies on `auto.create.topics.enable` and on `num.partitions`. A Debezium connector relies on logical WAL and on a free replication slot. A share group relies on broker settings that the compose file sets, two of them because one broker cannot satisfy their defaults. Each is one line in a compose file, and each has to find a new home in a resource that the reader did not write.
+Moving a service from compose to Kubernetes changes its addresses. The settings underneath it move too, and nothing reports it when one is lost. A service that creates its topics by sending to them relies on `auto.create.topics.enable` and on `num.partitions`. A Debezium connector relies on logical WAL and on a free replication slot. A share group relies on broker settings that the compose file sets, two of them because one broker cannot satisfy their defaults. Each is one line in a compose file, and each has to find a new home in a resource that the reader did not write.
 
 Reading the two files side by side finds the lines that were copied. It does not find the ones an operator adds or changes, because the operator's defaults are not in either file. CloudNativePG sets `wal_level` to `logical` by default, and the compose file has to ask for it on the command line. The only complete view is the running system's own answer: start each target fresh, ask Kafka and PostgreSQL for their effective settings and compare the two sets of answers.
 
@@ -36,7 +36,7 @@ kafka:
     - KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR=1
 ```
 
-The Kafka image turns each `KAFKA_` variable into a broker key: the prefix goes, each underscore becomes a dot and the rest is lower case. On Kubernetes the same keys live in `spec.kafka.config` of the `Kafka` resource, with their real names, and the roles move out of the configuration into node pools (chapter 28).
+The Kafka image turns each `KAFKA_` variable into a broker key: the prefix goes, each underscore becomes a dot and the rest is lower case. On Kubernetes the same keys live in `spec.kafka.config` of the `Kafka` resource, with their real names, and the roles move out of the configuration into node pools.
 
 ```yaml
 # examples/_k8s/kafka/kafka.yaml
@@ -106,7 +106,7 @@ spec:
 
 There is no `postgresql.parameters` block, and none is needed for `wal_level`. CloudNativePG builds the configuration from four layers in order: global defaults, defaults that depend on the major version, the parameters the Cluster sets and a short list of fixed parameters; it states that the fixed ones "can't be overridden by the user via the YAML configuration". Its global defaults include `wal_level = 'logical'` and `max_replication_slots = '32'`. A start script that passes `wal_level=logical` as a flag and a Cluster that passes nothing therefore report the same level and different slot counts.
 
-One difference sits outside the settings. Debezium on Kubernetes connects as the database owner, which needs the `REPLICATION` attribute, and the Cluster grants it through `managed.roles` (chapter 35). The compose files have no such line.
+One difference sits outside the settings. Debezium on Kubernetes connects as the database owner, which needs the `REPLICATION` attribute, and the Cluster grants it through `managed.roles`. The compose files have no such line.
 
 ## What is the same, what differs and why
 
@@ -132,14 +132,14 @@ Four settings differ, and the comparison lists them. Any other difference fails 
 
 | Setting | Compose | Kubernetes | Why |
 |---|---|---|---|
-| `group.coordinator.rebalance.protocols` | `classic,consumer,streams,share` | `classic,consumer,streams` | Compose lists `share` for chapter 7; the Kafka resource leaves Kafka's default |
+| `group.coordinator.rebalance.protocols` | `classic,consumer,streams,share` | `classic,consumer,streams` | Compose lists `share` for share groups; the Kafka resource leaves Kafka's default |
 | `share.coordinator.state.topic.min.isr` | `1` | `2` | Compose overrides the default; the resource does not |
 | `share.coordinator.state.topic.replication.factor` | `1` | `3` | The same, and one broker cannot satisfy 3 |
 | `max_replication_slots` | `10` | `32` | The start script passes 10; the Cluster leaves CloudNativePG's default |
 
-The first three have one cause. Kafka 4.3 documents `group.coordinator.rebalance.protocols` with a default of `classic,consumer,streams`, and the share state topic with a replication factor of 3 and a minimum in-sync count of 2 ("Topic creation will fail until the cluster size meets this replication factor requirement"). Compose overrides all three because chapter 7 uses share groups on one broker. The Kafka resource sets none of them, so the Kubernetes cluster as built does not list the `share` protocol. Kafka's page also marks the protocols setting deprecated, with every protocol always enabled in Kafka 5.0, so the line has a limited life.
+The first three have one cause. Kafka 4.3 documents `group.coordinator.rebalance.protocols` with a default of `classic,consumer,streams`, and the share state topic with a replication factor of 3 and a minimum in-sync count of 2 ("Topic creation will fail until the cluster size meets this replication factor requirement"). Compose overrides all three because a share group on one broker needs them. The Kafka resource sets none of them, so the Kubernetes cluster as built does not list the `share` protocol. Kafka's page also marks the protocols setting deprecated, with every protocol always enabled in Kafka 5.0, so the line has a limited life.
 
-The slot count is the reverse: compose is the one that sets a value, and CloudNativePG's default is larger. A Debezium connector holds one replication slot (chapter 9), so both targets have room for a few connectors, and Kubernetes has more.
+The slot count is the reverse: compose is the one that sets a value, and CloudNativePG's default is larger. A Debezium connector holds one replication slot, so both targets have room for a few connectors, and Kubernetes has more.
 
 The settings the compose file and the resource each set are also checked against their own file. Every key the file or the resource sets must be what the running system reports, and every key it leaves unset must be the documented default. A copied line that did not take effect fails there, before the comparison runs.
 
@@ -160,7 +160,7 @@ cd examples/ab-compose-to-kubernetes
 ./verify.sh compare
 ```
 
-Each half starts its target from nothing, reads it and removes its state; the Kubernetes half creates the minikube profile first if it is missing (chapter 28). `compare` starts nothing and reads the two captures under `target/captures`. Watch the four differences come out as listed and nothing else. The halves end with `9/9 checks passed`, and the comparison with `23/23 checks passed`.
+Each half starts its target from nothing, reads it and removes its state; the Kubernetes half creates the minikube profile first if it is missing. `compare` starts nothing and reads the two captures under `target/captures`. Watch the four differences come out as listed and nothing else. The halves end with `9/9 checks passed`, and the comparison with `23/23 checks passed`.
 
 Try one change and rerun:
 
@@ -172,4 +172,5 @@ Try one change and rerun:
 - Strimzi, [Configuring Strimzi](https://strimzi.io/docs/operators/latest/configuring.html): `spec.kafka.config`, forbidden prefixes and listeners
 - Apache Kafka, [Broker configs](https://kafka.apache.org/43/configuration/broker-configs/): the defaults of the keys compared, `group.coordinator.rebalance.protocols` and the share coordinator state topic
 - CloudNativePG, [PostgreSQL configuration](https://cloudnative-pg.io/docs/1.30/postgresql_conf/): global defaults, user parameters and fixed parameters
+- PostgreSQL, [Connections and Authentication](https://www.postgresql.org/docs/18/runtime-config-connection.html) (`max_connections`) and [Replication](https://www.postgresql.org/docs/18/runtime-config-replication.html) (`max_wal_senders`, `max_replication_slots`): the PostgreSQL defaults
 - Chapter 0 for the compose stack, chapter 28 for the Kafka resource and node pools, chapter 35 for the replication role, chapter 7 for share groups and chapter 9 for replication slots

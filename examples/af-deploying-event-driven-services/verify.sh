@@ -73,7 +73,7 @@ group_lag() { # the records the group has not consumed; fails when the group lis
 lag_zero() { [[ "$(group_lag "$1" || true)" == 0 ]]; }
 group_type() { # group_type <group> <classic|consumer>: the broker lists the group under that protocol
     local out; out="$(kafka_exec kafka-consumer-groups.sh --list --type "$2" 2>/dev/null)" || return 1
-    [[ $'\n'"$out"$'\n' == *$'\n'"$1"$'\n'* ]]
+    awk -v g="$1" -v t="$2" '$1 == g && tolower($2) == t { found = 1 } END { exit !found }' <<<"$out"   # a table: GROUP, TYPE
 }
 export_offsets() { kafka_exec kafka-consumer-groups.sh --group "$1" --reset-offsets --to-current --all-topics --dry-run --export 2>/dev/null | sort; }
 same_offsets() { [[ -n "$1" && "$1" == "$2" ]]; }
@@ -218,9 +218,9 @@ kc -n "$NS_APPS" wait --for=delete pod -l app=notify --timeout=120s >/dev/null 2
 python3 -I tools/http.py load 60000 20 "$TMP/control.txt"
 control="$(python3 -I tools/http.py report "$TMP/control.txt")"; echo "measured: control $control"
 check "without a rollout every request is answered 201" expect "$(field failed "$control")" 0
-python3 -I tools/http.py load 62000 40 "$TMP/roll.txt" &
+python3 -I tools/http.py load 62000 40 "$TMP/roll.txt" "$TMP/flowing" &
 LOAD_PID=$!
-sleep 8   # pacing only: the rollout must start while requests flow, and a check below fails when it did not
+poll 30 test -e "$TMP/flowing"   # the rollout starts once the first request has been answered; a check below fails when it did not run while requests flowed
 R0="$(date +%s)"
 act kc -n "$NS_APPS" set env deploy/order-service REV=roll
 rollout order-service
@@ -235,8 +235,10 @@ failed_below_2_percent() {
     [[ "$r" =~ ^[0-9]+$ && "$f" =~ ^[0-9]+$ ]] && (( r > 0 && f * 100 < r * 2 ))
 }
 check "failed requests stay below 2 percent" failed_below_2_percent
+retry="$(python3 -I tools/http.py post O-60000 || true)"; echo "measured: retry of accepted O-60000 answered $retry"
 once="$(kafka_exec kafka-console-consumer.sh --topic "$TOPIC" --from-beginning --timeout-ms 10000 --property print.key=true 2>/dev/null || true)"
 once="$(python3 -I tools/http.py once "$TMP/control.txt" "$TMP/roll.txt" <<<"$once")"; echo "measured: $once"
-check "every 201 left exactly one event and a failed request left none" expect "$once" "missing=0 duplicate=0 published_for_failed=0"
+check "a retry of an accepted order is answered 409 and, with every 201 and every failed request, leaves exactly one event or none" \
+    expect "$retry $once" "409 missing=0 duplicate=0 published_for_failed=0"
 
 summary

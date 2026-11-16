@@ -194,7 +194,7 @@ Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at p
 | 2A to 2G | Appendices A to G: example (where any), verify.sh, README, example page, appendix, figures | execs 2A to 2G (Sonnet) | G0 | done |
 | 2X | Consistency: domain-model.md topic note, README appendix list, CLAUDE.md decisions draft, versions.md rows | orchestrator | G0 | pending |
 | 3a | Compose window, at most 2 h 15 min: A, B-compose, C, E, G | orchestrator | 2A to 2G | done (A 7/7, C 18/18, E 23/23, G 24/24, twice each) |
-| 3b | minikube window, at most 1 h 30 min: profile up, F, B-k8s, B compare, profile kept for 5 if within 30 min | orchestrator | 3a | pending |
+| 3b | minikube window, at most 1 h 30 min: profile up, F, B-k8s, B compare, profile kept for 5 if within 30 min | orchestrator | 3a | done (B 9/9+9/9+23/23, F 30/30, twice each) |
 | 4 | Fixes inside the windows, affected appendix re-run only | orchestrator | 3a, 3b | pending |
 | 5 | Final runs: compose A, B-compose, C, E, G once each; recreated profile F, B-k8s, compare; profile deleted; static gates; claims and log; commits | orchestrator | 4 | pending |
 | 6 | Opus validation (at most 2 repair rounds) | validator | 5 | pending |

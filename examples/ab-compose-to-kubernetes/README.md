@@ -29,7 +29,7 @@ The compose half refuses to run while another stack is up (`scripts/stack-guard.
 
 ## What verify.sh checks
 
-Compose and Kubernetes captures read 13 broker settings (`num.partitions`, `default.replication.factor`, `min.insync.replicas`, `offsets.topic.replication.factor`, `auto.create.topics.enable`, `log.retention.hours`, `group.coordinator.rebalance.protocols`, the three `share.coordinator.state.topic.*` and the three `transaction.state.log.*` settings listed in `configs.py`) and 5 PostgreSQL settings (`server_version`, `wal_level`, `max_replication_slots`, `max_wal_senders`, `max_connections`). Broker ids are read, never assumed: the compose file says 1, the `KafkaNodePool` says 0. The Kafka defaults are those of the Kafka 4.3 broker configuration page; the PostgreSQL defaults are CloudNativePG's global defaults (`wal_level`, `max_replication_slots`) and PostgreSQL's (`max_wal_senders`, `max_connections`).
+Compose and Kubernetes captures read 13 broker settings (`num.partitions`, `default.replication.factor`, `min.insync.replicas`, `offsets.topic.replication.factor`, `auto.create.topics.enable`, `log.retention.hours`, `group.coordinator.rebalance.protocols`, the three `share.coordinator.state.topic.*` and the three `transaction.state.log.*` settings listed in `configs.py`) and 5 PostgreSQL settings (`server_version`, `wal_level`, `max_replication_slots`, `max_wal_senders`, `max_connections`). Broker ids are read, never assumed: the compose file says 1, the `KafkaNodePool` says 0. The Kafka defaults are those of the Kafka 4.3 broker configuration page; the PostgreSQL defaults are CloudNativePG's global defaults (`wal_level`, `max_replication_slots`) and PostgreSQL's (`max_wal_senders`, `max_connections`, from the PostgreSQL 18 documentation pages for connections and replication).
 
 `verify.sh compose` (9 checks):
 
@@ -43,7 +43,7 @@ Compose and Kubernetes captures read 13 broker settings (`num.partitions`, `defa
 8. The parameter it leaves unset is the PostgreSQL default.
 9. PostgreSQL's major.minor is the image tag's.
 
-`verify.sh k8s` (9 checks): 1 and 2 as above (the broker pod and node id come from `status.nodeIds`); 3 the same witness with the controller's node id; 4 the Kafka resource reports the version it was asked for; 5 and 6 as above against `spec.kafka.config`; 7 the Cluster sets none of the four PostgreSQL parameters compared; 8 each reports the CloudNativePG or PostgreSQL default; 9 major.minor equals the Cluster image tag's.
+`verify.sh k8s` (9 checks): 1 and 2 as above (the broker pod and node id come from `status.nodeIds`); 3 the same witness with the controller's node id; 4 the Kafka resource reports the version it was asked for; 5 and 6 as above against `spec.kafka.config`; 7 the Cluster manifest (`kubectl kustomize ../_k8s/postgres`, rendered as written, because the operator adds `wal_level` and `max_replication_slots` to the live resource) sets none of the four PostgreSQL parameters compared; 8 each reports the CloudNativePG or PostgreSQL default; 9 major.minor equals the Cluster image tag's.
 
 `verify.sh compare` (23 checks): 1 and 2 both captures exist and are complete (an empty capture stops the run); 3 to 17 each of 15 settings is equal on both targets (ten broker keys, `max_wal_senders`, `max_connections`, `wal_level`, `server_version` on major.minor, the Kafka version); 18 to 21 each of the four allowed differences has exactly its expected pair of values; 22 no other setting differs; 23 `_docs/ab-compose-to-kubernetes.md` names every allowed key. The checks print `9/9`, `9/9` and `23/23 checks passed`.
 
@@ -66,8 +66,8 @@ Each run starts from fresh containers or namespaces. `DRIFT=partitions` is demo 
 
 | Switch | Effect | Failing checks (predicted) | Measured result |
 |---|---|---|---|
-| `DRIFT=partitions ./verify.sh compose`, then `./verify.sh compare` | The compose broker reports `num.partitions=6` | compose: 5 (8/9). compare: 7 (`num.partitions` equal) and 22 (no other difference) (21/23) | TBD |
+| `DRIFT=partitions ./verify.sh compose`, then `./verify.sh compare` | The compose broker reports `num.partitions=6` | compose: 5 (8/9). compare: 7 (`num.partitions` equal) and 22 (no other difference) (21/23) | compose 8/9 (check 5 fails: the broker reports 6 against 3). compare 21/23 (checks 7 and 22 fail), as predicted. Without the switch every run was 9/9 and 23/23 |
 
 ## Timings
 
-Compose half: TBD(spike: about 10 s from start to captured, about 10 s in total). Kubernetes half: TBD(spike: about 63 s of captures through `kubectl exec`; `k8s_teardown` 21 to 36 s; fresh platform 37 to 41 s on a warm profile, 180 s cold).
+Compose half: 70 to 71 s from `down -v` to `down -v`, images already present. Kubernetes half: 2 min to 2 min 14 s on a warm profile, of which the captures take about a minute and the deletion of the namespaces 18 to 19 s. `cluster.sh up` on a fresh profile took 41 to 44 s with the images and manifests cached.

@@ -131,6 +131,18 @@ def resource_kafka(json_file):
     return {k: (str(v).lower() if isinstance(v, bool) else str(v)) for k, v in cfg.items()}
 
 
+def json_documents(json_file):
+    """The JSON documents of a file, one after the other (kubectl create --dry-run=client -o json prints one per object)."""
+    text, pos, decoder, docs = Path(json_file).read_text(encoding="utf-8"), 0, json.JSONDecoder(), []
+    while pos < len(text):
+        if text[pos].isspace():
+            pos += 1
+            continue
+        doc, pos = decoder.raw_decode(text, pos)
+        docs.append(doc)
+    return docs
+
+
 def cmd_explicit(source, src_file, part, capture):
     """part=set: every key the source sets reports that value. part=unset: every other key reports its default."""
     got = read_pairs(capture)
@@ -141,7 +153,8 @@ def cmd_explicit(source, src_file, part, capture):
     elif source == "start-sh":
         explicit, keys, defaults = start_pairs(src_file), [k for k in PG_KEYS if k != "server_version"], PG_DEFAULTS
     elif source == "cluster":
-        params = json.loads(Path(src_file).read_text(encoding="utf-8"))["spec"].get("postgresql", {}).get("parameters", {})
+        cluster = next(d for d in json_documents(src_file) if d.get("kind") == "Cluster")  # the manifest as written, before the operator adds its defaults
+        params = cluster["spec"].get("postgresql", {}).get("parameters", {})
         explicit, keys, defaults = {k: str(v) for k, v in params.items()}, [k for k in PG_KEYS if k != "server_version"], PG_DEFAULTS
     else:
         return 2

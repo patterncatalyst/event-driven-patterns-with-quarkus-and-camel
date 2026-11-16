@@ -11,7 +11,7 @@ duration: "60 minutes"
 
 A consumer in a group owns partitions. Stopping it hands them to another member or to nobody, a record it read and had not committed is read again, and a record it could not store may be skipped without a trace. Whether a change loses records, repeats them or only delays them depends on how the pods are replaced and on whether the new code reads what the old code wrote.
 
-The strategies below run on the cluster of chapter 28 with the images of earlier chapters, unchanged: the notification-service of chapter 6, whose group, protocol and client id come from the environment, and the order-service of chapter 2. A producer Job sends numbered records (`O-41000` and up) at a fixed rate, so a record that is missing, repeated or read by two groups is found by its id.
+The strategies below run on a minikube cluster with two existing images, unchanged: a notification-service, whose group, protocol and client id come from the environment, and an order-service that answers `POST /orders`. A producer Job sends numbered records (`O-41000` and up) at a fixed rate, so a record that is missing, repeated or read by two groups is found by its id.
 
 ## Stop and restart
 
@@ -23,7 +23,7 @@ Nothing is lost, because the topic holds what the producer sent while no consume
 
 {% include excalidraw.html file="af-stop-gap" alt="During the gap the producer keeps sending, the topic's backlog grows, no pod exists and no row is written" caption="Figure F.2: The topic keeps the records while no consumer runs" %}
 
-New pods rejoin the group, read from the committed offset and drain the backlog faster than it grew. The offset trails the last processed record, because the Kafka client commits on a timer, the Camel Kafka default that chapter 6 keeps. Records processed after the last commit are processed again, and the `attempts` column of chapter 6's table reads 2 for them. The idempotent consumer of chapter 11 makes the repeat harmless.
+New pods rejoin the group, read from the committed offset and drain the backlog faster than it grew. The offset trails the last processed record, because the Kafka client commits on a timer, the Camel Kafka default. Records processed after the last commit are processed again, and the `attempts` column of the notification table reads 2 for them. An idempotent consumer makes the repeat harmless.
 
 {% include excalidraw.html file="af-stop-after" alt="New pods resume each partition from the committed offset; every record has a row and records after the last commit have attempts 2" caption="Figure F.3: Nothing is lost; some records are processed twice" %}
 
@@ -45,7 +45,7 @@ Each start and each stop changes the group's membership, and a membership change
 
 {% include excalidraw.html file="af-roll-mid" alt="Two revision 1 pods keep their partitions, a third leaves once a revision 2 pod has joined, and the rebalance moves a partition and delivers uncommitted records again" caption="Figure F.5: Every membership change moves partitions" %}
 
-Under the classic group protocol the members take part in the rebalance. With the consumer protocol of KIP-848 the group coordinator on the broker drives it, declaring an assignment and reconciling each member toward it (Apache Kafka, KIP-848). Chapter 6 selects the protocol with `GROUP_PROTOCOL`, and the image runs under either one unchanged. Neither protocol guarantees that no record is repeated: a record read and not yet committed when its partition moves is delivered again, so the repeat is bounded by what was processed since the last commit at each move.
+Under the classic group protocol the members take part in the rebalance. With the consumer protocol of KIP-848 the group coordinator on the broker drives it, declaring an assignment and reconciling each member toward it (Apache Kafka, KIP-848). The notification-service selects the protocol with `GROUP_PROTOCOL`, and the image runs under either one unchanged. Neither protocol guarantees that no record is repeated: a record read and not yet committed when its partition moves is delivered again, so the repeat is bounded by what was processed since the last commit at each move.
 
 {% include excalidraw.html file="af-roll-after" alt="Three pods of revision 2 own the partitions; every record has a row and some have attempts 2" caption="Figure F.6: At least once: nothing missing, a bounded number repeated" %}
 
@@ -57,9 +57,9 @@ A service behind a Kubernetes Service has no group to rebalance. The risk is at 
 
 {% include excalidraw.html file="af-http-roll" alt="A client posts orders to a Service that routes to a ready pod and a pod being removed; a request in flight on the removed pod is reset and retried, each 201 leaves one event on edp.orders.placed and a failed request leaves none" caption="Figure F.7: A removed pod can drop requests in flight; the client retries" %}
 
-The order-service of chapter 2 answers `POST /orders` and publishes one event per accepted order. During a rolling update with a readiness probe, requests in flight on a pod that is removed can fail at the connection level, as a reset or a timeout, and the client has to retry them. No request was answered with a 5xx status. The publish happens before the response, so a request that fails publishes nothing, and each 201 left exactly one event, never none and never two. A retry of an order that was accepted is refused with 409 on its id, so a retry cannot publish a second event.
+The order-service answers `POST /orders` and publishes one event per accepted order. During a rolling update with a readiness probe, requests in flight on a pod that is removed can fail at the connection level, as a reset or a timeout, and the client has to retry them. No request was answered with a 5xx status. The publish happens before the response, so a request that fails publishes nothing, and each 201 left exactly one event, never none and never two. A retry of an order that was accepted is refused with 409 on its id, so a retry cannot publish a second event.
 
-Quarkus can drain running requests: `quarkus.shutdown.timeout` waits for them, and `quarkus.shutdown.delay` keeps serving while the readiness probe reports down (Quarkus, all configuration). Both are environment variables on the Deployment, `QUARKUS_SHUTDOWN_TIMEOUT` and `QUARKUS_SHUTDOWN_DELAY`. They did not remove the connection-level failures of a roll, so the guarantee rests on the client's retry and on the id that makes the retry safe.
+Quarkus can drain running requests: `quarkus.shutdown.timeout` waits for them, and `quarkus.shutdown.delay` keeps serving while the readiness probe reports down (Quarkus, all configuration). Both are environment variables on the Deployment, `QUARKUS_SHUTDOWN_TIMEOUT` and `QUARKUS_SHUTDOWN_DELAY`. The guarantee does not depend on them: it rests on the client's retry and on the id that makes the retry safe.
 
 ## A breaking schema change
 
@@ -67,9 +67,9 @@ The notification-service reads `orderId`. A producer that renames it to `orderRe
 
 {% include excalidraw.html file="af-schema-breaking" alt="A producer sends orderRef instead of orderId; the topic accepts it, the v1 consumer's insert fails because order_id is null, the offset is committed anyway so group lag is zero, no row exists and the only trace is an error line in the log" caption="Figure F.8: A breaking change is a silent loss" %}
 
-The record is read, the insert fails on the missing value, Camel logs `Failed delivery` and the route moves on. The offset is committed, the lag is zero and the row does not exist. A dashboard on lag stays green, and the only repair is to produce the record again. A schema registry with a compatibility rule refuses such a change at the producer (chapter 18); plain JSON on a topic has no such gate.
+The record is read, the insert fails on the missing value, Camel logs `Failed delivery` and the route moves on. The offset is committed, the lag is zero and the row does not exist. A dashboard on lag stays green, and the only repair is to produce the record again. A schema registry with a compatibility rule refuses such a change at the producer; plain JSON on a topic has no such gate.
 
-An additive change takes two compatible steps and a third that removes. First the producer expands: it sends both `orderId` and `orderRef`. The old consumer reads the field it knows and ignores the other, and consumers of the new version read `orderRef`. Every record is stored.
+An additive change takes two compatible steps and a third that removes, the expand and contract sequence that Danilo Sato describes as ParallelChange. First the producer expands: it sends both `orderId` and `orderRef`. The old consumer reads the field it knows and ignores the other, and consumers of the new version read `orderRef`. Every record is stored.
 
 {% include excalidraw.html file="af-schema-expand" alt="The producer sends orderId and orderRef on one topic; the v1 consumer reads orderId, the v2 consumer reads orderRef, and both store every record" caption="Figure F.9: An additive change loses nothing" %}
 
@@ -102,7 +102,7 @@ The export has one `topic,partition,offset` line per partition and no header. Th
 
 {% include excalidraw.html file="af-bg-cutover" alt="Four steps in order: scale blue to 0, export blue's offsets, import them into green's group, scale green to 3; records after blue's last commit are processed again by green" caption="Figure F.13: Green starts where blue's commits ended" %}
 
-Nothing goes missing, because green starts where blue's commits ended. Some records are read twice: blue processed records after its last commit, green starts at that commit, and both groups store them. The overlap is bounded by the commit interval and is not zero. A consumer that cannot tolerate it needs the idempotent consumer of chapter 11.
+Nothing goes missing, because green starts where blue's commits ended. Some records are read twice: blue processed records after its last commit, green starts at that commit, and both groups store them. The overlap is bounded by the commit interval and is not zero. A consumer that cannot tolerate it needs an idempotent consumer.
 
 Rollback is the same four steps the other way: stop green, copy green's offsets to blue's group, start blue. Blue's group exists and holds older offsets, and the import replaces them, so blue resumes after what green processed. Without the copy a new group replays the topic and an old group resumes at its old position, reading everything since the cut-over again.
 
@@ -118,7 +118,7 @@ cd examples/af-deploying-event-driven-services
 ./verify.sh
 ```
 
-`verify.sh` deploys the images of chapters 6 and 2 unchanged and replaces them under a producer at a fixed rate: a stop and restart, a rolling update, a rolling update under HTTP requests, a breaking and a compatible schema change, a cut-over and a rollback. Watch the rows per id and the group offsets. It ends with `TBD/30 checks passed`.
+`verify.sh` deploys the two images unchanged and replaces them under a producer at a fixed rate: a stop and restart, a rolling update, a rolling update under HTTP requests, a breaking and a compatible schema change, a cut-over and a rollback. Watch the rows per id and the group offsets. It ends with `30/30 checks passed`.
 
 Try one change and rerun:
 
@@ -127,11 +127,11 @@ Try one change and rerun:
 
 ## When not to use it
 
-Every strategy here delivers at least once. A consumer that cannot tolerate a repeat needs the idempotent consumer of chapter 11 or the transactions of chapter 12 first, and no deployment strategy replaces either.
+Every strategy here delivers at least once. A consumer that cannot tolerate a repeat needs an idempotent consumer or Kafka transactions first, and no deployment strategy replaces either.
 
 Blue-green consumers pay for two groups, a copy step and a stop between them. When the old and the new version can read the same topic together, which is true of every compatible change, a rolling update does the same work with no copy. When a consumer is stateless and a delay of one pod start is acceptable, the stop and restart is the least to operate.
 
-No strategy gives a client a rollout with no failed requests. A connection open to a removed pod is reset whatever the server does, so a client of a rolling service retries, and the service needs a way to tell a retry from a new request.
+A client of a rolling service has to expect failed requests, because a connection open to a pod that is removed can be reset. It retries, and the service needs a way to tell a retry from a new request.
 
 > **🤖 Explore with your agent**
 > "In examples/af-deploying-event-driven-services, run verify.sh with OFFSET_COPY=off, then query notifications.notification for the groups notify-blue and notify-green in the id range O-51000 to O-54999. List the ids both groups hold and say why green re-read them. Then read group_offsets_copy in examples/_k8s/lib.sh and state what it exports from the source group, what it imports into the target, and why the source group must have no members."
@@ -144,4 +144,5 @@ No strategy gives a client a rollout with no failed requests. A connection open 
 - Apache Kafka, [Basic Kafka operations](https://kafka.apache.org/43/operations/basic-kafka-operations/) (resetting consumer group offsets: inactive consumers, `--from-file`, `--execute`)
 - Quarkus, [All configuration](https://quarkus.io/version/3.40/guides/all-config) (`quarkus.shutdown.timeout`, `quarkus.shutdown.delay`)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 21: Deploying Event-Driven Microservices
-- Chapter 2 for the order-service, chapter 6 for the notification-service and its consumer settings, chapter 11 for the idempotent consumer, chapter 18 for schema evolution, chapter 28 for the cluster
+- Danilo Sato, [ParallelChange](https://martinfowler.com/bliki/ParallelChange.html), martinfowler.com, 2014: expand, migrate and contract
+- Chapter 2 for the order-service, chapter 6 for the notification-service and its consumer settings, chapter 11 for the idempotent consumer, chapter 12 for transactions, chapter 18 for schema evolution, chapter 28 for the cluster

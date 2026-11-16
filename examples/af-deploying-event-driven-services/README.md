@@ -34,7 +34,7 @@ cd examples/af-deploying-event-driven-services
 KEEP=1 ./verify.sh   # leave the namespaces in place
 ```
 
-`verify.sh` starts from fresh namespaces every time and ends with `TBD/30 checks passed`.
+`verify.sh` starts from fresh namespaces every time and ends with `30/30 checks passed`.
 
 | Setting | Default | Effect |
 |---|---|---|
@@ -61,33 +61,33 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 1 | Kafka `edp` is Ready (precondition) |
 | 2 | the three input topics have three partitions (precondition) |
 | 3 | the node runs the chapter 06 and chapter 02 images, equal to the host builds (precondition) |
-| 4 | the Recreate rollout leaves a period of at least 3 s with no row written, TBD(spike: 7.0 s) |
+| 4 | the Recreate rollout leaves a period of at least 3 s with no row written, 5.1 to 7.5 s over three clean runs |
 | 5 | the group has no lag once it has caught up |
 | 6 | every one of the 3,000 records has a row |
-| 7 | the records delivered again (attempts above 1) stay below 600, TBD(spike: 260) |
+| 7 | the records delivered again (attempts above 1) stay below 600, 53 to 70 over three clean runs |
 | 8 | `notify-roll` is listed as a consumer-protocol group |
 | 9 | the rolling update replaced every pod |
 | 10 | rows of the range were written by the old pods and by the new ones |
 | 11 | every one of the 3,000 records has a row |
-| 12 | the records delivered again stay below 600, TBD(spike: classic 104 to 342, consumer 0 to 180) |
-| 13 | no record with the renamed field produced a row, TBD(spike: 0 of 20) |
+| 12 | the records delivered again stay below 600, 47 to 372 over three clean runs on the consumer protocol (559 in a demo run), 0 on the classic protocol |
+| 13 | no record with the renamed field produced a row, 0 of 20 in every run |
 | 14 | the group has no lag: it committed past the records it could not store |
 | 15 | the consumer log holds `Failed delivery` |
 | 16 | the next 20 records in the old shape are all stored |
-| 17 | the 20 records carrying both fields are all stored, TBD(spike: 20 of 20) |
-| 18 | the blue group is Empty within 60 s of the scale-down, TBD(spike: 2 to 3 s) |
+| 17 | the 20 records carrying both fields are all stored, 20 of 20 in every run |
+| 18 | the blue group is Empty within 60 s of the scale-down |
 | 19 | the green group holds blue's committed offsets, partition by partition |
 | 20 | every one of the 4,000 records has a row in blue or green |
-| 21 | the ids processed by both groups stay below 600, TBD(spike: 224) |
+| 21 | the ids processed by both groups stay below 600, 0 to 450 over three clean runs |
 | 22 | the green group is Empty within 60 s of the scale-down |
 | 23 | the blue group holds green's committed offsets, partition by partition |
 | 24 | every one of the 3,000 records of the rollback range has a row in blue or green |
-| 25 | the ids processed by both groups stay below 600, TBD(spike: 250) |
-| 26 | without a rollout every request is answered 201, TBD(spike: 3192 of 3192) |
+| 25 | the ids processed by both groups stay below 600, 0 to 290 over three clean runs |
+| 26 | without a rollout every request is answered 201, 1,584 of 1,584 in every run |
 | 27 | the rollout ran while requests were flowing |
 | 28 | no request was answered with a 5xx status |
-| 29 | failed requests stay below 2 percent, TBD(spike: 0.2 to 0.7 percent) |
-| 30 | every 201 left exactly one event and a failed request left none |
+| 29 | failed requests stay below 2 percent, 0.2 to 0.3 percent over three clean runs |
+| 30 | a retry of an accepted order is answered 409, every 201 left exactly one event and a failed request left none |
 
 Notes on how the checks read their evidence:
 
@@ -103,11 +103,11 @@ Each run starts from fresh namespaces. The failing sets are frozen after the liv
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `GROUP_PROTOCOL=classic ./verify.sh` (demo code) | The rolling update runs on the classic group protocol | Check 8 (TBD/30) | TBD: redelivered count and longest period with no row, printed for the classic protocol |
-| `OFFSET_COPY=off ./verify.sh` (demo code) | Green starts at the beginning of the topic and blue resumes from its own old offsets | Checks 19, 21, 23 and 25 (TBD/30) | TBD: whole topic re-read by green, no id missing once green has caught up |
+| `GROUP_PROTOCOL=classic ./verify.sh` (demo code) | The rolling update runs on the classic group protocol | Check 8 (29/30) | The group is a classic-protocol group, so only check 8 fails. In the run: 0 records delivered again in the rolling update, 420 in the stop and restart, longest period with no row 8.7 s; every one of the 3,000 ids has a row |
+| `OFFSET_COPY=off ./verify.sh` (demo code) | Green starts at the beginning of the topic and blue resumes from its own old offsets | Checks 19, 21, 23 and 25 (26/30) | Green and blue read from the start of the topic or from old offsets: 1,580 ids read by both groups at the cut-over and 1,050 at the rollback, against at most 450 with the copy; every id still has a row |
 
 ## Measurements
 
-Redelivery depends on timing. In the live window the rolling update of a three-pod group at 100 records per second redelivered TBD(spike: classic 104, 223 and 342; consumer 0, 0 and 180) records in three runs each, and the longest period with no row written was TBD(spike: classic 0.6 to 0.7 s; consumer 0.1 to 4.0 s). No run lost a record. The cut-over took TBD(spike: 12 s) from the blue scale-down to green live.
+Redelivery depends on timing. In three clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 47, 68 and 372 records again (559 in a demo run), and the longest period with no row written in the stop and restart was 5.1 to 7.5 s. The classic-protocol run delivered none again in the rolling update. No run lost a record. The cut-over took 12 to 17 s from the blue scale-down to green live (8 s without the offset copy).
 
-Requests in flight when a pod of `order-service` is removed can fail at the connection level. In a run TBD(spike: 5 to 17 of about 2,400 to 3,200 requests, never a 5xx status); the control run without a rollout had none. The same failures occurred with `QUARKUS_SHUTDOWN_TIMEOUT`, with `QUARKUS_SHUTDOWN_DELAY` and with a `preStop` sleep.
+Requests in flight when a pod of `order-service` is removed can fail at the connection level. In three clean runs 5, 8 and 5 of 2,380 to 2,390 requests failed and none was answered with a 5xx status; the control run without a rollout had none. A retry of an accepted order was answered 409 in every run.
