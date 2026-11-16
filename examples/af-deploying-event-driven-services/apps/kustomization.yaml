@@ -1,0 +1,8 @@
+# The chapter 06 notification-service twice (blue live, green idle) and the chapter 02 order-service.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp
+resources:
+  - notify-blue.yaml
+  - notify-green.yaml
+  - order-service.yaml

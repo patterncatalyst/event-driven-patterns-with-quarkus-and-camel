@@ -1,0 +1,45 @@
+# A producer Job: uniquely numbered JSON, keyed by order id, at a fixed rate. verify.sh replaces the __NAME__,
+# __TOPIC__, __RATE__, __SECS__, __FIRST__ and __KIND__ placeholders and applies the result.
+# KIND v1 is the chapter 06 payload, v2 renames orderId to orderRef (a breaking change), expand carries both.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __NAME__
+  namespace: edp
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: producer
+          image: quay.io/strimzi/kafka:1.3.1-kafka-4.3.2
+          env:
+            - {name: TOPIC, value: "__TOPIC__"}
+            - {name: RATE, value: "__RATE__"}
+            - {name: SECS, value: "__SECS__"}
+            - {name: FIRST, value: "__FIRST__"}
+            - {name: KIND, value: "__KIND__"}
+          command: ["bash", "-c"]
+          args:
+            - |
+              per=$(( RATE / 10 )); end=$(( FIRST + RATE * SECS ))
+              emit() {
+                local n=$FIRST k id
+                while (( n < end )); do
+                  for (( k = 0; k < per && n < end; k++ )); do
+                    id="O-$n"
+                    case "$KIND" in
+                      v1)     echo "$id|{\"orderId\":\"$id\",\"customerId\":\"C-1\",\"eventType\":\"OrderPlaced\"}" ;;
+                      v2)     echo "$id|{\"orderRef\":\"$id\",\"customerId\":\"C-1\",\"eventType\":\"OrderPlaced\"}" ;;
+                      expand) echo "$id|{\"orderId\":\"$id\",\"orderRef\":\"$id\",\"customerId\":\"C-1\",\"eventType\":\"OrderPlaced\"}" ;;
+                    esac
+                    n=$(( n + 1 ))
+                  done
+                  sleep 0.1
+                done
+              }
+              emit | /opt/kafka/bin/kafka-console-producer.sh \
+                --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 --topic "$TOPIC" \
+                --property parse.key=true --property key.separator='|' --producer-property linger.ms=5
+              echo "produced $(( end - FIRST )) records"

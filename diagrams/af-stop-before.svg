@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="210" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Before: three pods, one partition each</text>
+<rect x="40" y="125" width="150" height="70" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="115.0" y="150.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Producer Job</text>
+<text x="115.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">O-41000 and up</text>
+<text x="115.0" y="182.5" font-size="11.5" fill="#555555" text-anchor="middle">fixed rate</text>
+<rect x="240" y="110" width="190" height="100" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="335.0" y="150.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
+<text x="335.0" y="167.5" font-size="11.5" fill="#555555" text-anchor="middle">partitions 0, 1, 2</text>
+<text x="335.0" y="182.5" font-size="11.5" fill="#555555" text-anchor="middle">lag near zero</text>
+<rect x="500" y="90" width="200" height="46" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="600.0" y="111.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notify-stop pod</text>
+<text x="600.0" y="128.0" font-size="11.5" fill="#555555" text-anchor="middle">owns partition 0</text>
+<rect x="500" y="150" width="200" height="46" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="600.0" y="171.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notify-stop pod</text>
+<text x="600.0" y="188.0" font-size="11.5" fill="#555555" text-anchor="middle">owns partition 1</text>
+<rect x="500" y="210" width="200" height="46" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="600.0" y="231.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notify-stop pod</text>
+<text x="600.0" y="248.0" font-size="11.5" fill="#555555" text-anchor="middle">owns partition 2</text>
+<rect x="780" y="125" width="180" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="870.0" y="158.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">notifications.notification</text>
+<text x="870.0" y="175.0" font-size="11.5" fill="#555555" text-anchor="middle">one row per record</text>
+<path d="M190,160 L240,160" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,150 L500,113" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,160 L500,173" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M430,170 L500,233" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M700,113 L780,150" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M700,173 L780,160" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M700,233 L780,170" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">A stop and restart starts from a group that is keeping up</text>
+<text x="500" y="296" font-size="12" fill="#555555" text-anchor="middle">Strategy Recreate: every pod is stopped before any new pod is created</text>
+</svg>

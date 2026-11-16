@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 340" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="960" height="230" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Expand: old and new fields side by side</text>
+<rect x="40" y="120" width="190" height="90" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="135.0" y="155.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">producer</text>
+<text x="135.0" y="172.5" font-size="11.5" fill="#555555" text-anchor="middle">sends orderId</text>
+<text x="135.0" y="187.5" font-size="11.5" fill="#555555" text-anchor="middle">and orderRef</text>
+<rect x="290" y="120" width="170" height="90" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="375.0" y="163.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
+<text x="375.0" y="180.0" font-size="11.5" fill="#555555" text-anchor="middle">one topic, one shape</text>
+<rect x="530" y="95" width="200" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="630.0" y="123.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v1 consumer</text>
+<text x="630.0" y="140.0" font-size="11.5" fill="#555555" text-anchor="middle">reads orderId</text>
+<rect x="530" y="185" width="200" height="60" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="630.0" y="213.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">v2 consumer</text>
+<text x="630.0" y="230.0" font-size="11.5" fill="#555555" text-anchor="middle">reads orderRef</text>
+<rect x="790" y="120" width="170" height="90" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="875.0" y="163.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Every record stored</text>
+<text x="875.0" y="180.0" font-size="11.5" fill="#555555" text-anchor="middle">by both versions</text>
+<path d="M230,165 L290,165" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M460,150 L530,125" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M460,180 L530,215" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M730,125 L790,150" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M730,215 L790,180" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">An additive change loses nothing</text>
+<text x="500" y="315" font-size="12" fill="#555555" text-anchor="middle">The old consumer ignores the field it does not know</text>
+</svg>
