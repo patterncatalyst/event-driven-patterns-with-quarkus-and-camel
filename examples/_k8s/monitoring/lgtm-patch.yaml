@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lgtm, namespace: edp-lgtm}
+spec:
+  template:
+    spec:
+      serviceAccountName: lgtm
+      containers:
+        - name: lgtm
+          env:
+            - {name: OTELCOL_EXTRA_ARGS, value: "--config=file:/otel-lgtm/extra/collector-extra.yaml"}
+          volumeMounts:
+            - {name: extra, mountPath: /otel-lgtm/extra, readOnly: true}
+            - {name: dashboards, mountPath: /prov/dashboards, readOnly: true}
+            - {name: dashboard-provider, mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/edp-strimzi.yaml, subPath: dashboards.yaml, readOnly: true}
+      volumes:
+        - {name: extra, configMap: {name: collector-extra}}
+        - {name: dashboards, configMap: {name: edp-dashboards}}
+        - {name: dashboard-provider, configMap: {name: edp-dashboard-provider}}

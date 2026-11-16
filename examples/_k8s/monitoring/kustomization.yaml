@@ -1,0 +1,32 @@
+# Component: monitoring for Strimzi. List it under `components:` next to ../_k8s/lgtm and ../_k8s/kafka in `resources:`.
+#   - a second collector configuration for otel-lgtm (prometheus receiver with kubernetes_sd over the pods in edp-kafka,
+#     the operator, kube-state-metrics, and the kafka_metrics lag receiver), passed through OTELCOL_EXTRA_ARGS
+#   - a ServiceAccount for lgtm and a Role that lets it list pods in edp-kafka
+#   - kube-state-metrics with its CustomResourceStateMetrics configuration
+#   - Grafana provisioning: the dashboard edp-strimzi, read from /prov/dashboards
+# Every namespaced object carries its own namespace, so an overlay must not set `namespace:` at its top level.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - lgtm-rbac.yaml
+  - kube-state-metrics.yaml
+patches:
+  - path: lgtm-patch.yaml
+    target: {kind: Deployment, name: lgtm}
+configMapGenerator:
+  - name: kube-state-metrics-crs
+    namespace: edp-lgtm
+    files: [crs.yaml=kube-state-metrics-crs.yaml]
+    options: {disableNameSuffixHash: true}
+  - name: collector-extra
+    namespace: edp-lgtm
+    files: [collector-extra.yaml]
+    options: {disableNameSuffixHash: true}
+  - name: edp-dashboards
+    namespace: edp-lgtm
+    files: [dashboards/edp-strimzi.json]
+    options: {disableNameSuffixHash: true}
+  - name: edp-dashboard-provider
+    namespace: edp-lgtm
+    files: [dashboards.yaml]
+    options: {disableNameSuffixHash: true}

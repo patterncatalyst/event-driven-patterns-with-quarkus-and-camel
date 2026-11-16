@@ -1,0 +1,9 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.orders.placed
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  partitions: 3
+  replicas: 1

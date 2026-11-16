@@ -1,0 +1,14 @@
+# Demo code (OFFSET_SYNC=off): the checkpoint connector no longer writes group offsets into edp-dr. A JSON patch,
+# because kustomize replaces a whole list of a custom resource when it merges one.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      kind: KafkaMirrorMaker2
+      name: edp-mm2
+    patch: |-
+      - op: replace
+        path: /spec/mirrors/0/checkpointConnector/config/sync.group.offsets.enabled
+        value: "false"

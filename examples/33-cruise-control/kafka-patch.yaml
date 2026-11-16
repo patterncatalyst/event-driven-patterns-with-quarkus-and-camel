@@ -1,0 +1,22 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: edp
+spec:
+  kafka:
+    config:
+      auto.create.topics.enable: false
+      default.replication.factor: 2
+  entityOperator:
+    topicOperator: {}
+  cruiseControl:
+    config:
+      # One minute, not ten seconds: Cruise Control refuses a sampling interval shorter than the metadata
+      # refresh timeout and the pod crash-loops.
+      metric.sampling.interval.ms: 60000
+      partition.metrics.window.ms: 60000
+      num.partition.metrics.windows: 3
+      min.samples.per.partition.metrics.window: 1
+      broker.metrics.window.ms: 60000
+      num.broker.metrics.windows: 3
+      min.samples.per.broker.metrics.window: 1

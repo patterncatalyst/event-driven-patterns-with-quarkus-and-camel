@@ -19,6 +19,8 @@ PORT2=30082
 PORT3=30084
 TEMPO=http://127.0.0.1:30320
 PROM=http://127.0.0.1:30909
+GRAFANA=http://127.0.0.1:30300
+APP_PORTS="${APP_PORTS:-30080 30082}" # the NodePorts _wait_apps waits on; a set that serves one port narrows it
 TOTAL=0
 PASSED=0
 
@@ -74,21 +76,39 @@ summary() {
 http_get() { curl -sf "$1"; }
 ready() { curl -sf "http://127.0.0.1:$1/q/health/ready"; } # ready <nodeport>
 
-kafka_exec() { # kafka_exec <tool> <args...>: a Kafka CLI tool in the broker pod, bootstrap added
-    local tool="$1"; shift
-    kc -n "$NS_KAFKA" exec edp-broker-0 -- "/opt/kafka/bin/$tool" --bootstrap-server localhost:9092 "$@"
+kafka_exec_on() { # kafka_exec_on <pod> <tool> <args...>: a Kafka CLI tool in that broker pod (any cluster), bootstrap added
+    local pod="$1" tool="$2"; shift 2
+    kc -n "$NS_KAFKA" exec "$pod" -- "/opt/kafka/bin/$tool" --bootstrap-server localhost:9092 "$@"
 }
-kafka_raw() { # kafka_raw <tool> <args...>: a tool that takes no --bootstrap-server
-    local tool="$1"; shift
-    kc -n "$NS_KAFKA" exec edp-broker-0 -- "/opt/kafka/bin/$tool" "$@"
+kafka_raw_on() { # kafka_raw_on <pod> <tool> <args...>: a tool that takes no --bootstrap-server
+    local pod="$1" tool="$2"; shift 2
+    kc -n "$NS_KAFKA" exec "$pod" -- "/opt/kafka/bin/$tool" "$@"
 }
-psql_exec() { # psql_exec <db> <sql>
-    kc -n "$NS_APPS" exec edp-pg-1 -c postgres -- psql -tA -d "$1" -c "$2"
+kafka_exec() { kafka_exec_on edp-broker-0 "$@"; } # the substrate's broker
+kafka_raw() { kafka_raw_on edp-broker-0 "$@"; }
+connect_get() { # connect_get <path> [connect-pod]: read-only GET on a Connect worker, for status and offsets. Changes go through the CRs.
+    local path="$1" pod="${2:-}"
+    [[ -n "$pod" ]] || pod="$(kc -n "$NS_KAFKA" get pod -l strimzi.io/kind=KafkaConnect -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+    [[ -n "$pod" ]] || return 1
+    kc -n "$NS_KAFKA" exec "$pod" -- curl -sf "localhost:8083$path"
+}
+psql_exec() { # psql_exec <db> <sql>; with sql "-", the SQL is read from stdin (a file or heredoc)
+    if [[ "$2" == "-" ]]; then
+        kc -n "$NS_APPS" exec -i edp-pg-1 -c postgres -- psql -tA -v ON_ERROR_STOP=1 -d "$1"
+    else
+        kc -n "$NS_APPS" exec edp-pg-1 -c postgres -- psql -tA -d "$1" -c "$2"
+    fi
 }
 
 tempo_trace_with() { # tempo_trace_with <seconds> <name>...: one trace holds every span name or service name
     local secs="$1"; shift
     python3 -I "$_LIB_DIR/tools/tempo.py" "$TEMPO" "$secs" "$@"
+}
+prom_query() { # prom_query <promql>: prints the scalar of a one-series result, else the number of series; fails on no data
+    python3 -I "$_LIB_DIR/tools/prom.py" "$PROM" "$1"
+}
+grafana_dashboard() { # grafana_dashboard <uid>: Grafana serves the provisioned dashboard
+    [[ "$(curl -s -o /dev/null -w '%{http_code}' "$GRAFANA/api/dashboards/uid/$1")" == "200" ]]
 }
 prom_has() { # prom_has <metric> <service>: Prometheus holds a sample of the metric for the service
     curl -sf -G "$PROM/api/v1/query" --data-urlencode "query=$1{service_name=\"$2\"}" | grep -q '"value"'
@@ -102,11 +122,18 @@ _node_image_id() {
         | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["status"]["id"])' 2>/dev/null
 }
 
-load_image() { # load_image <NN-slug> <service>: build from the compose context, load only on an ID mismatch
-    local slug="$1" svc="$2" nn ref host node
+load_image() { # load_image <NN-slug> <service|->: build from the compose context, load only on an ID mismatch
+    # "-" means the example has one image from examples/<slug>/Containerfile; its name is the third column of images.txt
+    # and arrives as the optional third argument (load_image <slug> - <name>).
+    local slug="$1" svc="$2" name="${3:-}" nn ref host node file
     nn="${slug%%-*}"
-    ref="localhost/edp/${nn}-${svc}:local"
-    ( cd "$REPO_ROOT" && docker build -q -f "examples/$slug/$svc/Containerfile" -t "$ref" examples >/dev/null ) \
+    if [[ "$svc" == "-" ]]; then
+        [[ -n "$name" ]] || { echo "load_image: $slug - needs an image name (third column of images.txt)" >&2; return 1; }
+        file="examples/$slug/Containerfile"; ref="localhost/edp/${nn}-${name}:local"
+    else
+        file="examples/$slug/$svc/Containerfile"; ref="localhost/edp/${nn}-${svc}:local"
+    fi
+    ( cd "$REPO_ROOT" && docker build -q -f "$file" -t "$ref" examples >/dev/null ) \
         || { echo "load_image: docker build failed for $slug/$svc" >&2; return 1; }
     host="$(_host_image_id "$ref")"
     node="$(_node_image_id "$ref" || true)"
@@ -121,11 +148,11 @@ load_image() { # load_image <NN-slug> <service>: build from the compose context,
 }
 
 _load_images_for() { # _load_images_for <kustomize-dir>: every line of <dir>/images.txt
-    local dir="$1" slug svc
+    local dir="$1" slug svc name
     [[ -f "$dir/images.txt" ]] || return 0
-    while read -r slug svc <&3; do
+    while read -r slug svc name <&3; do
         [[ -z "$slug" || "$slug" == \#* ]] && continue
-        load_image "$slug" "$svc" || return 1
+        load_image "$slug" "$svc" "$name" || return 1
     done 3< "$dir/images.txt"
 }
 
@@ -133,8 +160,21 @@ _load_images_for() { # _load_images_for <kustomize-dir>: every line of <dir>/ima
 
 _have() { kc get "$@" >/dev/null 2>&1; }
 
-_delete_all_state() { # KafkaTopics first, then Kafka and node pools, then the namespaces. Never strips finalizers.
+_wait_gone() { # _wait_gone <ns> <selector> <seconds>: no pod matches the selector
+    kc -n "$1" wait --for=delete pod -l "$2" --timeout="${3}s" >/dev/null 2>&1
+}
+
+# Order: connectors and rebalances; Connect and MirrorMaker 2 with their pods and build pod gone (a worker that holds a
+# replication connection keeps the CNPG instance pod terminating for minutes); KafkaTopics; Kafka; node pools; then the
+# applications, Databases, the CNPG Cluster and its instance pod; then the namespaces. Finalizers are never stripped.
+_delete_all_state() {
     if _have ns "$NS_KAFKA" && _have crd kafkatopics.kafka.strimzi.io; then
+        kc -n "$NS_KAFKA" delete kafkaconnector,kafkarebalance --all --wait --timeout=120s >/dev/null \
+            || { echo "k8s: connectors or rebalances did not delete in time" >&2; return 1; }
+        kc -n "$NS_KAFKA" delete kafkaconnect,kafkamirrormaker2 --all --wait --timeout=180s >/dev/null \
+            || { echo "k8s: Connect or MirrorMaker 2 did not delete in time" >&2; return 1; }
+        _wait_gone "$NS_KAFKA" 'strimzi.io/kind in (KafkaConnect,KafkaMirrorMaker2)' 120 \
+            || { echo "k8s: Connect or MirrorMaker 2 pods did not terminate in time" >&2; return 1; }
         kc -n "$NS_KAFKA" delete kafkatopic --all --wait --timeout=120s \
             || { echo "k8s: KafkaTopics did not delete in time (stuck finalizer?)" >&2; return 1; }
         kc -n "$NS_KAFKA" delete kafka --all --wait --timeout=240s \
@@ -158,7 +198,7 @@ _delete_all_state() { # KafkaTopics first, then Kafka and node pools, then the n
         # The instance pod is garbage collected after its Cluster and carries CloudNativePG's long termination
         # grace period (stopDelay, 1800 s). A namespace deleted while such a pod is still terminating is not
         # rechecked by the namespace controller until much later, so wait until the pod is gone.
-        kc -n "$NS_APPS" wait --for=delete pod -l cnpg.io/cluster --timeout=240s >/dev/null 2>&1 \
+        _wait_gone "$NS_APPS" cnpg.io/cluster 240 \
             || { echo "k8s: CNPG instance pods did not terminate in time" >&2; return 1; }
     fi
     kc delete ns "$NS_APPS" "$NS_KAFKA" "$NS_LGTM" --ignore-not-found --wait --timeout=240s \
@@ -207,10 +247,25 @@ _apply() { # _apply <dir> <manager>: server-side apply; retried while new CRDs a
     return 1
 }
 
-_kafka_ready() {
-    local v
-    v="$(kc -n "$NS_KAFKA" get kafka edp -o jsonpath='{.metadata.generation} {.status.observedGeneration} {.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" || return 1
-    [[ "$v" =~ ^([0-9]+)\ \1\ True$ ]]
+kafka_ready() { # kafka_ready <name>: the Kafka CR's generation is observed and it is Ready. (The r11 test used a regex
+    # backreference, which bash 5.3 never matches, and `read` returns 1 at the end of jsonpath output, which has no newline.)
+    local g o s
+    read -r g o s < <(kc -n "$NS_KAFKA" get kafka "$1" -o jsonpath='{.metadata.generation} {.status.observedGeneration} {.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null) || true
+    [[ -n "$g" && "$g" == "$o" && "$s" == "True" ]]
+}
+_kafka_ready() { kafka_ready edp; }
+
+_all_kafka_ready() { # every Kafka CR in edp-kafka is Ready
+    local k names
+    names="$(kc -n "$NS_KAFKA" get kafka -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null)" || return 1
+    [[ -n "$names" ]] || return 1
+    for k in $names; do kafka_ready "$k" || return 1; done
+}
+
+_cr_ready() { # _cr_ready <kind>: every resource of the kind in edp-kafka reports Ready True
+    local out
+    out="$(kc -n "$NS_KAFKA" get "$1" -o jsonpath='{range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}' 2>/dev/null)" || return 1
+    [[ -n "$out" ]] && ! grep -qv '^True$' <<<"$out"
 }
 
 _database_applied() { # every CNPG Database in the namespace reports status.applied
@@ -231,7 +286,7 @@ _wait_apps() { # every Deployment in edp rolled out, every Job complete
     # A Ready pod is not yet reachable through the published NodePort: wait until the published ports answer.
     if [[ -n "$(kc -n "$NS_APPS" get deploy -o name 2>/dev/null)" ]]; then
         local port i
-        for port in 30080 30082; do
+        for port in $APP_PORTS; do
             for i in $(seq 1 60); do ready "$port" >/dev/null 2>&1 && continue 2; sleep 1; done
             echo "k8s: NodePort $port does not answer" >&2; return 1
         done
@@ -251,11 +306,21 @@ k8s_fresh() { # k8s_fresh <kustomize-dir> [manager=edp-verify]
         kc -n "$NS_KAFKA" wait --for=condition=Available deploy/strimzi-cluster-operator --timeout=180s >/dev/null \
             || { echo "k8s: Strimzi operator not Available" >&2; _diagnostics; exit 1; }
     fi
-    if _have -n "$NS_KAFKA" kafka/edp; then
-        poll 420 _kafka_ready || { echo "k8s: Kafka edp not Ready" >&2; kc -n "$NS_KAFKA" get kafka edp -o yaml | tail -40 >&2; exit 1; }
+    if [[ -n "$(kc -n "$NS_KAFKA" get kafka -o name 2>/dev/null)" ]]; then
+        poll 420 _all_kafka_ready || { echo "k8s: a Kafka cluster is not Ready" >&2; kc -n "$NS_KAFKA" get kafka -o yaml | tail -60 >&2; exit 1; }
+    fi
+    if _have -n "$NS_KAFKA" pod/edp-broker-0; then
         kc -n "$NS_KAFKA" wait --for=condition=Ready pod/edp-broker-0 --timeout=120s >/dev/null \
             || { echo "k8s: broker pod not Ready" >&2; exit 1; }
     fi
+    local kind
+    for kind in kafkaconnect kafkamirrormaker2; do
+        # 420 s: a KafkaConnect with a build section waits for the build pod, the push and the pull of the new image
+        if _have crd "$kind.kafka.strimzi.io" || _have crd "${kind}s.kafka.strimzi.io"; then
+            [[ -n "$(kc -n "$NS_KAFKA" get "$kind" -o name 2>/dev/null)" ]] || continue
+            poll 420 _cr_ready "$kind" || { echo "k8s: $kind not Ready" >&2; _diagnostics; exit 1; }
+        fi
+    done
     if _have -n "$NS_APPS" cluster.postgresql.cnpg.io/edp-pg; then
         kc -n "$NS_APPS" wait --for=condition=Ready cluster.postgresql.cnpg.io/edp-pg --timeout=300s >/dev/null \
             || { echo "k8s: CNPG Cluster edp-pg not Ready" >&2; _diagnostics; exit 1; }
@@ -265,6 +330,12 @@ k8s_fresh() { # k8s_fresh <kustomize-dir> [manager=edp-verify]
     fi
     if _have -n "$NS_LGTM" deploy/lgtm; then
         kc -n "$NS_LGTM" rollout status deploy/lgtm --timeout=240s >/dev/null || { echo "k8s: lgtm not rolled out" >&2; exit 1; }
+    fi
+    if _have -n "$NS_LGTM" deploy/kube-state-metrics; then
+        kc -n "$NS_LGTM" rollout status deploy/kube-state-metrics --timeout=180s >/dev/null || { echo "k8s: kube-state-metrics not rolled out" >&2; exit 1; }
+    fi
+    if _have -n "$NS_KAFKA" deploy/registry; then
+        kc -n "$NS_KAFKA" rollout status deploy/registry --timeout=180s >/dev/null || { echo "k8s: registry not rolled out" >&2; exit 1; }
     fi
     if [[ "${WAIT_APPS:-1}" != "0" ]]; then
         _wait_apps || { _diagnostics; exit 1; }

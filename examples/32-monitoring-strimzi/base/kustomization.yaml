@@ -1,0 +1,14 @@
+# The substrate bases, the chapter 02 deployments and one KafkaTopic; the monitoring and reporter components are
+# listed by the overlays above this one, so that demo-metrics-off/ can build on it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../_k8s/namespaces
+  - ../../_k8s/strimzi
+  - ../../_k8s/kafka
+  - ../../_k8s/postgres
+  - ../../_k8s/lgtm
+  - ../../_k8s/apps/02
+  - topics
+patches:
+  - path: kafka-patch.yaml

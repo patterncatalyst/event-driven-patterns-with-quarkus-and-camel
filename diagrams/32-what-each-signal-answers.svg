@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="40" y="90" width="150" height="50" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="115.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Broker</text>
+<rect x="260" y="90" width="330" height="50" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="425.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">kafka_server_brokertopicmetrics_*</text>
+<rect x="660" y="90" width="300" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="810.0" y="120.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Is this broker taking the traffic?</text>
+<rect x="40" y="160" width="150" height="50" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="115.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Controller</text>
+<rect x="260" y="160" width="330" height="50" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="425.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">kafka_controller_kafkacontroller_*</text>
+<rect x="660" y="160" width="300" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="810.0" y="190.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Is there one active controller?</text>
+<rect x="40" y="230" width="150" height="50" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="115.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Operator</text>
+<rect x="260" y="230" width="330" height="50" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="425.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">strimzi_reconciliations_*</text>
+<rect x="660" y="230" width="300" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="810.0" y="260.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Is the operator reconciling?</text>
+<rect x="40" y="300" width="150" height="50" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="115.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Resource</text>
+<rect x="260" y="300" width="330" height="50" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="425.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp_kafkatopic_condition</text>
+<rect x="660" y="300" width="300" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="810.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Can the operator reconcile this topic?</text>
+<rect x="40" y="370" width="150" height="50" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="115.0" y="400.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Flow</text>
+<rect x="260" y="370" width="330" height="50" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="425.0" y="400.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">kafka_consumer_group_lag_ratio</text>
+<rect x="660" y="370" width="300" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="810.0" y="400.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Is a consumer keeping up?</text>
+<path d="M190,115 L260,115" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M590,115 L660,115" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M190,185 L260,185" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M590,185 L660,185" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M190,255 L260,255" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M590,255 L660,255" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M190,325 L260,325" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M590,325 L660,325" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M190,395 L260,395" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M590,395 L660,395" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Each signal answers one question that the others cannot</text>
+<text x="150" y="70" font-size="13" fill="#555555" text-anchor="middle">Source</text>
+<text x="425" y="70" font-size="13" fill="#555555" text-anchor="middle">Metric family</text>
+<text x="810" y="70" font-size="13" fill="#555555" text-anchor="middle">Question</text>
+<text x="500" y="455" font-size="13" fill="#555555" text-anchor="middle">Lag comes from chapter 26&#x27;s receiver; the rest from the reporter, the operator and kube-state-metrics</text>
+</svg>

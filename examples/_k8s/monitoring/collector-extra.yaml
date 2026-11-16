@@ -1,0 +1,59 @@
+# Merged into the otel-lgtm collector through OTELCOL_EXTRA_ARGS: Prometheus scraping of the Strimzi pods (found by
+# kubernetes_sd), the operator and kube-state-metrics, plus the kafka_metrics lag receiver, each in its own pipeline.
+receivers:
+  prometheus/strimzi:
+    config:
+      scrape_configs:
+        # Every Kafka, KafkaConnect and KafkaMirrorMaker2 pod that exposes the Metrics Reporter port (tcp-prometheus, 9404)
+        - job_name: strimzi-kafka
+          scrape_interval: 10s
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces: {names: [edp-kafka]}
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_strimzi_io_kind]
+              regex: Kafka|KafkaConnect|KafkaMirrorMaker2
+              action: keep
+            - source_labels: [__meta_kubernetes_pod_container_port_name]
+              regex: tcp-prometheus
+              action: keep
+            - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
+            - {source_labels: [__meta_kubernetes_pod_label_strimzi_io_pool_name], target_label: node_pool}
+            - {source_labels: [__meta_kubernetes_pod_label_strimzi_io_kind], target_label: strimzi_kind}
+            - {source_labels: [__meta_kubernetes_pod_label_strimzi_io_cluster], target_label: strimzi_cluster}
+        - job_name: strimzi-operator
+          scrape_interval: 10s
+          kubernetes_sd_configs:
+            - role: pod
+              namespaces: {names: [edp-kafka]}
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_label_name]
+              regex: strimzi-cluster-operator
+              action: keep
+            - source_labels: [__meta_kubernetes_pod_container_port_name]
+              regex: http
+              action: keep
+            - {source_labels: [__meta_kubernetes_pod_name], target_label: pod}
+        - job_name: kube-state-metrics
+          scrape_interval: 10s
+          static_configs:
+            - targets: ["kube-state-metrics.edp-lgtm.svc:8080"]
+  kafka_metrics:
+    brokers: ["edp-kafka-bootstrap.edp-kafka.svc:9092"]
+    scrapers: [brokers, topics, consumers]
+    collection_interval: 5s
+    topic_match: "^edp\\..*"
+    group_match: ".*"
+    metrics:
+      kafka.consumer_group.lag: {enabled: true}
+      kafka.consumer_group.lag_sum: {enabled: true}
+service:
+  pipelines:
+    metrics/strimzi:
+      receivers: [prometheus/strimzi]
+      processors: [batch]
+      exporters: [otlp_http/metrics]
+    metrics/kafka:
+      receivers: [kafka_metrics]
+      processors: [batch]
+      exporters: [otlp_http/metrics]

@@ -16,3 +16,13 @@ spec:
       memory: 512Mi
     limits:
       memory: 1Gi
+  managed:
+    roles:
+      # Debezium on Kubernetes connects as the application owner, which needs the REPLICATION attribute
+      # (wal_level is already logical). The role belongs in the whole Cluster manifest, never in a fragment.
+      - name: edp
+        ensure: present
+        login: true
+        replication: true
+        passwordSecret:
+          name: edp-pg-app

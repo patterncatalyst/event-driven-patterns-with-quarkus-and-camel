@@ -1,0 +1,58 @@
+# One direction, edp to edp-dr. The identity policy keeps the topic names, the checkpoint connector writes the
+# translated group offsets into edp-dr, and offset.lag.max: 0 emits an offset sync for every new record.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaMirrorMaker2
+metadata:
+  name: edp-mm2
+  namespace: edp-kafka
+spec:
+  replicas: 1
+  target:
+    alias: edp-dr
+    bootstrapServers: edp-dr-kafka-bootstrap.edp-kafka.svc:9092
+    groupId: edp-mm2
+    configStorageTopic: mm2-configs
+    offsetStorageTopic: mm2-offsets
+    statusStorageTopic: mm2-status
+    config:
+      config.storage.replication.factor: 1
+      offset.storage.replication.factor: 1
+      status.storage.replication.factor: 1
+  mirrors:
+    - source:
+        alias: edp
+        bootstrapServers: edp-kafka-bootstrap.edp-kafka.svc:9092
+      topicsPattern: "edp\\..*"
+      groupsPattern: ".*"
+      sourceConnector:
+        tasksMax: 1
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+          replication.factor: 1
+          offset-syncs.topic.replication.factor: 1
+          sync.topic.acls.enabled: "false"
+          refresh.topics.interval.seconds: 5
+          offset.lag.max: 0
+      checkpointConnector:
+        tasksMax: 1
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+          checkpoints.topic.replication.factor: 1
+          sync.group.offsets.enabled: "true"
+          sync.group.offsets.interval.seconds: 5
+          emit.checkpoints.interval.seconds: 5
+          refresh.groups.interval.seconds: 5
+  metricsConfig:
+    type: strimziMetricsReporter
+    values:
+      allowList:
+        - "kafka_connect_.*"
+        - "jvm_.*"
+  resources:
+    requests:
+      memory: 768Mi
+    limits:
+      memory: 1Gi
+  jvmOptions:
+    -Xms: 384m
+    -Xmx: 384m

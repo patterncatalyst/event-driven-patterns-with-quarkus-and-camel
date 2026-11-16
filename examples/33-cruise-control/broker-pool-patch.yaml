@@ -1,0 +1,14 @@
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: broker
+spec:
+  replicas: 2
+  resources:
+    requests:
+      memory: 768Mi
+    limits:
+      memory: 768Mi
+  jvmOptions:
+    -Xms: 384m
+    -Xmx: 384m

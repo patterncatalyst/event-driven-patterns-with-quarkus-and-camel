@@ -1,0 +1,183 @@
+{
+ "uid": "edp-strimzi",
+ "title": "Strimzi on Kubernetes",
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-15m",
+  "to": "now"
+ },
+ "refresh": "10s",
+ "panels": [
+  {
+   "id": 1,
+   "type": "timeseries",
+   "title": "Broker bytes in per topic (per second)",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (topic) (rate(kafka_server_brokertopicmetrics_bytesinpersec_total{topic!=\"\"}[1m]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "{{topic}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "Active controllers (must be 1)",
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(kafka_controller_kafkacontroller_activecontrollercount)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Operator reconciliations (per minute)",
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (kind) (rate(strimzi_reconciliations_total[5m])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "{{kind}}"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "Consumer group lag (records)",
+   "gridPos": {
+    "x": 12,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (group) (kafka_consumer_group_lag_ratio)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "{{group}}"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "Kafka and KafkaTopic Ready (1 is Ready)",
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "edp_kafka_condition{type=\"Ready\"}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "Kafka {{name}}"
+    },
+    {
+     "refId": "B",
+     "expr": "min(edp_kafkatopic_condition{type=\"Ready\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "lowest KafkaTopic"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Scrape targets up",
+   "gridPos": {
+    "x": 12,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (job) (up)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "legendFormat": "{{job}}"
+    }
+   ]
+  }
+ ]
+}

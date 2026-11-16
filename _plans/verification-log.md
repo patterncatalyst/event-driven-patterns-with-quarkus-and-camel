@@ -721,3 +721,43 @@ Cause: the CNPG instance pod keeps terminating after its `Cluster` is deleted (`
 Profile deleted afterwards; `edp-ollama-models` intact. 92 claims rows added (28: 29, 29: 22, 30: 20, 31: 21); cuts and rewordings listed in the validation hand-off (forward references in 28, false client-side-apply statement in 30, unsourced lists). Bite audit: demo failing sets match the logs; checks 28/13, 21, 28 (image ids) duplicate `load_image`, 29/14 and 31/16 have no failing switch.
 
 Examples 02 to 04 unchanged since r10 (`git diff --stat ed94f19` empty).
+
+### r12 live window (2026-11-15)
+
+Fresh profile `edp`; HEAD 5b8c136 plus window fixes.
+
+| Run | Result |
+|---|---|
+| ch32 run1, run1b | stopped at precondition 2; 20/20 (222 s) |
+| ch33 run1, run4 | 15/17 (1001 s); 17/17 (475 s) |
+| ch34 run1 | 18/18 (165 s) |
+| ch35 run1, run2 | 22/25 (554 s); 25/25 (315 s) |
+| ch32 `METRICS=off` | 13/20; fails 3, 4, 6, 7, 18, 19, 20 |
+| ch33 `AUTO_REBALANCE=off` | 15/17; fails 14, 15 |
+| ch34 `OFFSET_SYNC=off` | 15/18; fails 9, 13, 16 |
+| ch35 `PLUGIN_SHA=wrong` | 6/25; passes 1, 2, 3, 10, 12, 25 |
+| Final, fresh profile: 32, 33, 34, 35 | 20/20 (230 s), 17/17 (978 s), 18/18 (165 s), 25/25 (310 s), exit 0 each |
+
+Fixes in the window: ch32 pool selector adds `strimzi.io/pool-name` (the entity operator also carries `strimzi.io/kind=Kafka`); ch33 a refused scale-down leaves `spec.replicas` at 2 with three `status.nodeIds` and a `ScaleDownPreventionCheck` warning, so the check reads both and patches the spec back to 3 (the stale spec had made auto-rebalance drain a broker); ch35 check 9 boolean compare, check 18 reads the operator log line `Connector is not in STOPPED state` (no event is written), metric name `kafka_connect_connector_metrics_status` (also in the 34 dashboard).
+
+G0-20 measured: restricted Pod Security refuses the build pod (allowPrivilegeEscalation, capabilities, runAsNonRoot, seccompProfile) and KafkaConnect goes NotReady; an allowList change on KafkaConnect replaces the Connect pod (brokers do not roll); MM2 reporter metrics present (`connector_count` 2, `mirrorsourceconnector_record_count`, `_replication_latency_ms`); curl present in the broker image. Not re-measured (spike values kept): first broker sample about 80 s, metricsConfig removal roll about 75 s, build pod 25 s, restart-task 3 s, default `offset.lag.max` lag 140 s.
+
+Profile deleted afterwards (`minikube profile list` empty); `edp-ollama-models` intact; chapters 00 to 31 unchanged (`git diff --stat 2fa9cf3` over their examples empty).
+
+### r12 validation round 1 and repair (2026-11-15)
+
+Validator: fresh-profile runs 20/20, 17/17, 18/18, 25/25; verdict FIX (34 check 16 vacuous by live bite: a full re-read left the offset delta at 5 with two notifications per order; missing r12 attribution; 33 check 6 passed before the new broker and Cruise Control were Ready; self-references; one 125 s teardown).
+
+Repair: 34 check 16 asserts exactly one notification per order plus the delta; bibliography rows and inline authors added; 33 waits for the new broker pod and a Cruise Control pod created after it (pool grown 48 to 49 s, proposal 90 to 101 s); 33 check 16 waits until the operator's `edp-auto-rebalancing-remove-brokers` KafkaRebalance is gone (cause of the 125 s teardown: 120 s operator timer, inferred from log timing), teardown afterwards 11 s; 35 check 18 reads the operator log since the annotation, scoped to `inventory-cdc`, and asserts the annotation stays; 32 checks 19 and 20 wait for `observedGeneration`; promq.py folded into `_k8s/tools/prom.py`; kube-state-metrics config via configMapGenerator.
+
+| Run (recreated profile) | Result | Teardown |
+|---|---|---|
+| ch34 `OFFSET_SYNC=off` | 15/18; fails 9, 13, 16 | 35 s |
+| Final 32, 34, 35 | 20/20, 18/18, 25/25, exit 0 | 38 s, 46 s, 43 s |
+| ch33 after the shrink fix | 17/17, exit 0 (774 s) | 11 s |
+
+Chapters 28 to 31 do not use the changed `_k8s/monitoring` or `tools/prom.py`; lib.sh untouched, so no re-run of 28.
+
+### r12 validation round 2 (2026-11-15)
+
+PASS at 2f86679. Fresh profile: 32 20/20 (teardown 47 s), 33 17/17 (11 s), 34 18/18 (45 s), 35 25/25 (43 s). The round-1 34 bite now fails check 16 (O-3401 to O-3405 notified twice). `OFFSET_SYNC=off` 15/18, fails 9, 13, 16; after failover the service creates the group on edp-dr, so chapter 34's "no group" wording was narrowed to "before the failover" (M1). Lows fixed by the orchestrator: 32 tense and teardown range, 35 sentence splits, sha guard matches the whole value (a truncated pin no longer passes). Site build: 0 of 1,287 internal links broken; diagrams byte-identical.

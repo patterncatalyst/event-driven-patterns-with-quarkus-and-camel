@@ -1,0 +1,11 @@
+# Applied by verify.sh with @ID@ replaced by the id read from the node pool status.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaRebalance
+metadata:
+  name: add-broker-@ID@
+  namespace: edp-kafka
+  labels:
+    strimzi.io/cluster: edp
+spec:
+  mode: add-brokers
+  brokers: [@ID@]

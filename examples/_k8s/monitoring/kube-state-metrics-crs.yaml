@@ -1,0 +1,84 @@
+kind: CustomResourceStateMetrics
+spec:
+  resources:
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: Kafka}
+      metricNamePrefix: edp_kafka
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: Kafka status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type], reason: [reason]}
+              valueFrom: [status]
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaNodePool}
+      metricNamePrefix: edp_kafkanodepool
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: replicas
+          help: node pool replicas in status
+          each:
+            type: Gauge
+            gauge: {path: [status, replicas]}
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaTopic}
+      metricNamePrefix: edp_kafkatopic
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: KafkaTopic status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type], reason: [reason]}
+              valueFrom: [status]
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaRebalance}
+      metricNamePrefix: edp_kafkarebalance
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: KafkaRebalance status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type]}
+              valueFrom: [status]
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaConnector}
+      metricNamePrefix: edp_kafkaconnector
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: KafkaConnector status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type], reason: [reason]}
+              valueFrom: [status]
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaConnect}
+      metricNamePrefix: edp_kafkaconnect
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: KafkaConnect status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type], reason: [reason]}
+              valueFrom: [status]
+    - groupVersionKind: {group: kafka.strimzi.io, version: v1, kind: KafkaMirrorMaker2}
+      metricNamePrefix: edp_kafkamirrormaker2
+      labelsFromPath: {name: [metadata, name]}
+      metrics:
+        - name: condition
+          help: KafkaMirrorMaker2 status conditions (1 when True)
+          each:
+            type: Gauge
+            gauge:
+              path: [status, conditions]
+              labelsFromPath: {type: [type], reason: [reason]}
+              valueFrom: [status]

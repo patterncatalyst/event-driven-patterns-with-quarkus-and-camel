@@ -1,0 +1,2 @@
+08-transactional-outbox order-service
+09-log-tailing-with-debezium - inventory-service

@@ -1,0 +1,10 @@
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata: {name: edp}
+spec:
+  kafka:
+    metricsConfig:
+      type: strimziMetricsReporter
+      values:
+        # The default allowList has no controller or raft families; this list adds them.
+        allowList: ["kafka_.*", "jvm_.*"]
