@@ -5,11 +5,11 @@ marker: "E"
 label: "Appendix E"
 part: appendices
 permalink: /docs/ae-resequencing-across-partitions/
-description: "Chapter 4's buffer works because an order's events share a key and a database row. When several producers and topics carry one order, only a sequence that spans all of them can restore order, and the Camel Resequencer holds its records in memory."
+description: "A per-order buffer in PostgreSQL works because an order's events share a key and a database row. When several producers and topics carry one order, only a sequence that spans all of them can restore order, and the Camel Resequencer holds its records in memory."
 duration: "50 minutes"
 ---
 
-An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. Chapter 4 put events back in order with a per-order buffer in PostgreSQL, which needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
+An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. That buffer puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
@@ -41,7 +41,7 @@ from("direct:batch")
         .to("direct:apply");
 ```
 
-The apply route writes one row per event to PostgreSQL through a Panache entity, where the identity column records the order of application, and sends the event to `edp.shipping.shipments` with the order id as the record key. The shipments topic is then the ordered stream chapter 4's consumers could assume: one order, one partition, events 1, 2, 3.
+The apply route writes one row per event to PostgreSQL through a Panache entity, where the identity column records the order of application, and sends the event to `edp.shipping.shipments` with the order id as the record key. The shipments topic is then the ordered stream a per-key consumer can assume: one order, one partition, events 1, 2, 3.
 
 ## A global sequence or a per-order one
 
@@ -69,7 +69,7 @@ The held events live only in the process. The Camel Kafka consumer commits offse
 
 {% include excalidraw.html file="ae-restart-loss" alt="Events 502 to 506 are consumed and their offset committed, the resequencer holds them while 501 is missing, a restart empties its memory, and afterwards only 501 is applied; the per-order buffer in PostgreSQL keeps held rows across the restart" caption="Figure E.3: Held records are lost when their offsets were committed before they were released" %}
 
-Chapter 4's buffer is the restart-safe form for one order: its held events are rows, written in the transaction that also decides what to apply, so a restart reads them back. That safety is the reason to prefer the database buffer whenever the key can carry the order. The in-memory resequencer fits when the sequence is global, the volume is high, and a lost record is repaired from the topic or the source.
+The per-order buffer is the restart-safe form for one order: its held events are rows, written in the transaction that also decides what to apply, so a restart reads them back. That safety is the reason to prefer the database buffer whenever the key can carry the order. The in-memory resequencer fits when the sequence is global, the volume is high, and a lost record is repaired from the topic or the source.
 
 ## Several producers and topics
 
@@ -95,7 +95,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-Keying by the entity id needs no resequencer at all, and chapter 4 holds out-of-order events in a database when the key cannot change. Use the Camel Resequencer when order must be restored across keys, the sequence is global and gapless, and losing a held event at a restart is a loss someone can repair.
+Keying by the entity id needs no resequencer at all, and a database buffer holds out-of-order events when the key cannot change. Use the Camel Resequencer when order must be restored across keys, the sequence is global and gapless, and losing a held event at a restart is a loss someone can repair.
 
 A global sequencer is a bottleneck and a single point of failure. If events cannot be stamped by one process, resolve ordering where the state lives, with a version checked at the write, and accept that an older event is refused.
 
@@ -109,4 +109,4 @@ A global sequencer is a bottleneck and a single point of failure. If events cann
 - Apache Camel, [Resequence EIP](https://camel.apache.org/components/4.22.x/eips/resequence-eip.html) (batch and stream forms, capacity, timeout and `rejectOld`) and [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html)
 - Apache Kafka, [documentation](https://kafka.apache.org/documentation/): ordering within a partition and consumer offset commits
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 2: Anatomy of Message-Driven Systems
-- Chapter 4: Ordering and partitioning, for the per-order buffer in PostgreSQL
+- [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }}): the per-order buffer in PostgreSQL

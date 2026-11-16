@@ -23,7 +23,7 @@ The input is one JSON record per delivery on a single-partition topic:
 {"orderId":"O-3801","carrier":"FASTLINE","deliveredAt":"2026-11-16T15:23:05Z"}
 ```
 
-The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Chapter 21 covers the mechanics of event time, stream time and grace; they are the same in all three engines here.
+The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Event time, stream time and grace work the same way in all three engines here.
 
 Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression. It is one number in one place, and each engine receives it.
 
@@ -117,7 +117,7 @@ The three engines agree only when an out-of-order record is inside the lateness 
 
 Give one engine a smaller bound and it disagrees. With a grace of 0 in Kafka Streams, the 55-second record is late there and window 1 counts 3 where the others count 4. The service reads that switch from `KS_GRACE_SECONDS`, which is demo code.
 
-None of the three tells the reader about a dropped record in its answer. Kafka Streams exposes a dropped-records metric (chapter 21); an answer that must account for every delivery needs a lateness as long as the slowest source, or a second path for late records.
+None of the three tells the reader about a dropped record in its answer. Kafka Streams exposes a dropped-records metric; an answer that must account for every delivery needs a lateness as long as the slowest source, or a second path for late records.
 
 ## Which one
 
@@ -155,7 +155,7 @@ Try one change and rerun:
 
 A count that one service needs for itself, over a topic it already consumes, is a Kafka Streams state store. Adding Flink or RisingWave for it adds a system to run.
 
-A value that changes per key and is read by key is a lookup. A table fed by the topic (chapter 16) or a compacted topic read into a global table (chapter 19) is simpler than a window.
+A value that changes per key and is read by key is a lookup. A table fed by the topic or a compacted topic read into a global table is simpler than a window.
 
 Windows need event time the data carries. When the source has no reliable time, or its disorder exceeds any lateness anyone accepts, count by arrival and say so.
 
@@ -176,4 +176,6 @@ State grows with the number of open windows and keys. A count per carrier per mi
 - Materialize, [LICENSE](https://raw.githubusercontent.com/MaterializeInc/materialize/main/LICENSE) (Business Source License)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 14: Streaming SQL
 - *Cloud-Native Design Patterns*, [chapter 6: Stream Processing](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/06-stream-processing/)
-- Chapter 21: Aggregate, for event time, stream time and grace; chapter 16 for a read model; chapter 19 for the global table
+- [Aggregate]({{ '/docs/21-aggregate/' | relative_url }}): event time, stream time and grace
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }}): a read model
+- [Enrich]({{ '/docs/19-enrich/' | relative_url }}): the global table

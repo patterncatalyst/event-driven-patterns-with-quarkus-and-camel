@@ -7,7 +7,7 @@ description: "An operator holds an order id, and the tools hold trace ids and lo
 duration: "55 minutes"
 ---
 
-Someone phones to say that order O-2701 never got its payment. They have an order id. Tempo is indexed by trace id and Loki holds lines of text, and neither knows what an order is. The saga of chapter 22 crosses three services and a Debezium relay, and when a payment times out it crosses a second trace as well.
+Someone phones to say that order O-2701 never got its payment. They have an order id. Tempo is indexed by trace id and Loki holds lines of text, and neither knows what an order is. A saga crosses three services and a Debezium relay, and when a payment times out it crosses a second trace as well.
 
 Three habits close the gap. The order id is set on every span and in the log context of every handler. The trace id is on every log line. A trace that a timer starts links to the trace it continues. With those three, a search by order id returns the trace and its logs, and a log line leads to its trace and back.
 
@@ -19,7 +19,7 @@ Three habits close the gap. The order id is set on every span and in the log con
 
 A trace id is made by the tracing library. It names one request tree, it is meaningless to the business, and nobody outside the system knows it. An order id is the opposite: customers, support and the database know it, and no tracing library does.
 
-Three things break the link. The first is the handler that runs after a message arrives. Chapter 25 carries the trace context across the outbox, the relay and the topic, so the consumer continues the trace, but nothing records which order the trace is about unless the code says so. The second is time: an order that waits for a payment and is cancelled by a sweeper later is not one request any more, and the sweeper's work belongs to no trace that anyone started for the order. The third is the log line: one written with no trace id cannot be found from a trace.
+Three things break the link. The first is the handler that runs after a message arrives. The trace context travels across the outbox, the relay and the topic, so the consumer continues the trace, but nothing records which order the trace is about unless the code says so. The second is time: an order that waits for a payment and is cancelled by a sweeper later is not one request any more, and the sweeper's work belongs to no trace that anyone started for the order. The third is the log line: one written with no trace id cannot be found from a trace.
 
 ### The solution
 

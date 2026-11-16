@@ -80,7 +80,7 @@ Every output is atomic. The consumer is an ordinary one, though: it commits its 
 
 `CrashSwitch` is demo code and not part of the pattern. For the order id named in an environment variable it waits half a second, so the records already sent reach the broker, and then halts the JVM. That is what a power cut looks like to a transaction that is still open.
 
-What the guarantee covers is Kafka to Kafka. Transactions are only supported inside a single Kafka cluster, and a database cannot enlist in one. Kafka's design notes say why the position has to be stored in the same place as the output: many destinations do not support a two-phase commit. Chaining a Hibernate ORM transaction with a Kafka transaction in Quarkus commits the database transaction first and the Kafka transaction after it, which orders two commits and does not make them atomic. For a database on either side, the outbox on the way out (chapter 8) and the inbox on the way in (chapter 11) are the tools; the transaction covers the hop between topics.
+What the guarantee covers is Kafka to Kafka. Transactions are only supported inside a single Kafka cluster, and a database cannot enlist in one. Kafka's design notes say why the position has to be stored in the same place as the output: many destinations do not support a two-phase commit. Chaining a Hibernate ORM transaction with a Kafka transaction in Quarkus commits the database transaction first and the Kafka transaction after it, which orders two commits and does not make them atomic. For a database on either side, the outbox on the way out and the inbox on the way in are the tools; the transaction covers the hop between topics.
 
 ## Build, run, observe
 

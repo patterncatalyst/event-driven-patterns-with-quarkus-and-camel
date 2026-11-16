@@ -99,7 +99,7 @@ A batch per carrier closes at 5 shipments or after 10 seconds without a new one,
 
 A late record is no special case. It joins whatever batch is open when it arrives, so the shipment stamped 09:05 that Kafka Streams dropped leaves on a batch of its own. An out-of-order shipment sits in the batch with its neighbours in arrival order, with shipments from the next slot.
 
-Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and their timeouts. The in-memory default would lose them, as chapter 20 showed. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
+Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each open batch in `shipping.pickups`, and a completed one in `shipping.pickups_completed`, through the Agroal datasource Quarkus configures. After a recreate the route restores the open batches and their timeouts. The in-memory default would lose them. The Kafka Streams form keeps the same promise with changelog topics: three records, a recreate, two more records and a tick still give a list with count 5. With `PICKUP_CHANGELOG=off` (demo code) the window store is local only, and the list holds the two records that came after.
 
 | | Kafka Streams | Camel Aggregator |
 |---|---|---|
@@ -139,7 +139,7 @@ A windowed result is final only for the records the grace admitted. A warehouse 
 
 Batches by size and time give a smaller, fuller stream and nothing more. They carry no slot and no lateness rule, and a list that must mean something about a period of time cannot come from them.
 
-Neither form fits a count or a sum that a reader may poll at any moment. That is a read model (chapter 16), which changes on every record.
+Neither form fits a count or a sum that a reader may poll at any moment. That is a read model, which changes on every record.
 
 > **🤖 Explore with your agent**
 > "In examples/21-aggregate, produce shipments for FASTLINE with event times 09:01 to 09:07, then 09:16 and 09:10, then 09:21, then a late 09:05, and compare the lists on edp.shipping.pickup-lists with the batches on edp.shipping.pickup-lists-camel. Run it again with PICKUP_EMIT=updates and state what the warehouse would see."

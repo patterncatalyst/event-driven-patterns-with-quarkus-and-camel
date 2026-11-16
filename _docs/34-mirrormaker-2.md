@@ -7,7 +7,7 @@ description: "A second cluster with the same topics is of no use to a consumer t
 duration: "50 minutes"
 ---
 
-The cluster of chapter 28 is one Kafka in one namespace. If it is lost, the orders in it are lost and every service has nowhere to publish. A second cluster that receives a copy of the topics answers the first half of that. It does not say where a consumer should start.
+The `edp` cluster is one Kafka in one namespace. If it is lost, the orders in it are lost and every service has nowhere to publish. A second cluster that receives a copy of the topics answers the first half of that. It does not say where a consumer should start.
 
 A consumer's position is a committed offset, stored per group in the cluster it reads from. The copy of a topic is another topic in another cluster, and Kafka does not promise that a record has the same offset in both. A consumer that moves with its old position reads the wrong record. One that moves with no position starts at the beginning and processes everything again, or at the end and skips what it had not read.
 
@@ -29,7 +29,7 @@ MirrorMaker 2 is a set of Kafka Connect connectors (KIP-382). A source connector
 
 ### How Kafka and Strimzi model it
 
-The second cluster is the `Kafka` of chapter 28 under another name, with one node pool whose node is controller and broker at once.
+The second cluster is the same `Kafka` resource under another name, with one node pool whose node is controller and broker at once.
 
 ```yaml
 apiVersion: kafka.strimzi.io/v1
@@ -87,7 +87,7 @@ By default MirrorMaker 2 renames a replicated topic by prepending the source clu
 
 With the names kept, `edp.orders.placed` exists on `edp-dr` after the first order and has the same end offset in every partition. The copy sits beside four internal topics. The workers' own `mm2-configs`, `mm2-offsets` and `mm2-status` are on the target. The checkpoints topic is on the target too, named from the source alias: `edp.checkpoints.internal`. The offset syncs are different. They are written where the records are read, so `mm2-offset-syncs.edp-dr.internal` is a topic of the source cluster by default. Strimzi's own example sets `offset-syncs.topic.location: "target"`, which gives the mirror read-only access to the source; the default needs it to write there. The default stays here.
 
-Chapter 32 monitors the cluster `edp`, and the same Metrics Reporter runs on MirrorMaker 2 workers. Its scrape job finds the worker pod by the Strimzi kind label, the allow list asks for the Connect families, and the worker reports its two connectors as `kafka_connect_connect_worker_metrics_connector_count`. The dashboard `edp-mirrormaker2` is provisioned beside `edp-strimzi`.
+The Strimzi Metrics Reporter that monitors the cluster `edp` also runs on MirrorMaker 2 workers. Its scrape job finds the worker pod by the Strimzi kind label, the allow list asks for the Connect families, and the worker reports its two connectors as `kafka_connect_connect_worker_metrics_connector_count`. The dashboard `edp-mirrormaker2` is provisioned beside `edp-strimzi`.
 
 ## Consumer offsets across clusters
 
@@ -104,13 +104,13 @@ The settings that make the translation work are few.
 
 The intervals are short so a laptop run finishes in minutes; Strimzi's example for group sync uses a minute for checkpoints and ten minutes for finding groups (`kafka-mirror-maker-2-sync-groups.yaml`). The one that matters for correctness is `offset.lag.max`. With the default of 100, a target partition may trail the source by up to 100 offsets before it is synced again, so on a short topic the group on `edp-dr` stays behind the source's committed offsets. With 0, every change is synced and the group matches within seconds. On a short topic it is the setting that makes the translation happen at all.
 
-Two properties of the checkpoint apply to every failover. The checkpoint connector writes a group on the target only while no consumer is active in that group there; a group with a live consumer on the target is skipped with a warning. And a translated offset can be earlier than the source's position, so records are read twice: Strimzi's documentation says "This duplication is expected." A consumer that fails over must tolerate a record twice, which is what the idempotent consumer of chapter 11 is for.
+Two properties of the checkpoint apply to every failover. The checkpoint connector writes a group on the target only while no consumer is active in that group there; a group with a live consumer on the target is skipped with a warning. And a translated offset can be earlier than the source's position, so records are read twice: Strimzi's documentation says "This duplication is expected." A consumer that fails over must tolerate a record twice, which is what an idempotent consumer is for.
 
 Groups come from `groupsPattern`, minus the connector's default exclusions, `console-consumer-.*`, `connect-.*` and `__.*`. A group the source has never committed on a partition does not appear on the target for that partition until it commits.
 
 ## Failing a consumer over
 
-The consumer is `notification-service` of chapter 2. Five orders have been notified on `edp`, and the group there has committed the five records. `edp-dr` holds the same five records and, after a few seconds, the same group with the same committed offsets, before any consumer has connected to it.
+The consumer is the `notification-service`. Five orders have been notified on `edp`, and the group there has committed the five records. `edp-dr` holds the same five records and, after a few seconds, the same group with the same committed offsets, before any consumer has connected to it.
 
 The failover is a stop and a start with one new value.
 
@@ -126,7 +126,7 @@ Two readings show that nothing was read twice. The group's committed offset on `
 
 | After the failover | Group offset not translated | Group offset translated |
 |---|---|---|
-| Where the consumer starts | The reset policy: `earliest` in the services of chapter 2, the first record | The checkpoint's offset: the sixth |
+| Where the consumer starts | The reset policy: `earliest` in these services, the first record | The checkpoint's offset: the sixth |
 | What the group on `edp-dr` needs | Nothing, but every record is read again | The sync setting, and the source group stopped |
 | What fails over by hand | The consumer's position | The bootstrap address |
 
@@ -139,7 +139,7 @@ cd examples/34-mirrormaker-2
 ./verify.sh
 ```
 
-A second cluster and a MirrorMaker 2 come up beside the services of chapter 2, five orders are mirrored, the consumer is stopped, five more orders are placed and the consumer restarts against `edp-dr`; the run ends with `18/18 checks passed`.
+A second cluster and a MirrorMaker 2 come up beside the event notification services, five orders are mirrored, the consumer is stopped, five more orders are placed and the consumer restarts against `edp-dr`; the run ends with `18/18 checks passed`.
 
 Try one change and rerun:
 
@@ -151,7 +151,7 @@ Try one change and rerun:
 
 The copy is made after the write, by a consumer and a producer, so a failover loses the records the mirror had not yet copied. The MBean `replication-latency-ms` of the source connector measures how far behind it is (Kafka geo-replication documentation); a recovery objective of zero records needs a different design.
 
-A failover duplicates records. The checkpoint can land before the consumer's real position, and the target group is written only while it is inactive. Consumers that cannot tolerate a record twice need the inbox of chapter 11 before this pattern is safe.
+A failover duplicates records. The checkpoint can land before the consumer's real position, and the target group is written only while it is inactive. Consumers that cannot tolerate a record twice need an idempotent consumer with an inbox before this pattern is safe.
 
 The two clusters here share a namespace, a Kubernetes cluster and one machine. Losing the node loses both, so the pattern is modelled here and the protection is not. A real failover cluster lives in a different failure domain, and the mirror's bandwidth and latency are then a cost.
 
@@ -168,4 +168,7 @@ The identity policy cannot prevent cycles, so a mirror in each direction would c
 - Strimzi, [example `kafka-mirror-maker-2-sync-groups.yaml`](https://github.com/strimzi/strimzi-kafka-operator/blob/main/packaging/examples/mirror-maker/kafka-mirror-maker-2-sync-groups.yaml)
 - Apache Kafka, [Geo-replication](https://kafka.apache.org/43/operations/geo-replication-cross-cluster-data-mirroring/) (replication policy, monitoring), and the source of [`IdentityReplicationPolicy`](https://github.com/apache/kafka/blob/4.3/connect/mirror-client/src/main/java/org/apache/kafka/connect/mirror/IdentityReplicationPolicy.java) and [`MirrorCheckpointConfig`](https://github.com/apache/kafka/blob/4.3/connect/mirror/src/main/java/org/apache/kafka/connect/mirror/MirrorCheckpointConfig.java)
 - [KIP-382: MirrorMaker 2.0](https://cwiki.apache.org/confluence/display/KAFKA/KIP-382%3A+MirrorMaker+2.0)
-- Chapter 2 for the services that fail over, chapter 11 for the consumer that tolerates a duplicate, chapter 28 for the cluster, chapter 32 for monitoring
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }})
+- [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Monitoring Strimzi]({{ '/docs/32-monitoring-strimzi/' | relative_url }})

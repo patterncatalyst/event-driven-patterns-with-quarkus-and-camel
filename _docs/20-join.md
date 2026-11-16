@@ -15,9 +15,9 @@ duration: "55 minutes"
 
 ### The problem
 
-The two facts live in two services, and services share no tables (chapter 3). A query cannot ask whether both have happened. Asking each service per order (chapter 2) turns a question about events into polling. A local copy of each (chapter 3) answers what the current state is, not whether the two facts arrived within the same business moment. What is needed is the correlation itself: two events with the same key, within a bounded time of each other, and a decision about the one that never finds its partner.
+The two facts live in two services, and services share no tables. A query cannot ask whether both have happened. Asking each service per order turns a question about events into polling. A local copy of each answers what the current state is, not whether the two facts arrived within the same business moment. What is needed is the correlation itself: two events with the same key, within a bounded time of each other, and a decision about the one that never finds its partner.
 
-Hohpe and Woolf call the shape an Aggregator, a stateful filter that stores related messages until a complete set has arrived and then publishes one message built from them. It has nothing to do with the aggregate of chapter 14, which is a consistency boundary. Both of the forms below are Aggregators in Hohpe and Woolf's sense. They differ in how they decide that a set is complete.
+Hohpe and Woolf call the shape an Aggregator, a stateful filter that stores related messages until a complete set has arrived and then publishes one message built from them. It has nothing to do with a domain-driven aggregate, which is a consistency boundary. Both of the forms below are Aggregators in Hohpe and Woolf's sense. They differ in how they decide that a set is complete.
 
 ### The solution
 
@@ -38,7 +38,7 @@ reserved.leftJoin(paid, Readiness::of,
 
 A payment within 30 minutes of the reservation, in either direction, matches and gives `ReadyToShip`. The five minutes of grace admit a record that is late in event time. A reservation that finds no payment leaves as `PaymentOverdue`, with a null payment passed to the join function. Both source streams read their timestamp from the payload with a `PayloadTimestampExtractor`, so the window is measured on when the facts happened.
 
-Both topics must have the same number of partitions, and the same keys must land in the same partition number (chapter 4). The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway and reported RUNNING, and no co-partitioning error was logged. It built three tasks: two paired a reservations partition with the payments partition of the same number, and the third held a reservations partition alone. It matched only the orders whose two records share a partition number: 7 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
+Both topics must have the same number of partitions, and the same keys must land in the same partition number. The Kafka Streams documentation says the partition counts are checked at runtime. With three partitions on reservations and two on payments, the two source topics of this join, the instance started anyway and reported RUNNING, and no co-partitioning error was logged. It built three tasks: two paired a reservations partition with the payments partition of the same number, and the third held a reservations partition alone. It matched only the orders whose two records share a partition number: 7 of 30 in each of three runs, while the Camel route, which reads both topics in one consumer, matched all 30.
 
 Camel has no join. It has the Aggregator, correlated here on the record key:
 
@@ -55,7 +55,7 @@ from("kafka:" + Topics.INVENTORY_RESERVED + "," + Topics.PAYMENTS_PROCESSED + "?
             .to("kafka:" + Topics.SHIPPING_ORDER_READINESS_CAMEL)
 ```
 
-The group completes when it holds both kinds of fact, whichever came first, or when no fact has arrived for the timeout. The exchange property `CamelAggregatedCompletedBy` says which, and `conclude` turns `predicate` into `ReadyToShip` and `timeout` into `PaymentOverdue`. The completion predicate looks for the two kinds, not for a count of two. A duplicate `InventoryReserved` (chapter 11) is also two messages, and a count would complete the group with no payment in it.
+The group completes when it holds both kinds of fact, whichever came first, or when no fact has arrived for the timeout. The exchange property `CamelAggregatedCompletedBy` says which, and `conclude` turns `predicate` into `ReadyToShip` and `timeout` into `PaymentOverdue`. The completion predicate looks for the two kinds, not for a count of two. A redelivered `InventoryReserved` is also two messages, and a count would complete the group with no payment in it.
 
 The two forms in one place:
 
@@ -72,7 +72,7 @@ A real service runs one of the two. Both forms run side by side on the same inpu
 
 ## Event time and arrival time
 
-Kafka Streams orders by the timestamp its extractor returns. The record timestamp is whatever the producer set, by default the time it created the record, so a record that went through an outbox (chapter 8) or a replay can carry a time later than its fact. The extractor reads `occurredAt` from the payload and falls back to the record timestamp when there is none.
+Kafka Streams orders by the timestamp its extractor returns. The record timestamp is whatever the producer set, by default the time it created the record, so a record that went through an outbox or a replay can carry a time later than its fact. The extractor reads `occurredAt` from the payload and falls back to the record timestamp when there is none.
 
 Camel never reads `occurredAt`. The completion timeout is the time a group has been inactive, counted on the clock of the service. **The Camel form approximates the window by arrival time, not event time.** Where records arrive close to when they happened, the two clocks agree and the aggregator is the smaller piece of code. Where they do not, the forms disagree, and two crafted pairs show it in opposite directions.
 
@@ -84,7 +84,7 @@ The question is which clock the business rule means. "Payment within 30 minutes 
 
 Event times have to be in the past. The broker refuses a record whose timestamp is more than an hour ahead, and Kafka Streams forwards the event time as the timestamp of its output, so a payload dated in the future puts the instance in ERROR.
 
-The window does not retract. A payment that arrives after `PaymentOverdue` has been emitted can still match while the reservation is retained in the store, and the output then holds `ReadyToShip` for an order that was already reported overdue. The join does not count that record as dropped. A consumer of the output topic has to accept two answers for one order. The rule that fits is that a later `ReadyToShip` supersedes a `PaymentOverdue` for the same order: the consumer keeps the latest result by order id and never lets `PaymentOverdue` replace `ReadyToShip`, as the guarded upsert of chapter 16 only moves a row forward.
+The window does not retract. A payment that arrives after `PaymentOverdue` has been emitted can still match while the reservation is retained in the store, and the output then holds `ReadyToShip` for an order that was already reported overdue. The join does not count that record as dropped. A consumer of the output topic has to accept two answers for one order. The rule that fits is that a later `ReadyToShip` supersedes a `PaymentOverdue` for the same order: the consumer keeps the latest result by order id and never lets `PaymentOverdue` replace `ReadyToShip`, as a guarded upsert only moves a row forward.
 
 ## When one side never arrives
 
@@ -128,7 +128,7 @@ Try one change and rerun:
 
 ## When not to use it
 
-A window is for facts that happen close together. If the second fact can come a week later, a window either grows into a large store or drops the pair. A fact that changes slowly and is looked up (the carrier reference of chapter 19) is a table, and the lookup is a table join without a window.
+A window is for facts that happen close together. If the second fact can come a week later, a window either grows into a large store or drops the pair. A fact that changes slowly and is looked up (the carrier reference) is a table, and the lookup is a table join without a window.
 
 If the two facts already sit in one database, a SQL join answers the question with no state to keep. If the correlation is short, live and low in volume, and arrival time is close enough to event time, the Camel aggregator is the lighter choice: no local store, no changelog, no partition rule. A Streams join also keeps both sides for longer than the window itself, so a long window on a busy topic is a large store.
 

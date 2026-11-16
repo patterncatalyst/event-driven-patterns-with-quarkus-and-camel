@@ -15,7 +15,7 @@ In the choreographed saga nobody holds the whole sequence. Each service knows it
 
 ### The problem
 
-A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only (chapter 12), and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback (Richardson). Chapter 22 coordinated that with events and no coordinator.
+A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only, and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback (Richardson). The choreographed form coordinates that with events and no coordinator.
 
 That works while the flow is short and one team owns it. Three things push toward a central owner. The sequence changes, and every change is a coordinated release. Someone has to answer where order O-2314 is, and the answer is spread over three tables. And a time limit is a property of the whole saga, not of any one service. Hohpe and Woolf call the central unit a Process Manager: it keeps the state of the sequence and chooses the next step from the intermediate results.
 
@@ -140,17 +140,17 @@ It does not make the wait durable. When order-service was recreated with an inst
 
 With payment-service stopped, an order is placed under each orchestrator. Each has a time limit of 20 s.
 
-The coordinator cancels the Camel saga when the limit passes, never before it. It calls every compensation registered by then: inventory-service releases the stock and order-service cancels the order. payment-service never joined, so it has nothing to compensate. When it starts it reads TakePayment, tries to join, and the coordinator refuses because the saga is cancelled. The payment is not taken. That refusal holds only for a participant that never joined. A payment already running when the limit passes is compensated first and then completes, so the money is taken for a cancelled order. The participant needs a guard of its own, like the semantic lock of chapter 22.
+The coordinator cancels the Camel saga when the limit passes, never before it. It calls every compensation registered by then: inventory-service releases the stock and order-service cancels the order. payment-service never joined, so it has nothing to compensate. When it starts it reads TakePayment, tries to join, and the coordinator refuses because the saga is cancelled. The payment is not taken. That refusal holds only for a participant that never joined. A payment already running when the limit passes is compensated first and then completes, so the money is taken for a cancelled order. The participant needs a guard of its own, like the semantic lock of the choreographed saga.
 
 The workflow's listen task gives up when its limit passes, and then the tail runs: RefundPayment, ReleaseStock, cancel. The commands queue behind TakePayment on the same partition. When payment-service starts it takes the payment and then refunds it, in that order. The money moved and came back, and the payment row ends REFUNDED. That is the price of compensating by command rather than by refusing to join.
 
-Both end with the order CANCELLED, the stock released and one OrderCancelled published. The order row and an outbox row change in one transaction and Debezium publishes the row (chapter 8), so a crash cannot leave a cancelled order without its event. The paths differ in what the late participant did, not in the terminal state.
+Both end with the order CANCELLED, the stock released and one OrderCancelled published. The order row and an outbox row change in one transaction and Debezium publishes the row, so a crash cannot leave a cancelled order without its event. The paths differ in what the late participant did, not in the terminal state.
 
 ## Three ways compared
 
 {% include excalidraw.html file="23-three-ways" alt="Three columns, choreography, Camel Saga with an LRA coordinator and Quarkus Flow, each with where the sequence lives, where the state lives, what triggers the compensation and what owns the time limit" caption="Figure 23.3: Three places to look when an order is stuck" %}
 
-| | Choreography (chapter 22) | Camel Saga with LRA | Quarkus Flow |
+| | Choreography | Camel Saga with LRA | Quarkus Flow |
 |---|---|---|---|
 | Who knows the sequence | Each service its next step | The routes in order-service | The task list of one workflow |
 | Where the saga state lives | Order, inventory and payment tables | The coordinator, and the header on each record | The workflow instance in PostgreSQL |

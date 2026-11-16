@@ -65,7 +65,7 @@ from("kafka:" + Topics.SHIPPING_DELIVERY_EXCEPTIONS
 
 `DeliveryExceptionAnalysed` carries the reason, the evidence phrase, the model name and digest and the prompt version. `DeliveryExceptionDecided` carries RESHIP or REFUND, the rule name and the rules version. The AI service gives a typed return value and a place to put the prompt, so the route only calls a bean. The AI service is `@ApplicationScoped`, because the default is the request scope and a Kafka consumer thread has no request.
 
-When the model is unreachable the call fails, is retried, and then `breakOnFirstError` seeks the consumer back to the record. The note waits and the consumer group shows lag. No analysis is made up and nothing is decided without one, the same behaviour as chapter 19's enricher with its owner down, and chapter 13 covers what retrying does and does not rescue.
+When the model is unreachable the call fails, is retried, and then `breakOnFirstError` seeks the consumer back to the record. The note waits and the consumer group shows lag. No analysis is made up and nothing is decided without one, the same behaviour as an enricher with its owner down.
 
 ## A closed answer from an open text
 
@@ -112,7 +112,7 @@ The rule unit runs through the engine's `RuleUnitProvider`. Drools' Quarkus exte
 
 ## Replay without the model
 
-Chapter 17 replays events to rebuild a projection. Here the replay rebuilds decisions. `POST /demo/replay` (demo code) reads `exception-analyses` from the first offset with a fresh consumer, runs the same `DecisionService` on each record and returns the decisions. It publishes nothing. The returned decisions equal the recorded ones field for field, and the model-call counter and Ollama's request log do not move. Replay is cheap because only the rules run: eight recorded analyses came back in about half a second, including the consumer's start.
+A projection is rebuilt by replaying events. Here the replay rebuilds decisions. `POST /demo/replay` (demo code) reads `exception-analyses` from the first offset with a fresh consumer, runs the same `DecisionService` on each record and returns the decisions. It publishes nothing. The returned decisions equal the recorded ones field for field, and the model-call counter and Ollama's request log do not move. Replay is cheap because only the rules run: eight recorded analyses came back in about half a second, including the consumer's start.
 
 The same endpoint shows what a rule change does. Replay with `attemptLimit=2` and the absent recipient on attempt 2 turns from RESHIP into REFUND, and still no model call is made. A policy change is previewed against the record before it ships.
 

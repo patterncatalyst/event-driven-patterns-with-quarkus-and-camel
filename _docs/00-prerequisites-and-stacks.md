@@ -13,7 +13,7 @@ Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL 
 
 ## What you need
 
-A Fedora or RHEL host with Docker Engine and the `docker compose` plugin, JDK 25, Maven, git and curl. Parts 1 to 5 never need more than that. Install Docker Engine from [Docker's repository for your distribution](https://docs.docker.com/engine/install/) and add your user to the `docker` group so no command needs `sudo`.
+A Fedora or RHEL host with Docker Engine and the `docker compose` plugin, JDK 25, Maven, git and curl. The compose examples never need more than that. Install Docker Engine from [Docker's repository for your distribution](https://docs.docker.com/engine/install/) and add your user to the `docker` group so no command needs `sudo`.
 
 Install JDK and Maven with [SDKMAN](https://sdkman.io/), which installs under `$HOME/.sdkman` by default:
 
@@ -49,9 +49,9 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 | UBI 10 OpenJDK | 1.24-20 | Build and runtime images for every service we package |
 | Docker Engine, Compose plugin | 29.9.3, 5.7.0 | Recorded from the reference host |
 
-Each service image is pinned by tag in `examples/_infra`. Chapters that trace through Kafka Connect add the OpenTelemetry Java agent (2.33.1, Apache-2.0): an init container copies it from Maven Central into a volume that `docker compose down -v` removes, so each fresh start downloads it again.
+Each service image is pinned by tag in `examples/_infra`. Examples that trace through Kafka Connect add the OpenTelemetry Java agent (2.33.1, Apache-2.0): an init container copies it from Maven Central into a volume that `docker compose down -v` removes, so each fresh start downloads it again.
 
-Chapter 24 runs a local model. Pull it once into its own Docker volume, which survives every `docker compose down -v`; the examples mount it read-only and never download it themselves:
+The local-model example needs the model. Pull it once into its own Docker volume, which survives every `docker compose down -v`; the examples mount it read-only and never download it themselves:
 
 ```bash
 scripts/ollama-model.sh pull    # about 2.5 GB, once
@@ -66,7 +66,7 @@ scripts/ollama-model.sh check   # confirms the pinned model digest
 |---------|-----------|------|
 | Kafka (KRaft, one node) | 9092 | The log every pattern publishes to and reads from. Containers use `kafka:9094` |
 | PostgreSQL, `wal_level=logical` | 5432 | State, outbox tables and the event store. Logical decoding lets Debezium read changes |
-| Apicurio Registry | 8081, health 19000 | Schemas for the schema-evolution chapters. In memory, empty after a restart |
+| Apicurio Registry | 8081, health 19000 | Schemas for the schema-evolution examples. In memory, empty after a restart |
 | Kafka Connect with Debezium | 8083 | Log tailing and the outbox router |
 | Grafana LGTM | 3000, 4317, 4318, 19090, 3200, 3100 | Grafana, OTLP gRPC and HTTP, Prometheus, Tempo, Loki |
 
@@ -191,9 +191,9 @@ Try one change and rerun:
 - Remove the `onException` clause: an invalid Order gets 500 instead of 400.
 - Change `Topics.ORDERS_PLACED` in the intake route to `"edp.orders.placed-v2"`: no record arrives on `edp.orders.placed` and the consumer route has nothing to log.
 
-## Part 6 runs on Kubernetes
+## Kubernetes
 
-Parts 1 to 5 use this compose stack. Part 6 moves the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image. It has its own setup at the start of Part 6, with its tool versions and commands. No cluster is needed for Parts 1 to 5. Stop the compose stack before you start one.
+The compose stack runs every example except the Kubernetes ones. Those move the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image, with their own setup, tool versions and commands. No cluster is needed for the compose examples. Stop the compose stack before you start a cluster.
 
 ## References
 

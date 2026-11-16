@@ -7,7 +7,7 @@ description: "A cluster admits any pod unless a rule says otherwise. Labelling a
 duration: "50 minutes"
 ---
 
-The cluster of chapter 28 runs Kafka, PostgreSQL and two services, and every one of them started without a word about security. Kubernetes admits any pod that is well formed. Whether a container may run as root, gain privileges through a setuid binary or keep Linux capabilities it never uses is decided by the image and by whatever the pod spec leaves out.
+The cluster runs Kafka, PostgreSQL and two services, and every one of them started without a word about security. Kubernetes admits any pod that is well formed. Whether a container may run as root, gain privileges through a setuid binary or keep Linux capabilities it never uses is decided by the image and by whatever the pod spec leaves out.
 
 A process that an attacker takes over inherits all of it. A namespace label turns the rule on, and the API server then refuses a pod that does not meet it, whoever or whatever created it.
 
@@ -51,7 +51,7 @@ Strimzi and CloudNativePG are operators, so the pods they create have to pass to
 
 ## The application's security context
 
-A pod that fails the level is forbidden with every missing field named. Applying the two services of chapter 2 into the labelled namespace without a security context gives a Deployment that is accepted and a ReplicaSet that cannot create its pod.
+A pod that fails the level is forbidden with every missing field named. Applying the two event notification services into the labelled namespace without a security context gives a Deployment that is accepted and a ReplicaSet that cannot create its pod.
 
 ```text
 Error creating: pods "order-service-..." is forbidden: violates PodSecurity "restricted:v1.37":
@@ -61,7 +61,7 @@ runAsNonRoot != true (pod or container "app" must set securityContext.runAsNonRo
 seccompProfile (pod or container "app" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
 ```
 
-The Deployment reports `ReplicaFailure` and the old pod keeps serving. That is the case worth testing before a label goes on a namespace that already holds pods: labelling it prints a warning for each running pod that would fail and evicts nothing, and the refusal arrives with the next pod creation, which is usually a rollout at a bad hour. Applying the unsecured manifest with server-side apply, as in chapter 30, prints `would violate PodSecurity` as well.
+The Deployment reports `ReplicaFailure` and the old pod keeps serving. That is the case worth testing before a label goes on a namespace that already holds pods: labelling it prints a warning for each running pod that would fail and evicts nothing, and the refusal arrives with the next pod creation, which is usually a rollout at a bad hour. Applying the unsecured manifest with server-side apply, as server-side apply does, prints `would violate PodSecurity` as well.
 
 The four fields, plus a read-only root filesystem, go in one patch that every Deployment in `edp` receives.
 
@@ -114,7 +114,7 @@ Running the default provider under the label shows the refusal. A run that block
 
 The PostgreSQL pods need no change. The CloudNativePG operator pod runs as a non-root user with a read-only root filesystem and the `RuntimeDefault` seccomp profile, and the instance pod does too. The instance runs as the `postgres` user, uid 26, which is the user of the operand image. The `initdb` job pod that bootstraps the cluster is admitted in a restricted `edp` as well, and the cluster comes up Ready.
 
-The CloudNativePG documentation says that no component requires root, and the pods bear it out. The operator namespace `cnpg-system` is the platform tier of chapter 28, applied once per cluster and shared by every example, so it stays as it is. A server dry-run label asks the API server what labelling it would do.
+The CloudNativePG documentation says that no component requires root, and the pods bear it out. The operator namespace `cnpg-system` is part of the platform tier, applied once per cluster and shared by every example, so it stays as it is. A server dry-run label asks the API server what labelling it would do.
 
 ```bash
 kubectl label --dry-run=server --overwrite ns cnpg-system pod-security.kubernetes.io/enforce=restricted
@@ -167,4 +167,5 @@ The label is only as good as the version it names. `latest` moves with the clust
 - Strimzi, [Deploying and Managing](https://strimzi.io/docs/operators/latest/deploying.html), the pod security provider section (the Baseline and Restricted providers, `STRIMZI_POD_SECURITY_PROVIDER_CLASS`, template precedence), and [Writing custom pod security providers](https://strimzi.io/blog/2023/04/05/writing-custom-pod-security-providers/)
 - CloudNativePG, [Security](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/docs/src/security.md) (the pod security context and Pod Security Admission)
 - Red Hat, [UBI OpenJDK images](https://catalog.redhat.com/software/containers/ubi10/openjdk-25/) (the 185 user)
-- Chapter 28 for the cluster and its namespaces, chapter 30 for server-side apply
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Server-side apply]({{ '/docs/30-server-side-apply/' | relative_url }})

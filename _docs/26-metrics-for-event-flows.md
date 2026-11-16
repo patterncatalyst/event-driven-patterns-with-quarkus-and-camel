@@ -17,7 +17,7 @@ Nothing is wrong inside any one service. The work is stuck between them: in a re
 
 ### The problem
 
-A service's metrics describe the service: requests handled, errors, latency, queue depth of its own threads. An event flow also has places that belong to no service. The outbox sits between a commit and a topic (chapter 8). The topic sits between a producer and a group. A dead letter topic holds what a consumer gave up on (chapter 13). When any of them stops moving, the services on both sides stay healthy, because each one is waiting for the other.
+A service's metrics describe the service: requests handled, errors, latency, queue depth of its own threads. An event flow also has places that belong to no service. The outbox sits between a commit and a topic. The topic sits between a producer and a group. A dead letter topic holds what a consumer gave up on. When any of them stops moving, the services on both sides stay healthy, because each one is waiting for the other.
 
 The obvious readings fail in a specific way. The outbox table has no rows to count, because the extension deletes each row in the transaction that inserts it. A consumer's own lag metric disappears with the consumer. And the age of an event, measured on arrival, says nothing until something arrives.
 
@@ -112,7 +112,7 @@ void record(ConsumerRecord<?, ?> record, Instant now) {
 }
 ```
 
-Behind a Debezium outbox the two agree. The router stamps the record with the outbox row's time, not the time it read the change: with the connector paused for 35 seconds, the twenty drained records were older than 30 seconds by record age as well as by event age. A stall at the relay therefore shows up in record age, which is what chapter 16's projection lag relies on, and event age adds nothing there.
+Behind a Debezium outbox the two agree. The router stamps the record with the outbox row's time, not the time it read the change: with the connector paused for 35 seconds, the twenty drained records were older than 30 seconds by record age as well as by event age. A stall at the relay therefore shows up in record age, which is what a projection's lag relies on, and event age adds nothing there.
 
 They part when a record is written again. A dead letter keeps the original headers, so `occurredAt` travels with it, but a redrive publishes a new record and the broker stamps a new timestamp. The redriven record reads young by record age and old by event age.
 

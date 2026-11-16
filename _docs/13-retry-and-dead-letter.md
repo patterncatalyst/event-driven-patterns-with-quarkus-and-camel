@@ -80,7 +80,7 @@ A retry in place has a price that the figure shows. The partition has one reader
 
 SmallRye has a retry that does not block, the `delayed-retry-topic` failure strategy, which republishes the record to delay topics. The documentation marks it experimental.
 
-A retried effect must also survive being applied twice. Here the failed attempt rolled back, so a retry decrements the stock once. A record that is delivered again after a commit is applied again, as the last experiment shows. Chapter 11 puts a key in the same transaction to stop that.
+A retried effect must also survive being applied twice. Here the failed attempt rolled back, so a retry decrements the stock once. A record that is delivered again after a commit is applied again, as the last experiment shows. An inbox key written in the same transaction stops that.
 
 The Camel route says the same things in the route's own terms. `DeadLetterRoute` is the comparison, started with the `camel` profile:
 
@@ -136,7 +136,7 @@ A dead letter topic needs an owner. Someone has to watch its depth, read the rea
 
 Skipping a record is a decision about ordering. The consumer carries on with the records behind it, so they are processed without the one that failed. When a later record depends on an earlier one, as in a ledger, stopping the channel with `fail` and fixing the cause is the correct behaviour, and the readiness probe is how it gets noticed.
 
-Retrying in place suits failures that clear in seconds. A dependency that is down for minutes holds the partition for as long, and a long retry runs into the consumer's poll interval, as the Camel route in the last experiment shows. A retry is only safe when the effect can be applied twice, which is the work of chapter 11.
+Retrying in place suits failures that clear in seconds. A dependency that is down for minutes holds the partition for as long, and a long retry runs into the consumer's poll interval, as the Camel route in the last experiment shows. A retry is only safe when the effect can be applied twice, which is the work of an idempotent consumer.
 
 > **🤖 Explore with your agent**
 > "In examples/13-retry-and-dead-letter, lock SKU-14 for twelve seconds, produce a truncated record, an order with quantity 0 and a valid order for SKU-14 to edp.orders.placed, and compare what OrderPlacedConsumer and ReservationService do with each against DeadLetterRoute under the camel profile. State which exceptions OrderPlacedConsumer retries and which it dead-letters, and why."

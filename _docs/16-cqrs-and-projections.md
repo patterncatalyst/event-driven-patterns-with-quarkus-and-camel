@@ -7,7 +7,7 @@ description: "A reader asks questions the write model was not built for. A proje
 duration: "55 minutes"
 ---
 
-The `Order` aggregate in chapter 14 answers one question: may this command happen. It replays one stream to answer it. A customer asks something else: where are all my orders, and where is the one I paid for on Monday? The answer needs facts that live in three services, for many orders at once, and the aggregate holds none of them. `order-service` here is only the answering side, a read model fed by the topics the order, payment and shipping services already publish.
+The `Order` aggregate answers one question: may this command happen. It replays one stream to answer it. A customer asks something else: where are all my orders, and where is the one I paid for on Monday? The answer needs facts that live in three services, for many orders at once, and the aggregate holds none of them. `order-service` here is only the answering side, a read model fed by the topics the order, payment and shipping services already publish.
 
 {% include excalidraw.html file="16-command-query-split" alt="Order, payment and shipping services publish to six public topics; the projector in the query side applies each event to the order_view table with a guarded upsert, and the two query endpoints read only that table; the lag window sits between the topics and the view" caption="Figure 16.1: Writers publish, the projector applies, readers query only the view" %}
 
@@ -15,9 +15,9 @@ The `Order` aggregate in chapter 14 answers one question: may this command happe
 
 ### The problem
 
-The write model of chapter 14 is shaped for one job: load one stream, decide, append. A customer's order list does not fit it. The events table has no index by customer, its payloads are the owner's private format, and it holds none of the payment or shipping facts. Each way of answering from it, or around it, costs something.
+The event-sourced write model is shaped for one job: load one stream, decide, append. A customer's order list does not fit it. The events table has no index by customer, its payloads are the owner's private format, and it holds none of the payment or shipping facts. Each way of answering from it, or around it, costs something.
 
-Reading the owner's store couples every reader to a schema that belongs to someone else. Asking each owning service for each order at read time makes the list as slow and as available as the slowest of three services, once per order. Copying one owner's state, as chapter 3 does for `order_copy`, solves a narrower problem: one owner, one fact per order.
+Reading the owner's store couples every reader to a schema that belongs to someone else. Asking each owning service for each order at read time makes the list as slow and as available as the slowest of three services, once per order. Copying one owner's state, as event-carried state transfer does, solves a narrower problem: one owner, one fact per order.
 
 Fowler, who first heard the pattern from Greg Young, states the core idea as using a different model to update information than the model used to read it. Young adds why: the command side wants consistent, normalised data, and the query side can be eventually consistent and denormalised to avoid joins.
 
@@ -58,7 +58,7 @@ private <T> CompletionStage<Void> apply(Message<T> message, BiConsumer<T, Instan
 }
 ```
 
-The projector runs in its own transaction, and the record is acknowledged after it commits. A crash between the two replays the record, which the upsert tolerates. That is why the view needs no inbox table (chapter 11): a status column set by an upsert is idempotent by itself. A counter would not be, and the view keeps none; summaries are computed by query.
+The projector runs in its own transaction, and the record is acknowledged after it commits. A crash between the two replays the record, which the upsert tolerates. That is why the view needs no inbox table: a status column set by an upsert is idempotent by itself. A counter would not be, and the view keeps none; summaries are computed by query.
 
 `mp.messaging.incoming.<channel>.pausable=true` makes each channel stoppable by name through the injected `ChannelRegistry`. Production code has no use for that. The demo endpoints do, and they are labelled as demo code.
 
@@ -101,7 +101,7 @@ The same timer is the check on throughput. A projector that applies slower than 
 
 ## Order across topics
 
-The six topics are read by six consumers. Kafka orders records within one partition (chapter 4), and these are six partitions, so nothing orders `ShipmentInTransit` before `ShipmentDelivered`. If the delivered channel is ahead of the in-transit channel, the view meets them in the wrong order.
+The six topics are read by six consumers. Kafka orders records within one partition, and these are six partitions, so nothing orders `ShipmentInTransit` before `ShipmentDelivered`. If the delivered channel is ahead of the in-transit channel, the view meets them in the wrong order.
 
 {% include excalidraw.html file="16-cross-topic-order" alt="ShipmentScheduled and ShipmentDelivered are applied, then ShipmentInTransit arrives late; with the forward-only guard the row stays DELIVERED, and without it the last writer wins and the row regresses to IN_TRANSIT" caption="Figure 16.3: A late status must not move the view back" %}
 
@@ -115,7 +115,7 @@ WHERE orders.shipment_rank(EXCLUDED.shipment_status) > orders.shipment_rank(orde
 
 `shipment_rank` is an immutable SQL function that numbers the lifecycle. The `WHERE` makes the statement a no-op for an event that does not advance the row, which also makes a redelivered record harmless. It lives in the database statement, not in Java, so that the check and the write are one step and no other channel can write the row between them.
 
-The guard fits this view because the facts are a lifecycle, where "further" is defined. For a column with no order, such as an address that can be changed twice, arrival order does not decide the answer and the event needs a version or a timestamp from its owner. Where the order of events matters, the owner keys them to one partition (chapter 4).
+The guard fits this view because the facts are a lifecycle, where "further" is defined. For a column with no order, such as an address that can be changed twice, arrival order does not decide the answer and the event needs a version or a timestamp from its owner. Where the order of events matters, the owner keys them to one partition.
 
 ## Build, run, observe
 
@@ -139,7 +139,7 @@ Most services should not start here. Fowler warns that for most systems the patt
 
 A read model is eventually consistent. If a reader must see its own write at once, or two readers must agree at the same instant, read from the write side. The Azure Architecture Center's CQRS pattern lists this cost, and adds that the read side can serve stale data and the application must be able to cope with a user acting on it.
 
-A view that needs events the owner keeps private cannot be built from the public topics. Reading the owner's events means either tailing its store or publishing more events, and that is a decision for the owner. Chapter 9 covers tailing the log of a database.
+A view that needs events the owner keeps private cannot be built from the public topics. Reading the owner's events means either tailing its store or publishing more events, and that is a decision for the owner. Log tailing with Debezium is one way to do the first.
 
 A rebuild is a replay of the topics, so the topic's retention limits how far back one can go: `retention.ms` is the maximum time a log is kept before old segments are discarded. A view that must be rebuilt from the beginning needs retention that long, or a different source.
 

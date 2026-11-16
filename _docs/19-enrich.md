@@ -17,7 +17,7 @@ duration: "60 minutes"
 
 The sender of a message often lacks data the receiver needs. `shipping-service` publishes the facts it decided, the carrier and the tracking number, and not the carrier's tracking page, which changes for reasons that have nothing to do with a shipment. Putting the page into every event would repeat reference data in every record and freeze an old value into each of them. Making the receiver keep the data itself would give two services one truth to maintain.
 
-Two ways of asking exist. The receiver can ask the owner each time, and so see the current row but depend on the owner being up. Or it can keep a copy fed by the owner's own events, and so work when the owner is down but only know what the owner last published. Chapter 2 made one such call, a fetch-back over HTTP that replaces a thin event with the full order. Here the answer is merged into the message and the message is kept.
+Two ways of asking exist. The receiver can ask the owner each time, and so see the current row but depend on the owner being up. Or it can keep a copy fed by the owner's own events, and so work when the owner is down but only know what the owner last published. A fetch-back over HTTP that replaces a thin event with the full order is one such call. Here the answer is merged into the message and the message is kept.
 
 ### The solution
 
@@ -49,7 +49,7 @@ A failed call is retried three times, and then the exchange fails. With `breakOn
 
 ## The same enrichment as a stream-table join
 
-The second form moves the reference data to the receiver. `edp.shipping.carriers` is a compacted topic with one record per carrier, so it keeps the latest reference for each and nothing older. `shipping-service` is the owner; chapters 8 and 9 show how an owner publishes a table's changes. A Kafka Streams `GlobalKTable` reads the whole topic into a local store on every instance, and the stream of shipments joins against it:
+The second form moves the reference data to the receiver. `edp.shipping.carriers` is a compacted topic with one record per carrier, so it keeps the latest reference for each and nothing older. `shipping-service` is the owner and publishes the table's changes to it. A Kafka Streams `GlobalKTable` reads the whole topic into a local store on every instance, and the stream of shipments joins against it:
 
 ```java
 GlobalKTable<String, CarrierReference> carriers = builder.globalTable(Topics.SHIPPING_CARRIERS,
@@ -62,7 +62,7 @@ builder.stream(Topics.SHIPPING_SCHEDULED, Consumed.with(Serdes.String(), schedul
         .to(Topics.SHIPPING_SCHEDULED_ENRICHED, Produced.with(Serdes.String(), enriched));
 ```
 
-The first lambda says where to look: the join key is a field of the value, not the record key, which is the order id. That is what a global table is for. A `KTable` joins on the record key, so joining shipments on a table keyed by carrier matches nothing, and it would need a re-keying and a repartition topic for two rows. The global table needs no co-partitioning because every instance holds every partition of the reference topic. It also costs a full copy of the topic on every instance, which suits a small table and not a large one. The local copy is the same idea as `order_copy` in chapter 3, held by Kafka Streams instead of a table.
+The first lambda says where to look: the join key is a field of the value, not the record key, which is the order id. That is what a global table is for. A `KTable` joins on the record key, so joining shipments on a table keyed by carrier matches nothing, and it would need a re-keying and a repartition topic for two rows. The global table needs no co-partitioning because every instance holds every partition of the reference topic. It also costs a full copy of the topic on every instance, which suits a small table and not a large one. The local copy is the same idea as an `order_copy` table, held by Kafka Streams instead of a database.
 
 The join is a left join. A shipment whose carrier has no reference is forwarded with an empty mode and link; an inner join would drop it, and nothing would show that a customer was never told.
 

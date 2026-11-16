@@ -39,7 +39,7 @@ spec:
       min.samples.per.partition.metrics.window: 1
 ```
 
-The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready; an interval of 60000 works. Chapter 28 introduced the node pools this cluster uses, and chapter 29 the `KafkaTopic` resources whose replicas are being placed. The catalog topics here have two replicas each, on a pool of two brokers.
+The sampling keys set how soon Cruise Control has enough windows of samples to trust its model. The interval has a lower bound: ten seconds makes the Cruise Control pod crash with a `ConfigException`, because it must be longer than the metadata refresh timeout, and the `Kafka` resource then never becomes Ready; an interval of 60000 works. The cluster uses node pools, and the replicas being placed belong to `KafkaTopic` resources. The catalog topics here have two replicas each, on a pool of two brokers.
 
 A `KafkaRebalance` asks for a plan. Its `mode` names the case, and the label binds it to a cluster.
 
@@ -156,4 +156,5 @@ Auto-rebalancing reacts to a changed replica count in an existing pool and to no
 - LinkedIn, [Cruise Control wiki](https://github.com/linkedin/cruise-control/wiki/Overview): the load monitor and the cluster model
 - Strimzi, [CHANGELOG](https://github.com/strimzi/strimzi-kafka-operator/blob/1.3.1/CHANGELOG.md): auto-rebalancing in 0.44, the scale-up fix in 0.51, broker cordoning in 1.2
 - Apache Kafka, [KIP-1066: Mechanism to cordon brokers and log directories](https://cwiki.apache.org/confluence/spaces/KAFKA/pages/311627566/KIP-1066+Mechanism+to+cordon+brokers+and+log+directories)
-- Chapter 28 for node pools and node ids, chapter 29 for the topics whose replicas move
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Unidirectional Topic Operator]({{ '/docs/29-unidirectional-topic-operator/' | relative_url }})

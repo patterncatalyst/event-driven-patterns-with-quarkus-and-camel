@@ -273,7 +273,11 @@ def check_bro(rep: Report, p: Path, plines, off: int):
 def check_chapters(rep: Report):
     for p in files(rep.root, "_docs/*.md"):
         text = p.read_text(encoding="utf-8")
-        _, body, off = split_front(text)
+        fm, body, off = split_front(text)
+        if not p.name.startswith("ad-"):
+            d = re.search(r"^description:\s*(.*)$", text.split("\n---", 2)[0] if text.startswith("---") else "", re.M)
+            if d and XREF_RE.search(d.group(1)) and not XREF_SOURCE_RE.search(d.group(1)):
+                rep.err(p, None, f"cross-reference '{XREF_RE.search(d.group(1)).group(0)}' in the description")
         n = chapter_words(body)
         if n > MAX_WORDS:
             rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
@@ -299,10 +303,13 @@ def check_chapters(rep: Report):
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
             if not p.name.startswith("ad-") and not section.lower().startswith("## references"):
-                x = XREF_RE.search(t)
-                if x and not XREF_SOURCE_RE.search(t):
+                for x in XREF_RE.finditer(t):
+                    # a chapter of another book cited as a source: its title or author shortly before the number
+                    if XREF_SOURCE_RE.search(t[max(0, x.start() - 90):x.start()]):
+                        continue
                     rep.err(p, i + off, f"cross-reference '{x.group(0)}' in prose: each page stands alone; "
                                         "link related pages only under ## References")
+                    break
             # Versions live in chapter 00, the appendices and Part 6's setup section (chapter 28).
             if not (p.name.startswith(("00-", "a"))
                     or (p.name.startswith("28-") and section == K8S_SETUP_HEADING)):

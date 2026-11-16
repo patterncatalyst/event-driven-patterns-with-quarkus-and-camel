@@ -7,9 +7,9 @@ description: "An order touches three databases and no transaction spans them. A 
 duration: "65 minutes"
 ---
 
-One order touches three databases: the order in `order-service`, the stock in `inventory-service` and the payment in `payment-service`. No transaction spans them, and a Kafka transaction (chapter 12) stops at the cluster. If the payment is declined after the stock is reserved, the reservation has to be undone by someone, later, by design.
+One order touches three databases: the order in `order-service`, the stock in `inventory-service` and the payment in `payment-service`. No transaction spans them, and a Kafka transaction stops at the cluster. If the payment is declined after the stock is reserved, the reservation has to be undone by someone, later, by design.
 
-The three services below carry an order from placed to paid by reacting to each other's events, with no coordinator. Each publishes through the outbox (chapter 8), so a step that commits always announces itself.
+The three services below carry an order from placed to paid by reacting to each other's events, with no coordinator. Each publishes through the transactional outbox, so a step that commits always announces itself.
 
 {% include excalidraw.html file="22-saga-choreography" alt="order-service, inventory-service and payment-service in a row; orders.placed and inventory.reserved lead forward, payments.processed returns to order-service, and payments.failed, inventory.insufficient and orders.cancelled lead back as the compensation path" caption="Figure 22.1: Each service reacts to the previous event and publishes its own; the dashed arrows are the way back" %}
 
@@ -60,7 +60,7 @@ public boolean onPaymentProcessed(UUID eventId, PaymentProcessed processed) {
 }
 ```
 
-`firstTime` is the inbox of chapter 11: the event id is inserted in the same transaction, and a second delivery changes nothing. The replies arrive through SmallRye Reactive Messaging, one `@Incoming` method per topic.
+`firstTime` is an inbox: the event id is inserted in the same transaction, and a second delivery changes nothing. The replies arrive through SmallRye Reactive Messaging, one `@Incoming` method per topic.
 
 `payment-service` is the Camel participant. A route reads the reservations and hands each to a bean that takes the payment and writes `PaymentProcessed` or `PaymentFailed` to its outbox:
 
@@ -72,7 +72,7 @@ from("kafka:" + Topics.INVENTORY_RESERVED + "?groupId=payment-reserved&autoOffse
         .bean("paymentService", "take");
 ```
 
-`breakOnFirstError` makes a failed payment be read again instead of skipped (chapter 13). The route starts on request, after the cancellations have been read.
+`breakOnFirstError` makes a failed payment be read again instead of skipped. The route starts on request, after the cancellations have been read.
 
 ## Compensation is a new event
 

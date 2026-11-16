@@ -15,7 +15,7 @@ Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPr
 
 ### The problem
 
-The event store of chapter 14 is append-only. A trigger refuses `UPDATE` and `DELETE`, because an event is a fact that happened and the history is only worth keeping while nobody edits it. A new field is then a problem with no obvious place to fix it.
+The event store is append-only. A trigger refuses `UPDATE` and `DELETE`, because an event is a fact that happened and the history is only worth keeping while nobody edits it. A new field is then a problem with no obvious place to fix it.
 
 Each way out gives something up. Rewriting the old rows with a migration breaks the rule that made the store trustworthy, and it cannot be undone. Teaching the aggregate every shape, one branch per version in every decision, spreads the history of the schema through code that should only know the order. Making every field optional and defaulting it where it is used scatters the same default across the code base. Chapter titles in Young's *Versioning in an Event Sourced System* include "Basic Type Based Versioning", "Weak Schema" and "Copy and Replace".
 
@@ -63,7 +63,7 @@ The step is plain Java in the store and no Camel type appears in it. Camel belon
 
 ### The problem
 
-`OrderPlaced` also leaves the service. The outbox of chapter 8 carries it to `edp.orders.placed`, and a consumer such as `notification-service` is deployed on its own schedule. When the producer adds a field, some consumers run the old code and some the new, and the topic holds records of both shapes. A reader must be able to read a record it did not expect.
+`OrderPlaced` also leaves the service. The outbox carries it to `edp.orders.placed`, and a consumer such as `notification-service` is deployed on its own schedule. When the producer adds a field, some consumers run the old code and some the new, and the topic holds records of both shapes. A reader must be able to read a record it did not expect.
 
 Documentation and code review do not hold this line. A change that looks harmless to its author can break a reader the author has never seen, and the break shows up in a consumer that fails on a record written months earlier. Bellemare's chapter "Schemas and Data Contracts" and Lawrence's "Evolution of Messages and Message Streams" treat the same problem at book length.
 
@@ -145,7 +145,7 @@ POST /orders  ->  503  {"reason": "Incompatible artifact: edp.orders.placed-valu
 
 The order has no event row, there is no outbox row, nothing reaches the topic and the artifact has no new version. A rule set on one artifact overrides the global rule, so `verify.sh` sets a global rule from `REGISTRY_RULE` (demo code), and `REGISTRY_RULE=BACKWARD` changes only that value.
 
-Accepting the broken version has a cost that only shows later. A consumer built on version 3 that rebuilds from the start of the topic meets version 1 records with no `shippingPriority` and nothing to fill in, and Avro fails with `AvroTypeException`. A rebuild that reads every record, as in chapter 17, is where it surfaces.
+Accepting the broken version has a cost that only shows later. A consumer built on version 3 that rebuilds from the start of the topic meets version 1 records with no `shippingPriority` and nothing to fill in, and Avro fails with `AvroTypeException`. A rebuild that reads every record, as a projection rebuild does, is where it surfaces.
 
 ## Build, run, observe
 
@@ -166,7 +166,7 @@ Try one change and rerun:
 
 An upcaster cannot invent a fact. When a change alters what an event means, not only what it carries, a default would state something that was never recorded, and a new event type is the correct answer. A chain that grows a step per release is also a cost, because every load runs every step.
 
-Skip the work where nothing is read back. A snapshot from chapter 15 holds derived state and is discarded and rebuilt when its schema changes, so it needs no upcaster.
+Skip the work where nothing is read back. A snapshot holds derived state and is discarded and rebuilt when its schema changes, so it needs no upcaster.
 
 A registry is one more service to run and to keep up. When producer and consumers always deploy together and nothing replays a topic, a compatibility check in the build can do the same job with less.
 

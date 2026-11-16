@@ -21,7 +21,7 @@ Other parts of the system need to know that an order was paid. If the order serv
 
 **An Event Message announces that something happened, named in the past tense, and the sender neither knows nor cares who reads it.**
 
-Hohpe and Woolf's Event Message is a message for reliable, asynchronous event notification between applications. Fowler's "What do you mean by 'Event-Driven'?" separates four patterns that share the name: event notification, event-carried state transfer, event sourcing and CQRS. Part 1 covers the first two; the storage decision below is the third.
+Hohpe and Woolf's Event Message is a message for reliable, asynchronous event notification between applications. Fowler's "What do you mean by 'Event-Driven'?" separates four patterns that share the name: event notification, event-carried state transfer, event sourcing and CQRS. The storage decision below is the third.
 
 ### How Quarkus models it
 
