@@ -450,6 +450,22 @@ def check_camel_schemes(rep: Report):
                 rep.warn(f"{p.relative_to(rep.root)}:{line_of(text, m.start())}: {msg}")
 
 
+REDIS_PIN = "docker.io/library/redis:8.10.3-alpine"
+
+
+def check_redis_devservices(rep: Report):
+    """Quarkus Redis Dev Services defaults to the floating `redis:7` (7.4.x, RSALv2/SSPLv1, not open source):
+    every example using the Redis client must name the pinned image."""
+    for pom in files(rep.root, "examples/*/pom.xml", "examples/*/*/pom.xml"):
+        if "quarkus-redis-client" not in pom.read_text(encoding="utf-8"):
+            continue
+        props = pom.parent / "src/main/resources/application.properties"
+        text = props.read_text(encoding="utf-8") if props.is_file() else ""
+        if not re.search(r"^quarkus\.redis\.devservices\.image-name\s*=\s*" + re.escape(REDIS_PIN) + r"\s*$", text, re.M):
+            rep.err(props, None, f"Redis Dev Services must use the pinned image: "
+                                 f"quarkus.redis.devservices.image-name={REDIS_PIN}")
+
+
 def check_podman(rep: Report):
     roots = ["_docs/*", "_parts/*", "_example_pages/*", "_includes/*", "_layouts/*", "index.html", "chapters.html",
              "README.md", "bibliography.md", "examples/**/*", ".github/**/*", "diagrams/*", "scripts/*.sh"]
@@ -520,7 +536,7 @@ def check_domain_names(rep: Report):
 
 
 CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters,
-          check_examples, check_camel_schemes, check_podman, check_no_forwarding, check_domain_names]
+          check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_domain_names]
 
 
 def run(root: Path) -> Report:
@@ -702,6 +718,17 @@ def self_test() -> int:
         results.append(("podman allowed only in Appendix H",
                         not any("ah-demo" in x and "podman" in x for x in e)
                         and any("02-demo" in x and "podman" in x for x in e), e))
+
+        r = build("redis")
+        rx = r / "examples/ag-demo/order-service"
+        (rx / "src/main/resources").mkdir(parents=True)
+        (rx / "pom.xml").write_text("<artifactId>quarkus-redis-client</artifactId>\n")
+        e = run(r).errors
+        results.append(("Redis Dev Services without the pinned image caught", any("Redis Dev Services" in x for x in e), e))
+        (rx / "src/main/resources/application.properties").write_text(
+            "quarkus.redis.devservices.image-name=" + REDIS_PIN + "\n")
+        e = run(r).errors
+        results.append(("Redis Dev Services with the pinned image passes", not any("Redis Dev Services" in x for x in e), e))
 
     ok = True
     for name, passed, errs in results:
