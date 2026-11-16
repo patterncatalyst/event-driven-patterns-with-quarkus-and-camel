@@ -9,7 +9,7 @@ duration: "55 minutes"
 
 A customer's order is placed through `POST /orders`, and an operator wants to see where it went. The request is a span with a trace id. The order then goes through a commit, the database log, Kafka Connect and a topic, and ends in `inventory-service` seconds later, in a different process, with no HTTP call between the two. Unless something carries the trace id along, the consumer starts a trace of its own and the picture ends at the commit.
 
-One trace follows an order from the request to the stock reservation, through the outbox of chapter 8 and the Debezium connector of chapter 9, in Tempo. Where the trace ends depends on one choice at the consumer.
+One trace follows an order from the request to the stock reservation, through the outbox and the Debezium connector, in Tempo. Where the trace ends depends on one choice at the consumer.
 
 {% include excalidraw.html file="25-context-carriers" alt="Five boxes in a row: the POST /orders server span, the outbox row with its outbox-write span, the log and Connect with db-log-write and debezium-read, the Kafka record on edp.orders.placed, and the consumer span in inventory-service; under each the place the trace context is written: the traceparent HTTP header, the tracingspancontext column, a span started from the log entry, the traceparent record header, and a child of the span in the header" caption="Figure 25.1: The context rides in a different place at every hop, and each relay has to copy it" %}
 
@@ -29,7 +29,7 @@ The context is the W3C `traceparent`: a version, a trace id, the id of the paren
 
 ### How Quarkus models it
 
-`order-service` sets the order id on the request span, then writes the order and the event in one transaction, as in chapter 8:
+`order-service` sets the order id on the request span, then writes the order and the event in one transaction:
 
 ```java
 @POST
@@ -55,7 +55,7 @@ CREATE TABLE orders.outboxevent (
 );
 ```
 
-The column holds the context as text, not as a bare `traceparent`, and the connector reads it from there. The outbox of chapter 8 already has the column.
+The column holds the context as text, not as a bare `traceparent`, and the connector reads it from there. The Debezium outbox extension's table has the column.
 
 ## Through the outbox and Debezium
 
@@ -181,4 +181,6 @@ Running a Java agent in Connect adds a dependency to the relay, a download at st
 - Grafana Tempo, [HTTP API](https://grafana.com/docs/tempo/latest/api_docs/) and [TraceQL queries](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/): search and structural operators
 - Strimzi blog, [Tracing in Apache Kafka: from OpenTracing to OpenTelemetry](https://strimzi.io/blog/2023/03/01/opentelemetry/)
 - OpenTelemetry observability tutorial, [Context propagation across Kafka](https://patterncatalyst.github.io/otel-observability-tutorial/docs/13-context-propagation-kafka/): the same hop with a propagation toggle
-- Chapter 8: the transactional outbox; chapter 9: log tailing with Debezium; chapter 13: retry and dead letter, for the retry that comes later than the record
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Log tailing with Debezium]({{ '/docs/09-log-tailing-with-debezium/' | relative_url }})
+- [Retry and dead letter]({{ '/docs/13-retry-and-dead-letter/' | relative_url }})

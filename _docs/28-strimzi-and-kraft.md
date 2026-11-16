@@ -3,17 +3,17 @@ title: "Strimzi and KRaft"
 order: 28
 part: running-on-kubernetes-with-strimzi
 permalink: /docs/28-strimzi-and-kraft/
-description: "A Kafka broker on Kubernetes needs a stable node id, its own volume, addresses that resolve and a controller quorum. Strimzi runs Kafka from a Kafka resource and two node pools, one for controllers and one for brokers, and the services of chapters 2 to 4 run against it with only their addresses changed."
+description: "A Kafka broker on Kubernetes needs a stable node id, its own volume, addresses that resolve and a controller quorum. Strimzi runs Kafka from a Kafka resource and two node pools, one for controllers and one for brokers, and the order and notification services run against it with only their addresses changed."
 duration: "60 minutes"
 ---
 
-The compose stack of Parts 1 to 5 starts one Kafka container, and its address is `kafka:9094` because compose names the container. On Kubernetes a broker is a pod that can be deleted at any moment. It has to come back with the same node id, find its own data and be reachable by a name that does not change when the pod does. Something has to hold those rules.
+A compose stack starts one Kafka container, and its address is `kafka:9094` because compose names the container. On Kubernetes a broker is a pod that can be deleted at any moment. It has to come back with the same node id, find its own data and be reachable by a name that does not change when the pod does. Something has to hold those rules.
 
-Part 6 runs the same patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the LGTM image from chapter 0. The platform below runs the services of chapters 2, 3 and 4 on it, one set after another, with no change to their code or images.
+The Kubernetes examples run the same event-driven patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
 
 ## Setting up the cluster
 
-One minikube profile named `edp` serves all of Part 6. Every version is an exact pin, and the table below is the only place in the chapters that lists them.
+One minikube profile named `edp` serves every Kubernetes example. Every version is an exact pin, and the table below lists them.
 
 | Component | Version | Note |
 |---|---|---|
@@ -125,10 +125,10 @@ Replacing a broker pod shows what the operator holds. The pod is deleted, a new 
 
 ## The same services on new addresses
 
-The services of chapters 2, 3 and 4 are not rebuilt. Their Containerfiles are the ones the compose stack used, and the images are built from them and loaded into the node. What changes is where each service finds its neighbours, and those addresses are already environment variables.
+The event notification, event-carried state transfer and ordering services are not rebuilt. Their Containerfiles are the ones the compose stack used, and the images are built from them and loaded into the node. What changes is where each service finds its neighbours, and those addresses are already environment variables.
 
 ```yaml
-# compose.yaml, chapter 2
+# compose.yaml of the event notification example
 CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
 QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
 QUARKUS_DATASOURCE_PASSWORD: edp
@@ -144,11 +144,11 @@ QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
 - {name: QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://lgtm.edp-lgtm.svc:4318"}
 ```
 
-The variable names are the same and only the values move. The broker address is the bootstrap Service. The database address is the read-write Service that CloudNativePG creates for its cluster, and the password comes from the Secret the operator generates, not from a literal in the manifest. This is the payoff of the rule from chapter 0 that Camel's broker setting and the Quarkus datasource and OpenTelemetry settings are read from the environment: the move to Kubernetes is a change of values.
+The variable names are the same and only the values move. The broker address is the bootstrap Service. The database address is the read-write Service that CloudNativePG creates for its cluster, and the password comes from the Secret the operator generates, not from a literal in the manifest. This is the payoff of the rule that Camel's broker setting and the Quarkus datasource and OpenTelemetry settings are read from the environment: the move to Kubernetes is a change of values.
 
 {% include excalidraw.html file="28-compose-to-minikube" alt="Three columns map the compose address of Kafka, PostgreSQL and the LGTM collector to the Kubernetes address: kafka:9094 to edp-kafka-bootstrap.edp-kafka.svc:9092, postgres:5432 to edp-pg-rw.edp.svc:5432, lgtm:4318 to lgtm.edp-lgtm.svc:4318" caption="Figure 28.3: Three addresses change; the names of the variables do not" %}
 
-Three details come from running them side by side. The three sets use the same Service names and NodePorts, so they run one after another: deploy a set, use it, delete it, deploy the next. Each set has its own database in the same PostgreSQL cluster, because the schemas of the three examples would otherwise collide on their Flyway history. And chapter 4 needs two topics with three partitions, which a Job creates with the same `kafka-topics.sh` commands compose ran.
+Three details come from running them side by side. The three sets use the same Service names and NodePorts, so they run one after another: deploy a set, use it, delete it, deploy the next. Each set has its own database in the same PostgreSQL cluster, because the schemas of the three examples would otherwise collide on their Flyway history. And the ordering example needs two topics with three partitions, which a Job creates with the same `kafka-topics.sh` commands compose ran.
 
 ```bash
 kafka-topics.sh --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 \
@@ -171,7 +171,7 @@ cd examples/28-strimzi-and-kraft
 ./verify.sh
 ```
 
-`verify.sh` recreates the namespaces, builds and loads six images on the first run, applies Kafka as two node pools with PostgreSQL and LGTM, runs the services of chapters 2, 3 and 4 in turn, replaces the broker pod, and ends with `39/39 checks passed`.
+`verify.sh` recreates the namespaces, builds and loads six images on the first run, applies Kafka as two node pools with PostgreSQL and LGTM, runs the three sets of services in turn, replaces the broker pod, and ends with `39/39 checks passed`.
 
 Try one change and rerun:
 
@@ -196,4 +196,7 @@ The cluster built here is not fault tolerant. By the 2N + 1 rule one controller 
 - Apache Kafka, [KRaft operations](https://kafka.apache.org/43/operations/kraft/): `kafka-metadata-quorum.sh`
 - minikube, [start](https://minikube.sigs.k8s.io/docs/commands/start/) (`--ports`) and [image load](https://minikube.sigs.k8s.io/docs/commands/image/)
 - CloudNativePG, [Installation and upgrades](https://cloudnative-pg.io/docs/current/installation_upgrade/) and [Bootstrap](https://cloudnative-pg.io/docs/current/bootstrap/)
-- Chapter 0 for the stack, chapter 2 for event notification, chapter 3 for event-carried state transfer and chapter 4 for ordering and partitioning
+- [Prerequisites and stacks]({{ '/docs/00-prerequisites-and-stacks/' | relative_url }})
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }})
+- [Event-carried state transfer and claim check]({{ '/docs/03-event-carried-state-transfer/' | relative_url }})
+- [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }})

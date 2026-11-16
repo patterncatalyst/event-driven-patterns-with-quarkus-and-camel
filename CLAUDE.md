@@ -78,7 +78,7 @@ Front matter: title, order, part, description, duration. `part` must match a `_p
 - No em dashes or en dashes anywhere reader-facing (chapters, READMEs, example pages, figures, deck). Use commas, colons, parentheses or "to".
 - No self-reference ("this chapter", "the example shows"), no test names in prose, no line-by-line code narration. State the behaviour.
 - Versions appear only on setup surfaces (chapter 00, appendices), except where the version is the feature.
-- Each chapter stands alone. No per-chapter verification footer; run records live in `_plans/verification-log.md`.
+- Each chapter stands alone (owner rule, 2026-11-16): no reference to another chapter, appendix or part of this book anywhere in the prose, back or forward, and no links to other pages in the prose. A page states what it needs in its own words; related pages are linked only under `## References`. Appendix D (pattern map and cross-reference) is exempt; chapter numbers of other books cited as sources are allowed. `validate.py` enforces it. No per-chapter verification footer; run records live in `_plans/verification-log.md`.
 
 ## Example contract
 
@@ -222,6 +222,15 @@ PRD §14, decided:
 - MirrorMaker 2 runs two Kafka clusters (`edp`, `edp-dr`) on one profile with `IdentityReplicationPolicy`; failover changes only the bootstrap address.
 - Teardown deletes KafkaConnectors and KafkaRebalances, then KafkaConnect and MM2 (waiting for their pods), before the r11 order; Connect holding replication slots otherwise hangs the CNPG pod.
 - Versions may appear in chapter 28's `## Setting up the cluster` section (validate.py allows it), besides chapter 00 and the appendices.
+
+2026-11-16 (r13 plan approval, G0, windows):
+
+- r13 ships Appendices A to G; Appendix H (CRC) is iteration r13b, started only after r13 merges and the owner starts CRC. Appendix files are `_docs/a[a-h]-<slug>.md` with `marker` and `label`; examples `examples/a[a-h]-<slug>/`.
+- Appendix C runs Kafka Streams interactive queries, Apache Flink SQL and RisingWave on the same input. Flink is held at 2.2.1 because the Kafka SQL connector has no release for 2.3 (connector 5.0.0-2.2, sha512-checked). ksqlDB (Confluent Community License) and Materialize (BSL) are rejected on licence.
+- Appendix G uses `docker.io/library/redis:8.10.3-alpine` under its AGPLv3 option. Any example with `quarkus-redis-client` sets `quarkus.redis.devservices.image-name` to that pin, because Quarkus 3.x Dev Services defaults to `redis:7` (7.4, not OSI open source); `validate.py` enforces it.
+- Appendix E uses Camel's Resequencer: stream mode only with a global gap-free sequence; held records are in memory and lost on restart.
+- Appendices B and F run on the Part 6 substrate; F deploys the notification and order services unchanged. Blue-green copies committed offsets with `kafka-consumer-groups.sh --reset-offsets --from-file`; nothing is missed, the re-read is bounded, not zero. An HTTP rollout loses a fraction of a percent of requests as connection resets, stated as measured; no graceful-shutdown demo.
+- Each chapter stands alone (owner rule, 2026-11-16): see Chapter spine and writing rules.
 
 ## Skills
 

@@ -2,12 +2,12 @@
 title: "Server-side apply"
 order: 30
 permalink: /examples/30-server-side-apply/
-description: "The chapter 02 services deployed by one field manager and patched by a second, the CloudNativePG install applied both ways, and a foreign annotation on a Strimzi Service, with every owner read back from managedFields."
+description: "The `order-service` and `notification-service` deployed by one field manager and patched by a second, the CloudNativePG install applied both ways, and a foreign annotation on a Strimzi Service, with every owner read back from managedFields."
 ---
 
-[`examples/30-server-side-apply/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/30-server-side-apply) is a set of manifests over `examples/_k8s`: the chapter 02 pair under the field manager `edp-apps`, a partial Deployment for a second manager `edp-platform`, and two annotation files for a third, `edp-foreign`. It accompanies [Server-side apply]({{ '/docs/30-server-side-apply/' | relative_url }}).
+[`examples/30-server-side-apply/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/30-server-side-apply) is a set of manifests over `examples/_k8s`: the `order-service` and `notification-service` pair under the field manager `edp-apps`, a partial Deployment for a second manager `edp-platform`, and two annotation files for a third, `edp-foreign`. It accompanies [Server-side apply]({{ '/docs/30-server-side-apply/' | relative_url }}).
 
-The applications are the unchanged chapter 02 images, loaded into minikube. There is no pom and no Java.
+The applications are the unchanged `order-service` and `notification-service` images, loaded into minikube. There is no pom and no Java.
 
 ```bash
 examples/_k8s/cluster.sh up
@@ -25,4 +25,4 @@ cd examples/30-server-side-apply
 
 ## Infrastructure
 
-The minikube profile `edp` from `examples/_k8s`: Strimzi and Kafka, CloudNativePG, otel-lgtm and the chapter 02 pair.
+The minikube profile `edp` from `examples/_k8s`: Strimzi and Kafka, CloudNativePG, otel-lgtm and the `order-service` and `notification-service` pair.

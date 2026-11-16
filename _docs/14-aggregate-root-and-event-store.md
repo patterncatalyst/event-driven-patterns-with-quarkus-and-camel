@@ -7,7 +7,7 @@ description: "An order is the stream of its own events. One object owns every ru
 duration: "55 minutes"
 ---
 
-Chapter 1 appends order events to a table and lets a unique version settle a race between two writers. Its rules live in a service bean that checks a status change rather than in an object rebuilt from the stream, the losing writer gets 409 and nothing decides again, and the events never reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
+A plain event table with a unique version settles a race between two writers, but the loser just gets 409: nothing decides again, the rules sit in a service bean that checks a status change, and the events never reach Kafka. `order-service` keeps no order table at all: an order is its stream. `O-1402` is paid, and then a cancellation and a shipment arrive in the same moment, both having read PAID.
 
 {% include excalidraw.html file="14-aggregate-command-cycle" alt="A command is loaded against the stream, the aggregate is rebuilt, the command is decided and the events are appended at the loaded version plus one in one transaction with an outbox row for OrderPlaced and OrderCancelled; Debezium carries those two to edp.orders.placed and edp.orders.cancelled" caption="Figure 14.1: One command, one transaction, and two public events out" %}
 
@@ -45,7 +45,7 @@ case Command.MarkPaid pay -> {
 }
 ```
 
-The lifecycle comes from `OrderStatus.canMoveTo`, the rule chapter 1 uses. A payment whose id is already recorded returns no events, so a redelivered `PaymentProcessed` is harmless without an inbox table: the natural idempotence of chapter 11, kept inside the aggregate.
+The lifecycle comes from `OrderStatus.canMoveTo`, the lifecycle rule of the shared domain model. A payment whose id is already recorded returns no events, so a redelivered `PaymentProcessed` is harmless without an inbox table: the aggregate's own state makes it idempotent.
 
 `EventStore` has the two operations an event store needs. `load` reads a stream in version order, and `append` writes events at `expectedVersion + 1` onward through Panache. The unique constraint on `(stream_id, version)` is the concurrency check. Hibernate reports a violation as a `ConstraintViolationException` inside a `PersistenceException`, and the store turns the one named `events_stream_version` into a `ConcurrencyConflict`:
 
@@ -150,7 +150,7 @@ The route decides nothing. It is an adapter from a topic to the same transaction
 
 The events in the store are the service's own format. A Debezium connector that tailed `events` directly, the store used as a queue in Young's terms, would publish `OrderPaid` and `OrderShipped` too and make the schema of the table the contract with every consumer. The service publishes only `OrderPlaced` and `OrderCancelled`, the two events that other services act on.
 
-`OrderTransaction.export` fires an `ExportedEvent` for those two inside the same transaction as the append. The Debezium outbox extension from chapter 8 writes the row, and the connector and the Event Router carry it to `edp.orders.placed` or `edp.orders.cancelled`, keyed by order id. A command that fails after the append rolls back the event row and the outbox row together, so a record exists on a topic only for a stream that holds the event.
+`OrderTransaction.export` fires an `ExportedEvent` for those two inside the same transaction as the append. The Debezium outbox extension writes the row, and the connector and the Event Router carry it to `edp.orders.placed` or `edp.orders.cancelled`, keyed by order id. A command that fails after the append rolls back the event row and the outbox row together, so a record exists on a topic only for a stream that holds the event.
 
 ```java
 private void export(String orderId, OrderEvent event) {
@@ -188,7 +188,7 @@ An aggregate is a consistency boundary for one stream. A rule that spans two ord
 
 A stream answers one question, the state of one order by id. Any other, such as the orders of one customer, needs a second structure derived from the events and kept current by something that reads them.
 
-Loading replays the whole stream on every command. For four events that is negligible; a stream of thousands needs a cheaper starting point, as chapter 1 notes.
+Loading replays the whole stream on every command. For four events that is negligible; a stream of thousands needs a cheaper starting point, such as a snapshot.
 
 A server-side retry fits only a command whose intent survives a changed state. And events are permanent: once other services read `OrderPlaced`, a wrong fact is corrected by appending another event, never by editing a row.
 

@@ -5,7 +5,7 @@ permalink: /examples/27-correlated-logs-and-traces/
 description: "An order saga over three services with the order id on every span and in the log context of every handler, the trace id on every log line, and the sweeper's trace for a timed-out order linked to the trace that placed it, followed through Tempo and Loki."
 ---
 
-[`examples/27-correlated-logs-and-traces/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/27-correlated-logs-and-traces) carries an order from placed to paid through `order-service`, `inventory-service` and `payment-service`, a trimmed copy of the saga of chapter 22. Each service publishes through the outbox, one Debezium connector relays the three outbox tables, and Connect is traced. It accompanies [Correlated logs and traces]({{ '/docs/27-correlated-logs-and-traces/' | relative_url }}).
+[`examples/27-correlated-logs-and-traces/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/27-correlated-logs-and-traces) carries an order from placed to paid through `order-service`, `inventory-service` and `payment-service`, a trimmed copy of a choreographed order saga. Each service publishes through the outbox, one Debezium connector relays the three outbox tables, and Connect is traced. It accompanies [Correlated logs and traces]({{ '/docs/27-correlated-logs-and-traces/' | relative_url }}).
 
 It uses Quarkus, SmallRye Reactive Messaging, Camel Kafka (in `payment-service`), Hibernate ORM with Panache, Flyway, the Debezium outbox extension, Quarkus Scheduler, SmallRye Health, PostgreSQL, Kafka, Kafka Connect and OpenTelemetry to the LGTM stack.
 

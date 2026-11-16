@@ -7,7 +7,7 @@ description: "A broker that creates topics on first use turns a typo into a new 
 duration: "50 minutes"
 ---
 
-The Kafka cluster of chapter 28 lets the broker create a topic the first time anyone sends to it, and a Job creates the topics the examples need. Both work, and neither leaves a list. A producer configured with `edp.orders.plcaed` gets a new topic, a healthy send and a consumer that waits for events that never come. A topic created by hand with two partitions in one environment has three in the next.
+The Strimzi Kafka cluster lets the broker create a topic the first time anyone sends to it, and a Job creates this cluster's topics. Both work, and neither leaves a list. A producer configured with `edp.orders.plcaed` gets a new topic, a healthy send and a consumer that waits for events that never come. A topic created by hand with two partitions in one environment has three in the next.
 
 The list of topics a system needs is part of the system. Kubernetes already keeps lists of things and compares them with what runs, so the topics can live there too.
 
@@ -17,7 +17,7 @@ The list of topics a system needs is part of the system. Kubernetes already keep
 
 ### The problem
 
-With auto-creation on, a topic comes into being as a side effect of a send or a subscribe. Its partitions and configuration are the broker defaults, and a later attempt to give it the configuration it should have can fail. The Strimzi documentation names the example: lowering the partition count of a topic that already has more. A name that is wrong in one service creates a second topic instead of an error. Nothing records which topics the catalog of chapter 0 should contain, so the only way to know is to ask the broker, which knows what exists and not what was meant.
+With auto-creation on, a topic comes into being as a side effect of a send or a subscribe. Its partitions and configuration are the broker defaults, and a later attempt to give it the configuration it should have can fail. The Strimzi documentation names the example: lowering the partition count of a topic that already has more. A name that is wrong in one service creates a second topic instead of an error. Nothing records which topics the event catalog should contain, so the only way to know is to ask the broker, which knows what exists and not what was meant.
 
 ### The solution
 
@@ -55,7 +55,7 @@ spec:
       reconciliationIntervalMs: 15000
 ```
 
-The interval is how often the operator compares every resource with Kafka, in addition to acting when a resource changes. Fifteen seconds keeps the effects of an out-of-band change within a minute. The nine topics of the event catalog are nine resources in one file, and the set is checked against `Topics.ALL` of the domain model, so a topic added to the catalog without a resource is caught. The services of chapter 2 run unchanged on this cluster: both topics they use are in the set.
+The interval is how often the operator compares every resource with Kafka, in addition to acting when a resource changes. Fifteen seconds keeps the effects of an out-of-band change within a minute. The nine topics of the event catalog are nine resources in one file, and the set is checked against `Topics.ALL` of the domain model, so a topic added to the catalog without a resource is caught. The event notification services run unchanged on this cluster: both topics they use are in the set.
 
 Strimzi names the component for that single direction: the Unidirectional Topic Operator (Strimzi blog, 2023).
 
@@ -114,7 +114,7 @@ cd examples/29-unidirectional-topic-operator
 ./verify.sh
 ```
 
-The cluster of chapter 28 comes up with the entity operator and the nine `KafkaTopic` resources, the pair of chapter 2 places an order across them, and changes made in Kafka and in Kubernetes are watched for their effect on the other side; the run ends with `17/17 checks passed`.
+The cluster comes up with the entity operator and the nine `KafkaTopic` resources, the event notification pair places an order across them, and changes made in Kafka and in Kubernetes are watched for their effect on the other side; the run ends with `17/17 checks passed`.
 
 Try one change and rerun:
 
@@ -139,4 +139,5 @@ Teams that administer topics with Kafka's own tools will see their edits reverte
 - Strimzi, [Deploying and managing Strimzi](https://strimzi.io/docs/operators/latest/deploying.html): Topic Operator, handling changes to topics, unmanaged topics, finalizers, and automatic creation of topics
 - Strimzi, [Introducing the Unidirectional Topic Operator](https://strimzi.io/blog/2023/11/02/unidirectional-topic-operator/) (2023) and [proposal 051](https://github.com/strimzi/proposals/blob/main/051-unidirectional-topic-operator.md)
 - Apache Kafka, [Broker configs](https://kafka.apache.org/43/configuration/broker-configs/): `auto.create.topics.enable`
-- Chapter 28 for the cluster and its node pools, chapter 2 for the services that run on it
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }})

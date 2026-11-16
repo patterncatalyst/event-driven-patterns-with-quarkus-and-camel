@@ -7,7 +7,7 @@ description: "A Kafka cluster that an operator runs hides its JVMs behind resour
 duration: "50 minutes"
 ---
 
-Chapter 26 watches the flow of orders: the lag of a consumer group, the age of an event, the backlog behind a relay. Those signals say that something is stuck and not why. A broker that spends its time in garbage collection, a cluster with no active controller and a topic the operator cannot reconcile all show up there as the same thing, a number that stops falling.
+Consumer lag, event age and relay backlog say that something is stuck and not why. A broker that spends its time in garbage collection, a cluster with no active controller and a topic the operator cannot reconcile all show up in those numbers as the same thing, a number that stops falling.
 
 On Kubernetes the cluster is also a set of resources that an operator keeps true, and each of those can be wrong without any pod failing. The signals that explain a stuck flow come from three places: the Kafka processes, the operator, and the status of the resources the operator manages.
 
@@ -19,7 +19,7 @@ On Kubernetes the cluster is also a set of resources that an operator keeps true
 
 An operator-managed cluster has three layers that fail independently. The JVMs run or do not. The operator reconciles or does not. A resource is accepted or is stuck with a condition that says why. Reading the first layer used to mean a JMX exporter and its mapping rules (Owen Corrigan, Strimzi blog). Reading none of the second and third leaves the questions an operator is there to answer: is it reconciling, and is the topic I just declared the one Kafka has?
 
-Chapter 29 showed the case. Raise the partitions of a declared topic in Kafka and the resource turns `Ready=False`, reason `NotSupported`, while every broker stays healthy. Nothing in the flow breaks. Only the resource knows.
+Raise the partitions of a declared topic in Kafka and the resource turns `Ready=False`, reason `NotSupported`, while every broker stays healthy. Nothing in the flow breaks. Only the resource knows.
 
 ### The solution
 
@@ -50,7 +50,7 @@ The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowLis
 
 The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi, Configuring Strimzi). The pods keep their names, uids and restart counts, and the endpoint changes within seconds of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod.
 
-The collector scrapes the pods with a `prometheus` receiver. The OpenTelemetry documentation calls it a drop-in replacement for a Prometheus scrape, and it takes the same `kubernetes_sd_configs`. Chapter 26 merged a second collector configuration into otel-lgtm through `OTELCOL_EXTRA_ARGS`; this one is the same mechanism and carries both the scrape and chapter 26's lag receiver.
+The collector scrapes the pods with a `prometheus` receiver. The OpenTelemetry documentation calls it a drop-in replacement for a Prometheus scrape, and it takes the same `kubernetes_sd_configs`. A second collector configuration is merged into otel-lgtm through `OTELCOL_EXTRA_ARGS`, and it carries both the scrape and the consumer lag receiver.
 
 ```yaml
 receivers:
@@ -109,7 +109,7 @@ The payoff is the invalid topic. A topic declared with three partitions and rais
 
 ## One dashboard beside the flows
 
-Provisioning is chapter 26's: a dashboard file in a directory that Grafana reads on start, so there is nothing to click and nothing to lose when the pod is replaced. One dashboard, `edp-strimzi`, holds a panel per question in the figure below and one for the scrape targets, each a query on a series already named here.
+Provisioning is a dashboard file in a directory that Grafana reads on start, so there is nothing to click and nothing to lose when the pod is replaced. One dashboard, `edp-strimzi`, holds a panel per question in the figure below and one for the scrape targets, each a query on a series already named here.
 
 {% include excalidraw.html file="32-what-each-signal-answers" alt="Five signals in rows: the broker with the bytes-in family answers whether it takes the traffic, the controller with the active controller count answers whether there is exactly one, the operator with reconciliation counters answers whether it reconciles, a resource with the KafkaTopic condition answers whether the operator can reconcile it, and the flow with consumer group lag answers whether a consumer keeps up" caption="Figure 32.2: Each signal answers a question the others cannot" %}
 
@@ -124,7 +124,7 @@ sum by (group) (kafka_consumer_group_lag_ratio)
 sum by (job) (up)
 ```
 
-The last is chapter 26's. The collector asks the broker for it through the bootstrap Service, which keeps it available when a consumer's own metric disappears with the consumer.
+The last is consumer lag. The collector asks the broker for it through the bootstrap Service, which keeps it available when a consumer's own metric disappears with the consumer.
 
 Two sources failing independently is a property worth keeping. Remove the `metricsConfig` and the pod series are empty, while the resource series, the operator's counters and the lag stay. A dashboard that reads from only one source loses everything in that case.
 
@@ -135,7 +135,7 @@ cd examples/32-monitoring-strimzi
 ./verify.sh
 ```
 
-Kafka comes up with the reporter on both pools, the pair of chapter 2 places ten orders, and the signals are read from Prometheus on its published port: broker traffic, the single controller, the operator's counters, the state of the resources and the dashboard. A topic is made invalid and repaired, and the `allowList` is narrowed and restored while the pods are watched; the run ends with `20/20 checks passed`.
+Kafka comes up with the reporter on both pools, the event notification pair places ten orders, and the signals are read from Prometheus on its published port: broker traffic, the single controller, the operator's counters, the state of the resources and the dashboard. A topic is made invalid and repaired, and the `allowList` is narrowed and restored while the pods are watched; the run ends with `20/20 checks passed`.
 
 - `METRICS=off ./verify.sh` (demo code): no `metricsConfig`, so the pod series are empty while the resource and operator series pass.
 - `KEEP=1 ./verify.sh`, then `kubectl --context edp -n edp-kafka patch kafka edp --type merge -p '{"spec":{"kafka":{"metricsConfig":{"values":{"allowList":["jvm_.*"]}}}}}'`: the broker's bytes-in series stops and no pod restarts.
@@ -161,4 +161,6 @@ Kube-state-metrics adds a cluster role that can read every Strimzi resource, and
 - kube-state-metrics, [custom resource state metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/metrics/extend/customresourcestate-metrics.md)
 - OpenTelemetry Collector contrib, [Prometheus receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver)
 - Grafana, [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) (custom dashboards, `OTELCOL_EXTRA_ARGS`)
-- Chapter 26 for the lag receiver and provisioned dashboards, chapter 28 for the cluster, chapter 29 for the topic resources
+- [Metrics for event flows]({{ '/docs/26-metrics-for-event-flows/' | relative_url }})
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Unidirectional Topic Operator]({{ '/docs/29-unidirectional-topic-operator/' | relative_url }})

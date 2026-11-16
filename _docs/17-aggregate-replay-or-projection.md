@@ -7,7 +7,7 @@ description: "Operations asks a question the model was not built for: orders shi
 duration: "55 minutes"
 ---
 
-Operations asks a question nobody planned for: how many orders FASTLINE and AIRCO shipped each day. `order-service` has no table to ask. An order is its stream of events, and chapter 14 loads one stream at a time to decide a command. The answer is in the events, and there are two ways to get it: replay every `Order` aggregate when the question arrives, or build a table from the whole history now and keep it current.
+Operations asks a question nobody planned for: how many orders FASTLINE and AIRCO shipped each day. `order-service` has no table to ask. An order is its stream of events, and the aggregate loads one stream at a time to decide a command. The answer is in the events, and there are two ways to get it: replay every `Order` aggregate when the question arrives, or build a table from the whole history now and keep it current.
 
 {% include excalidraw.html file="17-replay-vs-projection" alt="Commands append events to orders.events; a replay reads every stream at the time of the question, folds each aggregate and counts the shipped ones; a projection reads the same events before the question through a projector with a checkpoint and keeps carrier_daily_shipments, which a query scans" caption="Figure 17.1: Two read paths over one store" %}
 
@@ -17,7 +17,7 @@ Operations asks a question nobody planned for: how many orders FASTLINE and AIRC
 
 The write model answers one question well: may this command happen to this order. "Shipments per carrier per day" touches every stream, and nothing indexes it.
 
-Replay answers it with no new moving part: read the events, fold each aggregate, count. It is correct by construction, because it uses the fold the commands use. Its cost is the size of the store, paid on every request. A snapshot from chapter 15 bounds the load of one aggregate and does nothing for a question about all of them.
+Replay answers it with no new moving part: read the events, fold each aggregate, count. It is correct by construction, because it uses the fold the commands use. Its cost is the size of the store, paid on every request. A snapshot bounds the load of one aggregate and does nothing for a question about all of them.
 
 The other answer is a second model for reading. Greg Young splits a service into a command side and a query side, and lets the query side be built from the events, denormalised and eventually consistent. Martin Fowler warns that this adds risky complexity to most systems. A projection is worth it only when the question is asked often enough, and a replay is slow enough, to justify a second model that can be wrong.
 
@@ -29,7 +29,7 @@ Three decisions make it safe. The events stay the only record: a projection is a
 
 ### How Quarkus models it
 
-`OrderAggregate` is chapter 14's with smaller payloads and an `OrderDelivered` event: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
+`OrderAggregate` is an event-sourced order aggregate: it folds `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` into a status, a carrier and the instant of the shipment. An order cannot be cancelled after it ships, so one that reached SHIPPED or DELIVERED is a shipped order.
 
 `ReplayReport` reads every event stream by stream and folds one aggregate at a time:
 
@@ -74,7 +74,7 @@ ORDER BY events.tx_id, events.position
 LIMIT :lim
 ```
 
-The `events` table is chapter 14's with one column added, `tx_id xid8 NOT NULL DEFAULT pg_current_xact_id()`, the transaction that wrote the row. `GET /reports/shipments-per-carrier?source=replay` or `source=projection` serves either path; the projection answer also reports `lagEvents`, the committed events past the checkpoint, and a gauge of the same number leaves for Prometheus.
+The `events` table has a `tx_id xid8 NOT NULL DEFAULT pg_current_xact_id()` column, the transaction that wrote the row. `GET /reports/shipments-per-carrier?source=replay` or `source=projection` serves either path; the projection answer also reports `lagEvents`, the committed events past the checkpoint, and a gauge of the same number leaves for Prometheus.
 
 ## The same question, two ways
 
@@ -134,7 +134,7 @@ When the question is rare or the history is small, replay. A report that runs on
 
 A projection serves the questions it was built for. A new question needs a new fold and a rebuild from the first event, so the store must keep that history for as long as such questions can arrive. A bug in the fold is repeated into the rows until the rebuild. The Azure Architecture Center advises serving the last complete view while a new one is built; here the projection undercounts for the length of the rebuild.
 
-When a command must see its own write, read the aggregate: a projection is eventually consistent, and the gap is a tick plus a batch. Chapter 16 fills a read model from Kafka topics, where lag and the order between topics are the problems. Here the projector reads the event store itself, and the problem is commit order inside one database.
+When a command must see its own write, read the aggregate: a projection is eventually consistent, and the gap is a tick plus a batch. A read model fed from Kafka topics has other problems: lag, and the order between topics. Here the projector reads the event store itself, and the problem is commit order inside one database.
 
 > **🤖 Explore with your agent**
 > "In examples/17-aggregate-replay-or-projection, ask for shipments per carrier through ReplayReport and through CarrierDailyProjector, then find where projection_checkpoint and the tx_id watermark decide which events a batch reads. Set PROJECTION_WATERMARK=off, hold ShipOrder O-1701 open while O-1702 ships, and state which order the projection never counts and why."
@@ -150,4 +150,6 @@ When a command must see its own write, read the aggregate: a projection is event
 - Martin Kleppmann and Chris Riccomini, *Designing Data-Intensive Applications*, 2nd ed., O'Reilly, 2026
 - Quarkus, [Scheduler reference](https://quarkus.io/guides/scheduler-reference) (`concurrentExecution`) and [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) (projections and `stream()`)
 - PostgreSQL documentation, [Transaction ID and Snapshot Information Functions](https://www.postgresql.org/docs/18/functions-info.html) (`pg_current_xact_id`, `pg_current_snapshot`, `pg_snapshot_xmin`, `xid8`), [SELECT](https://www.postgresql.org/docs/18/sql-select.html) (`FOR UPDATE`) and [Set Returning Functions](https://www.postgresql.org/docs/18/functions-srf.html) (`generate_series`)
-- Chapter 14 for the event store and the aggregate, chapter 15 for snapshots and chapter 16 for a read model fed from Kafka
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})
+- [Snapshots]({{ '/docs/15-snapshots/' | relative_url }})
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }})

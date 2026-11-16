@@ -761,3 +761,41 @@ Chapters 28 to 31 do not use the changed `_k8s/monitoring` or `tools/prom.py`; l
 ### r12 validation round 2 (2026-11-15)
 
 PASS at 2f86679. Fresh profile: 32 20/20 (teardown 47 s), 33 17/17 (11 s), 34 18/18 (45 s), 35 25/25 (43 s). The round-1 34 bite now fails check 16 (O-3401 to O-3405 notified twice). `OFFSET_SYNC=off` 15/18, fails 9, 13, 16; after failover the service creates the group on edp-dr, so chapter 34's "no group" wording was narrowed to "before the failover" (M1). Lows fixed by the orchestrator: 32 tense and teardown range, 35 sentence splits, sha guard matches the whole value (a truncated pin no longer passes). Site build: 0 of 1,287 internal links broken; diagrams byte-identical.
+
+### r13 compose window (2026-11-16): Appendices A, C, E, G
+
+Fresh containers for every run; logs in `<scratchpad>/r13-window-c/`.
+
+| Run | Result |
+|---|---|
+| G g1, final g2 | 24/24, 24/24 |
+| E e1, e3, final e4 | 22/23 (capacity check design), 23/23, 23/23 |
+| C c1, final c2 | 18/18, 18/18 |
+| A a1, final a2 | 7/7, 7/7 |
+| G `CACHE_WRITE=dual` | 20/24; fails 10, 13, 16, 19 |
+| G `CACHE_GUARD=off` | 23/24; fails 18 (three runs) |
+| E `RESEQUENCER=none` | 16/23; fails 5 to 11 |
+| E `SEQUENCE_BY=order` | 17/23; fails 5, 6, 7, 9, 10, 11 |
+| C `KS_GRACE_SECONDS=0` | 12/18; fails 5, 6, 10, 11, 13, 16 |
+
+Fixes: G guard switch applied only to the older-after-newer scenario, so checks 17 and 21 no longer depend on fetch order; E capacity scenario sends 402 to 406 first and waits until consumed before 407 to 412 (timeout 20 s); `emit()` replaces `print()` in helpers. Measured: G staleness fastest 413 to 487 ms, median 491 to 496 ms, slowest 499 to 875 ms (dual median 3 ms); G rebuild of 27 orders 1 to 2 s; C first closed-window answer Kafka Streams 20 ms, Flink 4.3 s, RisingWave 4.4 s; C memory in use 2.08 GiB (one sample). Cut: G compaction remark, E "auto-commit off re-reads everything". C Pinot and Druid line sourced from their home pages.
+
+### r13 minikube window (2026-11-16): Appendices B and F
+
+Fresh profile `edp`, recreated for the final runs, deleted at the end; logs in `<scratchpad>/r13-window-k/`.
+
+| Run | Result |
+|---|---|
+| B compose, final | 9/9, 9/9 |
+| B k8s (after fix), final | 9/9, 9/9 |
+| B compare, final | 23/23, 23/23 |
+| B `DRIFT=partitions` | compose 8/9 (fails 5); compare 21/23 (fails 7, 22) |
+| F (after fixes), final | 30/30, 30/30 |
+| F `GROUP_PROTOCOL=classic` | 29/30; fails 8 |
+| F `OFFSET_COPY=off` | 26/30; fails 19, 21, 23, 25 |
+
+Fixes: B check 7 reads the PostgreSQL manifest as written (CloudNativePG adds `wal_level` and `max_replication_slots` to the live Cluster); F check 8 parses the GROUP/TYPE table; F fixed sleep replaced by a poll; the 409 on a retried accepted order asserted inside check 30. Measured: stop gap 5.1 to 7.5 s, 53 to 70 redelivered; rolling update (consumer protocol) 47 to 372 redelivered (559 in the copy-off run, ceiling 600); cut-over overlap 0 to 450, rollback 0 to 290; green live 12 to 17 s after blue scale-down; HTTP rollout 5 to 8 of about 2,385 requests failed, no 5xx. Sources fetched: PostgreSQL 18 runtime config pages; Danilo Sato, ParallelChange (martinfowler.com, 2014).
+
+### r13 validation (2026-11-16)
+
+Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appendix D sources, mutation testing; idiomatic CI). Repair 1: three executors; E 23/23 twice with demos; B 9/9, 9/9, 23/23 twice; F 30/30 twice with demos, repeat checks moved from a fixed ceiling to a bound computed from an audit trigger (writes in the last 7 s before a replica gave up a partition). Round 2 (Opus): all 20 fixed; E 23/23, F 30/30, B 9/9 + 9/9 + 23/23 reproduced; the halved-window bite fails F checks 21 and 25; one High (three missed cross-references) and Medium/Low items fixed by the orchestrator. F ranges restated over eight runs including the validator's.

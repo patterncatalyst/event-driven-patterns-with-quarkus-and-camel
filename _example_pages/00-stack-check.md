@@ -35,4 +35,4 @@ mvn -B verify
 
 Quarkus Dev Services starts a Kafka container for the tests. No compose stack is needed.
 
-The setup and the stack are described in [Prerequisites and stacks]({{ '/docs/00-prerequisites-and-stacks/' | relative_url }}).
+The setup and the stack are the ones the accompanying page describes.

@@ -23,7 +23,7 @@ Subtracting a quantity is not idempotent: the second application gives a differe
 
 **An Idempotent Consumer records the id of every event it has applied in the same transaction as the effect, and skips an event whose id is already recorded.**
 
-Hohpe and Woolf describe the receiver that can safely receive the same message more than once; Chris Richardson names the form used here: the consumer stores the ids of processed messages in its database, in the transaction that handles the message, and a failed insert of the id means a duplicate. The table is an inbox. The id comes from the event itself, not from the transport, so it survives a relay that republishes: the outbox in chapter 8 puts the row id in the `id` header of the record.
+Hohpe and Woolf describe the receiver that can safely receive the same message more than once; Chris Richardson names the form used here: the consumer stores the ids of processed messages in its database, in the transaction that handles the message, and a failed insert of the id means a duplicate. The table is an inbox. The id comes from the event itself, not from the transport, so it survives a relay that republishes: a Debezium outbox puts the row id in the `id` header of the record.
 
 {% include excalidraw.html file="11-inbox-same-transaction" alt="First delivery: insert into the inbox returns one row, the stock is decremented and both commit before the acknowledgement. Second delivery: the insert returns zero rows, nothing is decremented and the record is acknowledged" caption="Figure 11.2: One transaction holds the id and the effect" %}
 

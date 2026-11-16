@@ -1,0 +1,6 @@
+# Demo code (DRIFT=partitions): the compose broker is started with num.partitions=6, a setting that the Kafka
+# resource does not have. The compose half and the comparison must both notice.
+services:
+  kafka:
+    environment:
+      - KAFKA_NUM_PARTITIONS=6

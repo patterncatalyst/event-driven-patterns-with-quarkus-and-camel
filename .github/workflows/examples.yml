@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Maven projects: examples/domain-model and every examples/NN-* directory with a pom.xml.
+      # Maven projects: examples/domain-model and every examples/NN-* and appendix examples/aX-* directory with a pom.xml.
       # A change under examples/_infra, examples/domain-model or to the Maven parent selects all of them.
       - id: pick
         env:
@@ -28,7 +28,7 @@ jobs:
         run: |
           shopt -s nullglob
           all=()
-          for d in examples/domain-model examples/[0-9][0-9]-*; do
+          for d in examples/domain-model examples/[0-9][0-9]-* examples/a[a-h]-*; do
             [[ -f "$d/pom.xml" ]] && all+=("$d")
           done
           if [[ "$EVENT" == pull_request ]]; then ref="$BASE"; else ref="$BEFORE"; fi

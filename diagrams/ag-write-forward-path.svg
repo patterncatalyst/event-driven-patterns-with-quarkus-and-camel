@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="300" height="370" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">One transaction in order-service</text>
+<rect x="350" y="60" width="300" height="370" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="362" y="80" font-size="12" font-weight="700" fill="#888">Out of the database</text>
+<rect x="680" y="60" width="300" height="370" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="692" y="80" font-size="12" font-weight="700" fill="#888">Into the cache</text>
+<rect x="40" y="100" width="260" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="170.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">POST /orders</text>
+<text x="170.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">no Redis call</text>
+<rect x="40" y="200" width="260" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="170.0" y="225.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">orders row, version n</text>
+<text x="170.0" y="242.5" font-size="11.5" fill="#555555" text-anchor="middle">outbox row, full state</text>
+<text x="170.0" y="257.5" font-size="11.5" fill="#555555" text-anchor="middle">commit together or not at all</text>
+<rect x="40" y="320" width="260" height="70" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="170.0" y="345.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">GET /orders/{id}</text>
+<text x="170.0" y="362.5" font-size="11.5" fill="#555555" text-anchor="middle">reads Redis only</text>
+<text x="170.0" y="377.5" font-size="11.5" fill="#555555" text-anchor="middle">a miss is a 404</text>
+<rect x="370" y="100" width="260" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="500.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Debezium and EventRouter</text>
+<text x="500.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">log tail, topic column routes</text>
+<rect x="370" y="230" width="260" height="70" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="500.0" y="255.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">edp.orders.placed</text>
+<text x="500.0" y="272.5" font-size="11.5" fill="#555555" text-anchor="middle">edp.orders.cancelled</text>
+<text x="500.0" y="287.5" font-size="11.5" fill="#555555" text-anchor="middle">key = order id, value = full state</text>
+<rect x="700" y="100" width="260" height="70" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="830.0" y="133.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Camel route order-cache</text>
+<text x="830.0" y="150.0" font-size="11.5" fill="#555555" text-anchor="middle">one consumer group</text>
+<rect x="700" y="230" width="260" height="70" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="830.0" y="263.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">version guard</text>
+<text x="830.0" y="280.0" font-size="11.5" fill="#555555" text-anchor="middle">WATCH, compare, MULTI and EXEC</text>
+<rect x="700" y="320" width="260" height="70" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="830.0" y="353.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Redis hash order:{id}</text>
+<text x="830.0" y="370.0" font-size="11.5" fill="#555555" text-anchor="middle">version and JSON, no persistence</text>
+<path d="M170,160 L170,200" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M300,235 L370,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="341.0" y="175.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">write-ahead log</text>
+<text x="341.0" y="175.0" font-size="11" fill="#b8650a" text-anchor="middle">write-ahead log</text>
+<path d="M500,170 L500,230" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M630,265 L700,135" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M830,170 L830,230" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M830,300 L830,320" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M700,355 L300,355" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="506.0" y="345.0" font-size="11" fill="#ffffff" stroke="#ffffff" stroke-width="3" paint-order="stroke" text-anchor="middle">read</text>
+<text x="506.0" y="345.0" font-size="11" fill="#555" text-anchor="middle">read</text>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Redis is written only from events of committed orders</text>
+</svg>

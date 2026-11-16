@@ -1,0 +1,10 @@
+--- a/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
++++ b/notification-service/src/main/java/com/patterncatalyst/shipping/testing/OrderPlacedNotificationRoute.java
+@@ -20,7 +20,6 @@
+         from("kafka:" + Topics.ORDERS_PLACED + "?groupId=notification-service&breakOnFirstError=true")
+                 .routeId("notify-order")
+                 .unmarshal().json(OrderPlaced.class)
+-                .idempotentConsumer(simple("${body.eventId}"), MemoryIdempotentRepository.memoryIdempotentRepository(1000)) // DEDUP
+                 .setProperty("event", body())
+                 .setHeader("orderId", simple("${body.orderId}"))
+                 .setBody(constant(null))

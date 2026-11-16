@@ -9,7 +9,7 @@ duration: "50 minutes"
 
 The application manifests set a memory limit of 384Mi on `order-service`. A platform team raises it to 512Mi with a patch, and the next deployment of the application manifests puts it back to 384Mi. Nothing reports an error. The pod restarts twice and the last writer wins.
 
-With `kubectl apply` as most people first learn it, nothing on the cluster refuses a second writer. The same gap shows when a manifest is too big to apply at all: the install of CloudNativePG, the PostgreSQL operator of chapter 28, fails before it creates anything.
+With `kubectl apply` as most people first learn it, nothing on the cluster refuses a second writer. The same gap shows when a manifest is too big to apply at all: the install of CloudNativePG, the PostgreSQL operator, fails before it creates anything.
 
 {% include excalidraw.html file="30-field-managers" alt="Two writers, edp-apps with the app manifests and edp-platform with a memory patch, apply to the Deployment order-service; the API server records the owner of every field in managedFields, and limits.memory has one owner at a time" caption="Figure 30.1: The API server records an owner for every field a manager applies" %}
 
@@ -36,7 +36,7 @@ The apply is a request to the API server, not a patch computed on the client. Th
 
 ### How Kubernetes and Strimzi model it
 
-Ownership is stored in `metadata.managedFields`: one entry per manager and operation, with the owned paths. `kubectl get --show-managed-fields` prints it. Chapter 28's Strimzi operator is one more manager. In current releases it applies its `Service`, `ServiceAccount`, `ConfigMap`, `Ingress` and `PersistentVolumeClaim` resources server-side and the setting cannot be turned off (Strimzi changelog). The bootstrap Service of chapter 28's Kafka cluster is one of them.
+Ownership is stored in `metadata.managedFields`: one entry per manager and operation, with the owned paths. `kubectl get --show-managed-fields` prints it. The Strimzi operator is one more manager. In current releases it applies its `Service`, `ServiceAccount`, `ConfigMap`, `Ingress` and `PersistentVolumeClaim` resources server-side and the setting cannot be turned off (Strimzi changelog). The bootstrap Service of the Kafka cluster is one of them.
 
 ## Installing the operators
 
@@ -47,7 +47,7 @@ kubectl apply --dry-run=server -f cnpg.yaml                  # Too long
 kubectl apply --server-side --dry-run=server -f cnpg.yaml    # accepted
 ```
 
-The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades). Every apply in Part 6 uses `--server-side`.
+The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades). Every apply in this example uses `--server-side`.
 
 ## Two writers on one Deployment
 
@@ -101,7 +101,7 @@ A change to the operator's own annotation is another matter. Without force it fa
 
 {% include excalidraw.html file="30-strimzi-ssa" alt="The Strimzi operator applies the bootstrap Service each reconciliation and owns strimzi.io/discovery; edp-foreign adds example.com/owner without a conflict; the foreign annotation survives the reconciliations and a forced change of strimzi.io/discovery is restored" caption="Figure 30.3: The operator owns its fields and leaves everyone else's alone" %}
 
-The edit that belongs to the operator goes into the resource it reads, the `Kafka` or `KafkaNodePool`, not into a patch on the `Service` it creates: a forced change to a field it owns there is put back. A `KafkaTopic` of chapter 29 is the same case: the resource is the source of truth and a change made elsewhere is reverted.
+The edit that belongs to the operator goes into the resource it reads, the `Kafka` or `KafkaNodePool`, not into a patch on the `Service` it creates: a forced change to a field it owns there is put back. A `KafkaTopic` is the same case: the resource is the source of truth and a change made elsewhere is reverted.
 
 ## Build, run, observe
 
@@ -111,7 +111,7 @@ cd examples/30-server-side-apply
 ./verify.sh
 ```
 
-The script deploys the services of chapter 2 under `edp-apps`, applies the CloudNativePG install both ways, lets `edp-platform` conflict and force, and adds a foreign annotation to the Strimzi `Service`, reading every owner back from `managedFields`; it ends with `25/25 checks passed`.
+The script deploys the event notification services under `edp-apps`, applies the CloudNativePG install both ways, lets `edp-platform` conflict and force, and adds a foreign annotation to the Strimzi `Service`, reading every owner back from `managedFields`; it ends with `25/25 checks passed`.
 
 Try one change and rerun:
 
@@ -138,4 +138,5 @@ Objects created by a client-side apply carry the manager `kubectl-client-side-ap
 - Kubernetes Enhancement Proposal [555, Server-side apply](https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/555-server-side-apply)
 - Strimzi blog, [Server-Side Apply in Strimzi](https://strimzi.io/blog/2026/01/26/server-side-apply-in-strimzi/), 2026, and the [changelog](https://github.com/strimzi/strimzi-kafka-operator/blob/main/CHANGELOG.md)
 - CloudNativePG, [Installation and upgrades](https://cloudnative-pg.io/docs/current/installation_upgrade/)
-- Chapter 28 for the Strimzi cluster and the CloudNativePG database, chapter 29 for the topics Strimzi manages
+- [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
+- [Unidirectional Topic Operator]({{ '/docs/29-unidirectional-topic-operator/' | relative_url }})

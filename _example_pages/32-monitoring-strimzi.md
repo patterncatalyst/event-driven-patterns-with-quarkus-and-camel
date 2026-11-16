@@ -5,9 +5,9 @@ permalink: /examples/32-monitoring-strimzi/
 description: "Kafka on Strimzi with the Metrics Reporter on brokers and controllers, the operator's own metrics and kube-state-metrics for resource state, all scraped by the otel-lgtm collector, with a provisioned dashboard and checks that read each signal from Prometheus."
 ---
 
-[`examples/32-monitoring-strimzi/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/32-monitoring-strimzi) is a manifest overlay on the minikube substrate of chapter 28: Kafka with the reporter on both node pools, the collector's scrape configuration, kube-state-metrics with a small custom-resource configuration, a dashboard and the services of chapter 2. It accompanies [Monitoring Strimzi]({{ '/docs/32-monitoring-strimzi/' | relative_url }}).
+[`examples/32-monitoring-strimzi/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/32-monitoring-strimzi) is a manifest overlay on the shared minikube setup in `examples/_k8s`: Kafka with the reporter on both node pools, the collector's scrape configuration, kube-state-metrics with a small custom-resource configuration, a dashboard and the `order-service` and `notification-service`. It accompanies [Monitoring Strimzi]({{ '/docs/32-monitoring-strimzi/' | relative_url }}).
 
-It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image, kube-state-metrics and the unchanged chapter 2 images.
+It uses kustomize through `kubectl`, Strimzi, Kafka, CloudNativePG, the LGTM image, kube-state-metrics and the unchanged `order-service` and `notification-service` images.
 
 ```bash
 cd examples/32-monitoring-strimzi
@@ -25,4 +25,4 @@ cd examples/32-monitoring-strimzi
 
 ## Infrastructure
 
-The cluster, PostgreSQL and LGTM bases of `examples/_k8s`, the monitoring base, the reporter component, one `KafkaTopic`, and the chapter 2 deployments.
+The cluster, PostgreSQL and LGTM bases of `examples/_k8s`, the monitoring base, the reporter component, one `KafkaTopic`, and the `order-service` and `notification-service` deployments.

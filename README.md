@@ -17,6 +17,8 @@ Site: https://patterncatalyst.github.io/event-driven-patterns-with-quarkus-and-c
 | 6 | Running on Kubernetes with Strimzi |
 | Appendices | Reference material, tooling and optional extras |
 
+Appendices: A Testing event-driven code; B Compose to Kubernetes; C Querying streams without ksqlDB; D Pattern map, glossary and EIP Camel cross-reference; E Resequencing across partitions in depth; F Deploying event-driven services on minikube; G Write-forward cache with an outbox and CDC; H OpenShift Local (planned).
+
 ## Run targets
 
 - **Docker Compose** for Parts 0 to 5. One shared infrastructure stack (Kafka, PostgreSQL, Apicurio Registry, Debezium Connect, Grafana LGTM) started with `scripts/setup-stack.sh up`. Requirements: Docker Engine with the `docker compose` plugin, JDK 25 and Maven. The examples need no Python; Python 3 is only for the repository tooling (`scripts/validate.py`, `scripts/host_ids.py`, `scripts/generate_diagram.py`). Run one stack at a time.

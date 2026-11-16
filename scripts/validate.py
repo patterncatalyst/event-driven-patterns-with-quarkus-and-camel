@@ -54,9 +54,33 @@ DASH_RE = re.compile("[—–]")
 VERSION_RE = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")
 URL_RE = re.compile(r"https?://\S+")
 TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]\w+")
+# Owner rule 2026-11-16: every page stands alone. No reference to another chapter, appendix or part of this
+# book in prose (back or forward); related pages are linked only under `## References`. Appendix D (the
+# pattern map and cross-reference) is exempt. Chapter numbers of other books, cited as sources, are allowed.
+XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-H])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
+# Cross-references written in words: "the previous chapter", "the outbox chapter", "earlier chapters", "Part three".
+XREF_WORD_RE = re.compile(
+    r"\b(?:the\s+)?(?:previous|preceding|prior|next|following|earlier|later|last|first)\s+(?:chapters?|appendix|appendices|parts?)\b"
+    r"|\bthe\s+(?!same\b)[\w-]+(?:\s+[\w-]+)?\s+(?:chapter|appendix)\b"
+    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-H]|one|two|three|four|five|six|seven|eight)\b"
+    r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b"
+    # "examples 02 and 03", "these examples", "the earlier examples" point at other chapters' examples
+    r"|\bexamples?\s+\d{2}\b|\b(?:these|those|the\s+earlier|the\s+other)\s+examples\b", re.I)
+ACCOMPANIES_RE = re.compile(r"accompanies \[[^\]]*\]\(\{\{[^)]*\)")
+XREF_SOURCE_RE = re.compile(r"EIP Camel|Enterprise Integration Patterns|Bellemare|Lawrence|Kleppmann|Vernon|Hohpe|Fowler|"
+                            r"Richardson|(?-i:Young)|Narkhede|Shapira|Stopford|Seymour|Riccomini|Bellemare's|\*[A-Z][^*]+\*,? (ch|chapter)", re.I)
 SELFREF_RE = re.compile(r"\b(this|the) (chapter|section)\b|\bthe example shows\b|\bwe will\b", re.I)
 IMG_RE = re.compile(r"^\s*-?\s*image:\s*(\S+)", re.M)
 K8S_SETUP_HEADING = "## Setting up the cluster"
+
+
+def xref_hit(t: str) -> str | None:
+    """The first cross-reference in a prose line, or None. A chapter of another book cited as a source is allowed."""
+    for rx in (XREF_RE, XREF_WORD_RE):
+        for x in rx.finditer(t):
+            if not XREF_SOURCE_RE.search(t[max(0, x.start() - 90):x.start() + len(x.group(0)) + 40]):
+                return x.group(0)
+    return None
 
 
 class Report:
@@ -264,10 +288,31 @@ def check_bro(rep: Report, p: Path, plines, off: int):
             rep.err(p, i + off, f"check number or run statistic '{m.group(0)}' in '{BRO_HEAD}' (belongs in the README)")
 
 
+def check_example_pages(rep: Report):
+    """The cross-reference rule also covers the example pages (_example_pages/*.md prose)."""
+    for p in files(rep.root, "_example_pages/*.md"):
+        fm, body, off = split_front(p.read_text(encoding="utf-8"))
+        section = ""
+        for i, t in prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S)):
+            if re.match(r"##\s", t):
+                section = t.strip()
+            if section.lower().startswith("## references"):
+                continue
+            # the one link an example page may carry is to the page it accompanies
+            hit = xref_hit(ACCOMPANIES_RE.sub("accompanies this page", t))
+            if hit:
+                rep.err(p, i + off, f"cross-reference '{hit}' in example page prose: each page stands alone; "
+                                    "link related pages only under ## References")
+
+
 def check_chapters(rep: Report):
     for p in files(rep.root, "_docs/*.md"):
         text = p.read_text(encoding="utf-8")
-        _, body, off = split_front(text)
+        fm, body, off = split_front(text)
+        if not p.name.startswith("ad-"):
+            d = re.search(r"^description:\s*(.*)$", text.split("\n---", 2)[0] if text.startswith("---") else "", re.M)
+            if d and XREF_RE.search(d.group(1)) and not XREF_SOURCE_RE.search(d.group(1)):
+                rep.err(p, None, f"cross-reference '{XREF_RE.search(d.group(1)).group(0)}' in the description")
         n = chapter_words(body)
         if n > MAX_WORDS:
             rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
@@ -292,6 +337,11 @@ def check_chapters(rep: Report):
             m = TESTNAME_RE.search(t)
             if m:
                 rep.err(p, i + off, f"test-name token '{m.group(0)}' in prose")
+            if not p.name.startswith("ad-") and not section.lower().startswith("## references"):
+                hit = xref_hit(t)
+                if hit:
+                    rep.err(p, i + off, f"cross-reference '{hit}' in prose: each page stands alone; "
+                                        "link related pages only under ## References")
             # Versions live in chapter 00, the appendices and Part 6's setup section (chapter 28).
             if not (p.name.startswith(("00-", "a"))
                     or (p.name.startswith("28-") and section == K8S_SETUP_HEADING)):
@@ -326,12 +376,16 @@ def is_vendor(p: Path) -> bool:
     return bool(VENDOR_RE.search(p.as_posix()))
 
 
+# Chapter examples NN-slug and appendix examples aX-slug (Appendix A to H).
+EXAMPLE_DIR_RE = re.compile(r"(\d+|a[a-h])-")
+
+
 def check_examples(rep: Report):
     ex = rep.root / "examples"
     if not ex.is_dir():
         return
     for d in sorted(ex.iterdir()):
-        if not (d.is_dir() and re.match(r"\d+-", d.name)):
+        if not (d.is_dir() and EXAMPLE_DIR_RE.match(d.name)):
             continue
         v = d / "verify.sh"
         if not v.is_file():
@@ -344,11 +398,22 @@ def check_examples(rep: Report):
                 rep.err(v, None, f"bash -n failed: {r.stderr.strip()}")
             # Every live run starts from fresh containers and volumes, never a leftover stack.
             body = v.read_text(encoding="utf-8")
-            if (d / "kustomization.yaml").is_file():
+            k8s_ok = (re.search(r"^\s*(source|\.)\s+\S*_k8s/lib\.sh", body, re.M)
+                      and re.search(r"^\s*k8s_fresh\b", body, re.M)
+                      and re.search(r"\bk8s_teardown\b", body))
+            if d.name.startswith("aa-"):
+                # Appendix A: tests only, on Dev Services; no compose stack of its own.
+                if not re.search(r"\bmvn\b[^\n]*\s-B\b", body) or re.search(r"docker compose[^\n]*\bup\b", body):
+                    rep.err(v, None, "Appendix A verify.sh runs `mvn -B` on Dev Services and starts no compose stack")
+            elif d.name.startswith("ab-"):
+                # Appendix B: a compose half and a minikube half, each from fresh state.
+                if not (k8s_ok and re.search(r"down -v --remove-orphans", body)
+                        and re.search(r"--force-recreate --renew-anon-volumes", body)):
+                    rep.err(v, None, "Appendix B verify.sh needs both fresh halves: compose `down -v --remove-orphans` "
+                                     "and `--force-recreate --renew-anon-volumes`, and k8s_fresh / k8s_teardown")
+            elif (d / "kustomization.yaml").is_file():
                 # Part 6: fresh namespaces on the shared minikube profile (examples/_k8s/lib.sh).
-                if not (re.search(r"^\s*(source|\.)\s+\S*_k8s/lib\.sh", body, re.M)
-                        and re.search(r"^\s*k8s_fresh\b", body, re.M)
-                        and re.search(r"\bk8s_teardown\b", body)):
+                if not k8s_ok:
                     rep.err(v, None, "Part 6 verify.sh must source ../_k8s/lib.sh, call k8s_fresh "
                                      "and tear down with k8s_teardown")
             elif not (re.search(r"down -v --remove-orphans", body)
@@ -357,7 +422,8 @@ def check_examples(rep: Report):
                                  "`up -d --build --force-recreate --renew-anon-volumes --wait`")
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
-    for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
+    for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml",
+                     "examples/a[a-h]-*/**/*.yaml"):
         if "compose" in m_.name or is_vendor(m_):
             continue
         lines = m_.read_text(encoding="utf-8").split("\n")
@@ -367,7 +433,7 @@ def check_examples(rep: Report):
                 if not near or not all("localhost/edp/" in x for x in near):
                     rep.err(m_, n + 1, "imagePullPolicy: Never only for localhost/edp/ images")
     for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml",
-                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml"):
+                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml", "examples/a[a-h]-*/**/*.yaml"):
         if is_vendor(c) or "/target/" in c.as_posix():
             continue
         text = c.read_text(encoding="utf-8")
@@ -434,19 +500,36 @@ def check_camel_schemes(rep: Report):
                 rep.warn(f"{p.relative_to(rep.root)}:{line_of(text, m.start())}: {msg}")
 
 
+REDIS_PIN = "docker.io/library/redis:8.10.3-alpine"
+
+
+def check_redis_devservices(rep: Report):
+    """Quarkus Redis Dev Services defaults to the floating `redis:7` (7.4.x, RSALv2/SSPLv1, not open source):
+    every example using the Redis client must name the pinned image."""
+    for pom in files(rep.root, "examples/*/pom.xml", "examples/*/*/pom.xml"):
+        if "quarkus-redis-client" not in pom.read_text(encoding="utf-8"):
+            continue
+        props = pom.parent / "src/main/resources/application.properties"
+        text = props.read_text(encoding="utf-8") if props.is_file() else ""
+        if not re.search(r"^quarkus\.redis\.devservices\.image-name\s*=\s*" + re.escape(REDIS_PIN) + r"\s*$", text, re.M):
+            rep.err(props, None, f"Redis Dev Services must use the pinned image: "
+                                 f"quarkus.redis.devservices.image-name={REDIS_PIN}")
+
+
 def check_podman(rep: Report):
     roots = ["_docs/*", "_parts/*", "_example_pages/*", "_includes/*", "_layouts/*", "index.html", "chapters.html",
              "README.md", "bibliography.md", "examples/**/*", ".github/**/*", "diagrams/*", "scripts/*.sh"]
     for p in files(rep.root, *roots):
         rel = p.relative_to(rep.root)
-        if rel.parts[0] == "_docs" and (re.search(r"-openshift", p.name) or p.name.startswith("ae-")):
+        if (rel.parts[0] == "_docs" and p.name.startswith("ah-")) or (
+                rel.parts[0] == "examples" and len(rel.parts) > 1 and rel.parts[1].startswith("ah-")):
             continue
         try:
             text = p.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
         for m in re.finditer(r"podman", text, re.I):
-            rep.err(p, line_of(text, m.start()), "'podman' is only allowed in _plans/ and the Appendix G chapter")
+            rep.err(p, line_of(text, m.start()), "'podman' is only allowed in _plans/ and Appendix H (OpenShift Local)")
             break
 
 
@@ -502,8 +585,8 @@ def check_domain_names(rep: Report):
                 rep.err(p, i, f"banned freight-domain name '{m.group(0)}' (use the order-to-delivery domain)")
 
 
-CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters,
-          check_examples, check_camel_schemes, check_podman, check_no_forwarding, check_domain_names]
+CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters, check_example_pages,
+          check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_domain_names]
 
 
 def run(root: Path) -> Report:
@@ -556,6 +639,48 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
         e = run(r).errors
         results.append(("port-forward caught", any("forwarding" in x for x in e), e))
+
+        r = build("xref")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nA Kafka transaction (chapter 12) stops at the cluster.\n"
+                                            "\n## References\n\n- Chapter 12, exactly once.\n")
+        e = run(r).errors
+        results.append(("cross-reference in prose caught, allowed under References",
+                        sum("cross-reference" in x for x in e) == 1, e))
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nBellemare's chapter 14 calls it streaming SQL.\n")
+        e = run(r).errors
+        results.append(("another book's chapter cited as a source allowed", not any("cross-reference" in x for x in e), e))
+
+        for label, sentence in (("previous chapter", "The previous chapter showed it."),
+                                ("next chapters", "The next chapters extend it."),
+                                ("the outbox chapter", "See the outbox chapter for the table."),
+                                ("earlier chapters", "As the earlier chapters did."),
+                                ("Part three", "Part three covers it."),
+                                ("Parts 2 and 3", "Parts 2 and 3 cover it.")):
+            r = build("xref-words-" + label.replace(" ", "-"))
+            (r / "_docs/01-demo.md").write_text(good_doc + "\n" + sentence + "\n")
+            e = run(r).errors
+            results.append((f"cross-reference in words caught: {label}", any("cross-reference" in x for x in e), e))
+        r = build("xref-words-ok")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nBellemare's previous chapter calls it streaming SQL. The young parts of a spare part stay.\n"
+                                            "\n## References\n\n- The previous chapter, listed.\n")
+        e = run(r).errors
+        results.append(("words allowed for another book's chapter, under References and in 'young'/'part'",
+                        not any("cross-reference" in x for x in e), e))
+        r = build("xref-example")
+        (r / "_example_pages").mkdir()
+        (r / "_example_pages/01-demo.md").write_text("---\ntitle: x\n---\n\nIt reuses the services of chapter 2.\n")
+        e = run(r).errors
+        results.append(("cross-reference in an example page caught",
+                        any("cross-reference" in x and "_example_pages" in x for x in e), e))
+        (r / "_example_pages/01-demo.md").write_text(
+            "---\ntitle: x\n---\n\nIt accompanies [Demo]({{ '/docs/01-demo/' | relative_url }}).\n")
+        e = run(r).errors
+        results.append(("the accompanying link of an example page allowed", not any("cross-reference" in x for x in e), e))
+
+        r = build("xref-examples")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nThe services of examples 02 and 03 run unchanged.\n")
+        e = run(r).errors
+        results.append(("'examples NN' caught", any("examples 02" in x for x in e), e))
 
         r = build("domain")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nA Consignment is booked.\n")
@@ -641,6 +766,61 @@ def self_test() -> int:
         e = run(r).errors
         results.append(("Connect, MirrorMaker 2 and Cruise Control names pass the domain check",
                         not any("freight-domain" in x for x in e), e))
+
+        # r13: appendix examples get the same rules
+        r = build("appendix")
+        ax = r / "examples/ae-demo"
+        ax.mkdir(parents=True)
+        (ax / "README.md").write_text("x")
+        (ax / "verify.sh").write_text("#!/bin/bash\ndocker compose up -d\n")
+        (ax / "verify.sh").chmod(0o755)
+        e = run(r).errors
+        results.append(("appendix compose example without fresh start caught", any("start fresh" in x for x in e), e))
+        aa = r / "examples/aa-demo"
+        aa.mkdir(parents=True)
+        (aa / "README.md").write_text("x")
+        (aa / "verify.sh").write_text("#!/bin/bash\ndocker compose up -d\n")
+        (aa / "verify.sh").chmod(0o755)
+        e = run(r).errors
+        results.append(("Appendix A verify.sh without mvn caught", any("Appendix A" in x for x in e), e))
+        (aa / "verify.sh").write_text("#!/bin/bash\nmvn -B -ntp verify\n")
+        ab = r / "examples/ab-demo"
+        ab.mkdir(parents=True)
+        (ab / "README.md").write_text("x")
+        (ab / "kustomization.yaml").write_text("resources: []\n")
+        (ab / "verify.sh").write_text("#!/bin/bash\nsource ../_k8s/lib.sh\nk8s_fresh .\ntrap k8s_teardown EXIT\n")
+        (ab / "verify.sh").chmod(0o755)
+        e = run(r).errors
+        results.append(("Appendix B without the compose half caught", any("Appendix B" in x for x in e), e))
+        (ab / "verify.sh").write_text("#!/bin/bash\nsource ../_k8s/lib.sh\nk8s_fresh .\ntrap k8s_teardown EXIT\n"
+                                      "docker compose down -v --remove-orphans\n"
+                                      "docker compose up -d --force-recreate --renew-anon-volumes --wait\n")
+        (ax / "verify.sh").write_text("#!/bin/bash\ndocker compose down -v --remove-orphans\n"
+                                      "docker compose up -d --build --force-recreate --renew-anon-volumes --wait\n")
+        e = run(r).errors
+        results.append(("fresh appendix examples A, B, E pass",
+                        not any("verify.sh" in x for x in e), e))
+        (ax / "app.yaml").write_text("      - image: quay.io/x/y:1.0\n        imagePullPolicy: Never\n")
+        e = run(r).errors
+        results.append(("appendix manifest Never on upstream image caught", any("imagePullPolicy" in x for x in e), e))
+        (ax / "app.yaml").unlink()
+        (r / "_docs/ah-demo.md").write_text("Build with podman and buildah.\n")
+        (r / "_docs/02-demo.md").write_text("Build with podman.\n")
+        e = run(r).errors
+        results.append(("podman allowed only in Appendix H",
+                        not any("ah-demo" in x and "podman" in x for x in e)
+                        and any("02-demo" in x and "podman" in x for x in e), e))
+
+        r = build("redis")
+        rx = r / "examples/ag-demo/order-service"
+        (rx / "src/main/resources").mkdir(parents=True)
+        (rx / "pom.xml").write_text("<artifactId>quarkus-redis-client</artifactId>\n")
+        e = run(r).errors
+        results.append(("Redis Dev Services without the pinned image caught", any("Redis Dev Services" in x for x in e), e))
+        (rx / "src/main/resources/application.properties").write_text(
+            "quarkus.redis.devservices.image-name=" + REDIS_PIN + "\n")
+        e = run(r).errors
+        results.append(("Redis Dev Services with the pinned image passes", not any("Redis Dev Services" in x for x in e), e))
 
     ok = True
     for name, passed, errs in results:

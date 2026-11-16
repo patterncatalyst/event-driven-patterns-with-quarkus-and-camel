@@ -86,6 +86,21 @@ kafka_raw_on() { # kafka_raw_on <pod> <tool> <args...>: a tool that takes no --b
 }
 kafka_exec() { kafka_exec_on edp-broker-0 "$@"; } # the substrate's broker
 kafka_raw() { kafka_raw_on edp-broker-0 "$@"; }
+group_empty() { # group_empty <group>: the consumer group has no active member (state Empty or Dead)
+    local out; out="$(kafka_exec kafka-consumer-groups.sh --describe --group "$1" --state 2>/dev/null)" || return 1
+    [[ "$out" =~ [[:space:]](Empty|Dead)([[:space:]]|$) ]]
+}
+group_offsets_copy() { # group_offsets_copy <from> <to>: copy committed offsets between two inactive groups
+    # kafka-consumer-groups.sh exports `topic,partition,offset` (no header, no group column) and imports it
+    # with --from-file into a group that has no active member; the target may never have existed.
+    local from="$1" to="$2" csv
+    group_empty "$from" || { echo "group_offsets_copy: $from still has members" >&2; return 1; }
+    csv=$(kafka_exec kafka-consumer-groups.sh --group "$from" --reset-offsets --to-current --all-topics \
+            --dry-run --export 2>/dev/null) || return 1
+    [[ -n "$csv" ]] || { echo "group_offsets_copy: $from has no committed offsets" >&2; return 1; }
+    kc -n edp-kafka exec -i edp-broker-0 -- sh -c 'cat > /tmp/edp-offsets.csv' <<<"$csv"
+    kafka_exec kafka-consumer-groups.sh --group "$to" --reset-offsets --from-file /tmp/edp-offsets.csv --execute >/dev/null
+}
 connect_get() { # connect_get <path> [connect-pod]: read-only GET on a Connect worker, for status and offsets. Changes go through the CRs.
     local path="$1" pod="${2:-}"
     [[ -n "$pod" ]] || pod="$(kc -n "$NS_KAFKA" get pod -l strimzi.io/kind=KafkaConnect -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"

@@ -22,7 +22,8 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r10 | Observing event flows | 25 to 27 | C | done |
 | r11 | minikube + Strimzi + CloudNativePG + LGTM setup; KRaft, UTO, SSA, security context | 28 to 31 | K | shipped (r11.0, #12) |
 | r12 | Monitoring Strimzi, Cruise Control, MM2, Connect on Strimzi; chapter 10's Strimzi half | 32 to 35 | K | shipped (r12.0, #13) |
-| r13 | Appendices A to H (C: Kafka Streams, Flink SQL, RisingWave; E: resequencing across partitions in depth; F: deploying event-driven services on minikube; G: write-forward cache with an outbox and CDC; H: outbox on CRC) | A to H | C, K, CRC | planned |
+| r13 | Appendices A to G (A testing, B compose to Kubernetes, C Kafka Streams / Flink SQL / RisingWave, D pattern map and glossary, E resequencing across partitions, F deploying on minikube, G write-forward cache with outbox and Redis) | A to G | C, K | shipped r13.0 (2026-11-16) |
+| r13b | Appendix H: the chapter 08 outbox on OpenShift Local (owner-started CRC, AMQ Streams, CloudNativePG via OLM, buildah + skopeo); full teardown, crc stop and delete | H | CRC | planned |
 | r14 | Retro: QA sweep, idiomatic review, voice review, host scrub, re-survey, full re-run | all | C, K | planned |
 | r15 | The deck: `lgtm-presentation/` built like CNDP's, with `text/`, `edits/`, `BUILD.md` and a "Take it with you" QR slide; figures reused from chapter specs; stands alone | none | none | planned |
 
@@ -62,3 +63,5 @@ Approved 2026-11-10 (see `r02-plan.md`), with the owner's Claim Check (ch 03) an
 | 4 | Final serial verify from clean, claims and log, per-chapter commits | orchestrator | done |
 | 5 | Validation (Opus): static gates, claims audit, fresh-clone run, originality check, repair rounds | validator | done (two rounds; round 2 text-only) |
 | 6 | Ship: PR, CI green, squash-merge on owner OK, tag r02.0, notes-only release, delete branch, PRD update | orchestrator | done |
+
+Owner, 2026-11-16: once r15 ships, update the Notion pages (PRD 41261a5f-8a3b-8148-9ffd-f5691ac1251d and related pages) to the final state of the book.

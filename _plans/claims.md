@@ -1720,3 +1720,193 @@ Evidence: verify.sh check numbers refer to the final-run logs `<scratchpad>/r12-
 | 35-u | 35 | Stop, alter to WAL end, resume: changed row skipped, next row arrives; Connect reads back the new position within seconds | verify.sh 35 checks 19 to 23; window 0 to 3 s | _docs/35-debezium-and-connect-on-strimzi.md:160-168 | verified |
 | 35-v | 35 | A connector created with state stopped starts stopped | fetched CHANGELOG line 32 | _docs/35-debezium-and-connect-on-strimzi.md:170 | verified |
 | 35-w | 35 | Build, run, observe 25/25 | validator r2 v-35 | _docs/35-debezium-and-connect-on-strimzi.md:180 | verified |
+
+## r13 (Appendices A to G, 2026-11-16, validation round 2)
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| AA-01 | A | Dev Services starts the real Kafka for a Quarkus test and wires its address | Quarkus kafka guide 22.2 (F qkafka.txt); OrderPlacedRouteTest runs on Dev Services | _docs/aa:20; W a2.log check 1 | verified |
+| AA-02 | A | Dev Services images: Kafka is the compose stack's image; PostgreSQL has the stack's version from the stock image | aa application.properties:14 kafka 4.3.2 = _infra/compose-kafka.yaml:3; 02 application.properties:9 postgres:18.6 vs compose ghcr.io/cloudnative-pg/postgresql:18.6-...; text now says so | _docs/aa:20-25 | verified (reworded, repair 1 (git f142086..3f55214)) |
+| AA-03 | A | Camel reads camel.component.kafka.brokers, Dev Services does not fill it; %test copies kafka.bootstrap.servers | aa application.properties:8-9 comment + line; tests pass (a2 check 1) | _docs/aa:27 | verified |
+| AA-04 | A | Tests use their own order ids and filter by them; exact-order topic gets one partition via topic-partitions | OrderPlacedRouteTest drain() filter; application.properties topic-partitions.*=1; Quarkus kafka guide shows topic-partitions | _docs/aa:29 | verified |
+| AA-05 | A | StubOrderService in src/test answers on the test port 8183; %test points order-service.url there | StubOrderService.java; application.properties quarkus.http.test-port=8183, %test.order-service.url | _docs/aa:31-48 | verified |
+| AA-06 | A | The same stub makes the source answer and report CANCELLED | aa stub has no refuse path (always 200). Refusal (503/404) exists only in examples/02 StubOrderService (DOWN flag) | _docs/aa:48 | verified (refuse dropped, repair 1 (git f142086..3f55214)) |
+| AA-07 | A | The route has three guards: dedup, cancelled guard, key | OrderPlacedNotificationRoute.java:23,30,32 (DEDUP/GUARD/KEY) | _docs/aa:52 | verified |
+| AA-08 | A | Patches applied to a copy under target/bites, never the source; failed set must equal one named test | verify.sh:38-55, check 7 sha; W a2.log 7/7 | _docs/aa:54-66 | verified |
+| AA-09 | A | Harness costs one Maven run per patch, about the length of the suite | target/verify-logs/verify.log 52.7 s; a2 total 2:56 for suite + 3 bites; SP F9 ~49 s per bite | _docs/aa:68 | verified |
+| AA-10 | A | The harness runs from verify.sh and not on every save | examples.yml runs only mvn -B verify; prose no longer claims CI | _docs/aa:68 | verified (repair 1 (git f142086..3f55214)) |
+| AA-11 | A | First match returns at the first matching record and passes on a route that notifies twice | verify.sh check 4 (duplicate-allowed leaves firstMatch green), a2.log PASS 4 | _docs/aa:74-83 | verified |
+| AA-12 | A | fromTopics(topic, Duration) is the drain; fromTopics(topic)+awaitCompletion(timeout) fails with "no completion" | SP F7 ("No completion (or failure) event received"); OrderPlacedRouteTest.drain | _docs/aa:85-95 | verified (spike only; unchanged by owner decision of the repair) |
+| AA-13 | A | KafkaCompanion = quarkus-test-kafka-companion with @InjectKafkaCompanion; reuses the Dev Services broker | Quarkus kafka guide (F qkafka.txt "If you are using Dev Services for Kafka ... broker available throughout the tests"); pom.xml:98; SP F7 | _docs/aa:99 | verified |
+| AA-14 | A | Placement.expected computes partition with Utils.murmur2; test publishes six order ids | 04 Placement.java:29; OrderIdKeyTest loop n=1..6 | _docs/aa:105 | verified (typo fixed) |
+| AA-15 | A | Fixtures send delivered before scheduled through the test's own producer and assert final status | 04 order-service ArrivalOrderTest.deliveredArrivingBeforeScheduledLeavesTheOrderShipped | _docs/aa:107 | verified |
+| AA-16 | A | Inbox test: two threads, CyclicBarrier, 20 rounds, effect once, stock falls by one | 11 InboxTest.twoThreadsWithTheSameEventIdApplyItOnce (round<=20, CyclicBarrier(2), 100-round) | _docs/aa:111 | verified |
+| AA-17 | A | Inbox correctness from INSERT ... ON CONFLICT DO NOTHING on a primary key; no-inbox profile applies duplicate twice | 11 ReservationService.java:26; migration event_id UUID PRIMARY KEY; NoInboxTest (94) | _docs/aa:113 | verified |
+| AA-18 | A | camel-quarkus-junit provides CamelQuarkusTestSupport; Camel Quarkus doc recommends routes in src/main/java and advising in tests | F cqtest.txt "The recommended pattern is: Define routes in your application code (src/main/java) Use AdviceWith..."; pom.xml:88 | _docs/aa:117 | verified |
+| AA-19 | A | Producer becomes a mock endpoint (camel-quarkus-mock) | pom.xml:93; OrderPlacedAdviceTest; a2 check 2 | _docs/aa:141 | verified |
+| AA-20 | A | Advised class needs its own test profile so Quarkus restarts; following classes see the route as written | AdviceProfile.java; SP F3 (4/4 failed without it) | _docs/aa:143 | verified |
+| AA-21 | A | Registry test: BACKWARD_TRANSITIVE, v1 and v2, v3 refused with 400, two versions remain; first version accepted whatever it contains | 18 RegistryRuleTest:16-31, :45-49 | _docs/aa:147 | verified |
+| AA-22 | A | Apicurio applies a rule by checking a new version against registered versions | F apicompat.txt (BACKWARD_TRANSITIVE "checks against every prior version") | _docs/aa:147 | verified |
+| AA-23 | A | Tracing and log-correlation tests use an in-memory exporter, the metrics example a SimpleMeterRegistry; verify.sh asks Tempo, Loki and Grafana's rules API | 26 tests OutboxBacklogTest, FlowAgeTest use SimpleMeterRegistry; 26 verify.sh:121 rules API, also :93,:142 Prometheus query API | _docs/aa:153 | verified (incomplete: Prometheus query API not named; Low) |
+| AA-24 | A | Dev Services starts a fresh Kafka per Maven run, no compose stack; ends 7/7 | verify.sh header; W a1/a2 7/7 | _docs/aa:163 | verified |
+| AA-25 | A | Bellemare 2e chapter 20: Testing Event-Driven Microservices | _plans/sources.md:67,108 (owner TOC) | _docs/aa:183 | verified (title only) |
+| AA-26 | A | Reference Quarkus Apache Kafka reference guide | page title at that URL is "Apache Kafka reference guide - 3.40" | _docs/aa:178 | verified (link text, repair 1 (git f142086..3f55214)) |
+| AA-27 | A | README: 4 broker-backed tests, 1 advised, checks 1-7, 8 s window | verify.sh:32-57; OrderPlacedRouteTest WINDOW=8s; a2.log | examples/aa README:19-32 | verified |
+| AA-28 | A | Example page: route "fetches the order over HTTP, drops a repeated event id" (order) | _example_pages/aa:8 now: drops a repeated event id, fetches the order over HTTP, skips a cancelled order | _example_pages/aa:8 | verified (repair 1 (git f142086..3f55214)) |
+| AA-29 | A | A check that bites is mutation testing (DeMillo, Lipton, Sayward 1978; PIT) | Crossref DOI 10.1109/C-M.1978.218136: Computer 11(4) 34-41, April 1978; pitest.org: 'a state of the art mutation testing system ... for Java and the jvm' (fetched r2); bibliography rows present | _docs/aa:50-68 | verified (repair 1 (git f142086..3f55214)) |
+| AB-01 | B | Share group relies on settings compose sets, two because one broker cannot satisfy defaults | _infra/compose-kafka.yaml:26-31; F kbroker (RF 3, min.isr 2) | _docs/ab:12 | verified |
+| AB-02 | B | CloudNativePG sets wal_level logical by default | paraphrased; no 7-gram with the CNPG page | _docs/ab:14 | verified (repair 1 (git f142086..3f55214)) |
+| AB-03 | B | KAFKA_ var -> key: prefix dropped, _ -> ., lower case | configs.py env_pairs; compose check 5 PASS (K b-compose2) | _docs/ab:39 | verified |
+| AB-04 | B | Strimzi node ids: broker 0, controller 1; compose broker 1 | SK K1 (edp-broker-0, edp-controller-1); verify.sh node_id; K b-k8s4 PASS 3 | _docs/ab:67 | verified |
+| AB-05 | B | One internal listener behind the bootstrap Service | _k8s/kafka/kafka.yaml listeners; captured status.listeners bootstrap edp-kafka-bootstrap | _docs/ab:67 | verified |
+| AB-06 | B | Strimzi quote on forbidden prefixes | F strimzi.txt exact sentence | _docs/ab:69 | verified |
+| AB-07 | B | start.sh runs initdb then execs postgres with four settings | _infra/postgres/start.sh:44-47: wal_level, max_replication_slots, max_wal_senders, listen_addresses | _docs/ab:73 | verified (repair 1 (git f142086..3f55214)) |
+| AB-08 | B | bootstrap.initdb replaces initdb, createdb and password handling | _k8s/postgres/cluster.yaml bootstrap.initdb, secret edp-pg-app | _docs/ab:94 | verified |
+| AB-09 | B | CNPG four layers in order; fixed ones "can't be overridden by the user via the YAML configuration"; globals wal_level logical, max_replication_slots 32 | F cnpg.txt (all four, quote exact) | _docs/ab:107 | verified |
+| AB-10 | B | Same wal_level, different slot counts | target/captures compose/pg.txt 10, k8s/pg.txt 32; compare check 19 | _docs/ab:107 | verified |
+| AB-11 | B | Debezium on k8s connects as the owner; Cluster grants REPLICATION through managed.roles | 35 connectors database.user edp-pg-app; cluster.yaml managed.roles replication:true | _docs/ab:109 | verified |
+| AB-12 | B | Capture read with kafka-configs --describe --all and current_setting() through psql | configs.py cmd_sql uses `SELECT ... current_setting(k)`, not SHOW | _docs/ab:115; README:3 | verified (repair 1 (git f142086..3f55214)) |
+| AB-13 | B | docker exec on compose, kubectl exec on k8s; compare starts nothing | verify.sh:29-33, lib.sh kafka_raw_on/psql_exec; compare_half | _docs/ab:115 | verified |
+| AB-14 | B | 13 broker keys, 5 PostgreSQL keys, plus Kafka version | configs.py KAFKA_KEYS (13), PG_KEYS (5); compare checks 3-17 | _docs/ab:115 | verified |
+| AB-15 | B | Equal table values | target/captures/{compose,k8s}; K b-compare2 checks 3-17 | _docs/ab:117-129 | verified |
+| AB-16 | B | Four differences, any other fails | configs.py ALLOWED; compare checks 18-22; drift run fails 7 and 22 (K b-compare-drift) | _docs/ab:131-138 | verified |
+| AB-17 | B | Kafka 4.3 default classic,consumer,streams; share topic RF 3, min.isr 2; quote "Topic creation will fail..."; deprecated, all protocols always enabled in 5.0 | F kbroker.txt (all, quote exact) | _docs/ab:140 | verified |
+| AB-18 | B | A Debezium connector holds one slot | Debezium PG connector (one slot per connector); ch 9 | _docs/ab:142 | verified |
+| AB-19 | B | Files checked against running system: set keys equal, unset keys default | verify.sh checks 5-8 (both halves) | _docs/ab:144 | verified |
+| AB-20 | B | Describe for a non-broker id prints nothing and exits 0; witness rejects empty | SK K1; verify.sh witness_rejects_empty; check 3 PASS | _docs/ab:146 | verified |
+| AB-21 | B | k8s half creates the profile if missing; 9/9, 9/9, 23/23 | lib.sh:313-314 cluster.sh up; K b-compose2, b-k8s4, b-compare2 | _docs/ab:163 | verified |
+| AB-22 | B | DRIFT=partitions: broker reports 6; compare reports unlisted difference | K b-compose-drift 8/9 (5), b-compare-drift 21/23 (7, 22) | _docs/ab:152,167 | verified |
+| AB-23 | B | README timings: compose 70-71 s; k8s 2:00-2:14; teardown 18-19 s; cluster up 41-44 s; captures about a minute | K b-compose1 1:10.66, drift 1:10.73; b-k8s1-3 2:14.05/2:02.54/2:02.72 (b-k8s4 122 s per WINDOW.md); deletes 18-19 s; cluster-up1 41.6 s, recreate 44 s; SK K1 ~63 s | examples/ab README:73 | verified ("2 min" is 2:02) |
+| AB-24 | B | README: compose half refuses while another stack is up; k8s half refuses while compose up | verify.sh:58 stack-guard; lib.sh:313 stack-guard --minikube | examples/ab README:28 | verified |
+| AB-25 | B | PostgreSQL defaults max_connections 100, max_wal_senders 10, max_replication_slots 10 | F pgconn.txt ("typically 100"), pgrepl.txt (10, 10) | _docs/ab:175; README:32 | verified |
+| AC-01 | C | ksqlDB under Confluent Community License; forbids competing SaaS | confluentinc/ksql LICENSE = CCL 1.0; F ccl.txt Excluded Purpose | _docs/ac:14 | verified |
+| AC-02 | C | Materialize BSL; its text says not an Open Source license | F mz.txt "is not an Open Source license" | _docs/ac:14 | verified |
+| AC-03 | C | Input JSON shape, single-partition topic | counts.py record(); compose.yaml topics-init --partitions 1; check 1 | _docs/ac:20-23 | verified |
+| AC-04 | C | Each engine takes event time from deliveredAt and closes a window by a lateness bound; how the bound advances differs | contradicted by _docs/ac:116 and SP F19 (watermarks advance per batch/interval; first input order gave KS 3 vs 4) | _docs/ac:26 | verified (repair 1 (git f142086..3f55214)) |
+| AC-05 | C | One lateness bound, 10 s, in grace and both watermark delays | compose KS_GRACE_SECONDS default; sql/*.sql @LATENESS@; check 5 (W c2) | _docs/ac:28 | verified |
+| AC-06 | C | Topology code, store name, retention 1 h | DeliveryCountsTopology.java:30-58 | _docs/ac:34-41 | verified |
+| AC-07 | C | Default window store retention = size + grace; without it the query answers the newest two windows | DeliveryCountsTopologyTest.withoutAnExplicitRetentionAClosedWindowDisappears; SP F16 | _docs/ac:49 | verified |
+| AC-08 | C | Kafka IQ: an instance queries the locally managed part of the state | F kiq.txt "query the locally managed portion of the state" | _docs/ac:51 | verified |
+| AC-09 | C | Quarkus guide: REST endpoint returns latest aggregate without subscribing to a topic | F qks.txt "without having to subscribe to any Kafka topic" | _docs/ac:51 | verified |
+| AC-10 | C | Flink statements submitted with sql-client.sh -f | verify.sh:171 | _docs/ac:57 | verified |
+| AC-11 | C | Window leaves once when watermark passes its end; upsert-kafka keyed by PK | check 7 and 14 (7 records, none revised); F fupsert.txt | _docs/ac:76 | verified |
+| AC-12 | C | Flink pinned 2.2.1, Kafka SQL connector has no build for 2.3 | Maven Central flink-core 2.3.0 exists; flink-sql-connector-kafka latest 5.0.0-2.2 (maven-metadata.xml, fetched) | _docs/ac:78 | verified |
+| AC-13 | C | Connector jar downloaded by init service, sha512 checked, copied to lib | _infra/compose-flink.yaml:5-24, 27 | _docs/ac:78 | verified |
+| AC-14 | C | Kafka source watermark = minimum over partitions; idle partition holds it; table.exec.source.idle-timeout | F fkafka.txt (exact concept) | _docs/ac:78 | verified |
+| AC-15 | C | RisingWave speaks PG wire protocol; postgres container's psql is client | verify.sh:77; compose-risingwave.yaml 4566 | _docs/ac:84 | verified |
+| AC-16 | C | Default emit on update; EOWC holds window; docs recommend EOWC when downstream append-only like Kafka | F rweowc.txt ("When the downstream system of the sink is append-only, such as Kafka or S3"); check 9/12 | _docs/ac:102 | verified |
+| AC-17 | C | (cut) RisingWave flags EMIT ON WINDOW CLOSE as experimental | claim removed from ac doc, README:3 and sql/risingwave.sql | _docs/ac:102; README:3 | n/a (removed, repair 1 (git f142086..3f55214)) |
+| AC-18 | C | Community Edition Apache-2.0; premium needs a licence key; Kafka source, tumble(), emit clause not premium | F rwprem.txt (Apache License 2.0; license key; list has none of the three) | _docs/ac:104 | verified |
+| AC-19 | C | single_node needs a config capping compactor memory or stops at startup under 4 GiB | SP F14 (2g-6g exit 139); _infra/risingwave/risingwave.toml | _docs/ac:104 | verified |
+| AC-20 | C | Fourteen records, 55 s record 7 s behind 62 counted in window 1 by all; 58 s late record dropped by all; KS logs a warning | counts.py SCENARIO (14), late 58; W c2 checks 11, 13-16; SP F18 (WARN KStreamWindowAggregate) | _docs/ac:110-114 | verified |
+| AC-21 | C | Flink and RisingWave watermarks advance per batch/interval | SP F19, logs/q3-full1-first-order.log | _docs/ac:116 | verified |
+| AC-22 | C | Grace 0: window 1 counts 3 in KS, 4 elsewhere | W c-grace0 12/18, fails 5,6,10,11,13,16; DeliveryCountsTopologyTest.withNoGraceTheOutOfOrderRecordIsLate | _docs/ac:118,151 | verified |
+| AC-23 | C | Kafka Streams exposes a dropped-records metric | bibliography.md row "Kafka Streams task metrics, including dropped-records-total" | _docs/ac:120 | verified |
+| AC-24 | C | Which-one table (state, runs as, licences) | compose-flink.yaml (JM+TM), compose-risingwave single_node; F rwprem (Apache 2.0) | _docs/ac:124-132 | verified |
+| AC-25 | C | (cut) Bellemare's streaming SQL chapter covers the same family | sentence removed; Bellemare ch 14 remains under References | _docs/ac:134 | n/a (removed, repair 1 (git f142086..3f55214)) |
+| AC-26 | C | Pinot describes itself as distributed OLAP database; Druid as analytics database for streaming and batch data | F pinot.txt ("open-source distributed OLAP database"); druid.txt ("real-time analytics database ... on streaming and batch data") | _docs/ac:136 | verified |
+| AC-27 | C | verify.sh starts Kafka, Flink, RisingWave + service; 18/18 | W c1, c2 18/18 | _docs/ac:147 | verified |
+| AC-28 | C | Flink UI on 18081 | compose-flink.yaml ports 127.0.0.1:18081:8081 | _docs/ac:152 | verified |
+| AC-29 | C | README: KS 20 ms, Flink 4.3 to 4.4 s, RW 4.4 s, EOWC 4.5 s (three clean runs) | r13-window-c/c1.log, c2.log, r13-validate/logs/c.log NOTE lines | examples/ac README:50-53 | verified (repair 1 (git f142086..3f55214)) |
+| AC-30 | C | README: memory 2.08 and 2.09 GiB; submit 5.0 to 5.1 s; DDL 2.4 s; three clean runs, submit/DDL/memory printed in two | c2.log 5054/2372 ms 2.08 GiB; validate c.log 5027/2367 ms 2.09 GiB; grace-0 run excluded | examples/ac README:46,54-56 | verified (repair 1 (git f142086..3f55214)) |
+| AC-31 | C | README: 7 tests on the test driver | DeliveryCountsTopologyTest has 7 @Test methods | examples/ac README:69 | verified (no surefire report retained) |
+| AC-32 | C | README check list and grace-0 prediction (12 of 18) | verify.sh checks; W c-grace0 | examples/ac README:36-42 | verified |
+| AD-01 | D | The map holds 37 patterns, none from chapters 5, 6 and 10 | diagrams/ad-pattern-map.excalidraw: 37 pattern boxes with chapter labels (counted r2) | _docs/ad:12 | verified (repair 1 (git f142086..3f55214)) |
+| AD-02 | D | Part descriptions 1-6, seven columns | _parts/00-07; _docs part: fields | _docs/ad:16-18 | verified |
+| AD-03 | D | Symptom table chapter numbers | ch 04 has "Pattern: Resequencer"; other rows match chapter titles | _docs/ad:22-35 | verified |
+| AD-04 | D | Glossary: Compaction, chapters 9, 19 | _docs/09:70,72 compacted document topic; 19 compacted carriers topic | _docs/ad:45 | verified (repair 1 (git f142086..3f55214)) |
+| AD-05 | D | Glossary: Watermark, Appendix C | "watermark" absent from _docs/21; only _docs/17 uses it, as a tx_id checkpoint (different meaning); windowing sense is Appendix C | _docs/ad:79 | verified (repair 1 (git f142086..3f55214); D is exempt from the xref rule) |
+| AD-06 | D | Other glossary rows: term appears in each listed chapter | script grep of each term in the listed _docs/NN (all hit) | _docs/ad:41-78 | verified |
+| AD-07 | D | Glossary definitions (acks, consumer group, fencing, read committed, stream time, tombstone, etc.) | Kafka docs (F kbroker), _docs/21:30 (stream time), standard definitions | _docs/ad:41-79 | verified |
+| AD-08 | D | EIP Camel cross-reference links and chapter titles (19 links) | curl 200 for all; page titles match number+title; Resequencer in 11 (17 hits), Competing Consumer in 14, Outbox/Idempotent/Transactional Client in 15, Dead Letter in 5, Content Enricher in 12, Saga in 10, Correlation Identifier in 8, share groups in P | _docs/ad:87-105 | verified |
+| AD-09 | D | Event Notification -> EIP Camel 7 Message Types, "deeper" | page has Event Message (9) but "Event Notification" 0 hits | _docs/ad:88 | verified (weak) |
+| AD-10 | D | Event catalog lists chapters 1 to 27 whose text or example names each event | recomputed by the repair by grep; spot-checked OrderPlaced in 14, PaymentProcessed in 16 | _docs/ad:109-121 | verified (spot-checked, repair 1 (git f142086..3f55214)) |
+| AD-11 | D | References credit Hohpe and Woolf for most messaging patterns, Fowler, Richardson, Garcia-Molina and Salem for the rest | map includes Fowler (Event Notification, Event-carried state, Event Sourcing/CQRS), Richardson (Outbox, Log Tailing, Saga), Evans/Fowler (Aggregate), Garcia-Molina & Salem (Saga); all in bibliography.md:25,36-41,50-51,64-65 but not credited in D | _docs/ad:125 | verified (repair 1 (git f142086..3f55214); Evans credited only through Fowler's DDD_Aggregate, Low) |
+| AD-12 | D | Reference link EIP Camel /docs/ | https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/ HTTP 200 (r2) | _docs/ad:125 | verified (repair 1 (git f142086..3f55214)) |
+| AD-13 | D | Reference link Strimzi /docs/operators/latest/ | https://strimzi.io/docs/operators/latest/overview.html HTTP 200 (r2) | _docs/ad:133 | verified (repair 1 (git f142086..3f55214)) |
+| AD-14 | D | Bellemare credited for event time, stream time, watermarks | book in bibliography.md:22 and hub books.yml:496; chapter not named | _docs/ad:134 | verified (no chapter) |
+| AE-01 | E | Kafka orders records only inside one partition | Kafka intro (sources.md:156, confirmed) | _docs/ae:20 | verified |
+| AE-02 | E | Hohpe and Woolf: Resequencer is a stateful filter that collects and re-orders messages for publication in a specified order | EIP Resequencer page fetched: "Use a stateful filter, a Resequencer, to collect and re-order messages so that they can be published to the output channel in a specified order" (close paraphrase, credited) | _docs/ae:28 | verified |
+| AE-03 | E | Camel has batch and stream resequencers; batch collects up to size/time and sorts; stream detects gaps between integer sequence numbers | Camel resequence-eip.adoc (fetched, 4.22.x page + main adoc lines 25-27, 50, 537-545) | _docs/ae:28 | verified |
+| AE-04 | E | Route code: stream().capacity().timeout(), batch().size().timeout() | StreamResequencerRoute.java, BatchResequencerRoute.java | _docs/ae:34-42 | verified |
+| AE-05 | E | Apply route writes one row per event via Panache, identity = order of application, publishes keyed by order id | ShipmentRecorder.record, ShipmentApplyRoute (KafkaConstants.KEY = orderId); verify.sh checks 6-7 | _docs/ae:44 | verified |
+| AE-06 | E | Stream form with a global gapless sequence restores 1..12 | verify.sh:200 check 5; WC e3/e4 23/23 | _docs/ae:48 | verified |
+| AE-07 | E | First event has no predecessor, so even ordered input leaves only after the timeout | ResequencerEngine.insert (camel-4.22.0): lastDelivered null -> schedule(timeout); verify.sh:203-204 check 8 | _docs/ae:48 | verified |
+| AE-08 | E | Per-order number: an event whose number the resequencer already holds is dropped as a duplicate, nothing logged | Camel Sequence is a TreeSet; Camel doc: duplicates not supported | _docs/ae:50 | verified (repair 1 (git f142086..3f55214)) |
+| AE-09 | E | 3 of 12 applied, 9 lost, in each of the seven runs measured | WC e1,e2,e3,e4,e-none,e-order NOTE "3 of 12 events applied" (6 runs); verify.sh:228-229 asserts only 1<=n<12 and no ERROR/rejected line | _docs/ae:50; README:78 | verified (count from logs; check is a range) |
+| AE-10 | E | Batch of six: event 2 in batch 1 applied before event 1 in batch 2 | verify.sh:247-249 checks 15-16; BatchResequencerTest | _docs/ae:52 | verified |
+| AE-11 | E | Gap: 13-15 at once, 17/18 held until timeout, 16 skipped | verify.sh:209-211 checks 9-10 | _docs/ae:58 | verified |
+| AE-12 | E | Camel: after a timeout the resequencer stops waiting for the expected number and goes on | paraphrased; no 7-gram with the Camel doc | _docs/ae:58 | verified (repair 1 (git f142086..3f55214)) |
+| AE-13 | E | If 16 was lost no message says so | nothing_logged() now part of check 9 | _docs/ae:58 | verified (repair 1 (git f142086..3f55214)) |
+| AE-14 | E | rejectOld off is the default; late 16 applied after 18 | Camel default false; application.properties:11; verify.sh:214 check 11 | _docs/ae:60 | verified |
+| AE-15 | E | rejectOld on: resequencer throws, route error handler decides | ResequencerEngine.insert MessageRejectedException; StreamResequencerRoute onException; verify.sh:236-237 checks 13-14 | _docs/ae:60 | verified |
+| AE-16 | E | Stream capacity default 1000 | resequence-eip.adoc:483 | _docs/ae:66 | verified |
+| AE-17 | E | Full buffer blocks the consumer thread until timeout or gap fill; no early release, no error; lag grows | StreamResequencer.process engine.waitUntil(size<capacity); verify.sh:259-269 checks 17-19; SP F27 | _docs/ae:66 | verified |
+| AE-18 | E | The timeout must stay short enough that the blocked consumer does not pass max.poll.interval.ms | Kafka consumer configs max.poll.interval.ms (bibliography row 134) | _docs/ae:66 | verified (repair 1 (git f142086..3f55214)) |
+| AE-19 | E | Camel Kafka commits on a timer via client auto-commit, regardless of release | application.properties:16-17 comment; verify.sh:274-275 precondition 20 (committed == end, none applied) | _docs/ae:68 | verified |
+| AE-20 | E | Held records lost at restart; normal shutdown does not flush them | verify.sh:271-281 check 21 (force-recreate = SIGTERM); WC e4 | _docs/ae:68 | verified |
+| AE-21 | E | (cut) A killed process loses them the same way | SP F28 only (SIGKILL); example does not kill | _docs/ae:68 | n/a (removed, repair 1 (git f142086..3f55214)) |
+| AE-22 | E | verify.sh prints 23/23 | WC e3.log, e4.log | _docs/ae:89; README:50 | verified |
+| AE-23 | E | RESEQUENCER=none: 16/23, fails 5-11 | WC e-none.log | README:84 | verified |
+| AE-24 | E | SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500: 16/23, fails 5 to 11 | r13-repair1/acdeg-e-order.log | README:85; _docs/ae:94 | verified (repair 1 (git f142086..3f55214)) |
+| AE-25 | E | Maven build runs three tests | StreamResequencerTest 2 @Test, BatchResequencerTest 1 @Test | README:48 | verified |
+| AE-26 | E | Checks 1, 2, 4, 20 are preconditions | verify.sh:183,184,199,275 | README:50 | verified |
+| AE-27 | E | compose: three partitions per topic, 20 s stop grace | compose.yaml:21,59 | README:97 | verified |
+| AE-28 | E | Lawrence ch 2 "Anatomy of Message-Driven Systems" | _plans/sources.md Lawrence row 2 now lists Appendix E | _docs/ae:111 | verified (repair 1 (git f142086..3f55214)) |
+| AF-01 | F | Recreate kills all existing pods before creating new ones | kubernetes.io Deployments fetched: "All existing Pods are killed before new ones are created when .spec.strategy.type==Recreate" | _docs/af:18 | verified |
+| AF-02 | F | Recreate: nothing lost, backlog grows during gap | verify.sh:113-116 checks 4-6; WK f1/f2/f3 3000/3000 | _docs/af:22 | verified |
+| AF-03 | F | Recreate gap 4.8 to 9.3 s over six clean runs | bf/f1 4.9, f2 4.8; r1 validator 9.3; window runs | README:64,111 | verified (repair 1 (git f142086..3f55214)) |
+| AF-04 | F | Records after last commit can be processed again (attempts 2); 0 to 70 over six clean runs | bf/f1 50, f2 40; window runs | _docs/af:26; README:67 | verified (repair 1 (git f142086..3f55214)) |
+| AF-05 | F | maxSurge 1/maxUnavailable 0: the Deployment never has fewer than three available pods | Kubernetes Deployments doc | _docs/af:34 | verified (repair 1 (git f142086..3f55214)) |
+| AF-06 | F | Every membership change is a rebalance and repeats records after last commit | verify.sh:145-146 check 12; WK 372/47/68 | _docs/af:44 | verified (now 'can go') |
+| AF-07 | F | KIP-848: coordinator drives a declarative assignment, members reconcile toward it | KIP-848 fetched: "declarative assignment ... reconciliation loops to drive members toward their desired assignment" | _docs/af:48 | verified |
+| AF-08 | F | Neither protocol guarantees no repeat | consumer 47-372; classic 0 in its single example run (WK f-classic), 104-342 in SK K6 | _docs/af:48 | verified (spike + example) |
+| AF-09 | F | Readiness decides when the Deployment counts the pod available; the pod joins the group when the app starts | Readiness gates Service endpoints and rollout progress (availability for maxUnavailable); the Kafka consumer joins the group at application start regardless of readiness | _docs/af:52 | verified (repair 1 (git f142086..3f55214)) |
+| AF-10 | F | Rolling update redelivered 0 to 384 (47, 68, 372, 19, 384, 0); classic 0 and 99 | bf/f1 384, f2 0, f-copyoff 68, f-classic 99; window and r1 logs | README:72,111 | verified (repair 1 (git f142086..3f55214)) |
+| AF-11 | F | HTTP roll: in-flight requests fail at the connection level (reset or timeout); no 5xx | http.py report splits reset/timeout/refused; bf/f1 reset=1 timeout=4, f2 reset=4 timeout=4 | _docs/af:60; README:98 | verified (repair 1 (git f142086..3f55214)) |
+| AF-12 | F | Each 201 left exactly one event; failed request none; retry 409 | WK f2,f3 missing=0 duplicate=0 published_for_failed=0, "retry ... answered 409" (f1 predates the 409 assertion) | _docs/af:60; README:90 | verified |
+| AF-13 | F | 5, 8 and 5 of 2,380 to 2,390 failed; 0.2 to 0.3 percent | WK f1 5/2380, f2 8/2390, f3 5/2382 (0.21-0.33%) | README:89,113 | verified |
+| AF-14 | F | Control 1,584 of 1,584 "in every run" | README now 'each run' | README:85 | verified (repair 1 (git f142086..3f55214)) |
+| AF-15 | F | shutdown.delay works only with quarkus.shutdown.delay-enabled=true (build time, default false) | Quarkus all-config | _docs/af:62 | verified (repair 1 (git f142086..3f55214)) |
+| AF-16 | F | (cut) env vars QUARKUS_SHUTDOWN_* on the Deployment; now: the Deployment sets none of them | apps/order-service.yaml sets neither | _docs/af:62 | verified (repair 1 (git f142086..3f55214)) |
+| AF-17 | F | Breaking rename: insert fails, Failed delivery logged, offset committed, lag 0, no row | verify.sh:157-159 checks 13-15; SK K7 | _docs/af:70 | verified |
+| AF-18 | F | A record it could not store may be skipped, leaving only an error line in the log | contradicts _docs/af:68,70 (the error line is the trace) | _docs/af:12 | verified (repair 1 (git f142086..3f55214)) |
+| AF-19 | F | (cut) schema registry refuses at the producer | no source cited, not run | _docs/af:70 | n/a (removed, repair 1 (git f142086..3f55214)) |
+| AF-20 | F | Sato ParallelChange: expand, migrate, contract | martinfowler.com/bliki/ParallelChange.html: title 'Parallel Change', Danilo Sato, 13 May 2014, 'expand, migrate, and contract' (fetched r2); bibliography.md and sources.md rows present | _docs/af:72,145 | verified (repair 1 (git f142086..3f55214); prose spells 'ParallelChange', page title is 'Parallel Change', Low) |
+| AF-21 | F | Expand: both fields stored 20/20; old shape 20/20 | verify.sh:161-163 checks 16-17 | _docs/af:72; README:77 | verified |
+| AF-22 | F | New-topic migration path | stated as drawn, not run | _docs/af:80-84 | design |
+| AF-23 | F | Offset reset only while consumers inactive; accepts a CSV file | Kafka basic ops fetched: "first make sure that the consumer instances are inactive"; "--from-file : Reset offsets to values defined in CSV file" | _docs/af:92 | verified |
+| AF-24 | F | Kafka resets offsets only for inactive groups and accepts a CSV; the target group can be new | Kafka basic operations + bf/f1 cut-over into a fresh notify-green | _docs/af:92 | verified (repair 1 (git f142086..3f55214)) |
+| AF-25 | F | Export: one topic,partition,offset line per partition, no header | lib.sh:93; SK K8 sample | _docs/af:101 | verified |
+| AF-26 | F | (cut) Group Empty takes seconds | check 18 asserts <=60 s; seconds from SK K8 (2-3 s) only | _docs/af:101 | n/a (removed, repair 1 (git f142086..3f55214)) |
+| AF-27 | F | Cut-over: records can be read twice; overlap bounded by what blue processed in its last commit interval, can be zero | bf/f2 0, f1 450 | _docs/af:105 | verified (repair 1 (git f142086..3f55214)) |
+| AF-28 | F | Overlap 0 to 450 cut-over, 0 to 290 rollback | WK f1-f3 | README:81,85 | verified |
+| AF-29 | F | Cut-over 12 to 18 s (8 s without copy) | bf/f1 15, f2 18, f-classic 12, f-copyoff 8 | README:111 | verified (repair 1 (git f142086..3f55214)) |
+| AF-30 | F | Rollback import replaces blue's older offsets | verify.sh:205 check 23 | _docs/af:107 | verified |
+| AF-31 | F | 30/30 | WK f2.log, f3.log | _docs/af:119; README:37 | verified |
+| AF-32 | F | GROUP_PROTOCOL=classic: only check 8 fails; 0 redelivered roll, 420 stop, gap 8.7 s | WK f-classic.log | _docs/af:123; README:106 | verified |
+| AF-33 | F | OFFSET_COPY=off: fails 19,21,23,25; 1,580 and 1,050 shared | WK f-copyoff.log | _docs/af:124; README:106 | verified |
+| AF-34 | F | Bellemare 2e ch 21 Deploying Event-Driven Microservices | sources.md:109 (owner TOC); bibliography.md:22; books.yml:495 | _docs/af:144 | verified |
+| AG-01 | G | GET answered for every order it places, and many times over by a read-heavy service | none | _docs/ag:12 | verified (softened, repair 1 (git f142086..3f55214)) |
+| AG-02 | G | Kafka transaction covers records in one cluster and consumer offsets; not PostgreSQL/Redis | KIP-98 fetched (atomic multi-partition writes, sendOffsets) | _docs/ag:20 | verified |
+| AG-03 | G | Azure: cache-aside loads data on demand | learn.microsoft.com cache-aside fetched: "Load data on demand into a cache from a data store" | _docs/ag:20 | verified |
+| AG-04 | G | Azure Materialized View: views prepared over source data for queries | fetched: "Generate prepopulated views over data in one or more data stores ..." | _docs/ag:28 | verified |
+| AG-05 | G | Comparison made with WATCH/MULTI from the client or a Lua script on the server | WATCH/MULTI is optimistic, Lua EVAL runs server side | _docs/ag:28 | verified (repair 1 (git f142086..3f55214)) |
+| AG-06 | G | Version + ExportedEvent in one @Transactional; connector file is the outbox one unchanged; routes by topic column | diff 08-transactional-outbox/connect/order-outbox.json = identical; route.by.field=topic, replacement ${routedByValue}; Debezium EventRouter doc fetched | _docs/ag:32 | verified |
+| AG-07 | G | Typed transaction API watches the key, reads version, queues write if higher; discarded -> retry | Quarkus redis-reference 3.40 section 5.8 'Use Redis transactions', 5.8.1 'Implement the optimistic locking pattern' (fetched r2), now cited | _docs/ag:45-61 | verified (repair 1 (git f142086..3f55214)) |
+| AG-08 | G | Lua EVAL alternative makes the comparison on the server in one round trip | 'same state after replay' cut | _docs/ag:61 | verified (repair 1 (git f142086..3f55214)) |
+| AG-09 | G | Redis 8 tri-licence RSALv2/SSPLv1/AGPLv3; only AGPLv3 open source | redis.io/legal/licenses fetched ("SSPLv1 is not an open source license", AGPLv3 open source) | _docs/ag:63 | verified |
+| AG-10 | G | redis:8.10.3-alpine, no persistence | _infra/compose-redis.yaml:5,7 | _docs/ag:63 | verified |
+| AG-11 | G | Dev Services default Redis 7; property set | redis-dev-services fetched default docker.io/library/redis:7; application.properties:18 | _docs/ag:63 | verified |
+| AG-12 | G | Staleness median 491-496 ms, slowest 499-875 ms | WC g1 496/499, g2 491/875, g-go1 494/499, g-go2 496/845, g-go3 491/789 | _docs/ag:69; README:51 | verified |
+| AG-13 | G | The connector's poll.interval.ms, 500 ms by default, is the likely cause; not separated by a run | Debezium postgresql.adoc: poll.interval.ms default 500 (fetched r2) | _docs/ag:69; _example_pages/ag:23 | verified (repair 1 (git f142086..3f55214)) |
+| AG-14 | G | A read that follows its write at once "usually" misses | 20 of 20 first reads missed in all 5 runs | _docs/ag:69 | verified |
+| AG-15 | G | Connect stopped: committed, readable from PostgreSQL, cache 404; catches up | verify.sh:159-163 checks 10-11 | _docs/ag:71 | verified |
+| AG-16 | G | Redis down: orders still accepted | verify.sh:201 check 19 | _docs/ag:75,91 | verified |
+| AG-17 | G | Rebuild of 27 orders in 1 to 2 s | WC g2 2 s, g-go3 1 s (two runs; 1 s SECONDS granularity, 2 s poll) | _docs/ag:79; README:51 | verified (two runs, now stated) |
+| AG-18 | G | Guard off: cancelled orders no longer read CANCELLED at version 2; with guard CANCELLED v2 | r1 bite g-guardoff-replay 23/24 fails 18 only | _docs/ag:81 | verified (repair 1 (git f142086..3f55214)) |
+| AG-19 | G | Guard off everywhere: plain replay and rebuild still passed in the run made | r1 bite g-guardoff-replay (checks 17, 21 pass) | _docs/ag:81 | verified (repair 1 (git f142086..3f55214)) |
+| AG-20 | G | Dual write: 500, no PostgreSQL row, Redis answers 200 | WC g-gd: checks 14-15 pass, 16 fails (cache not 404); 200 from SP F35 | _docs/ag:89 | verified |
+| AG-21 | G | Dual write with Redis stopped fails the request | WC g-gd FAIL 19 | _docs/ag:91 | verified |
+| AG-22 | G | Dual: 20/24, fails 10,13,16,19; guard off: 23/24 fails 18; 24/24 | WC g-gd, g-go3, g2 | README:48-49; _docs/ag:102 | verified |
+| AG-23 | G | Fastest 413-487 ms; dual median 3 ms | WC min 413/487/452/487/484; g-gd p50=3 | README:51 | verified |

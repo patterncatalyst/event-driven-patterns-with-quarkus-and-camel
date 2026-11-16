@@ -5,7 +5,7 @@ permalink: /examples/33-cruise-control/
 description: "A Kafka cluster of two brokers with Cruise Control, grown to three nodes and rebalanced by an approved KafkaRebalance, then grown to four and shrunk back with autoRebalance, with the replica placement read back from Kafka at every step."
 ---
 
-[`examples/33-cruise-control/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/33-cruise-control) is a manifest overlay on the minikube substrate of chapter 28: Kafka with Cruise Control, four `KafkaTopic` resources with two replicas, and a load Job. It runs no application. It accompanies [Cruise Control: rebalancing]({{ '/docs/33-cruise-control/' | relative_url }}).
+[`examples/33-cruise-control/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/33-cruise-control) is a manifest overlay on the shared minikube setup in `examples/_k8s`: Kafka with Cruise Control, four `KafkaTopic` resources with two replicas, and a load Job. It runs no application. It accompanies [Cruise Control: rebalancing]({{ '/docs/33-cruise-control/' | relative_url }}).
 
 It uses kustomize through `kubectl`, Strimzi, Kafka and Cruise Control.
 
