@@ -47,7 +47,7 @@ The apply route writes one row per event to PostgreSQL through a Panache entity,
 
 The stream form can only release an event when it knows the event before it. That works when the numbers form one run without gaps across everything the resequencer sees: 1, 2, 3 and so on over all orders. A single sequencer that stamps every event before it is published gives that run. The first event has no predecessor to confirm it, so even correctly ordered input leaves after the timeout.
 
-The per-order number does not give the run. Order O-1 has events 1, 2, 3 and so does O-2, so the stream form sees the same value from different orders. Events with equal numbers collide, an event whose number is not the successor of the last released waits for a predecessor that belongs to a different order, and most of the input is held and never released, with nothing logged: TBD(spike: 9 of 12). `SEQUENCE_BY=order` (demo code) drives the stream form with the per-order number to show it.
+The per-order number does not give the run. Order O-1 has events 1, 2, 3 and so does O-2, so the stream form sees the same value from different orders. Events with equal numbers collide, an event whose number is not the successor of the last released waits for a predecessor that belongs to a different order, and most of the input is held and never released, with nothing logged: 9 of 12 in every run. `SEQUENCE_BY=order` (demo code) drives the stream form with the per-order number to show it.
 
 The batch form sorts by order id and sequence, which is the per-order key it can use. Its limit is the batch. A batch of six that holds an order's event 2 and not its event 1 releases event 2, and event 1 arrives in the next batch and is applied after it. Sorting within a batch makes disorder rarer. It does not remove it, and a batch that closes on time instead of size makes the boundary depend on the clock.
 
@@ -65,7 +65,7 @@ The timeout is the latency of every gap. A short one gives up on slow events and
 
 The stream form's capacity bounds how many events it holds, 1000 by default. When the limit is reached the consumer thread blocks inside the resequencer until the timeout releases something or the gap fills. It does not release early and it does not raise, so the consumer stops polling and the group's lag grows. Backpressure is a useful property for a buffer, and it needs a timeout short enough that the stopped consumer is not mistaken for a dead one.
 
-The held events live only in the process. The Camel Kafka consumer commits offsets on a timer through the Kafka client's auto-commit, whether or not the resequencer has released the events it read. Records held when the service stops have therefore already been acknowledged, and a restarted consumer resumes after them: they are neither released nor read again. A normal shutdown does not flush them, and a killed process loses them the same way. With auto-commit off nothing is ever committed, so a restart reads everything again, and the group never records progress.
+The held events live only in the process. The Camel Kafka consumer commits offsets on a timer through the Kafka client's auto-commit, whether or not the resequencer has released the events it read. Records held when the service stops have therefore already been acknowledged, and a restarted consumer resumes after them: they are neither released nor read again. A normal shutdown does not flush them, and a killed process loses them the same way.
 
 {% include excalidraw.html file="ae-restart-loss" alt="Events 502 to 506 are consumed and their offset committed, the resequencer holds them while 501 is missing, a restart empties its memory, and afterwards only 501 is applied; the per-order buffer in PostgreSQL keeps held rows across the restart" caption="Figure E.3: Held records are lost when their offsets were committed before they were released" %}
 
@@ -86,12 +86,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` scatters events of four orders over three topics, applies them through the stream form, then recreates the service for the per-order number, `rejectOld`, the batch form, a full buffer and a restart while holding. Watch the apply order and the shipments topic. It prints `TBD/TBD checks passed`.
+`verify.sh` scatters events of four orders over three topics, applies them through the stream form, then recreates the service for the per-order number, `rejectOld`, the batch form, a full buffer and a restart while holding. Watch the apply order and the shipments topic. It prints `23/23 checks passed`.
 
 Try one change and rerun:
 
 - `RESEQUENCER=none ./verify.sh` (demo code): events are applied as they arrive and the orders come out of sequence.
-- `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` (demo code): the first scenario runs on the per-order number and most events never leave.
+- `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` (demo code): the stream form runs on the per-order number and most events never leave.
 
 ## When not to use it
 

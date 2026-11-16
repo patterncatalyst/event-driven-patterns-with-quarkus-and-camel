@@ -66,21 +66,26 @@ def windows(kind: str, lines):
         raise SystemExit(f"unknown kind {kind}")
 
 
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 def main(argv):
     cmd = argv[1]
     if cmd == "input":
         base = int(argv[2])
         for i, (seconds, carrier) in enumerate(SCENARIO, 1):
-            print(record(3800 + i, carrier, base, seconds))
+            emit(record(3800 + i, carrier, base, seconds))
     elif cmd == "late":
-        print(record(3899, "FASTLINE", int(argv[2]), 58))
+        emit(record(3899, "FASTLINE", int(argv[2]), 58))
     elif cmd == "tick":
-        print(record(3815, "AIRCO", int(argv[2]), 265))
+        emit(record(3815, "AIRCO", int(argv[2]), 265))
     elif cmd == "norm":
         kind, base, lo, hi = argv[2], int(argv[3]), int(argv[4]), int(argv[5])
         rows = sorted((c, s - base, n) for c, s, n in windows(kind, sys.stdin) if lo <= s - base < hi)
         for c, s, n in rows:
-            print(f"{c}|{s}|{n}")
+            emit(f"{c}|{s}|{n}")
     else:
         raise SystemExit(f"unknown command {cmd}")
 

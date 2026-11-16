@@ -39,23 +39,21 @@ Event times are seconds after a minute boundary ten minutes in the past (`counts
 
 | Switch | Predicted failing checks |
 |---|---|
-| `KS_GRACE_SECONDS=0 ./verify.sh` (demo code) | 5, 6, 10, 11, 13, 16 (12 of 18 pass): the 55 s record is late in Kafka Streams alone, so FASTLINE window 1 is 3 there and 4 elsewhere |
-
-Frozen after the first window run.
+| `KS_GRACE_SECONDS=0 ./verify.sh` (demo code) | 5, 6, 10, 11, 13, 16 (12 of 18 pass, as run): the 55 s record is late in Kafka Streams alone, so FASTLINE window 1 is 3 there and 4 elsewhere |
 
 ## Measurements
 
-From the first spike; the window re-measures.
+Two runs with the default lateness, printed as `NOTE` lines by `verify.sh`.
 
 | Item | Value |
 |---|---|
-| Last record to closed windows, Kafka Streams | TBD(spike: 0.05 s) |
-| Flink | TBD(spike: 2.9 s) |
-| RisingWave | TBD(spike: 3.0 s) |
-| RisingWave `EMIT ON WINDOW CLOSE` | TBD(spike: 3.8 s) |
-| Peak memory of all containers | TBD(spike: 2.12 GiB) |
-| Flink job submit | TBD(spike: 4.9 s) |
-| RisingWave DDL | TBD(spike: 2.4 s) |
+| Last record to closed windows, Kafka Streams | 20 ms |
+| Flink | 4.3 s |
+| RisingWave | 4.4 s |
+| RisingWave `EMIT ON WINDOW CLOSE` | 4.5 s |
+| Memory in use by all containers, one `docker stats` sample before the observability checks | 2.08 GiB |
+| Flink job submit | 4.9 to 5.1 s |
+| RisingWave DDL | 2.4 s |
 
 ## Layout
 

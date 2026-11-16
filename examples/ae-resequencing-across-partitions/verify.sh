@@ -100,6 +100,8 @@ committed_all() { # every partition has a committed offset equal to its end offs
 }
 unconsumed() { group_rows | awk '$3 ~ /^[0-9]+$/ {c += ($4 ~ /^[0-9]+$/ ? $4 : 0); e += $5} END {print e - c}'; }
 
+all_consumed() { [[ "$(unconsumed)" == 0 ]]; }
+
 phase() { # phase <mode> <sequence-by> <timeout ms> <capacity> <reject-old> <batch size> <batch timeout ms>: recreate the service
     RESEQUENCER=$1 SEQUENCE_BY=$2 RESEQUENCER_TIMEOUT_MS=$3 RESEQUENCER_CAPACITY=$4 RESEQUENCER_REJECT_OLD=$5 \
         RESEQUENCER_BATCH_SIZE=$6 RESEQUENCER_BATCH_TIMEOUT_MS=$7 \
@@ -246,11 +248,14 @@ check "each batch of six is sorted by order and sequence" poll 40 batches_sorted
 inverted() { [[ "$(sql "SELECT (SELECT id FROM resequencing.shipment_applied WHERE order_id = 'O-4041' AND sequence = 2) < (SELECT id FROM resequencing.shipment_applied WHERE order_id = 'O-4041' AND sequence = 1)")" == "t" ]]; }
 check "an order split over two batches is applied out of order: event 2 before event 1" inverted
 
-echo "Capacity: five events held, 401 missing, 402 to 412 sent, timeout 8 s"
-CAP_TIMEOUT_MS=8000
+echo "Capacity: five events held, 401 missing, 402 to 412 sent, timeout 20 s"
+CAP_TIMEOUT_MS=20000
 phase stream global "$CAP_TIMEOUT_MS" 5 false 10 3000
+# The five events that fill the buffer go first, so that the held ones are 402 to 406; the rest follow once they are held.
 T5=$(now_ms)
-{ for g in 402 403 404 405 406 407 408 409 410 411 412; do ev "c$g" "O-$((4051 + g - 402))" 1 "$g"; done; } | produce "$IN_S"
+{ for g in 402 403 404 405 406; do ev "c$g" "O-$((4051 + g - 402))" 1 "$g"; done; } | produce "$IN_S"
+poll 40 all_consumed || fail_loudly "the five events were not all consumed"
+{ for g in 407 408 409 410 411 412; do ev "c$g" "O-$((4051 + g - 402))" 1 "$g"; done; } | produce "$IN_S"
 blocked_while_held() { # for six seconds: records are unconsumed and nothing is applied
     local end=$((SECONDS + 6))
     while (( SECONDS < end )); do

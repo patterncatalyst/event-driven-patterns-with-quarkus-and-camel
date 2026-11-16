@@ -3,9 +3,13 @@
 # the order and its event commit together, Redis is written only from the events, a cache loss is rebuilt by replay,
 # and an older event never replaces a newer one. Two demo switches show what the pattern prevents:
 # CACHE_WRITE=dual (the request writes Redis before the commit) and CACHE_GUARD=off (no version guard).
+# CACHE_GUARD=off is applied only to the two restarts of the older-events-after-newer-ones scenario (check 18), so it is
+# the one check that fails; every other check runs with the guard on and cannot depend on the order topics are fetched in.
 # KEEP=1 leaves the stack running afterwards.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
+GUARD_SWITCH="${CACHE_GUARD:-on}" # demo code: the value the caller asked for, applied to one scenario only
+export CACHE_GUARD=on
 # shellcheck source=../../scripts/stack-guard.sh
 source ../../scripts/stack-guard.sh edp-ag
 
@@ -185,9 +189,9 @@ check "after a fresh group has replayed both topics, O-4230 to O-4232 are still 
 
 echo "Older events replayed after newer ones"
 redis flushall >/dev/null
-CACHE_GROUP=order-cache-phases CACHE_TOPICS="$CANCELLED" service_up || fail_loudly "order-service did not restart on the cancelled topic"
+CACHE_GUARD="$GUARD_SWITCH" CACHE_GROUP=order-cache-phases CACHE_TOPICS="$CANCELLED" service_up || fail_loudly "order-service did not restart on the cancelled topic"
 poll 60 cache_is O-4232 "CANCELLED 2" || fail_loudly "the cancelled events did not reach the cache"
-CACHE_GROUP=order-cache-phases CACHE_TOPICS="$PLACED" service_up || fail_loudly "order-service did not restart on the placed topic"
+CACHE_GUARD="$GUARD_SWITCH" CACHE_GROUP=order-cache-phases CACHE_TOPICS="$PLACED" service_up || fail_loudly "order-service did not restart on the placed topic"
 poll 90 lag_is_zero order-cache-phases "$PLACED" || fail_loudly "the placed events were not all read"
 check "after the placed events are applied on top of the cancelled ones, O-4230 to O-4232 are still CANCELLED version 2" \
     expect "$(cache_state O-4230)/$(cache_state O-4231)/$(cache_state O-4232)" "CANCELLED 2/CANCELLED 2/CANCELLED 2"
@@ -201,8 +205,10 @@ poll 30 redis_ping || fail_loudly "Redis did not come back"
 check "after Redis returns, it holds no key and the cache has no answer for O-4201" \
     expect "$(redis dbsize)/$(poll 30 http_is /orders/O-4201 404 && echo 404)" "0/404"
 CACHE_GROUP=order-cache-rebuild service_up || fail_loudly "order-service did not restart for the rebuild"
+REBUILD_START=$SECONDS
 check "a fresh consumer group rebuilds the cache: every order in PostgreSQL has the same status and version in Redis" \
     poll 90 cache_matches_db
+echo "NOTE rebuild of $(order_count) orders, from order-service answering requests to a matching cache: $((SECONDS - REBUILD_START)) s"
 check "the rebuilt cache holds exactly as many keys as there are orders" poll 30 cache_size_is_order_count
 
 echo "Observability"

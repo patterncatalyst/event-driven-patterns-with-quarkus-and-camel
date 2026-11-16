@@ -45,10 +45,10 @@ docker compose down -v
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `CACHE_WRITE=dual ./verify.sh` | Redis is written in the request before the commit | predicted 10, 13, 16, 19 | TBD |
-| `CACHE_GUARD=off ./verify.sh` | No version guard | predicted 18; 17 and 21 depend on fetch order and are frozen by the window | TBD |
+| `CACHE_WRITE=dual ./verify.sh` | Redis is written in the request before the commit | 10, 13, 16, 19 | 20/24 pass |
+| `CACHE_GUARD=off ./verify.sh` | No version guard, applied to the older-events-after-newer-ones scenario only; every other check runs with the guard on, so no check depends on the order topics are fetched in | 18 | 23/24 pass |
 
-Staleness from the commit to the first cache hit: TBD(spike: about 350 to 450 ms). Rebuild of 55 orders after a Redis loss: TBD(spike: 2.7 s).
+Staleness from the commit to the first cache hit over 20 orders, five runs with the guard on or off: fastest 413 to 487 ms, median 491 to 496 ms, slowest 499 to 875 ms; every first read missed. With `CACHE_WRITE=dual` the median is 3 ms and no first read misses. Rebuild of 27 orders after a Redis loss, from the service answering requests to a matching cache: 1 to 2 s (polled every 2 s).
 
 ## Layout
 

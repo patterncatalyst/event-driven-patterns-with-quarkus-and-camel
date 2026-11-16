@@ -167,10 +167,14 @@ echo "Infrastructure"
 precondition "the input topic and the Flink output topic exist with one partition each" topics_have_one_partition
 precondition "delivery-counts-service is ready (Kafka Streams RUNNING) and its store answers" poll 90 app_ready
 docker cp "$WORK/flink.sql" edp-flink-jobmanager:/tmp/flink.sql
+SUBMIT_T0=$(date +%s%N)
 docker exec edp-flink-jobmanager /opt/flink/bin/sql-client.sh -f /tmp/flink.sql >"$WORK/flink-submit.log" 2>&1 \
     || { cat "$WORK/flink-submit.log" >&2; fail_loudly "Flink did not accept the SQL"; }
+FLINK_SUBMIT_MS=$((($(date +%s%N) - SUBMIT_T0) / 1000000)); SUBMIT_T0=$(date +%s%N)
 rw_script < "$WORK/risingwave.sql" >"$WORK/rw-submit.log" 2>&1 \
     || { cat "$WORK/rw-submit.log" >&2; fail_loudly "RisingWave did not accept the SQL"; }
+RW_DDL_MS=$((($(date +%s%N) - SUBMIT_T0) / 1000000))
+echo "NOTE: Flink job submit $FLINK_SUBMIT_MS ms, RisingWave DDL $RW_DDL_MS ms"
 precondition "the Flink job is RUNNING" poll 60 flink_running
 precondition "RisingWave has the source and both materialized views" poll 30 rw_ready
 check "the lateness is $LATENESS_SECONDS s in the Kafka Streams grace, the Flink watermark and the RisingWave watermark" lateness_is_same
@@ -194,6 +198,12 @@ check "Kafka Streams drops the late record: window 1 stays 4 and the skip is log
 check "Flink drops it: window 4 closed, window 1 stays 4 and its topic holds 7 records, none revised" poll 90 flink_late_dropped
 check "RisingWave drops it: window 1 stays 4 in both views and the final view now holds window 4" poll 60 rw_late_dropped
 check "the closed windows are still the same list in all three engines" three_equal_after_late
+
+echo "NOTE: memory in use by all containers: $(docker stats --no-stream --format '{{.Name}} {{.MemUsage}}' | grep '^edp-' | python3 -I -c '
+import re, sys
+unit = {"KiB": 1 / 1024, "MiB": 1, "GiB": 1024}
+total = sum(float(m.group(1)) * unit[m.group(2)] for m in map(lambda l: re.match(r"\S+ ([0-9.]+)(KiB|MiB|GiB)", l), sys.stdin) if m)
+sys.stdout.write(f"{total / 1024:.2f} GiB")') (docker stats, sampled once)"
 
 echo "Observability"
 check "Tempo has a trace for delivery-counts-service" poll 90 tempo_has_trace delivery-counts-service

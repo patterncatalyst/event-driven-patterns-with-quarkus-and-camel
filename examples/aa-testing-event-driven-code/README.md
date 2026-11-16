@@ -35,6 +35,9 @@ No compose stack is started. Order ids are `O-36xx`.
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
+| `bites/duplicate-allowed.patch` | Removes the dedup | the drain that counts notifications for a repeated event (check 3); the first-match test stays green (check 4) | 7/7 checks passed |
+| `bites/guard-removed.patch` | Removes the cancelled-order guard | the drain that waits for a cancelled order's notification (check 5) | 7/7 checks passed |
+| `bites/key-changed.patch` | Keys by customer | the test that reads the key (check 6) | 7/7 checks passed |
 | A new `bites/*.patch` | Adds a bite | none until its check is added to `verify.sh` | - |
 
 There are no environment switches. The bites are the experiments: each is an altered copy and the module is never changed.

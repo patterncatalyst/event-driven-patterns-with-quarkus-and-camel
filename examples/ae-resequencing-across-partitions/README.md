@@ -40,14 +40,14 @@ Events are produced to the three topics with scattered keys, by two concurrent p
 3. The per-order number: fewer events applied than sent, nothing logged.
 4. `rejectOld`: the late event is rejected and logged.
 5. Batch form: each batch sorted, one order inverted across the batch boundary.
-6. Capacity 5 with a missing predecessor: the consumer's lag stays up and nothing is applied until the timeout, then all eleven leave in order.
+6. Capacity 5 with a missing predecessor: the five held events are 402 to 406, the consumer's lag stays up and nothing is applied until the timeout, then all eleven leave in order.
 7. A restart while five events are held and committed: only the missing event is applied afterwards.
 
 ## Tests and checks in detail
 
 The Maven build runs three tests: the stream form on a scrambled global sequence, a gap with a late event, and the batch form with one order split across two batches. Kafka and PostgreSQL come from Dev Services.
 
-`verify.sh` prints `TBD/TBD checks passed`. Checks 1, 2, 4 and 20 are preconditions and stop the run when they fail.
+`verify.sh` prints `23/23 checks passed`. Checks 1, 2, 4 and 20 are preconditions and stop the run when they fail.
 
 | Check | Description |
 |---|---|
@@ -75,14 +75,14 @@ The Maven build runs three tests: the stream form on a scrambled global sequence
 | 22 | Tempo has a trace for order-service |
 | 23 | Loki has logs for order-service |
 
-Numbers are written when the live window has run: TBD.
+In the per-order scenario, 3 of the 12 events are applied and 9 are never released, in every run.
 
 ## Experiments
 
 | Switch | Effect | Failing checks | Measured result |
 |---|---|---|---|
-| `RESEQUENCER=none ./verify.sh` | Demo code: events are applied as they arrive | TBD(window), predicted 5, 6, 8, 9 | TBD |
-| `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` | Demo code: the first scenario runs on the per-order number | TBD(window), predicted 5, 6, 8, 9 | TBD |
+| `RESEQUENCER=none ./verify.sh` | Demo code: events are applied as they arrive, in the first two scenarios | 5, 6, 7, 8, 9, 10, 11 | 16/23 pass |
+| `SEQUENCE_BY=order RESEQUENCER_TIMEOUT_MS=500 ./verify.sh` | Demo code: the first two scenarios run on the per-order number with a 500 ms timeout | 5, 6, 7, 9, 10, 11 | 17/23 pass |
 
 ## Layout
 

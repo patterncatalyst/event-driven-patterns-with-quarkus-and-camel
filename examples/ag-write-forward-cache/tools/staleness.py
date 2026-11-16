@@ -11,6 +11,11 @@ import urllib.error
 import urllib.request
 
 
+def emit(*parts, file=sys.stdout):
+    """Write one line of output for the calling shell script."""
+    file.write(" ".join(str(p) for p in parts) + "\n")
+
+
 def request(url, body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method="POST" if body is not None else "GET",
@@ -28,7 +33,7 @@ def main(base, first, count, timeout):
         order_id = f"O-{number}"
         body = {"id": order_id, "customerId": "CU-77", "itemSku": "SKU-42", "quantity": 1, "amount": 10.50}
         if request(f"{base}/orders", body) != 201:
-            print(f"order {order_id} was not accepted")
+            emit(f"order {order_id} was not accepted")
             return 1
         started = time.monotonic()                      # the commit has been answered
         first_read = True
@@ -39,12 +44,12 @@ def main(base, first, count, timeout):
                 missed += 1
                 first_read = False
             if time.monotonic() - started > timeout:
-                print(f"order {order_id} is not in the cache after {timeout} s")
+                emit(f"order {order_id} is not in the cache after {timeout} s")
                 return 1
             time.sleep(0.002)
         waits.append((time.monotonic() - started) * 1000)
     waits.sort()
-    print(f"n={len(waits)} min={waits[0]:.0f} p50={waits[len(waits) // 2]:.0f} max={waits[-1]:.0f} ms, not yet readable at the first read: {missed}")
+    emit(f"n={len(waits)} min={waits[0]:.0f} p50={waits[len(waits) // 2]:.0f} max={waits[-1]:.0f} ms, not yet readable at the first read: {missed}")
     return 0
 
 

@@ -133,7 +133,7 @@ None of the three tells the reader about a dropped record in its answer. Kafka S
 
 Kafka Streams fits when one service owns the question and already runs Kafka Streams: the count is an endpoint of that service and adds no system. Flink fits when the answer is itself an event stream for other consumers, or when the processing needs more than SQL. RisingWave fits when people ask questions of the windows that nobody has written yet. Bellemare's chapter on streaming SQL covers the same family of tools.
 
-Apache Pinot and Apache Druid are stores for analytical queries over event data, a different job from a windowed count, and they are not run here.
+Apache Pinot, which describes itself as a distributed OLAP database, and Apache Druid, which describes itself as an analytics database for streaming and batch data, are databases for analytical queries over event data. That is a different job from a windowed count, and neither is run here.
 
 ## Build, run, observe
 
@@ -171,6 +171,7 @@ State grows with the number of open windows and keys. A count per carrier per mi
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/version/3.40/guides/kafka-streams) (interactive queries through a REST endpoint)
 - Apache Flink, [Windowing table-valued functions](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/dev/table/sql/queries/window-tvf/), [Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/kafka/) (watermarks per partition, idle partitions) and [Upsert Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/upsert-kafka/)
 - RisingWave, [Kafka source](https://docs.risingwave.com/ingestion/sources/kafka), [time windows](https://docs.risingwave.com/processing/sql/time-windows), [emit on window close](https://docs.risingwave.com/processing/emit-on-window-close) and [premium features](https://docs.risingwave.com/get-started/premium-features)
+- Apache Pinot, [home page](https://pinot.apache.org/); Apache Druid, [home page](https://druid.apache.org/)
 - Confluent, [Confluent Community License](https://www.confluent.io/confluent-community-license/) (ksqlDB)
 - Materialize, [LICENSE](https://raw.githubusercontent.com/MaterializeInc/materialize/main/LICENSE) (Business Source License)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 14: Streaming SQL

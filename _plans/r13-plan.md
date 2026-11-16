@@ -191,9 +191,9 @@ Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at p
 | 1C | minikube G0 spike Q6 to Q9 | exec 1C (Sonnet) | 1B done (lock) | done (K1 to K12; profile deleted) |
 | 1D | validate.py branches and self-tests, CI loop, `chapters.html`, part card, `_infra` Flink, RisingWave and Redis files, stack-guard compose CRC check | orchestrator | 1B in progress | done (validate.py, CI, chapters.html, part card, stack guard, _infra Flink, RisingWave, Redis; Redis Dev Services rule) |
 | G0 | "G0 decisions" appended; decisions 6, 9, 10, 12, 15 from data; names, commands and durations frozen | orchestrator | 1A to 1D | done |
-| 2A to 2G | Appendices A to G: example (where any), verify.sh, README, example page, appendix, figures | execs 2A to 2G (Sonnet) | G0 | A, C, D, E, G done; B, F in progress |
+| 2A to 2G | Appendices A to G: example (where any), verify.sh, README, example page, appendix, figures | execs 2A to 2G (Sonnet) | G0 | done |
 | 2X | Consistency: domain-model.md topic note, README appendix list, CLAUDE.md decisions draft, versions.md rows | orchestrator | G0 | pending |
-| 3a | Compose window, at most 2 h 15 min: A, B-compose, C, E, G | orchestrator | 2A to 2G | pending |
+| 3a | Compose window, at most 2 h 15 min: A, B-compose, C, E, G | orchestrator | 2A to 2G | done (A 7/7, C 18/18, E 23/23, G 24/24, twice each) |
 | 3b | minikube window, at most 1 h 30 min: profile up, F, B-k8s, B compare, profile kept for 5 if within 30 min | orchestrator | 3a | pending |
 | 4 | Fixes inside the windows, affected appendix re-run only | orchestrator | 3a, 3b | pending |
 | 5 | Final runs: compose A, B-compose, C, E, G once each; recreated profile F, B-k8s, compare; profile deleted; static gates; claims and log; commits | orchestrator | 4 | pending |
