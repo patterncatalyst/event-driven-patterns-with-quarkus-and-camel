@@ -35,7 +35,7 @@ ALTER_CM=inventory-cdc-offsets-alter
 # The plugin URL and checksum are written in connect/kafkaconnect.yaml for the reader and pinned in versions.env;
 # a difference between the two stops the run before anything is built.
 for pin in "$DEBEZIUM_PLUGIN_URL" "$DEBEZIUM_PLUGIN_SHA512"; do
-    grep -qF -- "$pin" connect/kafkaconnect.yaml || { echo "connect/kafkaconnect.yaml and _k8s/versions.env disagree on the plugin pin" >&2; exit 1; }
+    awk -v p="$pin" '{ sub(/^[ \t]*[a-z0-9]+:[ \t]*/, "") } $0 == p { f = 1 } END { exit !f }' connect/kafkaconnect.yaml || { echo "connect/kafkaconnect.yaml and _k8s/versions.env disagree on the plugin pin" >&2; exit 1; }
 done
 
 k8s_fresh .

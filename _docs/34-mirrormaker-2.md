@@ -130,7 +130,7 @@ Two readings show that nothing was read twice. The group's committed offset on `
 | What the group on `edp-dr` needs | Nothing, but every record is read again | The sync setting, and the source group stopped |
 | What fails over by hand | The consumer's position | The bootstrap address |
 
-With `sync.group.offsets.enabled` set to `false`, no group is ever written on `edp-dr`, and the service has to rely on its reset policy: it starts at the first record and the five earlier orders are notified a second time.
+With `sync.group.offsets.enabled` set to `false`, the mirror never writes the group on `edp-dr`, so the service falls back to its reset policy: it starts at the first record and the five earlier orders are notified a second time.
 
 ## Build, run, observe
 
@@ -143,7 +143,7 @@ A second cluster and a MirrorMaker 2 come up beside the services of chapter 2, f
 
 Try one change and rerun:
 
-- `OFFSET_SYNC=off ./verify.sh` (demo code): the checkpoint connector does not write group offsets and no group appears on `edp-dr`.
+- `OFFSET_SYNC=off ./verify.sh` (demo code): the group on `edp-dr` is missing until the consumer fails over, and the five earlier orders are notified twice.
 - `KEEP=1 ./verify.sh`, then `kubectl --context edp -n edp-kafka exec edp-dr-dual-0 -- /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group notification-service`: the committed offsets of the group on the second cluster.
 - `KEEP=1 ./verify.sh`, then the same pod with `kafka-topics.sh --list`: the copy and the internal topics, `edp.checkpoints.internal` among them.
 
@@ -159,7 +159,7 @@ The identity policy cannot prevent cycles, so a mirror in each direction would c
 
 > **🤖 Explore with your agent**
 > "In examples/34-mirrormaker-2, read base/mirrormaker2.yaml and run verify.sh with KEEP=1. With kafka-consumer-groups.sh in edp-broker-0 and in edp-dr-dual-0, describe the group notification-service on both clusters. Run it again with OFFSET_SYNC=off and describe the group on edp-dr. Say which connector writes the group on edp-dr, which setting turns that on, and why notification-service has to be stopped before the failover."
-> Check: with the sync on, the committed offsets of the group on edp-dr equal those on edp; with OFFSET_SYNC=off no group named notification-service exists on edp-dr.
+> Check: with the sync on, the committed offsets of the group on edp-dr equal those on edp; with OFFSET_SYNC=off edp-dr has no notification-service group before the failover, and afterwards O-3401 has two notifications.
 
 ## References
 

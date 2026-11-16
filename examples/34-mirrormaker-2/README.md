@@ -36,7 +36,7 @@ Demo code, labelled as such in `verify.sh`, the overlay and the chapter.
 
 | Switch | Effect | Failing set |
 |---|---|---|
-| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18): no group appears on `edp-dr`, so the delta checks fail and the earlier orders are notified twice; the records, the connectors and the monitoring checks pass |
+| `OFFSET_SYNC=off ./verify.sh` | `demo-offset-sync-off/` sets `sync.group.offsets.enabled: "false"` on the checkpoint connector with a JSON patch, so `edp-dr` never gets the group | Checks 9, 13 and 16 (15/18): no group appears on `edp-dr` before the failover, so the delta checks fail and the earlier orders are notified twice; the records, the connectors and the monitoring checks pass |
 
 The patch is a JSON patch because kustomize replaces a whole list of a custom resource when it merges one, and `mirrors` is a list.
 

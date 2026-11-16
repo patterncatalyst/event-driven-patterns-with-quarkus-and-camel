@@ -25,7 +25,7 @@ Offsets add a third. Chapter 10 changed them with `PATCH` and `DELETE` on the RE
 
 **Declare the Connect image, every connector and every offset operation as Kubernetes resources, and let the operator reconcile the worker toward them.**
 
-The image becomes a section of the `KafkaConnect`, the connector a `KafkaConnector`, and an offset operation an annotation on that connector that names a ConfigMap. The REST API stays, read-only: reading connector status and offsets through it is fine, and nothing is written there.
+The image becomes a section of the `KafkaConnect`, the connector a `KafkaConnector`, and an offset operation an annotation on that connector that names a ConfigMap. The REST API stays, read-only: status and offsets are read through it, and nothing is written there.
 
 ### How Strimzi models it
 
@@ -119,7 +119,7 @@ The captured table must be owned by the connector's role. With `publication.auto
 
 Two Debezium connectors in one Connect cluster must not share a `topic.prefix`. Both of chapters 8 and 10 use `edp`. In one worker the second connector logs `Unable to register metrics as an old set with the same name` every five seconds and never takes its snapshot, because the connector's metrics name contains the prefix. The inventory connector therefore uses `edp-inventory`, with both `RegexRouter` patterns following it. The topics it writes keep their names, `edp.inventory.item-changes` and `edp.inventory.signals`.
 
-The applications are the images of chapters 8 and 9, unchanged. An order placed through `order-service` is stored with its outbox row in one transaction (chapter 8), and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header, and the service, not the connector, leaves the outbox table empty by deleting the row in its own transaction. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route of chapter 9 turns it into the document on `edp.inventory.items`.
+The applications are the images of chapters 8 and 9, unchanged. An order placed through `order-service` is stored with its outbox row in one transaction (chapter 8), and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header. The service, not the connector, empties the outbox table: it deletes the row in the transaction that inserted it. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route of chapter 9 turns it into the document on `edp.inventory.items`.
 
 The Connect pod serves its metrics on the port of the Strimzi Metrics Reporter, with `metricsConfig` set as for the brokers in chapter 32. The families start with `kafka_connect_`, and `kafka_connect_connector_metrics_status` carries the connector name and its state as labels. The `allowList` in the resource limits what is exposed to those families and the JVM's. Unlike on the brokers of chapter 32, a changed `allowList` on `KafkaConnect` replaces the Connect pod.
 
@@ -177,7 +177,7 @@ cd examples/35-debezium-and-connect-on-strimzi
 ./verify.sh
 ```
 
-The first run builds the Connect image inside the cluster. The script declares both connectors, places an order and changes inventory rows, then lists, refuses, alters and resumes the inventory connector's offsets, watching the topics and the status of the resource; it ends with `25/25 checks passed`.
+The first run builds the Connect image inside the cluster. Both connectors are declared, an order is placed and inventory rows change; then the inventory connector's offsets are listed, refused, altered and resumed, while the topics and the status of the resource are watched; the run ends with `25/25 checks passed`.
 
 Try one change and rerun:
 

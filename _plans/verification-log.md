@@ -757,3 +757,7 @@ Repair: 34 check 16 asserts exactly one notification per order plus the delta; b
 | ch33 after the shrink fix | 17/17, exit 0 (774 s) | 11 s |
 
 Chapters 28 to 31 do not use the changed `_k8s/monitoring` or `tools/prom.py`; lib.sh untouched, so no re-run of 28.
+
+### r12 validation round 2 (2026-11-15)
+
+PASS at 2f86679. Fresh profile: 32 20/20 (teardown 47 s), 33 17/17 (11 s), 34 18/18 (45 s), 35 25/25 (43 s). The round-1 34 bite now fails check 16 (O-3401 to O-3405 notified twice). `OFFSET_SYNC=off` 15/18, fails 9, 13, 16; after failover the service creates the group on edp-dr, so chapter 34's "no group" wording was narrowed to "before the failover" (M1). Lows fixed by the orchestrator: 32 tense and teardown range, 35 sentence splits, sha guard matches the whole value (a truncated pin no longer passes). Site build: 0 of 1,287 internal links broken; diagrams byte-identical.

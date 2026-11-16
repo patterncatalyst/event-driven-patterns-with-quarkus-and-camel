@@ -46,7 +46,7 @@ The operator exposes its own metrics without configuration, including reconcilia
 
 ## Brokers and controllers
 
-The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowList` is a list of regular expressions over metric names. Leave it out and Strimzi applies a curated default for the node's role; the default list on a controller holds no `kafka_controller_` and no `kafka_server_raft_` family, so the question whether there is an active controller had nothing to read. Setting the list to `kafka_.*` and `jvm_.*` answers it. A narrower list is fine if it keeps `kafka_controller_.*` and `kafka_server_raft_metrics_.*`.
+The reporter serves on port 9404 at `/metrics` on every Kafka pod. The `allowList` is a list of regular expressions over metric names. Leave it out and Strimzi applies a curated default for the node's role; the default list on a controller holds no `kafka_controller_` and no `kafka_server_raft_` family, so the question whether there is an active controller has nothing to read. Setting the list to `kafka_.*` and `jvm_.*` answers it. A narrower list is fine if it keeps `kafka_controller_.*` and `kafka_server_raft_metrics_.*`.
 
 The list is also the one setting that costs nothing to change. Strimzi applies a new `allowList` to running brokers and controllers without rolling them (Strimzi, Configuring Strimzi). The pods keep their names, uids and restart counts, and the endpoint changes within seconds of the patch. Adding or removing the whole `metricsConfig` is another matter: that rolls every Kafka pod.
 
