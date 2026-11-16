@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="940" height="150" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Stream form: one global sequence, 1 to 12</text>
+<rect x="40" y="100" width="200" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrival</text>
+<text x="140.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">6, 9, 3, 5, 1, 2 ...</text>
+<text x="140.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">three topics, nine partitions</text>
+<rect x="300" y="100" width="200" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="400.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">resequence(seq).stream()</text>
+<text x="400.0" y="147.5" font-size="11.5" fill="#555555" text-anchor="middle">holds until the predecessor</text>
+<text x="400.0" y="162.5" font-size="11.5" fill="#555555" text-anchor="middle">is released, or the timeout</text>
+<rect x="560" y="100" width="200" height="80" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="660.0" y="138.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Applied 1, 2, 3, 4 ...</text>
+<text x="660.0" y="155.0" font-size="11.5" fill="#555555" text-anchor="middle">exact global order</text>
+<rect x="40" y="260" width="200" height="100" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="140.0" y="300.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrival, batch 1</text>
+<text x="140.0" y="317.5" font-size="11.5" fill="#555555" text-anchor="middle">O-1 #2, O-2 #1, O-2 #2,</text>
+<text x="140.0" y="332.5" font-size="11.5" fill="#555555" text-anchor="middle">O-3 #1, O-3 #2, O-4 #1</text>
+<rect x="300" y="260" width="200" height="100" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="400.0" y="300.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">resequence(key).batch()</text>
+<text x="400.0" y="317.5" font-size="11.5" fill="#555555" text-anchor="middle">sorts each batch of six</text>
+<text x="400.0" y="332.5" font-size="11.5" fill="#555555" text-anchor="middle">by order, then sequence</text>
+<rect x="560" y="260" width="200" height="100" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="660.0" y="300.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Batch 2 holds O-1 #1</text>
+<text x="660.0" y="317.5" font-size="11.5" fill="#555555" text-anchor="middle">applied after O-1 #2</text>
+<text x="660.0" y="332.5" font-size="11.5" fill="#555555" text-anchor="middle">the inversion crosses batches</text>
+<path d="M240,140 L300,140" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M500,140 L560,140" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M240,310 L300,310" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M500,310 L560,310" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="490" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">The stream form orders everything it sees; the batch form orders only inside a batch</text>
+</svg>
