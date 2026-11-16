@@ -135,4 +135,7 @@ Do not hold a copy of data that is large, changes constantly or is private to th
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 9: Composing Data from Different Sources
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 7: Denormalization and Eventification and chapter 8: Stateful Event-Driven Microservices
 - Enterprise Integration Patterns with Camel, chapter 12: Transformation Fundamentals (Content Enricher)
-- Chapter 2: Event notification, for the fetch-back; chapter 3 for the local copy; chapters 8 and 9 for how an owner publishes a table's changes
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }})
+- [Event-carried state transfer and claim check]({{ '/docs/03-event-carried-state-transfer/' | relative_url }})
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Log tailing with Debezium]({{ '/docs/09-log-tailing-with-debezium/' | relative_url }})

@@ -167,4 +167,6 @@ Labels and metric dimensions are different from attributes. The order id as a Lo
 - Grafana Tempo, [TraceQL queries](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/); Grafana, [Loki data source](https://grafana.com/docs/grafana/latest/datasources/loki/configure/) (derived fields)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 7: Long-Running Processes
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 10: Building Workflows with Microservices
-- Chapter 8: Transactional outbox, for the outbox span; chapter 22: Saga, for the sweeper and the compensation; chapter 25 for the trace context across the relay
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Saga]({{ '/docs/22-saga/' | relative_url }})
+- [Tracing across async hops]({{ '/docs/25-tracing-across-async-hops/' | relative_url }})

@@ -146,4 +146,11 @@ If the two facts already sit in one database, a SQL join answers the question wi
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 8: Stateful Event-Driven Microservices and chapter 9: Deterministic Stream Processing
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 9: Composing Data from Different Sources
 - Enterprise Integration Patterns with Camel, chapter 13: Structural Transformation, for the Aggregator
-- Chapter 2: Event notification, for fetching back; chapter 3 for the local copy; chapter 4 for keys and partitions; chapter 8 for the outbox; chapter 11 for the idempotent consumer; chapter 14 for the aggregate; chapter 16 for the guarded upsert; chapter 19 for the table join
+- [Event notification]({{ '/docs/02-event-notification/' | relative_url }})
+- [Event-carried state transfer and claim check]({{ '/docs/03-event-carried-state-transfer/' | relative_url }})
+- [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }})
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }})
+- [Enrich]({{ '/docs/19-enrich/' | relative_url }})

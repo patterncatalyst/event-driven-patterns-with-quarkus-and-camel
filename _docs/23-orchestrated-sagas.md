@@ -208,4 +208,5 @@ A step that cannot be undone has no compensation. Shipping is the usual one: it 
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 10: Building Workflows with Microservices
 - *Enterprise Integration Patterns with Camel*, [chapter 10: Composed Routing](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/10-composed-routing/) and [Appendix G: Quarkus Flow](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/25-appendix-quarkus-flow/)
 - *Cloud-Native Design Patterns*, [Appendix D: Saga State and Compensation](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/17-appendix-d-sagas/)
-- Chapter 12: Exactly-once with Kafka transactions, for the limit of a Kafka transaction; chapter 22 for the choreographed form
+- [Exactly-once with Kafka transactions]({{ '/docs/12-exactly-once-with-kafka-transactions/' | relative_url }})
+- [Saga]({{ '/docs/22-saga/' | relative_url }})

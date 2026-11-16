@@ -150,4 +150,6 @@ When a command must see its own write, read the aggregate: a projection is event
 - Martin Kleppmann and Chris Riccomini, *Designing Data-Intensive Applications*, 2nd ed., O'Reilly, 2026
 - Quarkus, [Scheduler reference](https://quarkus.io/guides/scheduler-reference) (`concurrentExecution`) and [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) (projections and `stream()`)
 - PostgreSQL documentation, [Transaction ID and Snapshot Information Functions](https://www.postgresql.org/docs/18/functions-info.html) (`pg_current_xact_id`, `pg_current_snapshot`, `pg_snapshot_xmin`, `xid8`), [SELECT](https://www.postgresql.org/docs/18/sql-select.html) (`FOR UPDATE`) and [Set Returning Functions](https://www.postgresql.org/docs/18/functions-srf.html) (`generate_series`)
-- Chapter 14 for the event store and the aggregate, chapter 15 for snapshots and chapter 16 for a read model fed from Kafka
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})
+- [Snapshots]({{ '/docs/15-snapshots/' | relative_url }})
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }})

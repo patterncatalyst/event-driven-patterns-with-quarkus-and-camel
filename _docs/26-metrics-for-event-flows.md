@@ -199,4 +199,7 @@ Alert on the backlog, the one signal that fires while the flow is stuck, and kee
 - SmallRye Reactive Messaging, [Receiving Kafka records](https://smallrye.io/smallrye-reactive-messaging/latest/kafka/receiving-kafka-records/) (the dead letter queue strategy)
 - Grafana, [alerting file provisioning](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/) and [alert rule states](https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rule-evaluation/); [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) (custom dashboards, `OTELCOL_EXTRA_ARGS`)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 18: Handling Bad Data in Event Streams
-- Chapter 8 for the outbox, chapter 9 for the connector, chapter 13 for the dead letter queue, chapter 16 for projection lag
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Log tailing with Debezium]({{ '/docs/09-log-tailing-with-debezium/' | relative_url }})
+- [Retry and dead letter]({{ '/docs/13-retry-and-dead-letter/' | relative_url }})
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }})

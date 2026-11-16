@@ -185,4 +185,8 @@ A registry is one more service to run and to keep up. When producer and consumer
 - Quarkus, [Using Apache Kafka with Schema Registry and Avro](https://quarkus.io/guides/kafka-schema-registry-avro)
 - Debezium, [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) (Avro as the payload format) and [Outbox Quarkus extension](https://debezium.io/documentation/reference/stable/integrations/outbox.html)
 - Apache Camel, [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html)
-- Chapter 1: Events, commands and documents, for the permanent contract; chapter 8 for the outbox; chapter 14 for the event store; chapter 15 for snapshots; chapter 17 for the rebuild
+- [Events, commands and documents]({{ '/docs/01-events-commands-documents/' | relative_url }})
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})
+- [Snapshots]({{ '/docs/15-snapshots/' | relative_url }})
+- [Aggregate replay or CQRS projection]({{ '/docs/17-aggregate-replay-or-projection/' | relative_url }})

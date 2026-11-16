@@ -167,4 +167,6 @@ Rules suit decisions that are a table. A decision that needs a search over many 
 - Apache Camel, [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html) (`breakOnFirstError`)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 9: Deterministic Stream Processing
 - *Enterprise Integration Patterns with Camel*, [Appendix F: Drools and Business Rules](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/24-appendix-drools/)
-- Chapter 13: Retry and dead letter, for what retrying a failed call does; chapter 17 for replay; chapter 19 for `breakOnFirstError` with the owner down
+- [Retry and dead letter]({{ '/docs/13-retry-and-dead-letter/' | relative_url }})
+- [Aggregate replay or CQRS projection]({{ '/docs/17-aggregate-replay-or-projection/' | relative_url }})
+- [Enrich]({{ '/docs/19-enrich/' | relative_url }})

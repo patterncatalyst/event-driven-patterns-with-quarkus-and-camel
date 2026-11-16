@@ -169,4 +169,5 @@ When the read side is hot, a projection is the better cache: a table kept up to 
 - Quarkus, [Hibernate ORM with Panache](https://quarkus.io/guides/hibernate-orm-panache) (`stream()` and projections) and [SmallRye Fault Tolerance](https://quarkus.io/guides/smallrye-fault-tolerance) (`@Retry`)
 - Apache Camel, [Scheduler](https://camel.apache.org/components/4.22.x/scheduler-component.html), [SQL](https://camel.apache.org/components/4.22.x/sql-component.html) and [Split](https://camel.apache.org/components/4.22.x/eips/split-eip.html)
 - PostgreSQL documentation, [INSERT](https://www.postgresql.org/docs/18/sql-insert.html) (`ON CONFLICT DO UPDATE ... WHERE`), [EXPLAIN](https://www.postgresql.org/docs/18/sql-explain.html) and [Set Returning Functions](https://www.postgresql.org/docs/18/functions-srf.html) (`generate_series`)
-- Chapter 1: Events, commands and documents, for the event table and the left fold, and chapter 14 for the aggregate and its optimistic append
+- [Events, commands and documents]({{ '/docs/01-events-commands-documents/' | relative_url }})
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})

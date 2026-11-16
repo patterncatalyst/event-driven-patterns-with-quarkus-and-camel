@@ -157,4 +157,6 @@ Neither form fits a count or a sum that a reader may poll at any moment. That is
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 9: Composing Data from Different Sources
 - *Enterprise Integration Patterns with Camel*, chapter 13: Structural Transformation (Aggregator)
 - *Cloud-Native Design Patterns*, [chapter 6: Stream Processing](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/06-stream-processing/)
-- Chapter 16: CQRS and projections, for a read model; chapter 19 for the GlobalKTable; chapter 20 for event time and the aggregation repository
+- [CQRS and projections]({{ '/docs/16-cqrs-and-projections/' | relative_url }})
+- [Enrich]({{ '/docs/19-enrich/' | relative_url }})
+- [Join]({{ '/docs/20-join/' | relative_url }})

@@ -181,4 +181,6 @@ Running a Java agent in Connect adds a dependency to the relay, a download at st
 - Grafana Tempo, [HTTP API](https://grafana.com/docs/tempo/latest/api_docs/) and [TraceQL queries](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/): search and structural operators
 - Strimzi blog, [Tracing in Apache Kafka: from OpenTracing to OpenTelemetry](https://strimzi.io/blog/2023/03/01/opentelemetry/)
 - OpenTelemetry observability tutorial, [Context propagation across Kafka](https://patterncatalyst.github.io/otel-observability-tutorial/docs/13-context-propagation-kafka/): the same hop with a propagation toggle
-- Chapter 8: the transactional outbox; chapter 9: log tailing with Debezium; chapter 13: retry and dead letter, for the retry that comes later than the record
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Log tailing with Debezium]({{ '/docs/09-log-tailing-with-debezium/' | relative_url }})
+- [Retry and dead letter]({{ '/docs/13-retry-and-dead-letter/' | relative_url }})

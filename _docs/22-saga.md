@@ -180,4 +180,7 @@ Choreography stops scaling at the point where nobody can say what the whole flow
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 10: Building Workflows with Microservices
 - *Enterprise Integration Patterns with Camel*, chapter 10: Composed Routing
 - *Cloud-Native Design Patterns*, [Appendix D: Sagas](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/17-appendix-d-sagas/)
-- Chapter 8: the transactional outbox; chapter 11: the inbox; chapter 12: transactions stop at the cluster; chapter 13: retry
+- [Transactional outbox]({{ '/docs/08-transactional-outbox/' | relative_url }})
+- [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
+- [Exactly-once with Kafka transactions]({{ '/docs/12-exactly-once-with-kafka-transactions/' | relative_url }})
+- [Retry and dead letter]({{ '/docs/13-retry-and-dead-letter/' | relative_url }})

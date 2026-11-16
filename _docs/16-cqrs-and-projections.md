@@ -159,4 +159,7 @@ A rebuild is a replay of the topics, so the topic's retention limits how far bac
 - Apache Camel, [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html) (several topics in one consumer) and [Choice](https://camel.apache.org/components/4.22.x/eips/choice-eip.html)
 - PostgreSQL documentation, [INSERT](https://www.postgresql.org/docs/18/sql-insert.html) (`ON CONFLICT DO UPDATE ... WHERE`)
 - Apache Kafka, [Managing consumer groups](https://kafka.apache.org/43/operations/basic-kafka-operations/) (describe a group and its lag) and [topic configuration](https://kafka.apache.org/43/configuration/topic-configs/) (`retention.ms`)
-- Chapter 3: Event-carried state transfer, for `order_copy`; chapter 4 for order within one partition; chapter 11 for the inbox; chapter 14 for the write side
+- [Event-carried state transfer and claim check]({{ '/docs/03-event-carried-state-transfer/' | relative_url }})
+- [Ordering and partitioning]({{ '/docs/04-ordering-and-partitioning/' | relative_url }})
+- [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }})
+- [Aggregate root and the event store]({{ '/docs/14-aggregate-root-and-event-store/' | relative_url }})
