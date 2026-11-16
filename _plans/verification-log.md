@@ -795,3 +795,7 @@ Fresh profile `edp`, recreated for the final runs, deleted at the end; logs in `
 | F `OFFSET_COPY=off` | 26/30; fails 19, 21, 23, 25 |
 
 Fixes: B check 7 reads the PostgreSQL manifest as written (CloudNativePG adds `wal_level` and `max_replication_slots` to the live Cluster); F check 8 parses the GROUP/TYPE table; F fixed sleep replaced by a poll; the 409 on a retried accepted order asserted inside check 30. Measured: stop gap 5.1 to 7.5 s, 53 to 70 redelivered; rolling update (consumer protocol) 47 to 372 redelivered (559 in the copy-off run, ceiling 600); cut-over overlap 0 to 450, rollback 0 to 290; green live 12 to 17 s after blue scale-down; HTTP rollout 5 to 8 of about 2,385 requests failed, no 5xx. Sources fetched: PostgreSQL 18 runtime config pages; Danilo Sato, ParallelChange (martinfowler.com, 2014).
+
+### r13 validation (2026-11-16)
+
+Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appendix D sources, mutation testing; idiomatic CI). Repair 1: three executors; E 23/23 twice with demos; B 9/9, 9/9, 23/23 twice; F 30/30 twice with demos, repeat checks moved from a fixed ceiling to a bound computed from an audit trigger (writes in the last 7 s before a replica gave up a partition). Round 2 (Opus): all 20 fixed; E 23/23, F 30/30, B 9/9 + 9/9 + 23/23 reproduced; the halved-window bite fails F checks 21 and 25; one High (three missed cross-references) and Medium/Low items fixed by the orchestrator. F ranges restated over eight runs including the validator's.

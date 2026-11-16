@@ -1023,6 +1023,8 @@ Appendices A to G. Every page below was fetched on 2026-11-16 (Quarkus pages at 
 | Apache Pinot and Apache Druid self-descriptions | https://pinot.apache.org/ ; https://druid.apache.org/ | Pinot: "an open-source distributed OLAP database for user-facing and agent-facing real-time analytics"; Druid: "A high performance, real-time analytics database that delivers sub-second queries on streaming and batch data at scale" (fetched 2026-11-16, repair 1) | C |
 | Lawrence ch 2 "Anatomy of Message-Driven Systems" mapped to Appendix E | https://www.informit.com/store/message-and-event-driven-systems-with-cqrs-and-event-9780137998616 | Title only, from the TOC rows above; cited by Appendix E under References (mapping added, repair 1) | E |
 | Bellemare ch 20 "Testing Event-Driven Microservices", ch 21 "Deploying Event-Driven Microservices" | TOC table "Bellemare mapping by chapter title" above (owner-confirmed 2026-11-10) | Titles only, mapped to Appendix A (ch 20), Appendix C (ch 14) and the deployment appendix F (ch 21); not re-fetched | A, C, F |
+| Quarkus Redis extension reference (3.40), Dev Services image | https://quarkus.io/version/3.40/guides/redis-reference | section 5.8 (Dev Services); `quarkus.redis.devservices.image-name` overrides the default image (fetched by r13 repair round 1 and confirmed in validation round 2, 2026-11-16) | G |
+| Debezium PostgreSQL connector, `poll.interval.ms` | https://debezium.io/documentation/reference/stable/connectors/postgresql.html | `poll.interval.ms` default 500: the time the connector waits for new change events to appear before processing a batch (confirmed in `postgresql.adoc`, validation round 2, 2026-11-16) | G |
 
 ### EIP Camel cross-reference for Appendix D (checked 2026-11-16)
 

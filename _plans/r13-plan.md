@@ -197,7 +197,7 @@ Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at p
 | 3b | minikube window, at most 1 h 30 min: profile up, F, B-k8s, B compare, profile kept for 5 if within 30 min | orchestrator | 3a | done (B 9/9+9/9+23/23, F 30/30, twice each) |
 | 4 | Fixes inside the windows, affected appendix re-run only | orchestrator | 3a, 3b | pending |
 | 5 | Final runs: compose A, B-compose, C, E, G once each; recreated profile F, B-k8s, compare; profile deleted; static gates; claims and log; commits | orchestrator | 4 | pending |
-| 6 | Opus validation (at most 2 repair rounds) | validator | 5 | pending |
+| 6 | Opus validation (at most 2 repair rounds) | validator | 5 | done (2 rounds; round-2 High fixed by orchestrator) |
 | 7 | Ship: PR, CI green, squash, tag r13.0, notes-only release; PRD, iteration-plan, CLAUDE.md | orchestrator | 6 | pending |
 
 r13b steps (after r13.0):

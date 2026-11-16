@@ -9,7 +9,7 @@ duration: "60 minutes"
 
 A compose stack starts one Kafka container, and its address is `kafka:9094` because compose names the container. On Kubernetes a broker is a pod that can be deleted at any moment. It has to come back with the same node id, find its own data and be reachable by a name that does not change when the pod does. Something has to hold those rules.
 
-The examples in this part run the same event-driven patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
+The Kubernetes examples run the same event-driven patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
 
 ## Setting up the cluster
 

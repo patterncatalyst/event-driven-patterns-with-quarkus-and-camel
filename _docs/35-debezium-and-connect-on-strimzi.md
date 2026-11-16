@@ -77,7 +77,7 @@ A checksum that does not match the archive stops the build: no image reaches the
 
 ## Two connectors on CloudNativePG
 
-The two connectors are `order-outbox`, an outbox Event Router connector, and `inventory-cdc`, a log-tailing connector for `inventory.inventory_item`. Two lines change in each: the host, now the read-write Service of the CloudNativePG cluster, and the credentials, now references that the config provider resolves inside the Connect pod.
+The two connectors are `order-outbox`, an outbox Event Router connector, and `inventory-cdc`, a log-tailing connector for `inventory.inventory_item`. Each names the read-write Service of the CloudNativePG cluster as its host, and its credentials are references the config provider resolves inside the Connect pod.
 
 ```yaml
 apiVersion: kafka.strimzi.io/v1
@@ -117,7 +117,7 @@ Two failures belong to this combination.
 
 The captured table must be owned by the connector's role. With `publication.autocreate.mode: filtered` the connector creates a publication for the tables in `table.include.list`, and PostgreSQL allows that only to an owner (Debezium docs). A table created through `kubectl exec psql` belongs to the `postgres` superuser, and the task fails with `No table filters found for filtered publication`. The tables are created with `SET ROLE edp`. After the owner is fixed, the annotation `strimzi.io/restart-task: "0"` restarts the failed task, which the annotation `strimzi.io/restart: "true"` on the connector does not.
 
-Two Debezium connectors in one Connect cluster must not share a `topic.prefix`. Both compose connectors use `edp`. In one worker the second connector logs `Unable to register metrics as an old set with the same name` every five seconds and never takes its snapshot, because the connector's metrics name contains the prefix. The inventory connector therefore uses `edp-inventory`, with both `RegexRouter` patterns following it. The topics it writes keep their names, `edp.inventory.item-changes` and `edp.inventory.signals`.
+Two Debezium connectors in one Connect cluster must not share a `topic.prefix`. If both use `edp`, the second connector in one worker logs `Unable to register metrics as an old set with the same name` every five seconds and never takes its snapshot, because the connector's metrics name contains the prefix. The inventory connector therefore uses `edp-inventory`, with both `RegexRouter` patterns following it. The topics it writes keep their names, `edp.inventory.item-changes` and `edp.inventory.signals`.
 
 The applications are `order-service`, which writes an outbox row with each order, and `inventory-service`, which owns the table the second connector tails. An order placed through `order-service` is stored with its outbox row in one transaction, and `order-outbox` publishes it to `edp.orders.placed` keyed by order id with the `eventType` header. The service, not the connector, empties the outbox table: it deletes the row in the transaction that inserted it. An update of a row in `inventory.inventory_item` reaches `edp.inventory.item-changes` as a change envelope, and the Camel route turns it into the document on `edp.inventory.items`.
 

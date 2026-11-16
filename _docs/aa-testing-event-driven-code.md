@@ -150,7 +150,7 @@ A schema is a contract between a producer and consumers that do not deploy toget
 
 The tests above run inside one JVM. What crosses processes needs a stack: a connector that has to read a replication slot, a trace that has to reach Tempo, a consumer that has to survive a recreate. For these, `verify.sh` starts the compose stack fresh, checks the observable effect and keeps a negative witness for each guard, a check that fails when the guard is removed.
 
-Observability follows the same split. The tracing and log-correlation examples assert the spans and the log correlation in process with an in-memory exporter, and the metrics example reads a `SimpleMeterRegistry`, where the test controls everything. Their `verify.sh` then asks Tempo and Loki, and for metrics Grafana's rules API, through HTTP, which holds the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
+Observability follows the same split. The tracing and log-correlation examples assert the spans and the log correlation in process with an in-memory exporter, and the metrics example reads a `SimpleMeterRegistry`, where the test controls everything. Their `verify.sh` then asks Tempo and Loki, and for metrics the Prometheus query API and Grafana's rules API, through HTTP, which holds the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
 
 ## Build, run, observe
 

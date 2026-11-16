@@ -69,7 +69,7 @@ The notification-service reads `orderId`. A producer that renames it to `orderRe
 
 The record is read, the insert fails on the missing value, Camel logs `Failed delivery` and the route moves on. The offset is committed, the lag is zero and the row does not exist. A dashboard on lag stays green. Plain JSON on a topic has no gate between producer and consumer: the broker accepts whatever the producer sends.
 
-An additive change takes two compatible steps and a third that removes, the expand and contract sequence that Danilo Sato describes as ParallelChange. First the producer expands: it sends both `orderId` and `orderRef`. The old consumer reads the field it knows and ignores the other, and consumers of the new version read `orderRef`. Every record is stored.
+An additive change takes two compatible steps and a third that removes, the expand and contract sequence that Danilo Sato describes as Parallel Change. First the producer expands: it sends both `orderId` and `orderRef`. The old consumer reads the field it knows and ignores the other, and consumers of the new version read `orderRef`. Every record is stored.
 
 {% include excalidraw.html file="af-schema-expand" alt="The producer sends orderId and orderRef on one topic; the v1 consumer reads orderId, the v2 consumer reads orderRef, and both store every record" caption="Figure F.9: An additive change loses nothing" %}
 
@@ -142,7 +142,7 @@ A client of a rolling service has to expect failed requests, because a connectio
 - Apache Kafka, [Basic Kafka operations](https://kafka.apache.org/43/operations/basic-kafka-operations/) (resetting consumer group offsets: inactive consumers, `--from-file`, `--execute`)
 - Quarkus, [All configuration](https://quarkus.io/version/3.40/guides/all-config) (`quarkus.shutdown.timeout`, `quarkus.shutdown.delay`)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 21: Deploying Event-Driven Microservices
-- Danilo Sato, [ParallelChange](https://martinfowler.com/bliki/ParallelChange.html), martinfowler.com, 2014: expand, migrate and contract
+- Danilo Sato, [Parallel Change](https://martinfowler.com/bliki/ParallelChange.html), martinfowler.com, 2014: expand, migrate and contract
 - [Event notification]({{ '/docs/02-event-notification/' | relative_url }}): the order-service
 - [Optimizing subscribers]({{ '/docs/06-optimizing-subscribers/' | relative_url }}): the notification-service and its consumer settings
 - [Idempotent consumer and inbox]({{ '/docs/11-idempotent-consumer-and-inbox/' | relative_url }}): making a repeat harmless

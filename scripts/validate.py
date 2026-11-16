@@ -63,7 +63,9 @@ XREF_WORD_RE = re.compile(
     r"\b(?:the\s+)?(?:previous|preceding|prior|next|following|earlier|later|last|first)\s+(?:chapters?|appendix|appendices|parts?)\b"
     r"|\bthe\s+(?!same\b)[\w-]+(?:\s+[\w-]+)?\s+(?:chapter|appendix)\b"
     r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-H]|one|two|three|four|five|six|seven|eight)\b"
-    r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b", re.I)
+    r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b"
+    # "examples 02 and 03", "these examples", "the earlier examples" point at other chapters' examples
+    r"|\bexamples?\s+\d{2}\b|\b(?:these|those|the\s+earlier|the\s+other)\s+examples\b", re.I)
 ACCOMPANIES_RE = re.compile(r"accompanies \[[^\]]*\]\(\{\{[^)]*\)")
 XREF_SOURCE_RE = re.compile(r"EIP Camel|Enterprise Integration Patterns|Bellemare|Lawrence|Kleppmann|Vernon|Hohpe|Fowler|"
                             r"Richardson|(?-i:Young)|Narkhede|Shapira|Stopford|Seymour|Riccomini|Bellemare's|\*[A-Z][^*]+\*,? (ch|chapter)", re.I)
@@ -674,6 +676,11 @@ def self_test() -> int:
             "---\ntitle: x\n---\n\nIt accompanies [Demo]({{ '/docs/01-demo/' | relative_url }}).\n")
         e = run(r).errors
         results.append(("the accompanying link of an example page allowed", not any("cross-reference" in x for x in e), e))
+
+        r = build("xref-examples")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nThe services of examples 02 and 03 run unchanged.\n")
+        e = run(r).errors
+        results.append(("'examples NN' caught", any("examples 02" in x for x in e), e))
 
         r = build("domain")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nA Consignment is booked.\n")

@@ -64,12 +64,12 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 4 | the Recreate rollout leaves a period of at least 3 s with no row written, 4.8 to 9.3 s over six clean runs |
 | 5 | the group has no lag once it has caught up |
 | 6 | every one of the 3,000 records has a row |
-| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 70 over six clean runs |
+| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 460 over eight clean runs (bound up to 1,469) |
 | 8 | `notify-roll` is listed as a consumer-protocol group |
 | 9 | the rolling update replaced every pod |
 | 10 | rows of the range were written by the old pods and by the new ones |
 | 11 | every one of the 3,000 records has a row |
-| 12 | the records delivered again stay within the same bound, 0 to 384 over six clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 705) |
+| 12 | the records delivered again stay within the same bound, 0 to 384 over eight clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 705) |
 | 13 | no record with the renamed field produced a row, 0 of 20 in each run |
 | 14 | the group has no lag: it committed past the records it could not store |
 | 15 | the consumer log holds `Failed delivery` |
@@ -78,11 +78,11 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 18 | the blue group is Empty within 60 s of the scale-down |
 | 19 | the green group holds blue's committed offsets, partition by partition |
 | 20 | every one of the 4,000 records has a row in blue or green |
-| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 450 over six clean runs (bound 785 to 788) |
+| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over eight clean runs (bound 742 to 788) |
 | 22 | the green group is Empty within 60 s of the scale-down |
 | 23 | the blue group holds green's committed offsets, partition by partition |
 | 24 | every one of the 3,000 records of the rollback range has a row in blue or green |
-| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 290 over six clean runs (bound 690) |
+| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 380 over eight clean runs (bound 690 to 904) |
 | 26 | without a rollout every request is answered 201, 1,584 of 1,584 in each of the six clean runs |
 | 27 | the rollout ran while requests were flowing |
 | 28 | no request was answered with a 5xx status |
@@ -92,7 +92,7 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 Notes on how the checks read their evidence:
 
 - The notification table holds one row per group, topic, partition and offset with an `attempts` counter. A missing id is a lost record; `attempts` above 1 is a record delivered again to the same group; an id with rows in two groups is a record read by both.
-- Redelivery and re-read counts depend on timing, so the checks assert a bound computed from the run and print both numbers. A repeat is a record that a replica processed after its last commit and then gave up the partition. The Kafka client commits every 5 s (Camel's `autoCommitIntervalMs`, left at its default) inside `poll()`, so the bound is, per partition, the writes a replica made in the 7 s before its last write there (the interval plus 2 s for the batch in hand), summed over the replicas that gave the partition up. For the cut-over and the rollback the replicas are the source group's, and the bound is the same sum for the group that stopped. `verify.sh` installs a trigger that copies every insert and update of the notification table into `audit.write_log`, because a repeat overwrites the row's replica and time; the trigger is test instrumentation and the images stay unchanged. The checks never assert that one protocol redelivers less than the other.
+- Redelivery and re-read counts depend on timing, so the checks assert a bound computed from the run and print both numbers. A repeat is a record that a replica processed after its last commit and then gave up the partition. The Kafka client commits every 5 s (Camel's `autoCommitIntervalMs`, left at its default) inside `poll()`, so the bound is, per partition, the writes a replica made in the 7 s before its last write there (the interval plus 2 s for the batch in hand), summed over the replicas that gave the partition up. For the cut-over and the rollback the replicas are the source group's, and the bound is the same sum for the group that stopped. `verify.sh` installs a trigger that copies every insert and update of the notification table into `audit.write_log`, because a repeat overwrites the row's replica and time; the trigger is test instrumentation and the images stay unchanged. The checks never assert that one protocol redelivers less than the other. The bound is loose, because it also counts the writes new replicas make while draining the backlog before they hand partitions over; halving the window fails checks 21 and 25, while checks 7 and 12 still passed at a 1 s window, so no run has yet shown 7 or 12 failing. Where a replica holds a partition in more than one stretch the sum can undercount, which can only cause a false failure, never a false pass.
 - Offsets are copied with `group_offsets_copy` from `examples/_k8s/lib.sh`: `kafka-consumer-groups.sh --reset-offsets --to-current --all-topics --dry-run --export` on the source group, then `--from-file ... --execute` on the target. Both groups must have no active member. The target may never have existed.
 - Checks 19 and 23 export both groups' committed offsets and compare them as sorted `topic,partition,offset` lines before the target starts.
 - `tools/http.py report` splits the failed requests of check 29 into `reset`, `timeout` and `refused` by exception name; no 5xx status was returned in any run.
@@ -108,6 +108,6 @@ Each run starts from fresh namespaces. The failing sets are frozen after the liv
 
 ## Measurements
 
-Redelivery depends on timing and can be zero. In six clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384 and 0), and the stop and restart delivered 0 to 70 again; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. The cut-over overlap was 0 to 450 ids and the rollback overlap 0 to 290; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 18 s from the blue scale-down to green live (8 s without the offset copy).
+Redelivery depends on timing and can be zero. In six clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384 and 0), and the stop and restart delivered 0 to 460 again over eight runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 18 s from the blue scale-down to green live (8 s without the offset copy).
 
 Requests in flight when a pod of `order-service` is removed can fail at the connection level. In five clean runs 5, 8, 5, 5 and 8 of about 2,380 to 2,390 requests failed and none was answered with a 5xx status; in the two runs that split them, the failures were 1 reset and 4 timeouts, and 4 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it.

@@ -7,7 +7,7 @@ description: "Kafka as two KRaft node pools under the Strimzi operator on miniku
 
 [`examples/28-strimzi-and-kraft/`](https://github.com/patterncatalyst/event-driven-patterns-with-quarkus-and-camel/tree/main/examples/28-strimzi-and-kraft) is a set of manifests and a `verify.sh`, with no Java. It declares Kafka as a `Kafka` resource and two `KafkaNodePool` resources, then deploys the order, notification, event-carried-state and ordering services against it. It accompanies [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }}).
 
-It uses minikube, Strimzi, CloudNativePG, kustomize through `kubectl`, and the LGTM image, with the Quarkus and Camel services of examples 02, 03 and 04 as they are.
+It uses minikube, Strimzi, CloudNativePG, kustomize through `kubectl`, and the LGTM image, with the order, notification, event-carried-state and ordering services as they are.
 
 ```bash
 examples/_k8s/cluster.sh up

@@ -74,7 +74,7 @@ Cockpit, often enabled on Fedora and RHEL, listens on 9090, so Prometheus is pub
 
 ### One stack at a time
 
-Run one stack. The services publish fixed host ports, so a second copy fails to bind them, and the Kubernetes parts need the memory the compose stack uses. Every `verify.sh` begins with `scripts/stack-guard.sh`, which refuses to start while containers from another compose project or a minikube node are running. It never stops anything for you. Stop an example's stack with `docker compose down -v` in its directory, or let `verify.sh` do it.
+Run one stack. The services publish fixed host ports, so a second copy fails to bind them, and a Kubernetes cluster needs the memory the compose stack uses. Every `verify.sh` begins with `scripts/stack-guard.sh`, which refuses to start while containers from another compose project or a minikube node are running. It never stops anything for you. Stop an example's stack with `docker compose down -v` in its directory, or let `verify.sh` do it.
 
 ## The running example
 
