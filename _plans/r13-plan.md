@@ -6,7 +6,7 @@ render_with_liquid: false
 
 # r13 plan: Appendices A to H (Opus planner, 2026-11-16)
 
-Status: **draft for owner review.** Branch `release/r13`, cut from main at 169314e after r12.0. Existing pins stay frozen: Kafka 4.3.2 (HOLD), Strimzi 1.3.1, CloudNativePG 1.30.1 with operand `18.6-202611090812-standard-trixie`, PostgreSQL 18.6 (Dev Services), Apicurio 3.3.4, Debezium 3.7.1.Final, otel-lgtm 0.41.0, UBI 1.24-20, Quarkus platform 3.40.1.2, Camel 4.22.2, minikube v1.39.0, Kubernetes and kubectl v1.37.2, registry 3.1.2, kube-state-metrics v2.20.0. New components are pinned once, in step 1A, to their latest stable release: Apache Flink, the Flink Kafka SQL connector, RisingWave, Redis (the sibling books' `redis:8.10.2-alpine` is the starting point, re-surveyed), and for Appendix H the CRC, AMQ Streams and CloudNativePG OLM versions. No Helm anywhere. kubectl's built-in kustomize; every apply `--server-side`.
+Status: **approved by the owner 2026-11-16 ("keep going" on the recommended defaults, decisions 1 to 25).** Branch `release/r13`, cut from main at 169314e after r12.0. Existing pins stay frozen: Kafka 4.3.2 (HOLD), Strimzi 1.3.1, CloudNativePG 1.30.1 with operand `18.6-202611090812-standard-trixie`, PostgreSQL 18.6 (Dev Services), Apicurio 3.3.4, Debezium 3.7.1.Final, otel-lgtm 0.41.0, UBI 1.24-20, Quarkus platform 3.40.1.2, Camel 4.22.2, minikube v1.39.0, Kubernetes and kubectl v1.37.2, registry 3.1.2, kube-state-metrics v2.20.0. New components are pinned once, in step 1A, to their latest stable release: Apache Flink, the Flink Kafka SQL connector, RisingWave, Redis (the sibling books' `redis:8.10.2-alpine` is the starting point, re-surveyed), and for Appendix H the CRC, AMQ Streams and CloudNativePG OLM versions. No Helm anywhere. kubectl's built-in kustomize; every apply `--server-side`.
 
 **Headline recommendation: split.** r13 ships Appendices A to G on compose and minikube. Appendix H (CRC) becomes iteration **r13b**, run in an owner-started CRC window after r13 merges. r14 (retro) and r15 (deck) keep their numbers. Reasons are in decision 1.
 
@@ -185,7 +185,7 @@ Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at p
 
 | Step | Work | Owner | Depends | Status |
 |---|---|---|---|---|
-| 0 | Preflight: owner OK, save plan, iteration-plan r13 in progress and r13b row added, no stack, profile or CRC running | orchestrator | owner OK | pending |
+| 0 | Preflight: owner OK, save plan, iteration-plan r13 in progress and r13b row added, no stack, profile or CRC running | orchestrator | owner OK | done |
 | 1A | Pins: Flink, Kafka SQL connector (sha512), RisingWave, Redis, each with digests and licences; sources rows A to G (all Findings plus per-appendix sources, licence pages for ksqlDB, Materialize, Redis); EIP Camel links for D; bibliography rows | exec 1A (Sonnet) | 0 | pending |
 | 1B | Compose G0 spike Q1 to Q5 | exec 1B (Sonnet) | 0 | pending |
 | 1C | minikube G0 spike Q6 to Q9 | exec 1C (Sonnet) | 1B done (lock) | pending |
