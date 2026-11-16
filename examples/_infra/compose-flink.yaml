@@ -1,0 +1,68 @@
+# Apache Flink (JobManager + TaskManager) for Appendix C. Flink is held at 2.2.1: the Kafka SQL connector
+# has no build for Flink 2.3. An init service downloads the pinned connector jar, checks its sha512 and
+# leaves it in a run-scoped volume (removed by `down -v`). Flink UI on host 18081 (Apicurio holds 8081).
+services:
+  flink-connector:
+    image: registry.access.redhat.com/ubi10/openjdk-25:1.24-20
+    container_name: edp-flink-connector
+    user: "0"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        V=5.0.0-2.2
+        F=/connectors/flink-sql-connector-kafka.jar
+        curl -fsSL -o $$F https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/$$V/flink-sql-connector-kafka-$$V.jar
+        got=$$(sha512sum $$F | cut -d' ' -f1)
+        want=8340ab056b30d6d55b43fff9e13a61294e26d94d184b749db3dc648ec484e75c06076e35888eeb26473040a0c6f953e12727ac9f5935d2f2b831db20d803da54
+        [ "$$got" = "$$want" ] || { echo "sha512 mismatch $$got"; exit 1; }
+        chmod 644 $$F
+        echo "sha512 ok"
+    volumes: [flink-connectors:/connectors]
+    restart: "no"
+    mem_limit: 256m
+    networks: [edp]
+
+  jobmanager:
+    image: docker.io/library/flink:2.2.1-java17
+    container_name: edp-flink-jobmanager
+    command: ["bash", "-c", "cp /connectors/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh jobmanager"]
+    ports: ["127.0.0.1:18081:8081"]     # Flink UI and REST
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        jobmanager.memory.process.size: 768m
+        rest.address: jobmanager
+    volumes: [flink-connectors:/connectors:ro]
+    depends_on:
+      flink-connector: {condition: service_completed_successfully}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/overview >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks: [edp]
+
+  taskmanager:
+    image: docker.io/library/flink:2.2.1-java17
+    container_name: edp-flink-taskmanager
+    command: ["bash", "-c", "cp /connectors/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh taskmanager"]
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        taskmanager.memory.process.size: 1536m
+    volumes: [flink-connectors:/connectors:ro]
+    depends_on:
+      jobmanager: {condition: service_healthy}
+    mem_limit: 1536m
+    networks: [edp]
+
+volumes:
+  flink-connectors:
+
+networks:
+  edp:
+    name: edp

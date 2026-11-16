@@ -1,0 +1,21 @@
+# Redis for Appendix G, used under the AGPLv3 option of the Redis 8 licence, as published (no UBI image
+# is publicly available). No persistence: a restart is a real cache loss.
+services:
+  redis:
+    image: docker.io/library/redis:8.10.3-alpine
+    container_name: edp-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp

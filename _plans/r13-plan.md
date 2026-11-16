@@ -187,9 +187,9 @@ Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at p
 |---|---|---|---|---|
 | 0 | Preflight: owner OK, save plan, iteration-plan r13 in progress and r13b row added, no stack, profile or CRC running | orchestrator | owner OK | done |
 | 1A | Pins: Flink, Kafka SQL connector (sha512), RisingWave, Redis, each with digests and licences; sources rows A to G (all Findings plus per-appendix sources, licence pages for ksqlDB, Materialize, Redis); EIP Camel links for D; bibliography rows | exec 1A (Sonnet) | 0 | done (Flink held at 2.2.1: no connector for 2.3; RisingWave v3.1.1; Redis 8.10.3-alpine) |
-| 1B | Compose G0 spike Q1 to Q5 | exec 1B (Sonnet) | 0 | pending |
-| 1C | minikube G0 spike Q6 to Q9 | exec 1C (Sonnet) | 1B done (lock) | pending |
-| 1D | validate.py branches and self-tests, CI loop, `chapters.html`, part card, `_infra` Flink, RisingWave and Redis files, stack-guard compose CRC check | orchestrator | 1B in progress | pending |
+| 1B | Compose G0 spike Q1 to Q5 | exec 1B (Sonnet) | 0 | done (F1 to F37; peaks 2.12 and 2.06 GiB) |
+| 1C | minikube G0 spike Q6 to Q9 | exec 1C (Sonnet) | 1B done (lock) | in progress |
+| 1D | validate.py branches and self-tests, CI loop, `chapters.html`, part card, `_infra` Flink, RisingWave and Redis files, stack-guard compose CRC check | orchestrator | 1B in progress | done (validate.py, CI, chapters.html, part card, stack guard, _infra Flink, RisingWave, Redis; Redis Dev Services rule) |
 | G0 | "G0 decisions" appended; decisions 6, 9, 10, 12, 15 from data; names, commands and durations frozen | orchestrator | 1A to 1D | pending |
 | 2A to 2G | Appendices A to G: example (where any), verify.sh, README, example page, appendix, figures | execs 2A to 2G (Sonnet) | G0 | pending |
 | 2X | Consistency: domain-model.md topic note, README appendix list, CLAUDE.md decisions draft, versions.md rows | orchestrator | G0 | pending |

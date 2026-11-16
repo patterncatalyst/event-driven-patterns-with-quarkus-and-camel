@@ -1,0 +1,4 @@
+# RisingWave single_node crashes (exit 139) under a memory limit below about 8 GiB with the default
+# compactor budget; this limit lets it run at mem_limit 4g (measured in the r13 G0 spike).
+[storage]
+compactor_memory_limit_mb = 768

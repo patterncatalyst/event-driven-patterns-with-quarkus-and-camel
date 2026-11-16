@@ -1,0 +1,24 @@
+# RisingWave single_node for Appendix C: PostgreSQL wire protocol on 4566 (user root, database dev).
+# No premium feature is used; telemetry is off.
+services:
+  risingwave:
+    image: docker.io/risingwavelabs/risingwave:v3.1.1
+    container_name: edp-risingwave
+    command: ["single_node", "--config-path", "/etc/risingwave.toml", "--total-memory-bytes", "3221225472"]
+    environment:
+      ENABLE_TELEMETRY: "false"
+    volumes:
+      - ./risingwave/risingwave.toml:/etc/risingwave.toml:ro,Z
+    ports: ["127.0.0.1:4566:4566"]
+    mem_limit: 4g
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/4566'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
