@@ -23,7 +23,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r11 | minikube + Strimzi + CloudNativePG + LGTM setup; KRaft, UTO, SSA, security context | 28 to 31 | K | shipped (r11.0, #12) |
 | r12 | Monitoring Strimzi, Cruise Control, MM2, Connect on Strimzi; chapter 10's Strimzi half | 32 to 35 | K | shipped (r12.0, #13) |
 | r13 | Appendices A to G (A testing, B compose to Kubernetes, C Kafka Streams / Flink SQL / RisingWave, D pattern map and glossary, E resequencing across partitions, F deploying on minikube, G write-forward cache with outbox and Redis) | A to G | C, K | shipped r13.0 (2026-11-16) |
-| r13b | Appendix H: the chapter 08 outbox on OpenShift Local (owner-started CRC, AMQ Streams, CloudNativePG via OLM, buildah + skopeo); full teardown, crc stop and delete | H | CRC | planned |
+| r13b | Appendix H: the chapter 08 outbox on OpenShift Local (owner-started CRC, AMQ Streams, CloudNativePG via OLM, buildah + skopeo); full teardown, crc stop and delete | H | CRC | in progress |
 | r14 | Retro: QA sweep, idiomatic review, voice review, host scrub, re-survey, full re-run | all | C, K | planned |
 | r15 | The deck: `lgtm-presentation/` built like CNDP's, with `text/`, `edits/`, `BUILD.md` and a "Take it with you" QR slide; figures reused from chapter specs; stands alone | none | none | planned |
 

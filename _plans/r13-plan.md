@@ -204,7 +204,7 @@ r13b steps (after r13.0):
 
 | Step | Work | Owner | Depends | Status |
 |---|---|---|---|---|
-| b0 | Preflight: no compose, no minikube; owner runs `crc setup --check-only` and `crc start` via `!`; inventory `oc get sub,csv -A` and non-system namespaces | owner, orchestrator | r13.0 | pending |
+| b0 | Preflight: no compose, no minikube; owner runs `crc setup --check-only` and `crc start` via `!`; inventory `oc get sub,csv -A` and non-system namespaces | owner, orchestrator | r13.0 | in progress (2026-11-16: branch cut from main at 7511c2e; no compose, no minikube; crc 2.64.0, bundle 4.22.14 cached, no VM; pull secret file present; oc, podman, buildah, skopeo on PATH) |
 | b1 | Survey on the cluster: AMQ Streams and CNPG packagemanifests (channel, CSV), AMQ Streams Kafka versions; sources rows H | exec b1 | b0 | pending |
 | bG0 | CRC spike: H-Q1 to H-Q7 (below) | exec bG0 | b1 | pending |
 | b2 | `ah-openshift-local` scripts, overlays, README, page, appendix, figures; validate CRC branch; stack-guard `--crc` | exec b2, orchestrator | bG0 | pending |
