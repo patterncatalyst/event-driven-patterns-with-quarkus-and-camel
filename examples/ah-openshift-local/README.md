@@ -96,15 +96,15 @@ The inventory prints one line per group (namespaces, Subscriptions and CSVs, CRD
 
 ## Measurements
 
-Wall times of clean sequences on an empty cluster: the range over five full sequences. The build downloads Maven artefacts; the UBI 10 base images were already in rootless storage:
+Wall times of clean sequences on an empty cluster: the range over seven full sequences. The build downloads Maven artefacts; the UBI 10 base images were already in rootless storage:
 
 | Step | Wall time |
 |---|---|
-| `install.sh` | 137 to 143 s (both operators Succeeded 53 to 56 s after the first Subscription, the first 34 to 37 s and the second 9 to 14 s after their approvals; Kafka, the `Cluster` and Connect, build included, Ready 81 to 87 s after the apply) |
-| `build-and-copy.sh` | 51 to 58 s (build 49 to 55 s, copy 2 to 3 s) |
-| `deploy.sh` | 10 to 12 s |
+| `install.sh` | 130 to 144 s (both operators Succeeded 47 to 56 s after the first Subscription, the first 34 to 37 s and the second 9 to 14 s after their approvals; Kafka, the `Cluster` and Connect, build included, Ready 81 to 87 s after the apply) |
+| `build-and-copy.sh` | 51 to 60 s (build 49 to 56 s, copy 2 to 3 s) |
+| `deploy.sh` | 9 to 12 s |
 | `verify.sh` | 43 to 45 s |
-| `teardown.sh` | 43 to 44 s |
+| `teardown.sh` | 43 to 45 s |
 
 ## Limits
 

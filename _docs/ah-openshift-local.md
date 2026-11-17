@@ -86,7 +86,7 @@ skopeo copy --preserve-digests \
 
 {% include excalidraw.html file="ah-build-and-copy" alt="A rootless buildah build of the unchanged Containerfile gives an image with digest D in containers-storage; skopeo copy with preserve-digests sends it through the registry route with verified TLS to the ImageStream order-service:08, and the Deployment references the internal registry at D" caption="Figure H.2: The digest of the local build is the digest in the cluster" %}
 
-On a first copy into an empty registry, a plain copy changes the digest: skopeo compresses the layers that buildah stored uncompressed, so the same image id arrives under a different manifest digest. A layer the registry already holds is reused as it is. `--preserve-digests` keeps the manifest as it is, or fails. The Deployment then names the image by digest, and the script compares the digest in the `ImageStream` with the one of the local build before it deploys. A rebuild changes the digest too, because the image records when it was created, so the digest is written to a file at copy time and read at deploy time. The build took 49 to 55 s and the copy 2 to 3 s.
+On a first copy into an empty registry, a plain copy changes the digest: skopeo compresses the layers that buildah stored uncompressed, so the same image id arrives under a different manifest digest. A layer the registry already holds is reused as it is. `--preserve-digests` keeps the manifest as it is, or fails. The Deployment then names the image by digest, and the script compares the digest in the `ImageStream` with the one of the local build before it deploys. A rebuild changes the digest too, because the image records when it was created, so the digest is written to a file at copy time and read at deploy time. The build took 49 to 56 s and the copy 2 to 3 s.
 
 Connect is built in the cluster. `KafkaConnect.spec.build` with `output.type: imagestream` makes the operator run an OpenShift build that downloads the Debezium plugin, checks its sha512 and pushes to the `ImageStream`, which must exist first. OpenShift admits that build pod under the privileged constraint, a property of OpenShift builds and not of the example; the Connect pod it produces runs under `restricted-v2`.
 
@@ -110,7 +110,7 @@ The consumer prints the headers, then the key `O-4301`, then the payload. The he
 
 A shared cluster is left as it was found, and deleting the namespaces does not do that. Deleting an operator by CLI removes the Subscription and the CSV, not the CRDs or the resources they define. What survives the namespaces is cluster-scoped: 21 CRDs, 8 ClusterRoles named `cnpg-*-editor-role`, `cnpg-*-viewer-role`, `strimzi-kafka-broker` and `strimzi-kafka-client`, the volumes with the `Retain` policy that the claims left behind, and the image objects and blobs in the registry.
 
-`teardown.sh` removes them in dependency order: connector, application, Connect, Kafka, `Cluster`, `ImageStream`s, Subscriptions, CSVs, install plans, the `OperatorGroup`, CRDs, ClusterRoles, namespaces, volumes. `oc adm prune images` is the only cluster-wide step, so it lists what it would delete and stops unless every image is the project's. It then removes the local buildah image and prints an inventory. It never strips a finalizer: a delete that does not finish stops the script and names the resource. It fails if anything of the project remains, and it takes 43 to 44 s. It does not stop CRC; that belongs to whoever started it.
+`teardown.sh` removes them in dependency order: connector, application, Connect, Kafka, `Cluster`, `ImageStream`s, Subscriptions, CSVs, install plans, the `OperatorGroup`, CRDs, ClusterRoles, namespaces, volumes. `oc adm prune images` is the only cluster-wide step, so it lists what it would delete and stops unless every image is the project's. It then removes the local buildah image and prints an inventory. It never strips a finalizer: a delete that does not finish stops the script and names the resource. It fails if anything of the project remains, and it takes 43 to 45 s. It does not stop CRC; that belongs to whoever started it.
 
 The UBI 10 base images stay in rootless storage, because buildah keeps them for the next build. The scripts delete the volume objects and do not inspect the node's disk behind them.
 
@@ -127,7 +127,7 @@ The install waits for two operators, Kafka, the `Cluster` and a Connect build; t
 
 Try one change and rerun:
 
-- Remove `--preserve-digests` from `build-and-copy.sh` and run it again: the rebuilt layers are new to the registry, skopeo compresses them, and the script stops because the digest in the cluster differs from the local build.
+- Point the local tag at another image after the copy and run `verify.sh`: only the digest check fails.
 - Call the Route with `curl` and no `--cacert`: it stops at the certificate.
 
 ## When not to use it
@@ -138,7 +138,7 @@ The pinned, manually approved Subscription trades upgrades for repeatability: a 
 
 > **🤖 Explore with your agent**
 > "In examples/ah-openshift-local, run build-and-copy.sh with and without --preserve-digests and compare skopeo inspect of containers-storage:localhost/edp/08-order-service:crc with oc get istag order-service:08 -n edp -o jsonpath='{.image.metadata.name}'. Then state which value the Deployment in deploy/ must reference and why the tag 08 is not enough."
-> Check: with the flag the two digests are equal and the Deployment image ends in @sha256 and that digest; without it, on a rebuild whose layers the registry does not hold yet, they differ.
+> Check: with the flag the two digests are equal and the Deployment image ends in @sha256 and that digest; the tag names whatever was pushed last, the digest names one image.
 
 ## References
 

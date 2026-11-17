@@ -22,7 +22,7 @@ cd examples/ah-openshift-local
 
 1. **Pinned operators.** Each Subscription waits for an approval, and only the plan for the named version is approved.
 2. **One digest.** The image built on the host and the image in the cluster's `ImageStream` have the same manifest digest, and the Deployment references it.
-3. **Admission.** Every pod runs under `restricted-v2` with a user from the project's range, and a privileged Deployment is refused.
+3. **Admission.** Every running pod except the Connect build pod runs under `restricted-v2` with a user from the project's range, and a privileged Deployment is refused.
 4. **Verified TLS.** The Route answers with a certificate checked against the cluster's ingress CA, and no step turns verification off.
 5. **A clean teardown.** The inventory afterwards lists no namespace, CRD, ClusterRole, volume or image of the example.
 

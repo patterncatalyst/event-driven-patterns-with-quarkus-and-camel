@@ -555,7 +555,8 @@ FORWARDING = re.compile(
     r"firewall-cmd|sysctl\s+-w|\bsocat\b|\b(?:oc|kubectl)\s+proxy\b", re.I)
 # Appendix H verifies every TLS connection against the cluster's ingress CA.
 TLS_OFF = re.compile(r"--tls-verify[= ]+false|--dest-tls-verify[= ]+false|--src-tls-verify[= ]+false|"
-                     r"\bcurl\b[^\n]*\s(?:-[a-zA-Z]*k[a-zA-Z]*|--insecure)\b|--insecure-skip-tls-verify|--insecure\b")
+                     r"\bcurl\b(?:[^\n]|\\\n)*?\s(?:-[a-zA-Z]*k[a-zA-Z]*|--insecure)\b|--insecure-skip-tls-verify|--insecure\b|"
+                     r"insecureSkipTLSVerify:\s*true")
 
 
 def check_no_forwarding(rep: Report):
@@ -681,6 +682,14 @@ def self_test() -> int:
         (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\nskopeo copy --dest-tls-verify=false a b\n")
         e = run(r).errors
         results.append(("--tls-verify=false in an Appendix H example caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\ncurl -s \\\n  -k https://x\n")
+        e = run(r).errors
+        results.append(("curl -k on a continued line caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\n")
+        (r / "examples/ah-demo/kc.yaml").write_text("insecureSkipTLSVerify: true\n")
+        e = run(r).errors
+        results.append(("insecureSkipTLSVerify in an Appendix H manifest caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/kc.yaml").unlink()
         (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\ncurl -k https://x\n")
         e = run(r).errors
         results.append(("curl -k in an Appendix H example caught", any("TLS verification off" in x for x in e), e))

@@ -13,8 +13,8 @@ source ./lib.sh
 T0=$SECONDS
 
 # The ClusterRoles OLM leaves behind, by exact name. A role is ours only if it also carries the labels OLM put on it
-# when our CSVs installed it: olm.managed=true, and olm.owner naming one of our two CSVs (the CloudNativePG roles)
-# or, for the two Strimzi roles that carry no owner, the label app=strimzi.
+# when our CSVs installed it: olm.managed=true, and olm.owner naming one of our two CSVs
+# (all 8 carry olm.owner, read live on CRC 2.64.0).
 ROLE_NAMES=(cnpg-database-editor-role cnpg-database-viewer-role cnpg-publication-editor-role cnpg-publication-viewer-role
             cnpg-subscription-editor-role cnpg-subscription-viewer-role strimzi-kafka-broker strimzi-kafka-client)
 our_roles() {
@@ -22,7 +22,7 @@ our_roles() {
         --argjson names "$(printf '%s\n' "${ROLE_NAMES[@]}" | jq -R . | jq -s .)" --arg a "$STRIMZI_CSV" --arg b "$CNPG_CSV" '
         .items[] | select(.metadata.name as $n | $names | index($n))
         | select((.metadata.labels["olm.owner"] // "") as $o
-                 | $o == $a or $o == $b or ($o == "" and .metadata.labels.app == "strimzi"))
+                 | $o == $a or $o == $b)
         | "clusterrole/" + .metadata.name'
 }
 

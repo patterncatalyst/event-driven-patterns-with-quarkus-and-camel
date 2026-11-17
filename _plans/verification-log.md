@@ -811,5 +811,7 @@ Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appen
 | b2 executor final (before the orchestrator runs) | 138 s | 54 s | 12 s | 45 s, 20/20 | 44 s | none of ours |
 | validator round 1 | 137 s | 51 s | 12 s | 20/20 | 44 s | none of ours; bites: check 9 alone, checks 11 and 12 |
 | repair round 1 (shared-cluster guards, oc wait) | 142 s | 53 s | 10 s | 43 s, 20/20 | 44 s | none of ours; install refuses with a foreign `kafka.strimzi.io` CRD present |
+| validator round 2 | 134 s | 54 s | 10 s | 44 s, 20/20 | 45 s | none of ours; bites: check 13 fails with a decoy FailedCreate; teardown refuses with a Kafka in another namespace |
+| final (orchestrator, after round-2 fixes) | 131 s | 60 s | 10 s | 43 s, 20/20 | 45 s | none of ours; 29 CRDs and ClusterRoles deleted by owner label |
 
 Docker image count 104 before and after; podman keeps only the two UBI 10 base images.
