@@ -14,7 +14,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.PersistenceException;
 
 /**
- * The event store of chapter 14: read a stream in version order, append after an expected version, and one pass over
+ * The event store: read a stream in version order, append after an expected version, and one pass over
  * every stream for a replay. The unique constraint on (stream_id, version) is the concurrency check.
  */
 @ApplicationScoped

@@ -29,6 +29,11 @@ if [[ -z "$_sg_project" ]]; then
     echo "stack-guard: compose project name required" >&2
     return 2 2>/dev/null || exit 2
 fi
+if [[ -z "$_sg_crc" ]] && ! docker ps -q >/dev/null 2>&1; then
+    echo "stack-guard: docker is not reachable, so the one-stack rule cannot be checked" >&2
+    unset _sg_project _sg_mk _sg_crc
+    return 2 2>/dev/null || exit 2
+fi
 _sg_bad=()
 while IFS='|' read -r _sg_name _sg_proj _sg_kic; do
     [[ -z "$_sg_name" || "$_sg_name" == quarkus-agent-mcp* ]] && continue

@@ -1,4 +1,4 @@
-# The chapter 08 connector (examples/08-transactional-outbox/connect/order-outbox.json) as a resource. Only the
+# The example 08 connector (examples/08-transactional-outbox/connect/order-outbox.json) as a resource. Only the
 # host and the credentials differ: the host is the CloudNativePG read-write Service and the credentials are
 # references into the secret edp-pg-app, resolved inside the Connect pod.
 apiVersion: kafka.strimzi.io/v1

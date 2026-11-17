@@ -75,6 +75,7 @@ sys.exit(0 if d['connector']['state'] == 'RUNNING' and d['tasks'] and all(t['sta
 }
 plugin_listed() { local out; out="$(curl -sf "$CONNECT/connector-plugins")" || return 1; [[ "$out" == *io.debezium.connector.postgresql.PostgresConnector* ]]; }
 slot_is() { [[ "$(sql "SELECT active FROM pg_replication_slots WHERE slot_name='$SLOT'")" == "$1" ]]; }
+connect_and_service_ready() { plugin_listed && ready; }
 redis_ping() { [[ "$(redis ping)" == PONG ]]; }
 http_code() { curl -s -o /dev/null -w '%{http_code}' "$ORDERS$1" || true; }
 http_is() { [[ "$(http_code "$1")" == "$2" ]]; } # http_is <path> <status>
@@ -138,7 +139,7 @@ poll 30 plugin_listed || fail_loudly "Connect does not list the PostgreSQL conne
 register_connector >/dev/null || fail_loudly "the connector was not accepted by Connect"
 
 echo "Infrastructure"
-check "Connect lists the Debezium PostgreSQL connector and order-service is ready" bash -c "curl -sf $CONNECT/connector-plugins | grep -q PostgresConnector && curl -sf $ORDERS/q/health/ready"
+check "Connect lists the Debezium PostgreSQL connector and order-service is ready" connect_and_service_ready
 check "the order-outbox connector and its task are RUNNING" poll 60 connector_running
 check "Redis answers PONG and holds no key at the start" expect "$(redis ping)/$(redis dbsize)" "PONG/0"
 

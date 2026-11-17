@@ -25,7 +25,7 @@ The input is one JSON record per delivery on a single-partition topic:
 
 The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Each engine takes event time from `deliveredAt`, and each closes a window by a lateness bound; how the bound advances differs between them.
 
-Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression. It is one number in one place, and each engine receives it.
+Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression.
 
 ## Kafka Streams: ask the application
 
@@ -172,7 +172,7 @@ State grows with the number of open windows and keys. A count per carrier per mi
 - Apache Flink, [Windowing table-valued functions](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/dev/table/sql/queries/window-tvf/), [Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/kafka/) (watermarks per partition, idle partitions) and [Upsert Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/upsert-kafka/)
 - RisingWave, [Kafka source](https://docs.risingwave.com/ingestion/sources/kafka), [time windows](https://docs.risingwave.com/processing/sql/time-windows), [emit on window close](https://docs.risingwave.com/processing/emit-on-window-close) and [premium features](https://docs.risingwave.com/get-started/premium-features)
 - Apache Pinot, [home page](https://pinot.apache.org/); Apache Druid, [home page](https://druid.apache.org/)
-- Confluent, [Confluent Community License](https://www.confluent.io/confluent-community-license/) (ksqlDB)
+- Confluent, [Confluent Community License](https://www.confluent.io/confluent-community-license/) and the ksqlDB [LICENSE](https://github.com/confluentinc/ksql/blob/master/LICENSE)
 - Materialize, [LICENSE](https://raw.githubusercontent.com/MaterializeInc/materialize/main/LICENSE) (Business Source License)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 14: Streaming SQL
 - *Cloud-Native Design Patterns*, [chapter 6: Stream Processing](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/06-stream-processing/)

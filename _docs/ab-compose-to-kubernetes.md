@@ -64,7 +64,7 @@ spec:
     volumes: [{id: 0, type: persistent-claim, size: 2Gi, deleteClaim: true}]
 ```
 
-Four parts of the compose service have no line of their own here. The node id is assigned by Strimzi and read from the pool's `status.nodeIds`: the broker is 0 and the controller 1, where compose pins the broker to 1. The advertised listeners disappear, because Strimzi builds them from `spec.kafka.listeners`, and the cluster has one internal listener behind the bootstrap Service. The volume is the pool's storage. The share group settings are simply absent, which matters below.
+Four parts of the compose service have no line of their own here. The node id is assigned by Strimzi and read from the pool's `status.nodeIds`: the broker is 0 and the controller 1, where compose pins the broker to 1. The advertised listeners disappear, because Strimzi builds them from `spec.kafka.listeners`, and the cluster has one internal listener behind the bootstrap Service. The volume is the pool's storage. The share group settings are absent.
 
 Strimzi does not let a `Kafka` resource set everything. Its documentation says that "Kafka broker config properties with certain prefixes cannot be set unless it is in the exception list", and it lists the forbidden prefixes. The keys in this comparison are ordinary broker keys, but the list is the first place to look when a setting from a compose file is refused.
 
@@ -143,9 +143,9 @@ The slot count is the reverse: compose is the one that sets a value, and CloudNa
 
 The settings the compose file and the resource each set are also checked against their own file. Every key the file or the resource sets must be what the running system reports, and every key it leaves unset must be the documented default. A copied line that did not take effect fails there, before the comparison runs.
 
-A describe for a node id that is not a broker prints nothing and exits successfully. A capture taken with the wrong id would be empty, and an empty file compared with an empty file is equal. The capture check therefore requires every key to be present, and a witness captures a node id that is no broker to show that the check rejects the empty result.
+A describe for a node id that is not a broker prints nothing and exits successfully. A capture taken with the wrong id would be empty, and an empty file compared with an empty file is equal. The capture check therefore requires every key to be present.
 
-Listeners, advertised addresses, storage and resource limits are not compared. They are the parts that differ because a pod is not a container: names, volumes and memory. The comparison covers the settings that change what the broker and the database do.
+Listeners, advertised addresses, storage and resource limits are not compared. They are the parts that differ because a pod is not a container: names, volumes and memory.
 
 > **🤖 Explore with your agent**
 > "In examples/ab-compose-to-kubernetes, run verify.sh compose with DRIFT=partitions, then verify.sh k8s and verify.sh compare. Read ALLOWED in configs.py, say which setting differs and whether the allowlist covers it, and name the line of which file would make the two targets agree."

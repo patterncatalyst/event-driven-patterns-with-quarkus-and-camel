@@ -9,7 +9,7 @@ description: "A cache that the request writes cannot commit with the database. A
 duration: "50 minutes"
 ---
 
-`order-service` answers `GET /orders/{id}` for every order it places, and a read-heavy service answers it many times over. PostgreSQL can answer them, but the reads are cheap to move: the order is small, it changes rarely, and the answer is the same for everyone. Put it in Redis. The question is who writes it there. The obvious answer is the request that changes the order: save the row, set the key. It is the dual write of the transactional outbox with Redis in place of Kafka, and it fails the same two ways.
+`order-service` answers `GET /orders/{id}` for every order it places, and a read-heavy service answers it many times over. PostgreSQL can answer them, but the reads are cheap to move: the order is small, it changes rarely, and the answer is the same for everyone. Put it in Redis. The question is who writes it there. The obvious answer is the request that changes the order: save the row, set the key. It is a dual write to two stores that share no transaction, and it fails in two ways.
 
 {% include excalidraw.html file="ag-write-forward-path" alt="POST /orders writes the order row and the outbox row in one transaction; Debezium and the EventRouter publish the full state to edp.orders.placed and edp.orders.cancelled; a Camel route applies it to a Redis hash behind a version guard; GET /orders/{id} reads Redis only" caption="Figure G.1: The request writes PostgreSQL, the events write Redis, the read endpoint reads Redis" %}
 
@@ -29,7 +29,7 @@ The shape is CQRS with a key-value store as the read model. The Azure Architectu
 
 ### How Quarkus and Camel model it
 
-`OrderService` increments `version` and fires an `ExportedEvent` in one `@Transactional` method, as in the transactional outbox, except that the payload is the whole `OrderView` and the topic column routes it. `place` fires to `edp.orders.placed`, and `cancel` fires to `edp.orders.cancelled`. The connector file is the outbox one, unchanged: the Outbox Event Router sends each row to the topic named in its `topic` column, keyed by the order id.
+`OrderService` increments `version` and fires an `ExportedEvent` in one `@Transactional` method. The payload is the whole `OrderView`, and the topic column routes it. `place` fires to `edp.orders.placed`, and `cancel` fires to `edp.orders.cancelled`. The Debezium connector uses the Outbox Event Router, which sends each row to the topic named in its `topic` column, keyed by the order id.
 
 One Camel route is the only writer of the cache:
 
@@ -66,7 +66,7 @@ Redis runs as the unmodified upstream image, `redis:8.10.3-alpine`, used under t
 
 ## How stale the cache is
 
-The cache is behind by the time an event needs to travel: the commit, the log, the connector, the topic, the route, Redis. Measured from the answer to `POST /orders` to the first read that finds the order in Redis, the median delay was 491 to 496 ms and the slowest of 20 orders 499 to 875 ms across runs, which is the size of the connector's `poll.interval.ms`, 500 ms by default. The polling interval is the likely cause; no run separated it from the time in Kafka and the route. A read that follows its own write at once usually misses. The request that wrote the order is the place to confirm it; the cache catches up.
+The cache is behind by the time an event needs to travel: the commit, the log, the connector, the topic, the route, Redis. Measured from the answer to `POST /orders` to the first read that finds the order in Redis, the median delay was 491 to 496 ms and the slowest of 20 orders 499 to 875 ms across runs, which is the size of the connector's `poll.interval.ms`, 500 ms by default. The polling interval is the likely cause; no run separated it from the time in Kafka and the route. A read that follows its own write at once usually misses.
 
 With Connect stopped, the order is committed and readable from PostgreSQL, and the cache has no answer for it. The staleness is the outage. When Connect returns, the backlog arrives in commit order and the cache catches up without any intervention. A service that must never answer from a stale cache reads the source for the orders it just wrote; one that can tolerate a few hundred milliseconds does not need to.
 
@@ -86,7 +86,7 @@ The replay reaches as far back as the topics retain, so retention bounds how old
 
 {% include excalidraw.html file="ag-dual-write-failure" alt="Dual write: the request writes Redis, then the PostgreSQL commit fails with a 500, and GET answers 200 from Redis for an order PostgreSQL does not hold; write-forward: the commit fails, no event is published, Redis is untouched and GET answers 404" caption="Figure G.3: A failed commit after a cache write, and the same failure with write-forward" %}
 
-`CACHE_WRITE=dual` (demo code) writes Redis inside the request before the commit, which is the code most services start with. For an order whose id is named in `FAIL_BEFORE_COMMIT_FOR`, the request then fails before the commit, the way a constraint violation or a lost connection does. The response is a 500 and PostgreSQL holds no such order. Redis answers 200 for it. With the default `CACHE_WRITE=forward` the same failing request leaves no row, no event and no cache entry. Putting the cache write after the commit trades this for the other failure, the outbox gap with Redis in place of Kafka: a crash between the two leaves the cache without the change.
+`CACHE_WRITE=dual` (demo code) writes Redis inside the request before the commit, which is the code most services start with. For an order whose id is named in `FAIL_BEFORE_COMMIT_FOR`, the request then fails before the commit, the way a constraint violation or a lost connection does. The response is a 500 and PostgreSQL holds no such order. Redis answers 200 for it. With the default `CACHE_WRITE=forward` the same failing request leaves no row, no event and no cache entry. Putting the cache write after the commit trades this for the other failure, a gap between commit and cache write: a crash between the two leaves the cache without the change.
 
 The dual write has a second cost. With Redis stopped, the write-forward request still returns 201, because it never calls Redis. The dual-write request fails, so the cache's availability becomes the order service's.
 

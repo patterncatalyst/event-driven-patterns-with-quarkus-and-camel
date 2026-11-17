@@ -13,7 +13,7 @@ The Kubernetes examples run the same event-driven patterns on minikube, with Str
 
 ## Setting up the cluster
 
-One minikube profile named `edp` serves every Kubernetes example. Every version is an exact pin, and the table below lists them.
+One minikube profile named `edp` serves every Kubernetes example. Every version is an exact pin:
 
 | Component | Version | Note |
 |---|---|---|
@@ -144,11 +144,11 @@ QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
 - {name: QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://lgtm.edp-lgtm.svc:4318"}
 ```
 
-The variable names are the same and only the values move. The broker address is the bootstrap Service. The database address is the read-write Service that CloudNativePG creates for its cluster, and the password comes from the Secret the operator generates, not from a literal in the manifest. This is the payoff of the rule that Camel's broker setting and the Quarkus datasource and OpenTelemetry settings are read from the environment: the move to Kubernetes is a change of values.
+The variable names are the same and only the values move. The broker address is the bootstrap Service. The database address is the read-write Service that CloudNativePG creates for its cluster, and the password comes from the Secret the operator generates, not from a literal in the manifest. Because Camel's broker setting and the Quarkus datasource and OpenTelemetry settings are read from the environment, the move to Kubernetes is a change of values.
 
 {% include excalidraw.html file="28-compose-to-minikube" alt="Three columns map the compose address of Kafka, PostgreSQL and the LGTM collector to the Kubernetes address: kafka:9094 to edp-kafka-bootstrap.edp-kafka.svc:9092, postgres:5432 to edp-pg-rw.edp.svc:5432, lgtm:4318 to lgtm.edp-lgtm.svc:4318" caption="Figure 28.3: Three addresses change; the names of the variables do not" %}
 
-Three details come from running them side by side. The three sets use the same Service names and NodePorts, so they run one after another: deploy a set, use it, delete it, deploy the next. Each set has its own database in the same PostgreSQL cluster, because the schemas of the three examples would otherwise collide on their Flyway history. And the ordering example needs two topics with three partitions, which a Job creates with the same `kafka-topics.sh` commands compose ran.
+Three details apply when the sets share a cluster. The three sets use the same Service names and NodePorts, so they run one after another: deploy a set, use it, delete it, deploy the next. Each set has its own database in the same PostgreSQL cluster, because the schemas of the three examples would otherwise collide on their Flyway history. And the ordering example needs two topics with three partitions, which a Job creates with the same `kafka-topics.sh` commands compose ran.
 
 ```bash
 kafka-topics.sh --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 \
@@ -185,7 +185,7 @@ When one broker for development is all you need and Docker is already there, com
 
 When a cluster cannot run a controller and its custom resource definitions, for example a namespace-restricted team cluster, the operator is the wrong shape. Strimzi installs cluster-wide definitions, and its documentation notes that, depending on the cluster setup, installation typically requires cluster admin privileges.
 
-The cluster built here is not fault tolerant. By the 2N + 1 rule one controller survives no failure, three survive one, and five survive two (Apache Kafka, KRaft operations).
+One controller is not fault tolerant. By the 2N + 1 rule one controller survives no failure, three survive one, and five survive two (Apache Kafka, KRaft operations).
 
 ## References
 

@@ -1,4 +1,4 @@
-# Chapter 32: the chapter 02 pair on Kafka with the Strimzi Metrics Reporter on brokers and controllers, a
+# Example 32: the example 02 pair on Kafka with the Strimzi Metrics Reporter on brokers and controllers, a
 # collector that scrapes them and the operator, and kube-state-metrics for the state of the custom resources.
 # Both are Components of ../_k8s, so that the demo overlay can leave the reporter out and keep the monitoring.
 apiVersion: kustomize.config.k8s.io/v1beta1

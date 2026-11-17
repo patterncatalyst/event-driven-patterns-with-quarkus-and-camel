@@ -1,4 +1,4 @@
-# Chapter 33: Kafka with Cruise Control on two brokers. The catalog topics are KafkaTopics with two replicas, so
+# Example 33: Kafka with Cruise Control on two brokers. The catalog topics are KafkaTopics with two replicas, so
 # every replica sits on the two original brokers. No applications and no PostgreSQL.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

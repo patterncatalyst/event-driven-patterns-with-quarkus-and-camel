@@ -23,7 +23,7 @@ Each way out gives something up. Rewriting the old rows with a migration breaks 
 
 **An upcaster turns an event stored in an earlier shape into the same event in the current shape, on a copy, when the event is read, so the store keeps what was written and the code sees one shape.**
 
-Each row records the `schema_version` it was written in. The chain holds one step per version, each a small transform from one shape to the next, and a row stored at version 1 passes through every step up to the current version. An unknown version is an error, not a guess. The default a step supplies is a business decision, the priority an order had before customers could choose, so it is written once, next to the step, and the published contract states the same value.
+Each row records the `schema_version` it was written in. The chain holds one step per version, each a small transform from one shape to the next, and a row stored at version 1 passes through every step up to the current version. An unknown version is an error. The default a step supplies is a business decision, the priority an order had before customers could choose, so it is written once, next to the step, and the published contract states the same value.
 
 Upcasting happens on every load and costs a copy of the payload. In exchange the stored history stays exactly as it was recorded, and a bug in a step is fixed in code, with nothing to repair.
 
@@ -131,7 +131,7 @@ Both readers end in the same `Recorder`. The route starts with the `camel-reader
 
 ## Refusing an incompatible version
 
-The next release, as written by someone in a hurry, removes the default from `shippingPriority`: the field is required, because every order now has one. Against version 2 that is compatible, since a reader on the new schema reads version 2 data, in which the field is present. Against version 1 it is not, because version 1 has no value to give the reader.
+The next release removes the default from `shippingPriority`: the field is required, because every order now has one. Against version 2 that is compatible, since a reader on the new schema reads version 2 data, in which the field is present. Against version 1 it is not, because version 1 has no value to give the reader.
 
 {% include excalidraw.html file="18-registry-versions" alt="An artifact with version 1 without shippingPriority, version 2 with the default and a v3 candidate without it; under BACKWARD_TRANSITIVE v3 is checked against versions 2 and 1 and refused; under BACKWARD it is checked against version 2 only and accepted, after which a v3 reader cannot read version 1 records" caption="Figure 18.3: The rule decides which versions can exist" %}
 

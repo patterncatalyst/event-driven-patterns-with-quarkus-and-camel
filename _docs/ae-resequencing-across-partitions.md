@@ -9,7 +9,7 @@ description: "A per-order buffer in PostgreSQL works because an order's events s
 duration: "50 minutes"
 ---
 
-An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. A per-order buffer in PostgreSQL puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
+An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. A per-order buffer in PostgreSQL, which keeps held events as rows and applies them in the transaction that releases them, puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
@@ -19,7 +19,7 @@ An order's three shipment events arrive from two producers on three topics, each
 
 Kafka orders records inside one partition. An order whose events are written by different producers, or to different topics, spans partitions, and a consumer reads partitions at different speeds, so the service sees an event before the one that caused it. Re-keying cannot help, because the producers and the topics are not the service's to change.
 
-The Camel Resequencer is the tool for this, in two forms that look alike and answer different questions. Choosing between them, and knowing what each one does when an event is missing, late, or still held when the process stops, is the pattern.
+The Camel Resequencer is the tool for this, in two forms that look alike and answer different questions.
 
 ### The solution
 
@@ -105,7 +105,7 @@ A global sequencer is a bottleneck and a single point of failure. If events cann
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html), Addison-Wesley, 2003: Resequencer
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Resequencer](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html)
 - Apache Camel, [Resequence EIP](https://camel.apache.org/components/4.22.x/eips/resequence-eip.html) (batch and stream forms, capacity, timeout and `rejectOld`) and [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html)
 - Apache Kafka, [documentation](https://kafka.apache.org/documentation/): ordering within a partition and consumer offset commits
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 2: Anatomy of Message-Driven Systems

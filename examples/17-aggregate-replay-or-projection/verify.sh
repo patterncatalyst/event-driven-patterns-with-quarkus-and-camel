@@ -85,10 +85,10 @@ oracle() {
 total() { report "$1" | python3 -I -c 'import json, sys; print(sum(r["shipments"] for r in json.load(sys.stdin)["rows"]))'; } # total replay|projection
 command_code() { curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/orders/$1${2:+/$2}${3:+?$3}"; } # command_code <id> [path] [query]
 
-prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
+prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep '"value"' >/dev/null; } # grep without -q: under pipefail an early exit would fail the pipeline with SIGPIPE
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
-app_logged() { docker logs "$APP" 2>&1 | grep -qF "$1"; }
+app_logged() { docker logs "$APP" 2>&1 | grep -F -- "$1" >/dev/null; } # no -q: pipefail + SIGPIPE
 
 # --- the histories -------------------------------------------------------------------------------------------------
 events_count() { sql "SELECT count(*) FROM orders.events"; }

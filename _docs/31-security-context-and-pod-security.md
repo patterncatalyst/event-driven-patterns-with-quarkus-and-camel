@@ -61,7 +61,7 @@ runAsNonRoot != true (pod or container "app" must set securityContext.runAsNonRo
 seccompProfile (pod or container "app" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
 ```
 
-The Deployment reports `ReplicaFailure` and the old pod keeps serving. That is the case worth testing before a label goes on a namespace that already holds pods: labelling it prints a warning for each running pod that would fail and evicts nothing, and the refusal arrives with the next pod creation, which is usually a rollout at a bad hour. A server-side apply of the unsecured manifest also prints `would violate PodSecurity`.
+The Deployment reports `ReplicaFailure` and the old pod keeps serving. Labelling a namespace that already holds pods prints a warning for each running pod that would fail and evicts nothing. The refusal arrives with the next pod creation, usually a rollout at a bad hour. A server-side apply of the unsecured manifest also prints `would violate PodSecurity`.
 
 The four fields, plus a read-only root filesystem, go in one patch that every Deployment in `edp` receives.
 
@@ -108,7 +108,7 @@ The refusal shows up in the operator's log, and Kafka stays not Ready; there is 
 
 The Restricted provider disallows privilege escalation, requires a non-root user, sets seccomp to `RuntimeDefault`, and drops every capability except `NET_BIND_SERVICE`. The broker and controller pods then carry the four fields and run as user 1001. A security context set in the pod template of a node pool overrides the provider, which makes a template the place for a single pod's exception, visible in the resource.
 
-Running the default provider under the label shows the refusal. A run that blocks Kafka ends with the namespace teardown and no repair: the operator waits for a broker that cannot exist, and a Kafka cluster whose pod was refused recovers slowly.
+A Kafka cluster whose broker pod was refused recovers slowly.
 
 ## CloudNativePG pods
 
@@ -166,6 +166,6 @@ The label is only as good as the version it names. `latest` moves with the clust
 - Kubernetes, [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) and [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/) (the modes, the version pin and the dry-run label)
 - Strimzi, [Deploying and Managing](https://strimzi.io/docs/operators/latest/deploying.html), the pod security provider section (the Baseline and Restricted providers, `STRIMZI_POD_SECURITY_PROVIDER_CLASS`, template precedence), and [Writing custom pod security providers](https://strimzi.io/blog/2023/04/05/writing-custom-pod-security-providers/)
 - CloudNativePG, [Security](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/docs/src/security.md) (the pod security context and Pod Security Admission)
-- Red Hat, [UBI OpenJDK images](https://catalog.redhat.com/software/containers/ubi10/openjdk-25/) (the 185 user)
+- Red Hat, [UBI OpenJDK images](https://catalog.redhat.com/software/containers/ubi10/openjdk-25/690ca440f43a9c6b120b2970) (the 185 user)
 - [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
 - [Server-side apply]({{ '/docs/30-server-side-apply/' | relative_url }})

@@ -1,6 +1,6 @@
 # Appendix E: Resequencing across partitions
 
-`order-service` reads `edp.shipping.scheduled`, `edp.shipping.in-transit` and `edp.shipping.delivered` in one consumer group, restores the order of the events with the Camel Resequencer, writes one row per applied event to PostgreSQL (the identity id is the order of application) and publishes each event to `edp.shipping.shipments`, keyed by order id. Chapter 4's per-order PostgreSQL buffer is the comparison, by reference; it is not run here.
+`order-service` reads `edp.shipping.scheduled`, `edp.shipping.in-transit` and `edp.shipping.delivered` in one consumer group, restores the order of the events with the Camel Resequencer, writes one row per applied event to PostgreSQL (the identity id is the order of application) and publishes each event to `edp.shipping.shipments`, keyed by order id.
 
 Quarkus, Camel (Kafka, direct, Jackson), Hibernate ORM with Panache, Flyway, PostgreSQL, SmallRye Health and OpenTelemetry to the LGTM stack. Order ids are `O-40xx`.
 

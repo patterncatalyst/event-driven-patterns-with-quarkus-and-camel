@@ -9,7 +9,7 @@ duration: "75 minutes"
 
 In the choreographed saga nobody holds the whole sequence. Each service knows its own next step, so changing the order of the steps, adding one, or finding out why an order is stuck touches three codebases. An orchestrator holds the sequence in one place and tells each participant what to do.
 
-`order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them. Having both in the same run shows where they differ: who holds the state, who triggers the compensation, and what happens to a participant that answers late.
+`order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them.
 
 ## Pattern: Orchestrated saga
 
@@ -198,7 +198,7 @@ A step that cannot be undone has no compensation. Shipping is the usual one: it 
 ## References
 
 - Hector Garcia-Molina and Kenneth Salem, [Sagas](https://doi.org/10.1145/38713.38742), Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data, pages 249 to 259
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html), Addison-Wesley, 2003: Process Manager
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Process Manager](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html)
 - Chris Richardson, [Pattern: Saga](https://microservices.io/patterns/data/saga.html) and *Microservices Patterns*, Manning, 2018, chapter 4
 - Apache Camel, [Saga EIP](https://camel.apache.org/components/4.22.x/eips/saga-eip.html) and [LRA component](https://camel.apache.org/components/4.22.x/others/lra.html); Apache Camel Quarkus, [LRA extension](https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/lra.html)
 - Eclipse MicroProfile, [Long Running Actions 2.0](https://download.eclipse.org/microprofile/microprofile-lra-2.0/microprofile-lra-spec-2.0.html) and the Narayana [LRA coordinator image](https://quay.io/repository/jbosstm/lra-coordinator)

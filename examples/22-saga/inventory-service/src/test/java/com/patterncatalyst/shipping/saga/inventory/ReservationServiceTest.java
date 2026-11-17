@@ -163,8 +163,8 @@ class ReservationServiceTest {
         send(Topics.PAYMENTS_FAILED, order.orderId(), duplicated, failed);
         send(Topics.PAYMENTS_FAILED, order.orderId(), duplicated, failed);
         await(() -> stock(sku) == 10);
-        Thread.sleep(2000);
-        assertEquals(10, stock(sku));
+        // The duplicate must not release twice: the stock stays at 10 over a further 2 s.
+        Awaitility.await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(30)).until(() -> stock(sku) == 10);
         assertEquals(1, outbox("InventoryReserved", order.orderId()));
     }
 

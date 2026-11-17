@@ -1,5 +1,6 @@
 package com.patterncatalyst.shipping.replay;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -54,7 +55,7 @@ public class ProjectionBatch {
         ProjectionWatermark.Pending last = pending.getLast();
         checkpoint.lastTxId = last.txId();
         checkpoint.lastPosition = last.position();
-        checkpoint.updatedAt = java.time.Instant.now();
+        checkpoint.updatedAt = Instant.now();
         return pending.size();
     }
 
@@ -95,6 +96,6 @@ public class ProjectionBatch {
         CarrierDailyShipments.deleteAll();
         checkpoint.lastTxId = 0;
         checkpoint.lastPosition = 0;
-        checkpoint.updatedAt = java.time.Instant.now();
+        checkpoint.updatedAt = Instant.now();
     }
 }

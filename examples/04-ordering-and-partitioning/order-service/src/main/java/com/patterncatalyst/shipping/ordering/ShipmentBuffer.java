@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.transaction.Transactional;
 
@@ -16,10 +15,13 @@ import jakarta.transaction.Transactional;
 @Named("shipmentBuffer")
 public class ShipmentBuffer {
 
-    @Inject
-    ShipmentApplier applier;
-    @Inject
-    ObjectMapper json;
+    private final ShipmentApplier applier;
+    private final ObjectMapper json;
+
+    ShipmentBuffer(ShipmentApplier applier, ObjectMapper json) {
+        this.applier = applier;
+        this.json = json;
+    }
 
     @Transactional
     public void accept(String payload) throws JsonProcessingException {

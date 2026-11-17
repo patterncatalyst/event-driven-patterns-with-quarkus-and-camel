@@ -5,7 +5,7 @@ services:
     image: quay.io/jbosstm/lra-coordinator:2026-10-26@sha256:b8b2c8fac32095fbce6a0033e23165974223c6837d3f90fb0c1c5cdc12ee6745
     container_name: edp-lra-coordinator
     ports:
-      - "8091:8080"     # coordinator API: GET /lra-coordinator
+      - "127.0.0.1:8091:8080"     # coordinator API: GET /lra-coordinator
     environment:
       # gRPC OTLP to the LGTM service; the export only logs a warning when LGTM is not running.
       - QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT=http://lgtm:4317

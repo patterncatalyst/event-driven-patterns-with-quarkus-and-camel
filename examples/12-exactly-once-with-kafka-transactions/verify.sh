@@ -126,7 +126,7 @@ group_is() { [[ "$(group_offset "$1")" == "$2" ]]; } # group_is <group> <offset>
 tx_is() { [[ "$(tx_state "$TXID")" == "$1" ]]; }
 
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
-prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
+prom_holds() { local out; out="$(curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1")" || return 1; [[ "$out" == *'"value"'* ]]; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 
 echo "Starting the stack"

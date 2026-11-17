@@ -90,9 +90,10 @@ class FetchBackTest {
         StubOrderService.DOWN.set(true);
         long offset = publish(id);
 
-        Thread.sleep(8000);
-        assertTrue(committed() <= offset, "offset " + offset + " must not be committed past while the fetch fails");
-        given().queryParam("orderId", id).get("/notifications").then().body("$", hasSize(0));
+        await().during(Duration.ofSeconds(8)).atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+            assertTrue(committed() <= offset, "offset " + offset + " must not be committed past while the fetch fails");
+            given().queryParam("orderId", id).get("/notifications").then().body("$", hasSize(0));
+        });
 
         StubOrderService.DOWN.set(false);
         await().atMost(Duration.ofSeconds(40)).untilAsserted(() ->
@@ -108,7 +109,7 @@ class FetchBackTest {
         publish(id);
         await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
                 given().queryParam("orderId", id).get("/notifications").then().body("$", hasSize(1)));
-        Thread.sleep(3000);
-        assertEquals(1, given().queryParam("orderId", id).get("/notifications").jsonPath().getList("$").size());
+        await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                assertEquals(1, given().queryParam("orderId", id).get("/notifications").jsonPath().getList("$").size()));
     }
 }

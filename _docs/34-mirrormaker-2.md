@@ -85,9 +85,9 @@ By default MirrorMaker 2 renames a replicated topic by prepending the source clu
 
 `IdentityReplicationPolicy` keeps the name, and Strimzi calls it suitable for unidirectional replication, migration and failover. The class goes into both connectors, and the two values have to be the same. The cost is that the policy cannot tell a mirrored record from an original one, so MirrorMaker 2 cannot prevent a cycle with it (the class's own documentation).
 
-With the names kept, `edp.orders.placed` exists on `edp-dr` after the first order and has the same end offset in every partition. The copy sits beside four internal topics. The workers' own `mm2-configs`, `mm2-offsets` and `mm2-status` are on the target. The checkpoints topic is on the target too, named from the source alias: `edp.checkpoints.internal`. The offset syncs are different. They are written where the records are read, so `mm2-offset-syncs.edp-dr.internal` is a topic of the source cluster by default. Strimzi's own example sets `offset-syncs.topic.location: "target"`, which gives the mirror read-only access to the source; the default needs it to write there. The default stays here.
+With the names kept, `edp.orders.placed` exists on `edp-dr` after the first order and has the same end offset in every partition. The copy sits beside four internal topics. The workers' own `mm2-configs`, `mm2-offsets` and `mm2-status` are on the target. The checkpoints topic is on the target too, named from the source alias: `edp.checkpoints.internal`. The offset syncs are different. They are written where the records are read, so `mm2-offset-syncs.edp-dr.internal` is a topic of the source cluster by default. Strimzi's own example sets `offset-syncs.topic.location: "target"`, which gives the mirror read-only access to the source; the default needs it to write there.
 
-The Strimzi Metrics Reporter that monitors the cluster `edp` also runs on MirrorMaker 2 workers. Its scrape job finds the worker pod by the Strimzi kind label, the allow list asks for the Connect families, and the worker reports its two connectors as `kafka_connect_connect_worker_metrics_connector_count`. The dashboard `edp-mirrormaker2` is provisioned beside `edp-strimzi`.
+The Strimzi Metrics Reporter also runs on MirrorMaker 2 workers. Its scrape job finds the worker pod by the Strimzi kind label, the allow list asks for the Connect families, and the worker reports its two connectors as `kafka_connect_connect_worker_metrics_connector_count`. The dashboard `edp-mirrormaker2` is provisioned.
 
 ## Consumer offsets across clusters
 
@@ -153,7 +153,7 @@ The copy is made after the write, by a consumer and a producer, so a failover lo
 
 A failover duplicates records. The checkpoint can land before the consumer's real position, and the target group is written only while it is inactive. Consumers that cannot tolerate a record twice need an idempotent consumer with an inbox before this pattern is safe.
 
-The two clusters here share a namespace, a Kubernetes cluster and one machine. Losing the node loses both, so the pattern is modelled here and the protection is not. A real failover cluster lives in a different failure domain, and the mirror's bandwidth and latency are then a cost.
+The two clusters here share a namespace, a Kubernetes cluster and one machine. Losing the node loses both, so the setup models the pattern without the protection. A real failover cluster lives in a different failure domain, and the mirror's bandwidth and latency are then a cost.
 
 The identity policy cannot prevent cycles, so a mirror in each direction would copy its own copies. Failing back means replicating from the second cluster to the first with the policy and offsets thought through again, which is a second design.
 

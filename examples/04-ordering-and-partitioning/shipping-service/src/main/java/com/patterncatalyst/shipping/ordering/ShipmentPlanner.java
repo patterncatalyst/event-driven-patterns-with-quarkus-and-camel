@@ -1,6 +1,7 @@
 package com.patterncatalyst.shipping.ordering;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.apache.camel.Header;
 
@@ -18,7 +19,7 @@ public class ShipmentPlanner {
 
     public List<ShipmentEvent> plan(@Header("orderId") String orderId, @Header("carrier") String carrier) {
         Carrier chosen = carrier == null || carrier.isBlank() ? Carrier.FASTLINE : Carrier.valueOf(carrier);
-        return java.util.stream.IntStream.range(0, LIFECYCLE.size())
+        return IntStream.range(0, LIFECYCLE.size())
                 .mapToObj(i -> new ShipmentEvent(orderId, LIFECYCLE.get(i), i + 1, chosen))
                 .toList();
     }

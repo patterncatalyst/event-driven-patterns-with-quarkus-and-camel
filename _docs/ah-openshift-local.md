@@ -88,7 +88,7 @@ skopeo copy --preserve-digests \
 
 On a first copy into an empty registry, a plain copy changes the digest: skopeo compresses the layers that buildah stored uncompressed, so the same image id arrives under a different manifest digest. A layer the registry already holds is reused as it is. `--preserve-digests` keeps the manifest as it is, or fails. The Deployment then names the image by digest, and the script compares the digest in the `ImageStream` with the one of the local build before it deploys. A rebuild changes the digest too, because the image records when it was created, so the digest is written to a file at copy time and read at deploy time. The build took 49 to 56 s and the copy 2 to 3 s.
 
-Connect is built in the cluster. `KafkaConnect.spec.build` with `output.type: imagestream` makes the operator run an OpenShift build that downloads the Debezium plugin, checks its sha512 and pushes to the `ImageStream`, which must exist first. OpenShift admits that build pod under the privileged constraint, a property of OpenShift builds and not of the example; the Connect pod it produces runs under `restricted-v2`.
+Connect is built in the cluster. `KafkaConnect.spec.build` with `output.type: imagestream` makes the operator run an OpenShift build that downloads the Debezium plugin, checks its sha512 and pushes to the `ImageStream`, which must exist first. OpenShift admits that build pod under the privileged constraint, a property of OpenShift builds; the Connect pod it produces runs under `restricted-v2`.
 
 ## The outbox on Strimzi and CloudNativePG
 

@@ -105,7 +105,7 @@ spec:
 
 The same entry exists for the `Kafka` resource and for the node pools. Strimzi ships an example configuration with its own metric prefixes, which is the place to compare names; this one uses short prefixes that read well in a query. Kube-state-metrics runs as one Deployment with a cluster role that may list and watch the CRDs and the `kafka.strimzi.io` resources. Upstream marks the feature frozen in favour of a successor, so it will not grow.
 
-The payoff is the invalid topic. A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within about 40 s, and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
+A topic declared with three partitions and raised to six in Kafka reads `edp_kafkatopic_condition{name="edp.lab.watched",type="Ready",reason="NotSupported"} 0` within about 40 s, and every other topic keeps reading 1. A partition count cannot be lowered, so the repair is to delete the resource and declare it again, which deletes and recreates the topic. A resource that cannot be reconciled is an alert condition, and no pod ever restarts for it.
 
 ## One dashboard beside the flows
 
@@ -113,7 +113,7 @@ Provisioning is a dashboard file in a directory that Grafana reads on start, so 
 
 {% include excalidraw.html file="32-what-each-signal-answers" alt="Five signals in rows: the broker with the bytes-in family answers whether it takes the traffic, the controller with the active controller count answers whether there is exactly one, the operator with reconciliation counters answers whether it reconciles, a resource with the KafkaTopic condition answers whether the operator can reconcile it, and the flow with consumer group lag answers whether a consumer keeps up" caption="Figure 32.2: Each signal answers a question the others cannot" %}
 
-Strimzi publishes dashboards for the reporter in its own examples. They are a good source of ideas for panels; the dashboard here is smaller and uses the names above.
+Strimzi publishes dashboards for the reporter in its own examples; the one here is smaller and uses the names above.
 
 ```promql
 sum by (topic) (rate(kafka_server_brokertopicmetrics_bytesinpersec_total{topic!=""}[1m]))
@@ -126,7 +126,7 @@ sum by (job) (up)
 
 The last is consumer lag. The collector asks the broker for it through the bootstrap Service, which keeps it available when a consumer's own metric disappears with the consumer.
 
-Two sources failing independently is a property worth keeping. Remove the `metricsConfig` and the pod series are empty, while the resource series, the operator's counters and the lag stay. A dashboard that reads from only one source loses everything in that case.
+The sources fail independently. Remove the `metricsConfig` and the pod series are empty, while the resource series, the operator's counters and the lag stay. A dashboard that reads from only one source loses everything in that case.
 
 ## Build, run, observe
 
@@ -136,6 +136,8 @@ cd examples/32-monitoring-strimzi
 ```
 
 Kafka comes up with the reporter on both pools, the event notification pair places ten orders, and the signals are read from Prometheus on its published port: broker traffic, the single controller, the operator's counters, the state of the resources and the dashboard. A topic is made invalid and repaired, and the `allowList` is narrowed and restored while the pods are watched; the run ends with `20/20 checks passed`.
+
+Try one change and rerun:
 
 - `METRICS=off ./verify.sh` (demo code): no `metricsConfig`, so the pod series are empty while the resource and operator series pass.
 - `KEEP=1 ./verify.sh`, then `kubectl --context edp -n edp-kafka patch kafka edp --type merge -p '{"spec":{"kafka":{"metricsConfig":{"values":{"allowList":["jvm_.*"]}}}}}'`: the broker's bytes-in series stops and no pod restarts.

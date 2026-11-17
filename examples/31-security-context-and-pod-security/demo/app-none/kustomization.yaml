@@ -1,4 +1,4 @@
-# DEMO CODE (APP_SECURITY=none): the chapter 02 applications with no security context. The restricted namespace
+# DEMO CODE (APP_SECURITY=none): the example 02 applications with no security context. The restricted namespace
 # refuses their pods, so the ReplicaSets report FailedCreate.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

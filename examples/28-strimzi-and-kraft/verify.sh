@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Declares Kafka as two KRaft node pools under the Strimzi operator, then runs the services of chapters 02, 03 and 04
+# Declares Kafka as two KRaft node pools under the Strimzi operator, then runs the services of examples 02, 03 and 04
 # one after another against it, unchanged: only their addresses are new. Checks the pools, the quorum, the pods, the
 # databases, the images and the three observable effects, then replaces the broker pod.
-# KAFKA_BROKERS=compose (demo code) keeps the compose Kafka address on notification-service of the chapter 02 set;
+# KAFKA_BROKERS=compose (demo code) keeps the compose Kafka address on notification-service of the example 02 set;
 # NODE_POOLS=dual (demo code) runs one dual-role node. KEEP=1 leaves the namespaces in place.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -17,7 +17,7 @@ DEMO_ADDRESS=""
 if [[ "${KAFKA_BROKERS:-}" == compose ]]; then SET02=compose-address; DEMO_ADDRESS=1; fi
 BOOTSTRAP="edp-kafka-bootstrap.$NS_KAFKA.svc:9092"
 NOTIFY="http://127.0.0.1:$PORT2"
-SHIP="$ORDERS"                       # chapter 04's shipping-service holds NodePort 30080
+SHIP="$ORDERS"                       # example 04's shipping-service holds NodePort 30080
 BROKER_ID=""; CTRL_ID=""
 
 k8s_fresh "$OVERLAY"
@@ -147,11 +147,11 @@ check "Kafka runs the version the spec asks for, the version of the compose brok
 check "CloudNativePG Cluster edp-pg is Ready" poll 180 pg_ready
 check "databases edp, edp03 and edp04 exist, owned by edp" poll 90 databases_exist
 
-# 13 to 36: chapter 02, then 03, then 04, each alone
-echo "Chapter 02 set"
-check "chapter 02 images in the node are the images docker built" image_ids_match 02-
-check "the chapter 02 pair rolls out" rollout_02
-check "chapter 02 Deployments use the environment names of compose.yaml" env_names_02
+# 13 to 36: example 02, then 03, then 04, each alone
+echo "Example 02 set"
+check "example 02 images in the node are the images docker built" image_ids_match 02-
+check "the example 02 pair rolls out" rollout_02
+check "example 02 Deployments use the environment names of compose.yaml" env_names_02
 check "notification-service points at the Strimzi bootstrap Service" bootstrap_address_is notification-service
 check "order O-2801 is accepted with 201" expect "$(place O-2801)" 201
 check "the notification for O-2801 appears" poll 60 has_notification O-2801
@@ -160,10 +160,10 @@ check "the notification holds customer CU-77 and status PLACED" \
 check "one trace holds POST /orders and notification-service" tempo_trace_with 90 "POST /orders" notification-service
 remove_set "$SET02"
 
-echo "Chapter 03 set"
-check "chapter 03 images in the node are the images docker built" image_ids_match 03-
-check "the chapter 03 pair rolls out" deploy_set ../_k8s/apps/03
-check "chapter 03 Deployments use the environment names of compose.yaml" env_names_03
+echo "Example 03 set"
+check "example 03 images in the node are the images docker built" image_ids_match 03-
+check "the example 03 pair rolls out" deploy_set ../_k8s/apps/03
+check "example 03 Deployments use the environment names of compose.yaml" env_names_03
 check "order O-2802 is accepted with 201" expect "$(place O-2802)" 201
 check "the copy of O-2802 carries every field" poll 60 copy_is_complete O-2802
 kc -n "$NS_APPS" scale deploy/order-service --replicas=0 >/dev/null
@@ -171,10 +171,10 @@ check "order-service has no pod" poll 60 no_pod order-service
 check "with order-service gone, the copy of O-2802 is still answered" copy_is O-2802 PLACED
 remove_set ../_k8s/apps/03
 
-echo "Chapter 04 set"
-check "chapter 04 images in the node are the images docker built" image_ids_match 04-
-check "the chapter 04 set rolls out with two order replicas" deploy_set ../_k8s/apps/04
-check "chapter 04 Deployments use the environment names of compose.yaml" env_names_04
+echo "Example 04 set"
+check "example 04 images in the node are the images docker built" image_ids_match 04-
+check "the example 04 set rolls out with two order replicas" deploy_set ../_k8s/apps/04
+check "example 04 Deployments use the environment names of compose.yaml" env_names_04
 check "the topics Job completes" poll 120 job_done
 check "edp.shipping.shipments has 3 partitions" expect "$(partitions_of edp.shipping.shipments)" 3
 check "the two order replicas share the three partitions" poll 90 group_is_split

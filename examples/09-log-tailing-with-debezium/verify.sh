@@ -62,7 +62,7 @@ command -v jq >/dev/null || fail_loudly "jq is required on the host"
 
 kafka() { docker exec edp-kafka "/opt/kafka/bin/$1" --bootstrap-server localhost:9092 "${@:2}"; }
 sql() { "${PSQL[@]}" -c "$1"; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
+tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 
 # Kafka Connect.
 register() { curl -sf -X PUT -H 'Content-Type: application/json' --data @"connect/$1.json" "$CONNECT/connectors/$1/config" >/dev/null; }

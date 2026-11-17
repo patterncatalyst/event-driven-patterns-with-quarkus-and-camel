@@ -1,8 +1,10 @@
 package com.patterncatalyst.shipping.join;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,7 +61,11 @@ class CopartitioningTest {
         }
         Kafka.await(() -> unchecked(() -> ready(Topics.SHIPPING_ORDER_READINESS_CAMEL) == ORDERS));
         Kafka.await(() -> unchecked(() -> streamsHasReadEverything()));
-        Thread.sleep(3000);
+        // Streams matched only some orders and keeps that count: sampled over a further 3 s.
+        await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(30)).until(() -> {
+            long matched = ready(Topics.SHIPPING_ORDER_READINESS);
+            return matched > 0 && matched < ORDERS;
+        });
         long camel = ready(Topics.SHIPPING_ORDER_READINESS_CAMEL);
         long streamsReady = ready(Topics.SHIPPING_ORDER_READINESS);
         Log.info("COPARTITION streams state " + streams.state() + ", threads "

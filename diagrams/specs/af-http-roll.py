@@ -15,7 +15,7 @@ emit(
         {"x": 500, "y": 90, "w": 200, "h": 60, "style": "box", "lines": ["pod A, ready", "answers 201"]},
         {"x": 500, "y": 190, "w": 200, "h": 60, "style": "ghost", "lines": ["pod B, being removed", "a request in flight is reset"]},
         {"x": 780, "y": 90, "w": 180, "h": 60, "style": "accent", "lines": ["edp.orders.placed", "one event per 201"]},
-        {"x": 780, "y": 190, "w": 180, "h": 60, "style": "ghost", "lines": ["no event for a", "request that failed"]},
+        {"x": 780, "y": 190, "w": 180, "h": 60, "style": "ghost", "lines": ["one event or none;", "the retry answers 201 or 409"]},
     ],
     edges=[
         {"x1": 190, "y1": 160, "x2": 250, "y2": 160},

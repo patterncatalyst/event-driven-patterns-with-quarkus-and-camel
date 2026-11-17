@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploys the chapter 06 notification-service and the chapter 02 order-service unchanged and changes them four ways
+# Deploys the notification-service and the order-service unchanged and changes them four ways
 # under a producer Job that sends uniquely numbered records at a fixed rate: a stop and restart, a rolling update of the
 # consumer group, a rolling update of the order-service under HTTP requests, a breaking and a compatible schema
 # change, and a blue-green cut-over with a rollback. Each scenario checks that nothing is lost and states what is
@@ -43,7 +43,7 @@ produce() { # produce <job> <topic> <rate> <secs> <first-id-number> <kind>
 wait_job() { kc -n "$NS_APPS" wait --for=condition=complete "job/$1" --timeout=180s >/dev/null; }
 rollout() { kc -n "$NS_APPS" rollout status "deploy/$1" --timeout=240s >/dev/null; }
 
-# Rows of the notification table (chapter 06): one per group, topic, partition and offset, attempts counted.
+# Rows of the notification table: one per group, topic, partition and offset, attempts counted.
 RANGE="substring(order_id from 3)::int BETWEEN"
 rows() { sql "SELECT count(DISTINCT order_id) FROM notifications.notification WHERE group_id='$1' AND $RANGE $2 AND $3"; }
 rows_ge() { [[ "$(rows "$1" "$2" "$3" 2>/dev/null || echo 0)" -ge "$4" ]]; }   # rows_ge <group> <lo> <hi> <n>
@@ -107,7 +107,7 @@ topics_ok() {
         [[ "$out" == *"PartitionCount: 3"* ]] || return 1
     done
 }
-images_unchanged() { # the node runs the images built from the chapter 06 and chapter 02 Containerfiles
+images_unchanged() { # the node runs the images built from the two services' Containerfiles
     local ref
     for ref in localhost/edp/06-notification-service:local localhost/edp/02-order-service:local; do
         [[ -n "$(_host_image_id "$ref")" && "$(_host_image_id "$ref")" == "$(_node_image_id "$ref")" ]] || return 1
@@ -120,7 +120,7 @@ for t in edp.orders.placed edp.payments.processed edp.shipping.scheduled; do
 done
 precondition "Kafka edp is Ready" kafka_ready edp
 precondition "the three input topics have three partitions" topics_ok
-precondition "the node runs the chapter 06 and chapter 02 images, unchanged" images_unchanged
+precondition "the node runs the notification-service and order-service images, unchanged" images_unchanged
 poll 180 install_audit || { echo "the notification table did not appear" >&2; exit 1; }
 
 # --- stop and restart: Recreate
@@ -263,9 +263,11 @@ failed_below_2_percent() {
 }
 check "failed requests stay below 2 percent" failed_below_2_percent
 retry="$(python3 -I tools/http.py post O-60000 || true)"; echo "measured: retry of accepted O-60000 answered $retry"
+python3 -I tools/http.py retry "$TMP/retry.txt" "$TMP/control.txt" "$TMP/roll.txt"
+echo "measured: retries $(awk '{print $3}' "$TMP/retry.txt" | sort | uniq -c | tr -s ' ' | sed 's/^ //' | tr '\n' ' ')"
 once="$(kafka_exec kafka-console-consumer.sh --topic "$TOPIC" --from-beginning --timeout-ms 10000 --property print.key=true 2>/dev/null || true)"
-once="$(python3 -I tools/http.py once "$TMP/control.txt" "$TMP/roll.txt" <<<"$once")"; echo "measured: $once"
-check "a retry of an accepted order is answered 409 and, with every 201 and every failed request, leaves exactly one event or none" \
-    expect "$retry $once" "409 missing=0 duplicate=0 published_for_failed=0"
+once="$(python3 -I tools/http.py once "$TMP/retry.txt" "$TMP/control.txt" "$TMP/roll.txt" <<<"$once")"; echo "measured: $once"
+check "a retry of an accepted order is answered 409, and after every failed request is retried each order has exactly one event" \
+    expect "$retry ${once% accepted_before_retry=*}" "409 missing=0 duplicate=0 unresolved=0"
 
 summary

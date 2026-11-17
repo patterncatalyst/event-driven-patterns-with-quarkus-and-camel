@@ -54,12 +54,12 @@ times() { awk -v a="$1" -v k="$2" 'BEGIN { printf "%.2f", a * k }'; }
 dump() { docker exec edp-kafka bash -c "/opt/kafka/bin/kafka-dump-log.sh --files /tmp/kafka-logs/${TOPIC}-0/*.log"; }
 batches_with() { dump | grep -c -- "$1" || true; }
 
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=order-service" | grep -q '"traceID"'; }
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=order-service" | grep '"traceID"' >/dev/null; }
 loki_has_log() {
     local now; now=$(date +%s)
     curl -sf -G "http://localhost:3100/loki/api/v1/query_range" \
         --data-urlencode 'query={service_name="order-service"} |= "flash sale"' \
-        --data-urlencode "start=$((now - 900))000000000" --data-urlencode "end=$((now + 60))000000000" | grep -q '"values":\[\['
+        --data-urlencode "start=$((now - 900))000000000" --data-urlencode "end=$((now + 60))000000000" | grep '"values":\[\[' >/dev/null
 }
 
 # Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),

@@ -80,7 +80,7 @@ Pick a pattern by the symptom:
 
 ## EIP Camel by pattern and event
 
-EIP Camel teaches the patterns in Camel on one runtime; this book repeats those that Kafka changes and goes deeper on one stack. The relation is one word: deeper means this book adds Kafka specifics, contrasts means the Kafka form and the Camel form differ in behaviour, and extends means the pattern goes past what EIP Camel covers.
+EIP Camel teaches the patterns in Camel on one runtime; this book repeats those that Kafka changes and goes deeper on one stack. The relation is one word: same means EIP Camel covers the pattern as this book does, deeper means this book adds Kafka specifics, contrasts means the Kafka form and the Camel form differ in behaviour, and extends means the pattern goes past what EIP Camel covers.
 
 | Pattern | Chapter | EIP Camel chapter | Relation |
 |---|---|---|---|
@@ -110,13 +110,13 @@ The same events appear in many chapters. The catalog below lists the chapters fr
 
 | Event | Topic | Chapters |
 |---|---|---|
-| OrderPlaced | edp.orders.placed | 1, 2, 3, 5, 8, 11, 13, 14, 16, 17, 18, 22, 25, 26, 27 |
+| OrderPlaced | edp.orders.placed | 1, 2, 3, 5, 6, 7, 8, 11, 13, 14, 16, 17, 18, 22, 25, 26, 27 |
 | OrderCancelled | edp.orders.cancelled | 1, 3, 14, 16, 17, 18, 22, 23, 27 |
 | InventoryReserved | edp.inventory.reserved | 12, 15, 20, 22, 23, 27 |
 | InventoryInsufficient | edp.inventory.insufficient | 22, 23, 27 |
-| PaymentProcessed | edp.payments.processed | 12, 14, 16, 20, 22, 23, 27 |
+| PaymentProcessed | edp.payments.processed | 6, 12, 14, 16, 20, 22, 23, 27 |
 | PaymentFailed | edp.payments.failed | 22, 23, 27 |
-| ShipmentScheduled | edp.shipping.scheduled | 4, 14, 16, 19, 21 |
+| ShipmentScheduled | edp.shipping.scheduled | 4, 6, 14, 16, 19, 21 |
 | ShipmentInTransit | edp.shipping.in-transit | 4, 16 |
 | ShipmentDelivered | edp.shipping.delivered | 4, 16 |
 

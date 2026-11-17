@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a Connect image inside the cluster, declares the chapter 08 outbox connector and the chapter 10 inventory
+# Builds a Connect image inside the cluster, declares the example 08 outbox connector and the example 10 inventory
 # connector as KafkaConnector resources, and checks what each delivers: an outbox row on edp.orders.placed, a table
 # change on edp.inventory.item-changes and as a document on edp.inventory.items. Then it lists, refuses to alter,
 # stops, alters and resumes the inventory connector's offsets through the resource. Nothing is written through the
@@ -133,7 +133,7 @@ set_state() { act ckc patch kafkaconnector inventory-cdc --type=merge -p "{\"spe
 stopped() { status_is inventory-cdc STOPPED -; }
 altered_to() { [[ "$(live_lsn)" == "$1" ]]; }
 prom_is() { [[ "$(prom_query "$1")" == "$2" ]]; }
-images_unchanged() { # the node runs the images built from the chapter 08 and 09 Containerfiles
+images_unchanged() { # the node runs the order-service and inventory-service images built on the host
     local ref
     for ref in localhost/edp/08-order-service:local localhost/edp/09-inventory-service:local; do
         [[ -n "$(_host_image_id "$ref")" && "$(_host_image_id "$ref")" == "$(_node_image_id "$ref")" ]] || return 1
@@ -219,6 +219,6 @@ check "the change made while the connector was stopped never arrives" skipped_wh
 # --- metrics and images
 check "Prometheus holds the connector status metric of inventory-cdc, running" \
     poll "$(bound 90)" prom_is 'kafka_connect_connector_metrics_status{connector="inventory-cdc",status="running"}' 1
-check "the node runs the images built from the chapter 08 and 09 Containerfiles" images_unchanged
+check "the node runs the order-service and inventory-service images, unchanged" images_unchanged
 
 summary

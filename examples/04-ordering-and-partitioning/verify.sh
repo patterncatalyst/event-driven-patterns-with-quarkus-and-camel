@@ -92,7 +92,8 @@ history() { "${PSQL[@]}" -c "SELECT coalesce(string_agg(event_type, ',' ORDER BY
 history_count() { "${PSQL[@]}" -c "SELECT count(*) FROM orders.order_status_history WHERE order_id='$1'"; }
 held_count() { "${PSQL[@]}" -c "SELECT count(*) FROM orders.pending_shipment_event WHERE order_id='$1'"; }
 final_status() { "${PSQL[@]}" -c "SELECT coalesce(max(status), '') FROM orders.order_status WHERE order_id='$1'"; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
+count_is() { [[ "$("$1" "$2")" == "$3" ]]; } # count_is <count function> <order id> <expected>
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep '"traceID"' >/dev/null; }
 
 # Stalls the replica that owns the Scheduled record's partition, publishes one order, waits until
 # the other replica has done what it can, then releases the stall and waits for convergence.
@@ -119,19 +120,16 @@ stall() {
         [[ "$(owner_of "$p")" != "$PAUSED" ]] && EXPECT_OTHER=$((EXPECT_OTHER + 1))
     done
     if [[ "$mode" == "direct" ]]; then
-        local end=$((SECONDS + 60))
-        until [[ "$(history_count "$id")" == "$EXPECT_OTHER" ]]; do (( SECONDS < end )) || break; sleep 1; done
+        poll 60 count_is history_count "$id" "$EXPECT_OTHER" || true
     else
-        local end=$((SECONDS + 60))
-        until [[ "$(held_count "$id")" == "$EXPECT_OTHER" ]]; do (( SECONDS < end )) || break; sleep 1; done
+        poll 60 count_is held_count "$id" "$EXPECT_OTHER" || true
     fi
     DURING=$(history "$id")
     HELD=$(held_count "$id")
     echo "  applied while $PAUSED is paused: ${DURING:-nothing}; held in the buffer: $HELD"
     "${COMPOSE[@]}" unpause "$PAUSED" >/dev/null
     PAUSES+=$((SECONDS - paused_at))" "
-    local end2=$((SECONDS + 90))
-    until [[ "$(history_count "$id")" == 3 ]]; do (( SECONDS < end2 )) || break; sleep 1; done
+    poll 90 count_is history_count "$id" 3 || true
     HISTORY=$(history "$id")
     STATUS=$(final_status "$id")
     HELD_AFTER=$(held_count "$id")

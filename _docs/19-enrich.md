@@ -97,7 +97,7 @@ The trade-offs, measured on the same input:
 | Reference deleted from the topic | Not affected while the owner still has it | The record is kept with an empty mode and link |
 | Coupling | Availability and latency of the owner | Format of the reference topic |
 
-A real service picks one. Both forms run side by side on the same input, so every difference above comes from the input, not the setup.
+A real service picks one.
 
 ## Build, run, observe
 
@@ -128,7 +128,7 @@ Do not hold a copy of data that is large, changes constantly or is private to th
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [Content Enricher](https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html), *Enterprise Integration Patterns*, Addison-Wesley, 2003
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Content Enricher](https://www.enterpriseintegrationpatterns.com/patterns/messaging/DataEnricher.html)
 - Apache Camel, [Enrich](https://camel.apache.org/components/4.22.x/eips/enrich-eip.html) and [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html) (`breakOnFirstError`)
 - Apache Kafka, [Kafka Streams DSL](https://kafka.apache.org/42/streams/developer-guide/dsl-api/) (joins, co-partitioning, the GlobalKTable)
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/guides/kafka-streams) (topics, health checks, interactive queries)

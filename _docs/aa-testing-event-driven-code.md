@@ -45,11 +45,11 @@ public class StubOrderService {
 }
 ```
 
-The `%test` profile points `order-service.url` at `http://localhost:8183`. A test decides what the source answers by writing to the map, and nothing outside the JVM has to run. The same stub makes the source answer and report CANCELLED.
+The `%test` profile points `order-service.url` at `http://localhost:8183`. A test decides what the source answers by writing to the map, and nothing outside the JVM has to run.
 
 ## A check that bites
 
-A test that has never failed has not shown that it can. The route has three guards: a repeated event id is dropped, a cancelled order gets no notification, and the notification is keyed by the order id. Each guard is a line a refactoring can delete while every test stays green, if the test for it is weak.
+The route has three guards: a repeated event id is dropped, a cancelled order gets no notification, and the notification is keyed by the order id. Each guard is a line a refactoring can delete while every test stays green, if the test for it is weak.
 
 So a guard is proved the other way round, which is mutation testing: DeMillo, Lipton and Sayward proposed it in 1978, and PIT automates it for the JVM. A tool generates its mutants; here three hand-written patches are the mutants. Each patch removes a guard from a copy of the module, the tests run against the copy, and the named test must fail:
 
@@ -102,9 +102,9 @@ The window has to outlast the route, and every drain costs the whole window, so 
 
 An ordering test that passes because the records happened to arrive in order proves nothing, and on a three-partition topic it is easy to write one. Two habits prevent it.
 
-The oracle must not be the code under test. One technique computes the partition a key must land on with Kafka's own `Utils.murmur2` in a helper (`Placement.expected`), publishes six different order ids and compares each record's partition with the prediction. A key that hashes everything to one partition would pass a test that compared the application with itself.
+The oracle must not be the code under test. Compute the partition a key must land on with Kafka's own `Utils.murmur2` in a test helper, publish six different order ids and compare each record's partition with the prediction. A key that hashes everything to one partition would pass a test that compared the application with itself.
 
-The arrival order must be written down. The fixtures in that example send a delivered event before a scheduled one, through a producer of the test's own, and assert the order's final status. Waiting for the application to produce the interleaving it needs is how a test of ordering becomes a test of timing.
+The arrival order must be written down. Send a delivered event before a scheduled one through a producer of the test's own and assert the order's final status. Waiting for the application to produce the interleaving it needs is how a test of ordering becomes a test of timing.
 
 ## Concurrency tests and their limit
 
@@ -150,7 +150,7 @@ A schema is a contract between a producer and consumers that do not deploy toget
 
 The tests above run inside one JVM. What crosses processes needs a stack: a connector that has to read a replication slot, a trace that has to reach Tempo, a consumer that has to survive a recreate. For these, `verify.sh` starts the compose stack fresh, checks the observable effect and keeps a negative witness for each guard, a check that fails when the guard is removed.
 
-Observability follows the same split. The tracing and log-correlation examples assert the spans and the log correlation in process with an in-memory exporter, and the metrics example reads a `SimpleMeterRegistry`, where the test controls everything. Their `verify.sh` then asks Tempo and Loki, and for metrics the Prometheus query API and Grafana's rules API, through HTTP, which holds the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
+Observability follows the same split. Spans and log correlation are asserted in process with an in-memory exporter, and meters are read from a `SimpleMeterRegistry`, where the test controls everything. `verify.sh` then asks Tempo and Loki, and for metrics the Prometheus query API and Grafana's rules API, over HTTP, which covers the whole path from the application through the collector. The in-process test finds a wrong attribute at once; the end-to-end check finds a collector that drops it.
 
 ## Build, run, observe
 

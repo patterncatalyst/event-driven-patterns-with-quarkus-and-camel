@@ -52,15 +52,15 @@ def hexid(raw):
 
 
 def spans(trace):
-    out = []
+    rows = []
     for rs in get(f"{TEMPO}/api/v2/traces/{trace}").get("trace", {}).get("resourceSpans", []):
         service = next((a["value"]["stringValue"] for a in rs["resource"].get("attributes", [])
                         if a["key"] == "service.name"), "?")
         for scope in rs.get("scopeSpans", []):
             for s in scope["spans"]:
-                out.append({"service": service, "name": s["name"], "parent": s.get("parentSpanId", ""),
-                            "links": [hexid(l["traceId"]) for l in s.get("links", [])]})
-    return out
+                rows.append({"service": service, "name": s["name"], "parent": s.get("parentSpanId", ""),
+                            "links": [hexid(link["traceId"]) for link in s.get("links", [])]})
+    return rows
 
 
 def trace_ids(order):

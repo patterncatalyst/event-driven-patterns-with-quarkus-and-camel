@@ -102,7 +102,7 @@ Every consumer that fetches adds one request to order-service for each event it 
 
 A consumer reads current state, not the state at event time. A notification built after the order was cancelled says CANCELLED, which is right for a customer and wrong for an auditor who wants to know what the order looked like when it was placed. When consumers need the state as it was at event time, or the source cannot take the read load or answer reliably, carry the state in the event instead.
 
-Publishing after the commit leaves a window: if the process stops between the commit and the publish, the order exists and the event does not. If the publish itself fails, the order can still be read from order-service and nothing reaches the topic, and nothing here publishes the event later.
+Publishing after the commit leaves a window: if the process stops between the commit and the publish, the order exists and the event does not. If the publish itself fails, the order can still be read from order-service and nothing reaches the topic, and nothing publishes the event later.
 
 > **🤖 Explore with your agent**
 > "In examples/02-event-notification, stop notification-service, place an Order with order-service, cancel it, then start notification-service. Read the Notification from GET /notifications and compare its orderStatus with the status the OrderPlaced event announced. State the rule that says when a consumer may fetch current state and when the event must carry the state, and name one Order field each case needs."
@@ -112,6 +112,7 @@ Publishing after the commit leaves a window: if the process stops between the co
 
 - Martin Fowler, 2017: [What do you mean by "Event-Driven"?](https://martinfowler.com/articles/201701-event-driven.html)
 - Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Event Message](https://www.enterpriseintegrationpatterns.com/patterns/messaging/EventMessage.html)
-- Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026: Chapter 2, Anatomy of Message-Driven Systems
-- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 2, Fundamentals of Events and Event Streams; Chapter 5, Designing Events; Chapter 17, Integrating Event-Driven and Request-Response Microservices
+- Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 2: Anatomy of Message-Driven Systems
+- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 2: Fundamentals of Events and Event Streams, chapter 5: Designing Events and chapter 17: Integrating Event-Driven and Request-Response Microservices
 - Apache Camel, Kafka component documentation: [camel.apache.org/components/latest/kafka-component.html](https://camel.apache.org/components/latest/kafka-component.html)
+- Apache Camel, [Camel Quarkus HTTP extension](https://camel.apache.org/camel-quarkus/3.40.x/reference/extensions/http.html): calling an HTTP endpoint from a route

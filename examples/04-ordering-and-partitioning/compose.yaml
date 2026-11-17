@@ -52,7 +52,7 @@ services:
       dockerfile: 04-ordering-and-partitioning/shipping-service/Containerfile
     container_name: edp-shipping-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
       QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
@@ -78,7 +78,7 @@ services:
     container_name: edp-order-1
     hostname: order-1
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     depends_on:
       topics-init:
         condition: service_completed_successfully

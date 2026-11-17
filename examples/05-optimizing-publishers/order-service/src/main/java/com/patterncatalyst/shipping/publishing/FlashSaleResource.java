@@ -11,16 +11,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLongArray;
 
 import org.apache.camel.ProducerTemplate;
+import org.jboss.resteasy.reactive.RestQuery;
 
 import com.patterncatalyst.shipping.Order;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.quarkus.logging.Log;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
@@ -32,15 +31,16 @@ public class FlashSaleResource {
             double ordersPerSecond, double p50Ms, double p99Ms) {
     }
 
-    @Inject
-    ProducerTemplate producer;
+    private final ProducerTemplate producer;
+    private final MeterRegistry registry;
 
-    @Inject
-    MeterRegistry registry;
+    FlashSaleResource(ProducerTemplate producer, MeterRegistry registry) {
+        this.producer = producer;
+        this.registry = registry;
+    }
 
     @POST
-    public Result run(@QueryParam("profile") String profile, @QueryParam("orders") int orders,
-            @QueryParam("concurrency") int concurrency) {
+    public Result run(@RestQuery String profile, @RestQuery int orders, @RestQuery int concurrency) {
         if (!List.of("unbatched", "default", "tuned").contains(profile) || orders < 1 || concurrency < 1) {
             throw new WebApplicationException("profile must be unbatched, default or tuned; orders and concurrency "
                     + "must be positive", Response.Status.BAD_REQUEST);

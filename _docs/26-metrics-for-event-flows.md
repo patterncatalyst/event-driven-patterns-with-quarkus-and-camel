@@ -168,13 +168,13 @@ mvn -B verify
 ./verify.sh
 ```
 
-Compose runs Kafka, PostgreSQL, Connect and the LGTM stack with the dashboard, the alert rule and the broker receiver loaded from files, plus `order-service` and `inventory-service`; the script stops the consumer, pauses the relay and redrives dead letters, reads each effect back from Prometheus, Grafana and the broker, and ends with `37/37 checks passed`.
+`verify.sh` stops the consumer, pauses the relay and redrives dead letters, reads each effect back from Prometheus, Grafana and the broker, and ends with `37/37 checks passed`.
 
 Try one change and rerun:
 
 - `BACKLOG_SOURCE=table ./verify.sh` (demo code): the gauge counts table rows, stays at zero through the pause and the alert never fires.
 - `ALERT_ON=age ./verify.sh` (demo code): the rule watches event age and does not fire during the pause.
-- `KEEP=1 ./verify.sh`, then open the Order flow dashboard on `localhost:3000` and pause the connector again with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause`. Then place twenty orders, for example with `for i in $(seq 1 20); do curl -s -X POST localhost:8080/orders -H 'Content-Type: application/json' -d "{\"id\":\"O-26$i\",\"customerId\":\"CU-26\",\"itemSku\":\"SKU-26\",\"quantity\":1,\"amount\":10.00}"; done`. The Outbox backlog panel climbs past 16384 bytes and `order flow stalled` reaches Alerting about 30 seconds later.
+- `KEEP=1 ./verify.sh`, then pause the connector with `curl -X PUT localhost:8083/connectors/order-flow-outbox/pause` and place orders: the Outbox backlog panel of the Order flow dashboard on `localhost:3000` climbs past 16384 bytes and `order flow stalled` reaches Alerting about 30 seconds later.
 
 ## When not to use it
 
@@ -183,8 +183,6 @@ A flow with a handful of events an hour has no stall worth a metric. A log line 
 The backlog is a property of the slot, so it reads every change in the database, not only the outbox. A database with heavy unrelated writes raises the floor, and a threshold set at rest in one environment is wrong in another. Measure at rest first, and keep the heartbeat on.
 
 Group lag measures records, not time. A hundred records of lag is nothing for a consumer that drains thousands a second and a long wait for one that handles a few a minute. Where lateness is the contract, alert on age after arrival or on lag divided by the consumption rate.
-
-Alert on the backlog, the one signal that fires while the flow is stuck, and keep the other four as graphs.
 
 > **🤖 Explore with your agent**
 > "In examples/26-metrics-for-event-flows, pause the Debezium connector order-flow-outbox, place twenty orders through order-service, and watch outbox.backlog, the provisioned alert order flow stalled and the group lag of inventory-placed in Prometheus and Grafana. Resume, then add stock for SKU-26-LATE, redrive edp.orders.placed-dlq and compare order.flow.event.age with order.flow.record.age. Say which signal moved first and which one an alert should watch."

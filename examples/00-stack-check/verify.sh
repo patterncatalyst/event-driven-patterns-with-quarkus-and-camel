@@ -47,19 +47,19 @@ topic_offsets() {
 }
 topic_has() {
     docker exec edp-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
-        --topic edp.orders.placed --from-beginning --timeout-ms 15000 --property print.key=true 2>/dev/null | grep -q "^$1"
+        --topic edp.orders.placed --from-beginning --timeout-ms 15000 --property print.key=true 2>/dev/null | grep "^$1" >/dev/null
 }
 http2xx() { [[ "$(post "$1")" =~ ^2 ]]; }
 http400() { [[ "$(post "$1")" == "400" ]]; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode 'tags=service.name=stack-check' | grep -q '"traceID"'; }
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode 'tags=service.name=stack-check' | grep '"traceID"' >/dev/null; }
 prom_has_metric() {
     curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode 'query=target_info{service_name="stack-check"}' \
-        | grep -q '"result":\[{'
+        | grep '"result":\[{' >/dev/null
 }
 loki_has_log() {
     local now; now=$(date +%s)
     curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode 'query={service_name="stack-check"} |= "order received"' \
-        --data-urlencode "start=$((now - 600))000000000" --data-urlencode "end=$((now + 60))000000000" | grep -q '"values":\[\['
+        --data-urlencode "start=$((now - 600))000000000" --data-urlencode "end=$((now + 60))000000000" | grep '"values":\[\[' >/dev/null
 }
 
 # Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),

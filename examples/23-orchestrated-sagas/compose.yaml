@@ -63,7 +63,7 @@ services:
       dockerfile: 23-orchestrated-sagas/order-service/Containerfile
     container_name: edp-order-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       <<: *environment
       LRA_PARTICIPANT_URL: http://order-service:8080
@@ -81,7 +81,7 @@ services:
       dockerfile: 23-orchestrated-sagas/inventory-service/Containerfile
     container_name: edp-inventory-service
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     environment:
       <<: *environment
       LRA_PARTICIPANT_URL: http://inventory-service:8080
@@ -93,7 +93,7 @@ services:
       dockerfile: 23-orchestrated-sagas/payment-service/Containerfile
     container_name: edp-payment-service
     ports:
-      - "8084:8080"
+      - "127.0.0.1:8084:8080"
     environment:
       <<: *environment
       LRA_PARTICIPANT_URL: http://payment-service:8080

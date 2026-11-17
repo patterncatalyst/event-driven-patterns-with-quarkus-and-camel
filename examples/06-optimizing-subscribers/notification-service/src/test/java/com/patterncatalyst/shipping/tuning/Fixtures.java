@@ -54,10 +54,7 @@ final class Fixtures {
     static void awaitExactly(String group, long expected) {
         Awaitility.await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofMillis(200))
                 .until(() -> rows(group) >= expected);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Awaitility.await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(10))
+                .until(() -> rows(group) == expected);
     }
 }

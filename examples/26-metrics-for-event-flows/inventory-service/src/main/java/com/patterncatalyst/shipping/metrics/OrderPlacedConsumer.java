@@ -11,8 +11,8 @@ import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * Reads the raw bytes of each record, so a failure leaves the original record intact for the dead letter queue
- * (chapter 13). A failure is not retried: the record is nacked and lands on edp.orders.placed-dlq with its headers.
+ * Reads the raw bytes of each record, so a failure leaves the original record intact for the dead letter queue.
+ * A failure is not retried: the record is nacked and lands on edp.orders.placed-dlq with its headers.
  */
 @ApplicationScoped
 public class OrderPlacedConsumer {

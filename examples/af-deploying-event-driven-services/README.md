@@ -1,26 +1,26 @@
 # Appendix F: Deploying event-driven services on minikube
 
-The chapter 06 `notification-service` and the chapter 02 `order-service` run on the Part 6 cluster and are changed in five ways while a producer Job sends uniquely numbered records at a fixed rate: a stop and restart, a rolling update of a consumer group, a rolling update of a service under HTTP requests, a breaking and a compatible schema change, and a blue-green cut-over with a rollback. Every scenario checks that nothing is lost and states what is repeated.
+The `notification-service` and the `order-service` run on a minikube cluster and are changed in five ways while a producer Job sends uniquely numbered records at a fixed rate: a stop and restart, a rolling update of a consumer group, a rolling update of a service under HTTP requests, a breaking and a compatible schema change, and a blue-green cut-over with a rollback. Every scenario checks that nothing is lost and states what is repeated.
 
-It is manifests and a `verify.sh`: no Java and no pom. Both applications are the images of chapters 06 and 02, built from their own Containerfiles and loaded into the node unchanged. Order ids are `O-41000` and up.
+It is manifests and a `verify.sh`: no Java and no pom. Both applications are the existing service images, built from their own Containerfiles and loaded into the node unchanged. Order ids are `O-41000` and up.
 
 ## What runs
 
 | Namespace | Holds |
 |---|---|
 | `edp-kafka` | Strimzi operator and Kafka `edp` (one controller, one broker) |
-| `edp` | CloudNativePG `Cluster edp-pg`, `notify-blue` (3 replicas, chapter 06 image), `notify-green` (0 replicas, same image), `order-service` (2 replicas, chapter 02 image, NodePort 30080), and a producer Job per scenario |
+| `edp` | CloudNativePG `Cluster edp-pg`, `notify-blue` (3 replicas), `notify-green` (0 replicas, same image), `order-service` (2 replicas, NodePort 30080), and a producer Job per scenario |
 
-There is no otel-lgtm: both applications run with `QUARKUS_OTEL_SDK_DISABLED=true`. The chapter 06 service has no Service and no NodePort; its health endpoint is used by the readiness probe only. Nothing is forwarded; the load generator reaches `order-service` through the NodePort published on 127.0.0.1, and every other command is `kubectl exec`.
+There is no otel-lgtm: both applications run with `QUARKUS_OTEL_SDK_DISABLED=true`. The notification-service has no Service and no NodePort; its health endpoint is used by the readiness probe only. Nothing is forwarded; the load generator reaches `order-service` through the NodePort published on 127.0.0.1, and every other command is `kubectl exec`.
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
 | `kustomization.yaml` | The shared namespaces, Strimzi, Kafka and PostgreSQL bases and `apps/` |
-| `apps/notify-blue.yaml` | Chapter 06 service, strategy `Recreate`, group `notify-stop`; `verify.sh` changes strategy, group and protocol between scenarios |
+| `apps/notify-blue.yaml` | The notification-service, strategy `Recreate`, group `notify-stop`; `verify.sh` changes strategy, group and protocol between scenarios |
 | `apps/notify-green.yaml` | The same image under group `notify-green`, at zero replicas |
-| `apps/order-service.yaml` | Chapter 02 service, 2 replicas, `RollingUpdate` with `maxSurge 1` and `maxUnavailable 0`, readiness probe, NodePort 30080 |
+| `apps/order-service.yaml` | The order-service, 2 replicas, `RollingUpdate` with `maxSurge 1` and `maxUnavailable 0`, readiness probe, NodePort 30080 |
 | `tools/producer-job.yaml` | A Job on `quay.io/strimzi/kafka:1.3.1-kafka-4.3.2` that sends numbered JSON keyed by order id at a fixed rate; payload kinds `v1`, `v2` (renamed field) and `expand` (both fields) |
 | `tools/http.py` | HTTP load against the NodePort, a report of the results and the one-event-per-201 comparison (`python3 -I`) |
 | `images.txt` | The two images `verify.sh` builds and loads |
@@ -45,12 +45,12 @@ KEEP=1 ./verify.sh   # leave the namespaces in place
 
 Every group-level query filters by the scenario's id range, because a new consumer group replays the whole topic.
 
-1. Preconditions: Kafka Ready, the three input topics with three partitions, the node images equal to the chapter 06 and chapter 02 builds (checks 1 to 3).
+1. Preconditions: Kafka Ready, the three input topics with three partitions, the node images equal to the host builds (checks 1 to 3).
 2. Stop and restart: 3,000 records at 100 per second (`O-41000` to `O-43999`); the Deployment is recreated while the producer runs (4 to 7).
 3. Rolling update of the consumer group: `maxSurge 1`, `maxUnavailable 0`, group `notify-roll`, ids `O-44000` to `O-46999` (8 to 12).
 4. Schema change: 20 records with `orderId` renamed to `orderRef`, then 20 in the old shape, then 20 with both fields (`O-50000` to `O-50059`; 13 to 17).
 5. Blue-green: blue starts at the end of the topic with offsets copied from the previous group, serves `O-51000` to `O-54999`, is stopped, its offsets are copied to green, green is started; later `O-55000` to `O-57999` and the way back (18 to 25).
-6. Rolling update of `order-service` under HTTP requests, after the consumers are scaled to zero because the chapter 02 events carry no `eventType` and the chapter 06 service cannot read them (26 to 30).
+6. Rolling update of `order-service` under HTTP requests, after the consumers are scaled to zero because the order-service events carry no `eventType` and the notification-service cannot read them (26 to 30).
 
 ## Tests and checks in detail
 
@@ -60,16 +60,16 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 |---|---|
 | 1 | Kafka `edp` is Ready (precondition) |
 | 2 | the three input topics have three partitions (precondition) |
-| 3 | the node runs the chapter 06 and chapter 02 images, equal to the host builds (precondition) |
-| 4 | the Recreate rollout leaves a period of at least 3 s with no row written, 4.8 to 9.3 s over six clean runs |
+| 3 | the node runs the two service images, equal to the host builds (precondition) |
+| 4 | the Recreate rollout leaves a period of at least 3 s with no row written, 4.8 to 9.3 s over eight clean runs |
 | 5 | the group has no lag once it has caught up |
 | 6 | every one of the 3,000 records has a row |
-| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 460 over eight clean runs (bound up to 1,469) |
+| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 460 over ten clean runs (bound up to 1,469) |
 | 8 | `notify-roll` is listed as a consumer-protocol group |
 | 9 | the rolling update replaced every pod |
 | 10 | rows of the range were written by the old pods and by the new ones |
 | 11 | every one of the 3,000 records has a row |
-| 12 | the records delivered again stay within the same bound, 0 to 384 over eight clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 705) |
+| 12 | the records delivered again stay within the same bound, 0 to 384 over ten clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 738) |
 | 13 | no record with the renamed field produced a row, 0 of 20 in each run |
 | 14 | the group has no lag: it committed past the records it could not store |
 | 15 | the consumer log holds `Failed delivery` |
@@ -78,16 +78,16 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 18 | the blue group is Empty within 60 s of the scale-down |
 | 19 | the green group holds blue's committed offsets, partition by partition |
 | 20 | every one of the 4,000 records has a row in blue or green |
-| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over eight clean runs (bound 742 to 788) |
+| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over ten clean runs (bound 742 to 1,150) |
 | 22 | the green group is Empty within 60 s of the scale-down |
 | 23 | the blue group holds green's committed offsets, partition by partition |
 | 24 | every one of the 3,000 records of the rollback range has a row in blue or green |
-| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 380 over eight clean runs (bound 690 to 904) |
-| 26 | without a rollout every request is answered 201, 1,584 of 1,584 in each of the six clean runs |
+| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 380 over ten clean runs (bound 690 to 904) |
+| 26 | without a rollout every request is answered 201, 1,576 to 1,584 requests in each of the eight clean runs |
 | 27 | the rollout ran while requests were flowing |
 | 28 | no request was answered with a 5xx status |
-| 29 | failed requests stay below 2 percent, 0.2 to 0.3 percent over five clean runs |
-| 30 | a retry of an accepted order is answered 409, every 201 left exactly one event and a failed request left none |
+| 29 | failed requests stay below 2 percent, 0.2 to 0.5 percent over seven clean runs |
+| 30 | a retry of an accepted order is answered 409; every failed request is retried, each retry is answered 201 or 409, and then each order has exactly one event |
 
 Notes on how the checks read their evidence:
 
@@ -108,6 +108,6 @@ Each run starts from fresh namespaces. The failing sets are frozen after the liv
 
 ## Measurements
 
-Redelivery depends on timing and can be zero. In six clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384 and 0), and the stop and restart delivered 0 to 460 again over eight runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 18 s from the blue scale-down to green live (8 s without the offset copy).
+Redelivery depends on timing and can be zero. In eight clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384, 0, 66 and 35), and the stop and restart delivered 0 to 460 again over ten runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 20 s from the blue scale-down to green live (8 s without the offset copy).
 
-Requests in flight when a pod of `order-service` is removed can fail at the connection level. In five clean runs 5, 8, 5, 5 and 8 of about 2,380 to 2,390 requests failed and none was answered with a 5xx status; in the two runs that split them, the failures were 1 reset and 4 timeouts, and 4 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it.
+Requests in flight when a pod of `order-service` is removed can fail at the connection level. In seven clean runs 5, 8, 5, 5, 8, 11 and 6 of about 2,380 to 2,391 requests failed and none was answered with a 5xx status; in the four runs that split them, the failures were 1 reset and 4 timeouts, 4 resets and 4 timeouts, 7 resets and 4 timeouts, and 2 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it. In one run 2 of the 11 failed requests had been accepted before the connection failed, and their events were on the topic; in the first run that retried every failed request, all 6 retries were answered 201.

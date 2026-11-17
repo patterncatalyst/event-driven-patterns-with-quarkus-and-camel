@@ -84,7 +84,7 @@ A new question differs between them. A new replay is code, and the answer is exa
 
 ## What each answer costs
 
-Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; at the two smaller sizes it is bounded by the one-second tick, and three runs gave 0.8 to 1.0 s at the two smaller sizes and 1.3 to 2.0 s at 100,000 orders. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
+Both are timed inside the service, so the HTTP round trip is not in the numbers. The store is loaded cumulatively to 1,000, 10,000 and 100,000 orders, which is 3,600, 36,000 and 360,000 events. At each size three loads are discarded and 11 are timed, alternating replay and projection read so that drift affects both. A rebuild is timed from the moment the projection is emptied to the moment the checkpoint reaches the newest event; the one-second tick bounds it at the two smaller sizes, and four runs gave 0.3 to 1.0 s there and 1.3 to 2.0 s at 100,000 orders. The database runs on the compose stack of an 8-core laptop, and each figure is the median of three runs from fresh containers.
 
 {% include excalidraw.html file="17-cost-by-size" alt="Median read times: a replay takes 15 ms at 1,000 orders, 77 ms at 10,000 and 586 ms at 100,000; a projection read takes 0.78, 0.61 and 0.46 ms; a rebuild takes 781 ms, 766 ms and 1.8 s" caption="Figure 17.2: A replay grows with the store, a projection read does not" %}
 
@@ -132,9 +132,9 @@ Try one change and rerun:
 
 When the question is rare or the history is small, replay. A report that runs once a day over 10,000 orders costs 77 ms, and a projection for it adds a table, a checkpoint, a timer and a rebuild to keep correct. Measure the replay against the budget of the read before building anything.
 
-A projection serves the questions it was built for. A new question needs a new fold and a rebuild from the first event, so the store must keep that history for as long as such questions can arrive. A bug in the fold is repeated into the rows until the rebuild. The Azure Architecture Center advises serving the last complete view while a new one is built; here the projection undercounts for the length of the rebuild.
+A projection serves the questions it was built for. A new question needs a new fold and a rebuild from the first event, so the store must keep that history for as long as such questions can arrive. A bug in the fold is repeated into the rows until the rebuild. The Azure Architecture Center advises serving the last complete view while a new one is built; this projection undercounts for the length of the rebuild.
 
-When a command must see its own write, read the aggregate: a projection is eventually consistent, and the gap is a tick plus a batch. A read model fed from Kafka topics has other problems: lag, and the order between topics. Here the projector reads the event store itself, and the problem is commit order inside one database.
+When a command must see its own write, read the aggregate: a projection is eventually consistent, and the gap is a tick plus a batch. A read model fed from Kafka topics has other problems: lag, and the order between topics. A projector that reads the event store itself has commit order inside one database.
 
 > **🤖 Explore with your agent**
 > "In examples/17-aggregate-replay-or-projection, ask for shipments per carrier through ReplayReport and through CarrierDailyProjector, then find where projection_checkpoint and the tx_id watermark decide which events a batch reads. Set PROJECTION_WATERMARK=off, hold ShipOrder O-1701 open while O-1702 ships, and state which order the projection never counts and why."

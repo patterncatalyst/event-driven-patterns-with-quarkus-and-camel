@@ -1,8 +1,8 @@
 # 31 Security context and pod security
 
-The namespaces `edp` and `edp-kafka` enforce the restricted Pod Security Standard, and every pod in them still runs. This example labels them, gives the two chapter 02 applications an explicit security context, runs Strimzi with its restricted pod security provider and uses CloudNativePG as published. `cnpg-system` and `edp-lgtm` are checked with server dry-run labels and are never relabelled.
+The namespaces `edp` and `edp-kafka` enforce the restricted Pod Security Standard, and every pod in them still runs. This example labels them, gives the two example 02 applications an explicit security context, runs Strimzi with its restricted pod security provider and uses CloudNativePG as published. `cnpg-system` and `edp-lgtm` are checked with server dry-run labels and are never relabelled.
 
-It is manifests only: a kustomize overlay over `examples/_k8s` and a `verify.sh`. There is no Java; the applications are the chapter 02 images, built from their own Containerfiles and loaded into the node.
+It is manifests only: a kustomize overlay over `examples/_k8s` and a `verify.sh`. There is no Java; the applications are the example 02 images, built from their own Containerfiles and loaded into the node.
 
 ## What runs
 
@@ -19,7 +19,7 @@ It is manifests only: a kustomize overlay over `examples/_k8s` and a `verify.sh`
 
 | Path | Purpose |
 |---|---|
-| `kustomization.yaml` | The restricted setup: platform, Strimzi with the restricted provider, the chapter 02 apps, the app security component |
+| `kustomization.yaml` | The restricted setup: platform, Strimzi with the restricted provider, the example 02 apps, the app security component |
 | `platform/` | Namespaces with the Pod Security labels, PostgreSQL and LGTM from `examples/_k8s` |
 | `components/app-security/` | The four security context fields, `readOnlyRootFilesystem: true` and an emptyDir on `/tmp`, for Deployments in `edp` only |
 | `demo/app-none/` | Demo code: the apps without a security context |

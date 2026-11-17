@@ -100,7 +100,7 @@ class Report:
 def files(root: Path, *globs: str):
     for g in globs:
         for p in sorted(root.glob(g)):
-            if p.is_file() and not any(x in p.parts for x in ("_site", "target", "vendor", "node_modules")):
+            if p.is_file() and not any(x in p.relative_to(root).parts for x in ("_site", "target", "vendor", "node_modules")):
                 yield p
 
 

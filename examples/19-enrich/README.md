@@ -15,7 +15,7 @@ Quarkus, Kafka Streams, Hibernate ORM with Panache, Flyway, Quarkus REST, Camel 
 |---|---|---|
 | `CAMEL_BREAK_ON_FIRST_ERROR` | `true` | Demo code. `false` commits a record whose lookup failed, so it is never enriched (the negative witness) |
 
-Topics, one partition each: `edp.shipping.scheduled` (input), `edp.shipping.carriers` (compacted reference), `edp.shipping.scheduled-enriched` (Streams output), `edp.shipping.scheduled-enriched-camel` (Camel output). Kafka Streams state is under `/tmp`; the Streams application id is `notification-enricher`, the Camel group is `notification-enricher-camel`, and both use a 10 s session timeout, the time the broker keeps the session of a stopped member before it hands out its partitions. `verify.sh` plays the owner's publishing step: it writes the reference records to the compacted topic, as an outbox or log tailing would (chapters 8 and 9).
+Topics, one partition each: `edp.shipping.scheduled` (input), `edp.shipping.carriers` (compacted reference), `edp.shipping.scheduled-enriched` (Streams output), `edp.shipping.scheduled-enriched-camel` (Camel output). Kafka Streams state is under `/tmp`; the Streams application id is `notification-enricher`, the Camel group is `notification-enricher-camel`, and both use a 10 s session timeout, the time the broker keeps the session of a stopped member before it hands out its partitions. `verify.sh` plays the owner's publishing step: it writes the reference records to the compacted topic, as an outbox or log tailing would.
 
 ## Run
 
@@ -65,7 +65,7 @@ The Maven build runs 13 tests across the two modules. In `shipping-service` they
 - A deleted reference leaves the join's record with an empty mode and link.
 - A recreated enricher rebuilds its local copy from the compacted topic.
 
-Event times are not used: the enrichment reads no clock, so the example has no event-time rule to follow.
+The enrichment reads no clock, so no event-time rule applies.
 
 ## Experiments
 

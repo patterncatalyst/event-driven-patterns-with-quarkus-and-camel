@@ -78,7 +78,7 @@ kafka_matches_spec() { # every KafkaTopic's partitions and declared retention ar
     done < <(kt names)
 }
 
-# --- one order through the chapter 02 pair
+# --- one order through the example 02 pair
 place() { # place <id>
     curl -s -m 90 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$ORDERS/orders" \
         --data "{\"id\":\"$1\",\"customerId\":\"CU-29\",\"itemSku\":\"SKU-29\",\"quantity\":1,\"amount\":19.90}"

@@ -2,23 +2,24 @@
 
 An order is carried from placed to paid by three services, and one question finds everything about it: which traces, and which log lines. Every span has the attribute `order.id`, every handler puts `orderId` in the log context, every log line carries the trace id, and the sweeper's trace for a timed-out order links to the trace of the request that placed it. Tempo is searched by `{ span.order.id = "O-2701" }` and Loki by `| orderId="O-2701"`.
 
-This is a trimmed standalone copy of [22 Saga](../22-saga/), with Connect traced by the OpenTelemetry Java agent from `examples/_infra/compose-connect-tracing.yaml`. `order-service` owns the saga state (`orders.order_saga`: state, deadline, version, and the `traceparent` of the request) and the sweeper. `inventory-service` reserves and releases stock. `payment-service` is a Camel participant that takes the payment, declines it above a limit and refuses a payment for an order it has seen cancelled. Every event leaves through the outbox of the service that publishes it, and one Debezium connector reads the three outbox tables.
+This is a trimmed choreographed order saga, with Connect traced by the OpenTelemetry Java agent from `examples/_infra/compose-connect-tracing.yaml`. `order-service` owns the saga state (`orders.order_saga`: state, deadline, version, and the `traceparent` of the request) and the sweeper. `inventory-service` reserves and releases stock. `payment-service` is a Camel participant that takes the payment, declines it above a limit and refuses a payment for an order it has seen cancelled. Every event leaves through the outbox of the service that publishes it, and one Debezium connector reads the three outbox tables.
 
 Quarkus, SmallRye Reactive Messaging, Camel Kafka (payment-service), Hibernate ORM with Panache, Flyway, `debezium-quarkus-outbox`, Quarkus Scheduler, SmallRye Health, PostgreSQL, Kafka, Kafka Connect and OpenTelemetry to the LGTM stack. Topic names come from `Topics` in `examples/domain-model`. The six topics are created by `topics-init` with one partition each.
 
-## What was trimmed from 22
+## Scope
+
+The saga is kept to what the correlation needs: the three outboxes and the connector, the sweeper, the refusal of a payment for a cancelled order, and the gate route that holds the payment route until the cancellation consumer has no lag. Left out:
 
 | Left out | Why |
 |---|---|
-| The burst of 200 orders and its timing | Throughput is not the lesson here |
-| The restart check of `order-service` with a moved deadline | Saga state across a restart is chapter 22's lesson |
-| The race test of a sweep against a payment, and the inventory race test | Same |
-| `PAYMENT_CANCEL_GUARD` | The refusal of a cancelled order stays, as the guard that makes the timeout case end cleanly; its switch and negative witness stay in 22 |
-| The out-of-stock order and the repeated `PaymentFailed` | Compensation variants are covered in 22 |
+| A burst of orders and its timing | Throughput is not the lesson here |
+| A restart of `order-service` with a moved deadline, and the race tests of a sweep against a payment | Saga state across a restart and races are not what is correlated |
+| A switch and negative witness for the cancelled-order refusal | The refusal stays only so the timeout case ends cleanly |
+| The out-of-stock order and the repeated `PaymentFailed` | Compensation variants add no trace shape |
 
-Kept from 22: the three outboxes and the connector, the sweeper, the refusal of a payment for a cancelled order, and the gate route that holds the payment route until the cancellation consumer has no lag. The gate guards the restart race of 22; it was not removed and re-run here, so this README makes no measurement of it.
+The gate was not removed and re-run here, so this README makes no measurement of it.
 
-Added in 27: the `Correlated` bean in each service (a span with `order.id` and the `orderId` log context), the console format with the three ids, `order_saga.traceparent` recorded at placement, the sweeper's `cancel expired saga` root span with a link, and `tools/observe.py` (Tempo, Loki and Grafana over HTTP).
+Added for correlation: the `Correlated` bean in each service (a span with `order.id` and the `orderId` log context), the console format with the three ids, `order_saga.traceparent` recorded at placement, the sweeper's `cancel expired saga` root span with a link, and `tools/observe.py` (Tempo, Loki and Grafana over HTTP).
 
 ## Services
 

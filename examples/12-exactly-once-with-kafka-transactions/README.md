@@ -43,7 +43,7 @@ Checks 6, 7, 15 and 16 are preconditions: the run stops if the crash or the part
 
 The Maven build runs the service against a Kafka broker from Dev Services: five inputs give exactly five payments to a `read_committed` reader, an aborted transaction leaves its record in the log and out of the `read_committed` view, and the input offset is committed together with the output. `verify.sh` starts Kafka, the LGTM stack and the service, and prints `21/21 checks passed`.
 
-The checks read the effects, not the exit codes:
+The checks read the effects:
 
 - Five orders `O-5001` to `O-5005` produce exactly five payments for a `read_committed` reader, one per order, keyed by the order id, with payment id `P-O-5001` and so on, status `COMPLETED` and the amount of the input. The group `payment-service` has committed offset 5, and `kafka-transactions.sh describe` shows `payment-service-tx` as `CompleteCommit`.
 - With the crash switch set for `O-5108`, ten orders `O-5101` to `O-5110` are produced in one burst. The container exits with 137, and a `read_uncommitted` reader sees the seven payments written before the crash in the recorded runs: the open transaction wrote them. A `read_committed` reader sees none of the ten, and the group is still at offset 5.

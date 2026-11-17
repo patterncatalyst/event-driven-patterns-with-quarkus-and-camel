@@ -134,9 +134,9 @@ prom() {
 }
 fetches() { prom "sum(kafka_consumer_fetch_manager_fetch_total{client_id=\"$1\"})"; }
 fetch_series_present() { [[ -n "$(fetches "$1")" ]]; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep '"traceID"' >/dev/null; }
 loki_has_logs() {
-    curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}" | grep -q '"values"'
+    curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}" | grep '"values"' >/dev/null
 }
 
 # --- start ------------------------------------------------------------------------------------

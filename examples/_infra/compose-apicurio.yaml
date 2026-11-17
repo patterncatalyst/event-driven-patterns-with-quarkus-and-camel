@@ -3,8 +3,8 @@ services:
     image: quay.io/apicurio/apicurio-registry:3.3.4
     container_name: edp-apicurio
     ports:
-      - "8081:8080"     # REST API and UI (/apis/registry/v3)
-      - "19000:9000"    # management interface: /health/ready
+      - "127.0.0.1:8081:8080"     # REST API and UI (/apis/registry/v3)
+      - "127.0.0.1:19000:9000"    # management interface: /health/ready
     # In-memory storage: the registry is empty after every restart.
     environment:
       - APICURIO_STORAGE_KIND=sql

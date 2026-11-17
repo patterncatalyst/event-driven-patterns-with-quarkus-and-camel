@@ -1,24 +1,24 @@
 # 34 MirrorMaker 2
 
-A second Kafka cluster, `edp-dr`, runs beside `edp` in the same namespace, and a Strimzi `KafkaMirrorMaker2` copies the event catalog's topics and the consumers' group offsets from `edp` to `edp-dr`. This example fails the chapter 02 `notification-service` over to `edp-dr` by changing only its bootstrap address, and checks where the consumer resumes.
+A second Kafka cluster, `edp-dr`, runs beside `edp` in the same namespace, and a Strimzi `KafkaMirrorMaker2` copies the event catalog's topics and the consumers' group offsets from `edp` to `edp-dr`. This example fails the example 02 `notification-service` over to `edp-dr` by changing only its bootstrap address, and checks where the consumer resumes.
 
-Manifests only: a kustomize overlay on `examples/_k8s` (the Kafka, PostgreSQL, LGTM, monitoring and metrics bases and the chapter 02 deployments) and two files for the second cluster and the mirror. No Java and no pom. The chapter 02 images are built from their own Containerfiles, unchanged. The namespaces carry no Pod Security labels in this example.
+Manifests only: a kustomize overlay on `examples/_k8s` (the Kafka, PostgreSQL, LGTM, monitoring and metrics bases and the example 02 deployments) and two files for the second cluster and the mirror. No Java and no pom. The example 02 images are built from their own Containerfiles, unchanged. The namespaces carry no Pod Security labels in this example.
 
 ## What the overlay changes
 
 | File | Purpose |
 |---|---|
 | `kustomization.yaml` | Builds `base/` |
-| `base/kustomization.yaml` | The bases and components of `../_k8s`, the chapter 02 deployments, the two files below, and the dashboard of this chapter; kept apart so the demo overlay can build on it |
+| `base/kustomization.yaml` | The bases and components of `../_k8s`, the example 02 deployments, the two files below, and the dashboard of this example; kept apart so the demo overlay can build on it |
 | `base/edp-dr.yaml` | The `Kafka` `edp-dr` and its one dual-role `KafkaNodePool` `dual` (1 GiB, 512 MiB heap) |
 | `base/mirrormaker2.yaml` | The `KafkaMirrorMaker2` `edp-mm2`: target `edp-dr`, one mirror from `edp`, `IdentityReplicationPolicy` on both connectors, checkpoints and group syncs every 5 s, `offset.lag.max: 0` |
 | `base/dashboards/edp-mirrormaker2.json` | A Grafana dashboard of connector count, connectors running and the source group's lag |
 | `base/lgtm-dashboards-patch.yaml` | Turns the `dashboards` volume of the monitoring component into a projection of its ConfigMap and the one for this dashboard |
-| `images.txt` | The two chapter 02 images loaded into the node |
+| `images.txt` | The two example 02 images loaded into the node |
 | `mm2_state.py` | Prints a connector's state and its tasks' states from `kubectl get kafkamirrormaker2 -o json` (`python3 -I`) |
 | `demo-offset-sync-off/` | Demo code, selected by the switch below; links `images.txt` so the images load |
 
-The chapter 02 pair publishes and reads `edp.orders.placed`, which is in `Topics.ALL`. Both clusters keep broker auto-creation on, as in chapter 28.
+The example 02 pair publishes and reads `edp.orders.placed`, which is in `Topics.ALL`. Both clusters keep broker auto-creation on.
 
 ## Run
 
@@ -48,7 +48,7 @@ The patch is a JSON patch because kustomize replaces a whole list of a custom re
 4. Checks that the group `notification-service` exists on `edp-dr` with the committed offsets it has on `edp`.
 5. Stops `notification-service` (precondition), places five more orders, checks that nobody is notified and that `edp-dr` holds all ten records, and that the group there did not move.
 6. Starts `notification-service` with `CAMEL_COMPONENT_KAFKA_BROKERS` set to the `edp-dr` bootstrap address and nothing else changed, and checks the five orders are notified, the group on `edp-dr` advanced by exactly five and every order has one notification.
-7. Checks that the mirror's worker reports its two connectors through the monitoring component of chapter 32 and that Grafana serves the dashboard of this example.
+7. Checks that the mirror's worker reports its two connectors through the monitoring component and that Grafana serves the dashboard of this example.
 
 ## Tests and checks in detail
 
@@ -79,7 +79,7 @@ Checks 9, 13 and 16 depend on the group offset sync. They are the negative witne
 
 `verify.sh` prints each value on a `measured:` line; ranges are over the verified runs.
 
-- The `Kafka` `edp-dr` Ready: 33 to 37 s after its creation. `edp-mm2` Ready: 68 to 74 s.
+- The `Kafka` `edp-dr` Ready: 33 to 37 s after its creation. `edp-mm2` Ready: 68 to 86 s.
 - Group offsets on `edp-dr` with 5 s intervals and `offset.lag.max: 0`: 6 to 7 s after the five orders were notified and the record counts on both clusters matched. With the default `offset.lag.max` of 100, a cluster spike found the group still behind the source after 140 s.
 - From the change of the bootstrap address to the five orders notified: 7 to 8 s.
-- Deleting the mirror, both clusters, the apps and the three namespaces: 33 to 68 s.
+- Deleting the mirror, both clusters, the apps and the three namespaces: 30 to 68 s.

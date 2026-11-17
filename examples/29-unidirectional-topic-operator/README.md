@@ -2,22 +2,22 @@
 
 The topics of the event catalog are declared as `KafkaTopic` resources on a Kafka cluster whose broker no longer creates topics. This example checks what the Strimzi Topic Operator does with them: the declared set equals `Topics.ALL`, a change made in Kafka is reverted or reported, a topic created in Kafka gets no resource, and deleting a resource deletes its topic unless it was unmanaged first.
 
-Manifests only: a kustomize overlay on `examples/_k8s` (Kafka, PostgreSQL and LGTM bases, the chapter 2 deployments) and one `KafkaTopic` file. No Java and no pom. The chapter 2 images are built from their own Containerfiles, unchanged.
+Manifests only: a kustomize overlay on `examples/_k8s` (Kafka, PostgreSQL and LGTM bases, the example 02 deployments) and one `KafkaTopic` file. No Java and no pom. The example 02 images are built from their own Containerfiles, unchanged.
 
 ## What the overlay changes
 
 | File | Purpose |
 |---|---|
 | `kustomization.yaml` | Builds `base/` |
-| `base/kustomization.yaml` | The bases of `../_k8s`, the chapter 2 deployments, `topics/`, and the Kafka patch; kept apart so the demo overlays can build on it |
+| `base/kustomization.yaml` | The bases of `../_k8s`, the example 02 deployments, `topics/`, and the Kafka patch; kept apart so the demo overlays can build on it |
 | `base/kafka-patch.yaml` | `auto.create.topics.enable: false` and `entityOperator.topicOperator.reconciliationIntervalMs: 15000` on the `Kafka` resource `edp` |
 | `base/topics/kafkatopics.yaml` | The nine `KafkaTopic` resources, 3 partitions and 1 replica each; `edp.orders.placed` declares `retention.ms: 3600000` |
-| `images.txt` | The two chapter 2 images loaded into the node |
+| `images.txt` | The two example 02 images loaded into the node |
 | `topics_all.py` | Prints `Topics.ALL` from `examples/domain-model` (`python3 -I`) |
 | `kafkatopic_state.py` | Reads `kubectl get kafkatopic -o json` and prints names, conditions, spec fields and finalizers (`python3 -I`) |
 | `demo-autocreate/`, `demo-missing-topic/` | Demo code, selected by the switches below; each links `images.txt` so the images load |
 
-The chapter 2 pair publishes and reads only `edp.orders.placed`, which is in `Topics.ALL`, so no topic is added to the set for it.
+The example 02 pair publishes and reads only `edp.orders.placed`, which is in `Topics.ALL`, so no topic is added to the set for it.
 
 ## Run
 

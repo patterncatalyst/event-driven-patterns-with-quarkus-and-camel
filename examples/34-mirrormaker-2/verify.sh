@@ -32,7 +32,7 @@ NOTIFY="http://127.0.0.1:${PORT2}"
 SOURCE_CONNECTOR='edp->edp-dr.MirrorSourceConnector'
 CHECKPOINT_CONNECTOR='edp->edp-dr.MirrorCheckpointConnector'
 
-# --- orders and notifications (chapter 02 pair)
+# --- orders and notifications (example 02 pair)
 place() { # place <id>
     curl -s -m 90 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$ORDERS/orders" \
         --data "{\"id\":\"$1\",\"customerId\":\"CU-34\",\"itemSku\":\"SKU-34\",\"quantity\":1,\"amount\":19.90}"
@@ -78,7 +78,7 @@ connectors_running() { [[ "$(connector_state "$SOURCE_CONNECTOR")" == "RUNNING R
 internal_topics_placed() { # offset syncs on the source (the default), checkpoints on the target
     topic_present "$SRC" mm2-offset-syncs.edp-dr.internal && topic_present "$DR" edp.checkpoints.internal
 }
-mm2_workers_reported() { # the reporter on the MirrorMaker 2 worker, through the monitoring of chapter 32
+mm2_workers_reported() { # the reporter on the MirrorMaker 2 worker, through the monitoring of example 32
     local v; v="$(prom_query 'kafka_connect_connect_worker_metrics_connector_count{strimzi_kind="KafkaMirrorMaker2"}')" || return 1
     [[ "$v" == 2 || "$v" == 2.0 ]]
 }

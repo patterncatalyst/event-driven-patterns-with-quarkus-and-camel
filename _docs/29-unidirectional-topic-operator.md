@@ -75,15 +75,15 @@ The same property makes a missing resource visible. Leave `edp.orders.placed` ou
 
 ## Drift
 
-A topic can be changed in Kafka by anyone with the tools, and the resource does not hear about it until the next full pass. A retention that the resource declares as `3600000` and that is altered with `kafka-configs.sh --alter` is back at `3600000` 6 to 23 s later in three measured runs with the 15 second interval; the time depends on where in the cycle the change lands. The keys in `spec.config` are the ones to rely on, and a configuration that matters belongs in the resource.
+A topic can be changed in Kafka by anyone with the tools, and the resource does not hear about it until the next full pass. A retention that the resource declares as `3600000` and that is altered with `kafka-configs.sh --alter` is back at `3600000` 6 to 23 s later with the 15 second interval; the time depends on where in the cycle the change lands. The keys in `spec.config` are the ones to rely on, and a configuration that matters belongs in the resource.
 
 Partitions are the exception that cannot be reverted. Kafka does not shrink a topic, so when the partitions are raised in Kafka to 6 while the resource says 3, the operator cannot make the topic match. The `KafkaTopic` stays at `Ready=False` with reason `NotSupported` and the message `Decreasing partitions not supported`. The spec still says 3, the topic keeps 6, and the status stays False until the resource and the topic agree. The mismatch is reported, not repaired.
 
-A topic deleted in Kafka is recreated from its resource, 8 to 25 s after the deletion in the same three runs. The recreated topic is a new topic with a new id.
+A topic deleted in Kafka is recreated from its resource, 8 to 25 s after the deletion. The recreated topic is a new topic with a new id.
 
 ## Deletion and unmanaged topics
 
-The operator puts a finalizer, `strimzi.io/topic-operator`, on every `KafkaTopic`, so Kubernetes keeps the resource until the operator has removed the topic. Deleting the resource deletes the topic, 1 to 2 s later in the measured runs. The documentation points out the other side: when the operator is not running, a resource with the finalizer cannot be deleted, and a namespace holding such resources stays in `Terminating`. Delete the `KafkaTopic` resources before the operator or the namespace, so the operator can remove its finalizers.
+The operator puts a finalizer, `strimzi.io/topic-operator`, on every `KafkaTopic`, so Kubernetes keeps the resource until the operator has removed the topic. Deleting the resource deletes the topic, 1 to 2 s later. The documentation points out the other side: when the operator is not running, a resource with the finalizer cannot be deleted, and a namespace holding such resources stays in `Terminating`. Delete the `KafkaTopic` resources before the operator or the namespace, so the operator can remove its finalizers.
 
 A topic that must outlive its resource is made unmanaged first.
 
@@ -99,7 +99,7 @@ A topic created in Kafka with `kafka-topics.sh` gets no resource and none appear
 
 | Action | Result |
 |---|---|
-| `KafkaTopic` applied | Topic created, `Ready=True` after 1 s in the measured run |
+| `KafkaTopic` applied | Topic created, `Ready=True` after 1 s |
 | Declared config key changed in Kafka | Reverted on a later pass |
 | Partitions raised in Kafka | `Ready=False`, `NotSupported`; topic keeps the higher count |
 | Topic deleted in Kafka | Recreated from the resource |
@@ -114,13 +114,13 @@ cd examples/29-unidirectional-topic-operator
 ./verify.sh
 ```
 
-The cluster comes up with the entity operator and the nine `KafkaTopic` resources, the event notification pair places an order across them, and changes made in Kafka and in Kubernetes are watched for their effect on the other side; the run ends with `17/17 checks passed`.
+The cluster comes up with the entity operator and the nine `KafkaTopic` resources, the event notification pair places an order across them, and changes made on each side are checked for their effect on the other; the run ends with `17/17 checks passed`.
 
 Try one change and rerun:
 
 - `TOPIC_AUTOCREATE=on ./verify.sh` (demo code): the broker creates the undeclared topic and the producer succeeds.
 - `TOPIC_SET=missing ./verify.sh` (demo code): the set lacks `edp.orders.placed`, the order cannot be published and no notification arrives.
-- `KEEP=1 ./verify.sh`, then `kubectl --context edp -n edp-kafka delete kafkatopic edp.shipping.delivered`: the topic is gone from `kubectl --context edp -n edp-kafka exec edp-broker-0 -- /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list`.
+- `KEEP=1 ./verify.sh`, then `kubectl --context edp -n edp-kafka delete kafkatopic edp.shipping.delivered`: the topic leaves `kafka-topics.sh --list` in the broker pod.
 
 ## When not to use it
 

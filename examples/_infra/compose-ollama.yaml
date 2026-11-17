@@ -3,7 +3,7 @@ services:
     image: docker.io/ollama/ollama:0.40.16@sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592
     container_name: edp-ollama
     ports:
-      - "11434:11434"   # Ollama API: GET /api/tags
+      - "127.0.0.1:11434:11434"   # Ollama API: GET /api/tags
     environment:
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_LOADED_MODELS=1

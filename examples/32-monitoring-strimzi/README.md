@@ -1,19 +1,19 @@
 # 32 Monitoring Strimzi
 
-Kafka run by Strimzi reports on three layers that fail independently: the brokers and controllers (the Strimzi Metrics Reporter), the cluster operator, and the status of the resources the operator manages (kube-state-metrics). This example turns all three on beside the chapter 2 services, scrapes them with the otel-lgtm collector and reads the results from Prometheus: broker traffic, the single active controller, the operator's reconciliations, the Ready condition of the Kafka and KafkaTopic resources, consumer group lag and a provisioned dashboard. It also makes a KafkaTopic invalid and changes the reporter's `allowList` while watching the pods.
+Kafka run by Strimzi reports on three layers that fail independently: the brokers and controllers (the Strimzi Metrics Reporter), the cluster operator, and the status of the resources the operator manages (kube-state-metrics). This example turns all three on beside the example 02 services, scrapes them with the otel-lgtm collector and reads the results from Prometheus: broker traffic, the single active controller, the operator's reconciliations, the Ready condition of the Kafka and KafkaTopic resources, consumer group lag and a provisioned dashboard. It also makes a KafkaTopic invalid and changes the reporter's `allowList` while watching the pods.
 
-Manifests only: a kustomize overlay on `examples/_k8s` and no Java or pom. The chapter 2 images are built from their own Containerfiles, unchanged. The namespaces carry no Pod Security labels.
+Manifests only: a kustomize overlay on `examples/_k8s` and no Java or pom. The example 02 images are built from their own Containerfiles, unchanged. The namespaces carry no Pod Security labels.
 
 ## What the overlay changes
 
 | File | Purpose |
 |---|---|
 | `kustomization.yaml` | Builds `base/` and lists the components `../_k8s/monitoring` (collector scrape configuration, kube-state-metrics, the `edp-strimzi` dashboard) and `../_k8s/kafka-metrics` (the reporter, with `allowList` `kafka_.*` and `jvm_.*`) |
-| `base/kustomization.yaml` | The bases of `../_k8s`, the chapter 2 deployments, `topics/` and the Kafka patch; kept apart so that the demo overlay can build on it |
+| `base/kustomization.yaml` | The bases of `../_k8s`, the example 02 deployments, `topics/` and the Kafka patch; kept apart so that the demo overlay can build on it |
 | `base/kafka-patch.yaml` | `entityOperator.topicOperator.reconciliationIntervalMs: 15000`, so a KafkaTopic has a Ready condition |
 | `base/topics/kafkatopics.yaml` | One `KafkaTopic`, `edp.orders.placed`, 3 partitions |
 | `demo-metrics-off/` | Demo code: the base with the monitoring component and without the reporter component |
-| `images.txt` | The two chapter 2 images loaded into the node |
+| `images.txt` | The two example 02 images loaded into the node |
 | `kafkapods.py`, `kafkatopic_state.py` | Pod names, uids and restart counts; KafkaTopic conditions (`python3 -I`). Prometheus is queried with `../_k8s/tools/prom.py` |
 
 ## Run
@@ -71,4 +71,4 @@ In-run changes to the Kafka resource use `kubectl patch --type merge`; the initi
 | Topic raised from 3 to 6 partitions to Ready 0 with `NotSupported` | 18 to 39 s over six runs (the Topic Operator reconciles every 15 s) |
 | `allowList` patched to the family gone from the endpoint | 1 to 3 s, pods unchanged |
 | `metricsConfig` removed (`METRICS=off`), pods rolled to Ready | about 75 s; restoring it rolls them again |
-| Deleting the topics, Kafka and the three namespaces | 38 to 47 s |
+| Deleting the topics, Kafka and the three namespaces | 37 to 47 s |

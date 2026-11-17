@@ -1,6 +1,6 @@
 # 26 Metrics for event flows
 
-Orders wait in a paused relay or behind a stopped consumer while every service reports healthy. This example measures the flow where the work waits: the outbox backlog in the replication slot, consumer group lag at the broker, the age of an event from the time stamped when it happened, and dead letters as a rate. A dashboard and one alert rule are provisioned from files.
+Orders wait in a paused relay or behind a stopped consumer while every service reports healthy. It measures the flow where the work waits: the outbox backlog in the replication slot, consumer group lag at the broker, the age of an event from the time stamped when it happened, and dead letters as a rate. A dashboard and one alert rule are provisioned from files.
 
 Quarkus, Micrometer with OpenTelemetry export, SmallRye Reactive Messaging, Debezium outbox and Connect, Kafka, PostgreSQL and the LGTM stack. There is no Camel. Topic names come from `Topics` in `examples/domain-model`.
 
@@ -8,8 +8,8 @@ Quarkus, Micrometer with OpenTelemetry export, SmallRye Reactive Messaging, Debe
 
 | Service | Port | Purpose |
 |---|---|---|
-| `order-service` | 8080 | `POST /orders` writes the order and `OrderPlaced` through the outbox (chapter 8). `OutboxBacklog` is the `outbox.backlog` gauge |
-| `inventory-service` | 8082 | Reserves stock from `edp.orders.placed`; a failure goes to `edp.orders.placed-dlq` (chapter 13). `FlowAge` records `order.flow.event.age` and `order.flow.record.age` |
+| `order-service` | 8080 | `POST /orders` writes the order and `OrderPlaced` through the outbox. `OutboxBacklog` is the `outbox.backlog` gauge |
+| `inventory-service` | 8082 | Reserves stock from `edp.orders.placed`; a failure goes to `edp.orders.placed-dlq`. `FlowAge` records `order.flow.event.age` and `order.flow.record.age` |
 
 One connector, `order-flow-outbox`, reads `orders.outboxevent` with slot `edp_order_flow`. It stamps the outbox timestamp on each record as header `occurredAt` and sends a heartbeat every second that writes a row to `orders.heartbeat`; a Filter transform drops those rows before a topic. Both topics have one partition. The consumer group is `inventory-placed`; its session timeout is 10 s.
 
@@ -51,7 +51,7 @@ Order ids are `O-2600` to `O-2690`, and `O-260000` to `O-260499` for the burst. 
 
 | Path | Purpose |
 |---|---|
-| `order-service/.../OrderResource`, `OrderService`, `OrderPlacedEvent` | The order and its outbox event (chapter 8) |
+| `order-service/.../OrderResource`, `OrderService`, `OrderPlacedEvent` | The order and its outbox event |
 | `order-service/.../db/migration/V2__heartbeat.sql` | The heartbeat table the connector writes and captures |
 | `order-service/.../OutboxBacklog` | The gauge: slot lag in bytes, or table rows as demo code |
 | `inventory-service/.../OrderPlacedConsumer`, `ReservationService` | The consumer; a failure is nacked to the dead letter topic |
@@ -87,7 +87,7 @@ Each run starts from clean containers. Both end at 35/37.
 
 - Alert witness: 15 fresh-container runs of the stack start, warm-up order, pause with 20 orders, resume, each 15/15 on the checks it holds (alert Alerting during the pause, no record on the topic, backlog under the threshold and alert Normal after the resume, 20 orders reserved). Alerting after the orders were placed: median 28.9 s, range 14.6 to 35.1 s. Backlog back under the threshold after the resume: median 5.2 s, range 4.2 to 6.3 s. Alert Normal after the resume: median 8.3 s, range 6.2 to 14.4 s in the 15 loops; later single runs took 3.2 to 16.5 s. A failure rate of 0 of 15. One loop reached Alerting 14.6 s after the orders were placed, too early for a rule that starts Normal (`for: 20s`, 10 s evaluation), so the rule was probably Pending from a checkpoint before the stall; the 15 loops predate the precondition below.
 - Backlog: 384 to 632 bytes at rest (median 632); 24.9 to 29.4 KB with twenty orders paused (median 27.4 KB). With the heartbeat table a checkpoint lifted it to about 69 KB for about 4 s in an exploratory sampler run (`w26-explore2.raw`, then back to 600 B).
-- Burst of 500 orders, three runs: group lag back to 0 after 12.0, 2.7 and 6.9 s (median 6.9 s); peak group lag 500 in each; event age p95 21.3, 17.5 and 21.3 s (median 21.3 s). The peak of the backlog gauge over the burst is not reported: it varied from 384 B to 169,608 B between runs, depending on where a checkpoint fell.
+- Burst of 500 orders, four runs: group lag back to 0 after 12.0, 2.7, 6.9 and 12.0 s (median 9.5 s); peak group lag 271 to 500; event age p95 21.3, 17.5, 21.3 and 21.2 s (median 21.3 s). The peak of the backlog gauge over the burst is not reported: it varied from 384 B to 169,608 B between runs, depending on where a checkpoint fell.
 - Redrive contrast (three redriven records, every run): record age under 5 s and event age over 5 s; the check passed in all seven full runs that reached it with the heartbeat table.
 - Before the heartbeat table the backlog check after the resume failed (35/37): unconfirmed write-ahead log from inventory updates and checkpoints after the last order stayed at about 108 KB and the alert did not return to Normal. `heartbeat.action.query` on a captured table fixed it; the check numbering did not change.
 - The precondition before the pause (the 26 arrivals counted by both age timers) now also requires the alert to be Normal, so a rule left Pending by an earlier checkpoint cannot reach Alerting early. It extends that precondition in place; no check was added or renumbered.

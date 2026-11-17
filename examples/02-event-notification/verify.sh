@@ -81,7 +81,7 @@ trace_spans_both() {
     return 1
 }
 metric_live() { # metric_live <service> <metric>: Prometheus holds a sample for the service
-    curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$2{service_name=\"$1\"}" | grep -q '"value"'
+    curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$2{service_name=\"$1\"}" | grep '"value"' >/dev/null
 }
 
 # Fresh start: remove any containers and volumes left by an earlier run (KEEP=1, an aborted run),

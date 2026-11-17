@@ -1,6 +1,6 @@
 # 11 Idempotent consumer and inbox
 
-`inventory-service` reads `OrderPlaced` from `edp.orders.placed` and reserves stock once per event id. The id is the record's `id` header (the shape the outbox of chapter 08 publishes). An inbox row and the stock decrement commit in one PostgreSQL transaction, so a duplicate record and a redelivery after a crash change nothing. A second path does the same through Camel's Idempotent Consumer EIP with a JPA repository, joined to the route's JTA transaction.
+`inventory-service` reads `OrderPlaced` from `edp.orders.placed` and reserves stock once per event id. The id is the record's `id` header (the shape a Debezium outbox publishes). An inbox row and the stock decrement commit in one PostgreSQL transaction, so a duplicate record and a redelivery after a crash change nothing. A second path does the same through Camel's Idempotent Consumer EIP with a JPA repository, joined to the route's JTA transaction.
 
 Quarkus, SmallRye Reactive Messaging, Hibernate ORM with Panache, Flyway, Camel Kafka with the JPA and JTA extensions, PostgreSQL, SmallRye Health and OpenTelemetry to the LGTM stack. Shared topic names come from `examples/domain-model`.
 
@@ -45,7 +45,7 @@ docker compose down -v
 
 The Maven build runs the service against PostgreSQL and Kafka from Dev Services, and 7 tests pass. The same event id twice leaves one decrement and one inbox row. An effect that fails after the inbox insert leaves no inbox row. Two threads released together with the same id apply it once, in each of 20 rounds. A duplicate record on the topic is applied once with the inbox and twice without it. The Camel route applies a duplicate once, and a failed effect rolls its key back.
 
-`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `29/29 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log, never a status code:
+`verify.sh` starts Kafka, PostgreSQL, the LGTM stack and the service, and prints `29/29 checks passed`. It starts from fresh containers and volumes every time. The checks read the database, the consumer group and the log:
 
 - `O-1101` (id A, quantity 3) is produced twice and `O-1102` (id B, quantity 2) once. A precondition confirms the topic holds two records with id A before anything is asserted. The group reaches lag 0, `SKU-1` is 95, the inbox holds exactly A and B, and the log shows A skipped once.
 - The service is recreated with a crash switch for `O-1103` (id C, quantity 4). The container exits with code 137 after the reservation commits. Preconditions confirm that the group's committed offset is not past C's record and that the stock already dropped by 4. After a recreate without the switch the group reaches lag 0, `SKU-1` is 91 and the log shows C skipped.

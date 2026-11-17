@@ -9,7 +9,7 @@ duration: "65 minutes"
 
 One order touches three databases: the order in `order-service`, the stock in `inventory-service` and the payment in `payment-service`. No transaction spans them, and a Kafka transaction stops at the cluster. If the payment is declined after the stock is reserved, the reservation has to be undone by someone, later, by design.
 
-The three services below carry an order from placed to paid by reacting to each other's events, with no coordinator. Each publishes through the transactional outbox, so a step that commits always announces itself.
+The three services carry an order from placed to paid by reacting to each other's events, with no coordinator. Each publishes through the transactional outbox, so a step that commits always announces itself.
 
 {% include excalidraw.html file="22-saga-choreography" alt="order-service, inventory-service and payment-service in a row; orders.placed and inventory.reserved lead forward, payments.processed returns to order-service, and payments.failed, inventory.insufficient and orders.cancelled lead back as the compensation path" caption="Figure 22.1: Each service reacts to the previous event and publishes its own; the dashed arrows are the way back" %}
 
@@ -160,7 +160,7 @@ A saga is for work that cannot share a transaction. When one service and one dat
 
 Compensations are code to write and test for every step. A step with no real undo, such as an email that was sent, can only be followed by another message, and a design that needs many of them has put the pivot too early.
 
-The lack of isolation is the price. Readers see a reserved stock count that a cancellation will correct, and a design that cannot tolerate that needs a different boundary, not a better saga.
+The lack of isolation is the price. Readers see a reserved stock count that a cancellation will correct, and a design that cannot tolerate that needs a different boundary.
 
 Choreography stops scaling at the point where nobody can say what the whole flow is. A flow with branches, parallel steps or many participants needs its sequence written down in one place.
 
@@ -173,7 +173,7 @@ Choreography stops scaling at the point where nobody can say what the whole flow
 - Hector Garcia-Molina and Kenneth Salem, [*Sagas*](https://doi.org/10.1145/38713.38742), Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data
 - Microsoft, [Saga design pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga), Azure Architecture Center (compensable, pivot and retryable transactions; semantic lock and commutative updates)
 - Chris Richardson, [Pattern: Saga](https://microservices.io/patterns/data/saga.html), microservices.io, and *Microservices Patterns*, Manning, 2018
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html), Addison-Wesley, 2003: Process Manager
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Process Manager](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html)
 - Apache Camel, [Saga EIP](https://camel.apache.org/components/4.22.x/eips/saga-eip.html) (compensations that are idempotent and commutative)
 - Debezium, [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) and the [Quarkus outbox extension](https://debezium.io/documentation/reference/stable/integrations/outbox.html)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 7: Long-Running Processes

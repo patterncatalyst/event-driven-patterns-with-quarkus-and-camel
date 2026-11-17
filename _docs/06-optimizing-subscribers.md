@@ -11,7 +11,7 @@ duration: "45 minutes"
 
 The notification service reads three catalog topics, `edp.orders.placed`, `edp.payments.processed` and `edp.shipping.scheduled`, with three partitions each. After a weekend outage it has a backlog to drain, and every record costs it a template render and a database write. The route works. The questions are how fast it drains, whether it drains each record once, and what happens to the other replicas when one more starts.
 
-The consumer has a handful of settings that answer those questions, and most of them do something other than what their names suggest. Each one below is a Camel option, set from an environment variable, so a run changes one setting and nothing else.
+The consumer has a handful of settings that answer those questions. Each one below is a Camel option, set from an environment variable, so a run changes one setting and nothing else.
 
 {% include excalidraw.html file="06-fetch-poll-process" alt="A fetch request fills a client buffer, poll returns at most max.poll.records of it, and a batch that takes longer than max.poll.interval.ms to process gets the member removed" caption="Figure 6.1: A fetch fills a buffer; poll hands out a bounded slice" %}
 
@@ -121,5 +121,5 @@ The defaults drain a backlog correctly. Tune when a measurement says so: a lag t
 - Strimzi blog, 2023: [Developing Kafka client applications: A simple consumer](https://strimzi.io/blog/2023/11/09/kafka-consumer-client-essentials/)
 - Apache Kafka documentation, [Consumer configs](https://kafka.apache.org/43/configuration/consumer-configs/)
 - [KIP-848: The Next Generation of the Consumer Rebalance Protocol](https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol)
-- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 11, Basic Producer and Consumer Microservices
+- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 11: Basic Producer and Consumer Microservices
 - Apache Camel, [Kafka component](https://camel.apache.org/components/latest/kafka-component.html)

@@ -46,7 +46,7 @@ Every version in the book is an exact pin, chosen as the newest stable release t
 | Apicurio Registry | 3.3.4 | Schema registry |
 | Debezium Connect | 3.7.1.Final | Published image, includes the PostgreSQL connector and the outbox `EventRouter` |
 | Grafana LGTM | 0.41.0 | Loki, Grafana, Tempo and Prometheus behind one OTLP endpoint |
-| UBI 10 OpenJDK | 1.24-20 | Build and runtime images for every service we package |
+| UBI 10 OpenJDK | 1.24-20 | Build and runtime images for every packaged service |
 | Docker Engine, Compose plugin | 29.9.3, 5.7.0 | Recorded from the reference host |
 
 Each service image is pinned by tag in `examples/_infra`. Examples that trace through Kafka Connect add the OpenTelemetry Java agent (2.33.1, Apache-2.0): an init container copies it from Maven Central into a volume that `docker compose down -v` removes, so each fresh start downloads it again.
@@ -54,7 +54,7 @@ Each service image is pinned by tag in `examples/_infra`. Examples that trace th
 The local-model example needs the model. Pull it once into its own Docker volume, which survives every `docker compose down -v`; the examples mount it read-only and never download it themselves:
 
 ```bash
-scripts/ollama-model.sh pull    # about 2.5 GB, once
+scripts/ollama-model.sh pull    # once
 scripts/ollama-model.sh check   # confirms the pinned model digest
 ```
 

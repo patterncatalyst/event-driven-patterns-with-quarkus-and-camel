@@ -1,4 +1,4 @@
-# Chapter 34: a second Kafka cluster, edp-dr, in the same namespace as edp, and a MirrorMaker 2 that copies the
+# Example 34: a second Kafka cluster, edp-dr, in the same namespace as edp, and a MirrorMaker 2 that copies the
 # event catalog's topics and the consumers' group offsets from edp to edp-dr. The set lives in base/ so that the
 # demo overlay can build on it.
 apiVersion: kustomize.config.k8s.io/v1beta1

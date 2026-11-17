@@ -94,7 +94,7 @@ services:
     container_name: edp-notification-1
     hostname: notification-1
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       <<: *notification-env
       NOTIFY_CLIENT: ${NOTIFY_CLIENT:-notification-1}

@@ -47,7 +47,7 @@ kubectl apply --dry-run=server -f cnpg.yaml                  # Too long
 kubectl apply --server-side --dry-run=server -f cnpg.yaml    # accepted
 ```
 
-The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades). Every apply in this example uses `--server-side`.
+The Strimzi CRDs are smaller. The largest, `kafkas.kafka.strimzi.io`, stays under the limit, so a client-side apply of the Strimzi install passes. That is a property of the schemas, not a reason to prefer one form. CloudNativePG documents the server-side form for its install (CloudNativePG, Installation and upgrades).
 
 ## Two writers on one Deployment
 
@@ -80,7 +80,7 @@ error: Apply failed with 1 conflict: conflict with "edp-apps":
 
 {% include excalidraw.html file="30-conflict-and-force" alt="edp-apps applies limits.memory 384Mi and owns it; edp-platform applies 512Mi and conflicts, nothing changes; with force-conflicts the value is 512Mi and edp-platform is the owner; edp-apps applies again, conflicts with edp-platform and takes the field back by forcing" caption="Figure 30.2: A conflict refuses the write, and forcing it moves the field to the writer that forced" %}
 
-The message names the manager and the field. With `--force-conflicts` the value becomes 512Mi, and `managedFields` shows `edp-platform` as the owner of `limits.memory` and no longer lists `edp-apps` for it. The next apply of the application manifests conflicts the other way, with `edp-platform` named, and takes the field back only when it forces. Forcing is a decision with a name on it. Two managers that apply the same value share the field without a conflict; a later change by either one then conflicts with the other.
+The message names the manager and the field. With `--force-conflicts` the value becomes 512Mi, and `managedFields` shows `edp-platform` as the owner of `limits.memory` and no longer lists `edp-apps` for it. The next apply of the application manifests conflicts the other way, with `edp-platform` named, and takes the field back only when it forces. Two managers that apply the same value share the field without a conflict; a later change by either one then conflicts with the other.
 
 The client-side form has no such step. A `kubectl apply -f` of the same value over a field the server-side applier owns reports `configured`, prints a warning about the missing last-applied annotation and takes the field under the manager `kubectl-client-side-apply`. The next server-side apply of `edp-apps` then conflicts with that manager. Mixing the two forms on one object is the way to lose track of owners.
 

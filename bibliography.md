@@ -12,6 +12,8 @@ runtime documentation is the authority for every API the examples use. These are
 reference works, not sources: no text or code from any of them is reproduced here.
 Lawrence's code is Node.js and TypeScript, and none of it is ported.
 
+Works only: books, papers and specifications. Documentation pages are cited under each page's References.
+
 ## Books
 
 <table class="bib bib--books">
@@ -248,7 +250,6 @@ precedent.
     <tr><td><a href="https://github.com/patterncatalyst/enterprise-integration-patterns-with-camel" rel="noopener">Enterprise Integration Patterns with Camel</a></td><td>The model for this site; the broader pattern catalogue</td></tr>
     <tr><td><a href="https://github.com/patterncatalyst/cloud-native-design-patterns" rel="noopener">Cloud-Native Design Patterns</a></td><td>Sibling book on cloud-native patterns</td></tr>
     <tr><td><a href="https://github.com/patterncatalyst/datamesh-reference-arch-quarkus" rel="noopener">Data Mesh Reference Architecture on Quarkus</a></td><td>Orchestration styles, rules and AI classification, PostgreSQL operator manifests</td></tr>
-    <tr><td><a href="https://github.com/patterncatalyst/quarkus-observability" rel="noopener">Quarkus Observability</a></td><td>Observability precedent</td></tr>
     <tr><td><a href="https://github.com/patterncatalyst/otel-observability-tutorial" rel="noopener">OpenTelemetry Observability Tutorial</a></td><td>OpenTelemetry wiring and Grafana dashboards</td></tr>
     <tr><td><a href="https://github.com/patterncatalyst/domain-driven-design-observability-workshop" rel="noopener">Domain-Driven Design Observability Workshop</a></td><td>Observability of domain events</td></tr>
   </tbody>

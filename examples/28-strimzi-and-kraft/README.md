@@ -11,7 +11,7 @@ There is no Java here and no pom: the example is manifests, `verify.sh` and two 
 | `kustomization.yaml` | Namespaces, Strimzi operator, Kafka with two node pools, PostgreSQL (CloudNativePG) and LGTM, all from `examples/_k8s` |
 | `images.txt` | The six images to build and load: `<example> <service>` per line |
 | `dual/` | Demo code: one dual-role node instead of two pools (`NODE_POOLS=dual`) |
-| `compose-address/` | Demo code: the chapter 02 set with the compose Kafka address on notification-service (`KAFKA_BROKERS=compose`) |
+| `compose-address/` | Demo code: the example 02 set with the compose Kafka address on notification-service (`KAFKA_BROKERS=compose`) |
 | `quorum.py` | Reads `kafka-metadata-quorum.sh` output: leader, voters, observers, per-node status |
 | `envcompare.py` | Compares a compose service's environment names with a Deployment's |
 | `verify.sh` | Applies the platform, runs the three app sets, replaces the broker pod |
@@ -55,10 +55,10 @@ Each run starts from fresh namespaces. Both switches are demo code; the failing 
 
 | Switch | Effect | Failing checks (predicted) | Measured result |
 |---|---|---|---|
-| `KAFKA_BROKERS=compose ./verify.sh` | notification-service of the chapter 02 set keeps `kafka:9094`: it cannot resolve the name, Camel fails to start, the pod never becomes ready | the set does not roll out, the address check, the notification appears, the notification content, the trace | Checks 14, 16, 18, 19 and 20 fail (34/39), as predicted; the other 34 pass |
+| `KAFKA_BROKERS=compose ./verify.sh` | notification-service of the example 02 set keeps `kafka:9094`: it cannot resolve the name, Camel fails to start, the pod never becomes ready | the set does not roll out, the address check, the notification appears, the notification content, the trace | Checks 14, 16, 18, 19 and 20 fail (34/39), as predicted; the other 34 pass |
 | `NODE_POOLS=dual ./verify.sh` | One node holds both roles | the role check, one id each, the pod owners, the quorum and the replication view | Checks 5 to 9 fail (34/39), as predicted; the other 34 pass |
 
-With `KAFKA_BROKERS=compose`, the other checks pass: order-service has the right address, so the order is accepted and `edp.orders.placed` holds it, and the sets for chapters 03 and 04 run with the right addresses.
+With `KAFKA_BROKERS=compose`, the other checks pass: order-service has the right address, so the order is accepted and `edp.orders.placed` holds it, and the sets for examples 03 and 04 run with the right addresses.
 
 ## Timings
 

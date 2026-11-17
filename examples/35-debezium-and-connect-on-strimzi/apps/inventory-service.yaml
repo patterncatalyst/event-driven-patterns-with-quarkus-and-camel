@@ -1,4 +1,4 @@
-# The chapter 09 service in its default mode: a Camel route reads the change envelopes Connect writes and
+# The example 09 service in its default mode: a Camel route reads the change envelopes Connect writes and
 # publishes one InventoryItem document per SKU. It has no database of its own.
 apiVersion: apps/v1
 kind: Deployment

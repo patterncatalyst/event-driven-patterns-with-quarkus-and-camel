@@ -50,7 +50,7 @@ services:
       dockerfile: 27-correlated-logs-and-traces/order-service/Containerfile
     container_name: edp-order-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       <<: *app-env
       # Demo code: how long a saga may wait in one state before the sweeper cancels it.
@@ -73,7 +73,7 @@ services:
       dockerfile: 27-correlated-logs-and-traces/inventory-service/Containerfile
     container_name: edp-inventory-service
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     environment:
       <<: *app-env
     depends_on: *app-depends
@@ -92,7 +92,7 @@ services:
       dockerfile: 27-correlated-logs-and-traces/payment-service/Containerfile
     container_name: edp-payment-service
     ports:
-      - "8084:8084"
+      - "127.0.0.1:8084:8084"
     environment:
       <<: *app-env
       # Demo code: payments above this amount are declined.

@@ -1,4 +1,4 @@
-# Chapter 35: the shared platform plus a container registry inside the cluster, the chapter 08 and 09 services and
+# Example 35: the shared platform plus a container registry inside the cluster, the example 08 and 09 services and
 # the access Connect needs to read the database secret. KafkaConnect and the two KafkaConnectors are not listed
 # here: verify.sh applies connect/ and connectors/ itself, so it can time the build and create the tables the
 # connectors capture first.

@@ -9,7 +9,7 @@ duration: "60 minutes"
 
 Each carrier collects parcels from the warehouse in pickup slots. For every slot the warehouse needs one list per carrier of the shipments scheduled in it, and the number to expect. `shipping-service` receives a `ShipmentScheduled` for every parcel booked, and the lists have to come out of that stream.
 
-Two forms run side by side in the one service, on the same input, each writing its own topic: a Kafka Streams topology and a Camel route. A real service runs one of them. Having both in the same run shows where the lists differ.
+Two forms run side by side in the one service, on the same input, each writing its own topic: a Kafka Streams topology and a Camel route. A real service runs one of them.
 
 {% include excalidraw.html file="21-window-vs-batch" alt="The same arrivals for FASTLINE grouped two ways; Kafka Streams gives the slot 09:00 list with F1 to F7 and F9, an open list for slot 09:15 holding F8, and drops L1; the Camel Aggregator gives four batches in arrival order closed by size or timeout, including L1 alone" caption="Figure 21.1: The same arrivals grouped by slot of event time and by size and quiet time at arrival" %}
 
@@ -111,7 +111,6 @@ Open batches are rows in PostgreSQL. `PostgresAggregationRepository` stores each
 | 1,000 shipments, tick to last list | 1.3 s (1.25 to 1.33) | |
 | 1,000 shipments, producer call to last batch | | 13.7 s (12.8 to 13.8), 201 batches |
 | Matches the oracle count per slot | 8 lists, every count equal | |
-| Batch scenario as expected, repeated runs | | 23 of 23 |
 
 The two forms answer different questions. Kafka Streams answers what was scheduled in this slot. Camel answers how to send fewer, fuller messages. In the bench, the time to the last Camel batch includes the 10-second timeout of the final partial batch, so it is not a throughput figure.
 
@@ -147,7 +146,7 @@ Neither form fits a count or a sum that a reader may poll at any moment. That is
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html), Addison-Wesley, 2003: Aggregator
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Aggregator](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html)
 - Apache Kafka, [Kafka Streams core concepts](https://kafka.apache.org/42/streams/core-concepts/) (event time, stream time, grace and out-of-order records), [DSL API](https://kafka.apache.org/42/streams/developer-guide/dsl-api/) (windowing and suppression), [configuration](https://kafka.apache.org/42/streams/developer-guide/config-streams/) (`commit.interval.ms`, `statestore.cache.max.bytes`) and [monitoring](https://kafka.apache.org/42/operations/monitoring/) (`dropped-records-total`)
 - Apache Kafka, [Kafka Streams Javadoc](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/TimeWindows.html) for `TimeWindows.ofSizeAndGrace` and [Suppressed](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/Suppressed.html) for `untilWindowCloses`
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/guides/kafka-streams)
