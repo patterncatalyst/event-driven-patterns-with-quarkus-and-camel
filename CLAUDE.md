@@ -239,6 +239,13 @@ PRD §14, decided:
 - No Helm, no S2I, no LGTM on CRC. `buildah build` of chapter 08's unchanged Containerfile, `skopeo copy --preserve-digests --dest-cert-dir --dest-registry-token` into the internal registry (CA from configmap `default-ingress-cert`, never `router-certs-default`); Deployment by digest; `QUARKUS_OTEL_SDK_DISABLED=true`. Never `--tls-verify=false`, `curl -k`, `oc proxy` (validate.py enforces in `examples/ah-*`).
 - install.sh refuses when Strimzi or CloudNativePG CRDs already exist; teardown.sh refuses when another install owns them, deletes the 8 OLM ClusterRoles only by exact name and owner label, and guards the cluster-wide `oc adm prune images` by its dry-run candidate list.
 
+2026-11-17 (r14, retro):
+
+- `scripts/verify-all.sh` runs the book: groups `compose` (00 to 27), `k8s` (28 to 35), `k8s-appendix` (B k8s, F), `appendix` (A, B compose, C, E, G, B compare), `--from`, `--mvn`; one scrubbed log per example and `results.tsv`. Appendix H runs on its own.
+- Compose published ports bind to 127.0.0.1. `stack-guard.sh` exits 2 when Docker is unreachable outside `--crc`.
+- A check asserts only what the mechanism guarantees: a request the client saw fail can already have been accepted (the order-service publishes before answering), so Appendix F retries every failed request and asserts 201 or 409 and exactly one event per order.
+- Example comments and check descriptions name examples ("example 02"), never chapters.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.
