@@ -181,6 +181,21 @@ Pattern spine plus `## How stale the cache is`, `## Losing the cache and rebuild
 ### H OpenShift Local (r13b)
 Headings: `## What changes from minikube`, `## Starting CRC`, `## Operators at pinned versions`, `## Building with buildah, copying with skopeo`, `## The outbox on Strimzi and CloudNativePG`, `## Teardown`, Build, run, observe, References. Example `ah-openshift-local/`: `crc-check.sh` (refuses unless CRC runs and the context is `crc-admin`; never starts CRC), `install.sh` (pinned CSV, Manual, approve only the named InstallPlan), `build-and-copy.sh`, `deploy/` kustomize, `verify.sh` (about 14 checks: operators Succeeded at the pinned CSVs; order-service image digest in the cluster equals the local buildah image; Connect Ready with the plugin; an O-4301 outbox row reaches `edp.orders.placed` with the `eventType` header; restricted-v2 admitted; the Route answers with a verified CA), `teardown.sh` (leftover inventory captured), README. Figures `ah-build-and-copy`, `ah-crc-layout`. Last in the book (order 43).
 
+## G0 decisions (CRC part, r13b, from `<scratchpad>/r13b-spike/REPORT.md`, HF1 to HF13, 2026-11-16)
+
+Measured on CRC 2.64.0 / OpenShift 4.22.14, network mode `user`; the whole chain passed first time in about 10 min of cluster time.
+
+- **HF2, amends 23:** `cloudnative-pg` is in **certified-operators** (provider EDB, no fee, upstream ghcr.io images), channel `stable-v1`, CSV `cloudnative-pg.v1.30.1`. Strimzi: community-operators, channel `strimzi-1.x` (not `stable`, stuck at 0.51.0), CSV `strimzi-cluster-operator.v1.3.1`. Both install with `startingCSV`, Manual, approve the named InstallPlan; one OperatorGroup in `edp-operators` targeting `edp`. The release-YAML fallback of 23 is not needed.
+- **HF3, amends 25:** Route hosts resolve on the host without `--resolve` (the crc daemon adds and removes them as Routes come and go). The ingress CA comes from configmap `default-ingress-cert` in `openshift-config-managed` (never extract `router-certs-default`: it holds the key).
+- **HF4, amends 20 and 24:** the registry `defaultRoute` is already on in CRC: nothing to expose or revert. The project `builder` ServiceAccount pushes (system:image-builder bound by default); `skopeo copy --dest-cert-dir <dir> --dest-registry-token "$TOKEN"` with the token held in a variable only.
+- **HF5, amends 24:** a plain copy recompresses layers, so the registry digest differs from the local one; `skopeo copy --preserve-digests` keeps it equal. The Deployment references the image by that digest; verify compares local and imagestream digests.
+- **HF6, HF7:** Kafka 4.3.2 KRaft (Part 6 manifests, namespace only changed) and KafkaConnect with `build.output.type: imagestream` (ImageStream created first; the build is the operator's Docker-strategy Build, not S2I; build pod admitted by the platform's `privileged` SCC, stated as a fact of OpenShift Builds) and Role/RoleBinding for the Connect ServiceAccount to read the Postgres secret.
+- **HF8:** CNPG Cluster with `managed.roles` replication role Ready; all workload and operator pods admitted by restricted-v2 (the `openshift.io/scc` annotation is the witness).
+- **HF9:** `QUARKUS_OTEL_SDK_DISABLED=true` is runtime; O-4301 through the edge Route reaches `edp.orders.placed` with header `eventType:OrderPlaced`. KafkaConnector `status.connectorStatus.tasks` was empty while delivering: verify.sh reads task state through the Connect REST API via `oc exec`, not the CR status.
+- **HF10, HF11, amends 20:** teardown 33 s. Besides namespaces, CSVs, Subscriptions, OperatorGroup and CRDs, it must delete the 8 ClusterRoles OLM leaves (`cnpg-*-editor-role`, `cnpg-*-viewer-role`, `strimzi-kafka-broker`, `strimzi-kafka-client`), the Retain PVs, and the cluster-scoped Image objects and blobs (`oc adm prune images --keep-younger-than=0 --confirm` with the registry URL and CA). Finalizers untouched.
+- **HF12:** docker untouched (image count 104 before and after); podman keeps only the UBI 10 base images; the local build image is removed at teardown.
+- **HF13:** every `oc` call carries `-n`; scripts fail if the namespace is unset.
+
 ## Steps
 
 | Step | Work | Owner | Depends | Status |
@@ -205,8 +220,8 @@ r13b steps (after r13.0):
 | Step | Work | Owner | Depends | Status |
 |---|---|---|---|---|
 | b0 | Preflight: no compose, no minikube; orchestrator runs `crc setup` and `crc start` (decision 19 amended); inventory `oc get sub,csv -A` and non-system namespaces | owner, orchestrator | r13.0 | in progress (2026-11-16: branch cut from main at 7511c2e; no compose, no minikube; crc 2.64.0, bundle 4.22.14 cached, no VM; pull secret file present; oc, podman, buildah, skopeo on PATH) |
-| b1 | Survey on the cluster: Strimzi community and CNPG packagemanifests (channel, CSV); sources rows H | exec b1 | b0 | docs half done 2026-11-16 (`## r13b sources`, 53 rows; AMQ Streams dropped by owner, decision 22 amended); cluster half pending CRC |
-| bG0 | CRC spike: H-Q1 to H-Q7 (below) | exec bG0 | b1 | pending |
+| b1 | Survey on the cluster: Strimzi community and CNPG packagemanifests (channel, CSV); sources rows H | exec b1 | b0 | docs half done 2026-11-16 (`## r13b sources`, 53 rows; AMQ Streams dropped by owner, decision 22 amended); cluster half done in bG0 (HF2) |
+| bG0 | CRC spike: H-Q1 to H-Q7 (below) | exec bG0 | b1 | done 2026-11-16 (HF1 to HF13; CRC started by orchestrator 20:25 to 20:28) |
 | b2 | `ah-openshift-local` scripts, overlays, README, page, appendix, figures; validate CRC branch; stack-guard `--crc` | exec b2, orchestrator | bG0 | pending |
 | b3 | Live: install, build, copy, verify, demo once; full teardown; reinstall and verify again (the second clean run; proves teardown and install repeat) | orchestrator | b2 | pending |
 | b4 | Teardown evidence, `crc stop`, `crc delete -f` (decision 20) | orchestrator | b3 | pending |
