@@ -16,7 +16,7 @@ module.exports = function (lib) {
     [
       ["Event notification", " announces that something happened and names the thing, leaving each consumer to ask the source for the details it needs."],
       ["Problem.", " A service that calls every interested party must know them all and wait for each. A consumer told only that something happened cannot act."],
-      ["Solution.", " Order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP."],
+      ["Solution.", " order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP."],
       ["Cost.", " Each consumer adds one request per event, reads current state instead of state at event time, and cannot finish while the source is down."],
       ["Fit.", " Use it when the details change and the latest value is what matters."],
     ],
@@ -107,7 +107,7 @@ module.exports = function (lib) {
       ["A Resequencer", " is a stateful filter that holds out-of-sequence messages and releases them in order (Hohpe and Woolf)."],
       ["Problem.", " When several producers or topics describe one order, no single key puts its events in one partition, so Kafka cannot keep them in sequence."],
       ["Solution.", " Each event carries a sequence number. Replicas hold early events in a table and apply from the next expected number under a row lock."],
-      ["Result.", " With the event type as key, the stalled-replica run that ended SHIPPED now ends DELIVERED, in lifecycle order."],
+      ["Result.", " With the resequencer on, the stalled-replica run ends DELIVERED instead of SHIPPED, in lifecycle order."],
       ["Cost.", " One row per early event and one lock per event. A missing event holds that order's following events until someone repairs it."],
     ],
     `Keying by entity id is the first answer because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays with held rows and with events that wait. Every shipment event already carries its number within the order, and both order-service replicas share the database, so the database is where an order's events wait. One transactional method inserts the order's row if it is missing, locks it, ignores an event already applied or held, stores the event, and applies every event from the next expected number. An event is either held or applied, never both. If order only matters for the final state, a version number checked at the write can reject an older event with no buffer at all.`,

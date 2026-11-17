@@ -31,7 +31,7 @@ module.exports = function (lib) {
     ["Kafka Streams.", " Ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint."],
     ["Flink SQL.", " A job writes closed windows to a topic. A second system to run, and no question the job does not already compute."],
     ["RisingWave.", " Materialized views read with psql. A new question is one more query, with state in the database."],
-    ["Licences.", " KsqlDB and Materialize are not open source, so neither is used."],
+    ["Licences.", " ksqlDB and Materialize are not open source, so neither is used."],
   ], `Operations wants the number of deliveries per carrier per minute, and wants it right when a record turns up late. A consumer that increments a counter counts by arrival time, so a paused or replayed consumer puts a delivery in the wrong minute. Three open source engines answer the question from one topic. Each takes event time from the delivery timestamp and each closes a window by a lateness bound. The bound is the grace period in Kafka Streams and the delay in the watermark expression in Flink and RisingWave. All three get the same value, ten seconds. The engines agree only when an out-of-order record is inside the lateness of every one of them. None of them tells the reader about a record it dropped.`);
 
   figSlide("QUERYING STREAMS", "One topic, three ways to ask", "ac-three-ways",

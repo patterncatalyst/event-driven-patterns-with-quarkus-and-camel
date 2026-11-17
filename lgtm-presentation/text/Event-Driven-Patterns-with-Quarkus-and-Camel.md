@@ -6,7 +6,7 @@ Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 120 slides
 
 Kafka, Debezium, Strimzi and the patterns that keep services in step
 
-> Event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. The material assumes Java developers, Camel integrators, platform engineers and architects who already know what a topic is. The code comes from tested examples, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.
+> Event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. Readers are Java developers, Camel integrators, platform engineers and architects who already know what a topic is. The code comes from tested examples, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.
 
 ## [002] AGENDA · Eight sections and a decision table
 
@@ -110,7 +110,7 @@ p. 10
 
 - Event notification announces that something happened and names the thing, leaving each consumer to ask the source for the details it needs.
 - Problem. A service that calls every interested party must know them all and wait for each. A consumer told only that something happened cannot act.
-- Solution. Order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP.
+- Solution. order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP.
 - Cost. Each consumer adds one request per event, reads current state instead of state at event time, and cannot finish while the source is down.
 - Fit. Use it when the details change and the latest value is what matters.
 
@@ -215,7 +215,7 @@ p. 19
 - A Resequencer is a stateful filter that holds out-of-sequence messages and releases them in order (Hohpe and Woolf).
 - Problem. When several producers or topics describe one order, no single key puts its events in one partition, so Kafka cannot keep them in sequence.
 - Solution. Each event carries a sequence number. Replicas hold early events in a table and apply from the next expected number under a row lock.
-- Result. With the event type as key, the stalled-replica run that ended SHIPPED now ends DELIVERED, in lifecycle order.
+- Result. With the resequencer on, the stalled-replica run ends DELIVERED instead of SHIPPED, in lifecycle order.
 - Cost. One row per early event and one lock per event. A missing event holds that order's following events until someone repairs it.
 
 > Keying by entity id is the first answer because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays with held rows and with events that wait. Every shipment event already carries its number within the order, and both order-service replicas share the database, so the database is where an order's events wait. One transactional method inserts the order's row if it is missing, locks it, ignores an event already applied or held, stores the event, and applies every event from the next expected number. An event is either held or applied, never both. If order only matters for the final state, a version number checked at the write can reject an older event with no buffer at all.
@@ -773,11 +773,11 @@ Enrich, join, window, coordinate and decide
 p. 65
 
 - A Content Enricher uses data in the incoming message to fetch the missing details from an external source and attaches them to the message.
-- Problem. Shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one.
+- Problem. shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one.
 - Lookup. Ask the owner for each record. Always the current row, but the consumer depends on the owner being up.
 - Table join. Keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change.
 
-> Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. Notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic, and both read the same input.
+> Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic.
 
 ## [066] STREAMS · Lookup against stream-table join
 
@@ -1318,7 +1318,7 @@ p. 111
 - Kafka Streams. Ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint.
 - Flink SQL. A job writes closed windows to a topic. A second system to run, and no question the job does not already compute.
 - RisingWave. Materialized views read with psql. A new question is one more query, with state in the database.
-- Licences. KsqlDB and Materialize are not open source, so neither is used.
+- Licences. ksqlDB and Materialize are not open source, so neither is used.
 
 > Operations wants the number of deliveries per carrier per minute, and wants it right when a record turns up late. A consumer that increments a counter counts by arrival time, so a paused or replayed consumer puts a delivery in the wrong minute. Three open source engines answer the question from one topic. Each takes event time from the delivery timestamp and each closes a window by a lateness bound. The bound is the grace period in Kafka Streams and the delay in the watermark expression in Flink and RisingWave. All three get the same value, ten seconds. The engines agree only when an out-of-order record is inside the lateness of every one of them. None of them tells the reader about a record it dropped.
 

@@ -302,9 +302,11 @@ DECK_BANNED = (
     (re.compile(
         r"\b(?:from|as)\s+before\b|\b(?:shown|seen|covered|mentioned|discussed|described|noted)\s+(?:earlier|before)\b"
         r"|\bearlier\s+on\b|\bas\s+we\s+(?:saw|saw\s+earlier|discussed|covered)\b"
-        r"|\b(?:discussed|covered|shown|described)\s+later\b|\bcomes?\s+later\b|\bsee\s+later\b", re.I),
+        r"|\b(?:discussed|covered|shown|described)\s+later\b|\b(?:detail|rest|more)\s+comes?\s+later\b|\bsee\s+later\b", re.I),
      "indirect back or forward pointer"),
     (re.compile(r"\b(this|these) (deck|slides?)\b|\bthe deck\b", re.I), "self-reference to the deck"),
+    # Service and product identifiers keep their case at the start of a sentence (order-service, ksqlDB).
+    (re.compile(r"\b(?:Order|Inventory|Payment|Shipping|Notification)-service\b|\bKsqlDB\b"), "capitalised identifier"),
     (SELFREF_RE, "self-reference to the chapter or section"),
 )
 DECK_BOOK_RE = re.compile(r"\b(the|this) (book|site)('s)?\b", re.I)
@@ -1108,6 +1110,8 @@ def self_test() -> int:
             ("deck covered later", [*good[:2], ("Body", long + " covered later"), good[3]], {}),
             ("deck comes later", [*good[:2], ("Body", long + " the detail comes later"), good[3]], {}),
             ("deck earlier on", [*good[:2], ("Body", long + " earlier on"), good[3]], {}),
+            ("deck capitalised service", [*good[:2], ("Body", long + " Order-service publishes"), good[3]], {}),
+            ("deck capitalised ksqlDB", [*good[:2], ("Body", long + " KsqlDB is not used"), good[3]], {}),
             ("deck positional above", [*good[:2], ("Body", long + " the table above"), good[3]], {}),
             ("deck the book off the last slide", [*good[:2], ("Body", long + " as the book says"), good[3]], {}),
             ("deck the site off the last slide", [*good[:2], ("Body", long + " on the site"), good[3]], {}),
@@ -1118,6 +1122,8 @@ def self_test() -> int:
             ("deck plain above is fine", [*good[:2], ("Body", long + " a weight above 30 kg"), good[3]]),
             ("deck earlier offsets is fine", [*good[:2], ("Body", long + " the earlier offsets are replayed"), good[3]]),
             ("deck an earlier version is fine", [*good[:2], ("Body", long + " an earlier version of the event"), good[3]]),
+            ("deck comes later than is fine", [*good[:2], ("Body", long + " the payment event comes later than the shipment"), good[3]]),
+            ("deck lower-case service is fine", [*good[:2], ("Body", long + " order-service publishes"), good[3]]),
             ("deck book pointer on the last slide is fine", [*good[:3], ("Close", short + " the book and the site")]),
         ):
             e = deck(slides)

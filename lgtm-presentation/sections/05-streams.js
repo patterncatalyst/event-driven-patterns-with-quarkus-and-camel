@@ -18,11 +18,11 @@ module.exports = function (lib) {
     "Content Enricher",
     [
       ["A Content Enricher", " uses data in the incoming message to fetch the missing details from an external source and attaches them to the message."],
-      ["Problem.", " Shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one."],
+      ["Problem.", " shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one."],
       ["Lookup.", " Ask the owner for each record. Always the current row, but the consumer depends on the owner being up."],
       ["Table join.", " Keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change."],
     ],
-    `Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. Notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic, and both read the same input.`,
+    `Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic.`,
   );
 
   figSlide(
