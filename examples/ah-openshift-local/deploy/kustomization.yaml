@@ -1,0 +1,8 @@
+# order-service from the chapter 08 image, a Service and an edge-TLS Route. deploy.sh applies it through an overlay
+# that sets the image digest; applied as it is, the Deployment uses the tag. Applied with
+# `oc apply --server-side -n edp -k deploy`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp
+resources:
+  - order-service.yaml

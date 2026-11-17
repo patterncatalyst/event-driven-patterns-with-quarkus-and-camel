@@ -1,0 +1,6 @@
+# One OperatorGroup: both operators watch only the application project. Applied with -n edp-operators.
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata: {name: edp-operators}
+spec:
+  targetNamespaces: [edp]

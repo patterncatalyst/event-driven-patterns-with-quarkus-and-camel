@@ -1,0 +1,20 @@
+# Kafka, PostgreSQL and Connect for the project edp: the Part 6 Kafka and Cluster manifests unchanged, with the
+# namespace set here, plus the ImageStream the Connect build pushes to and the access Connect needs to read the
+# database secret. Applied with `oc apply --server-side -n edp -k platform`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp
+resources:
+  - ../../_k8s/kafka
+  - ../../_k8s/postgres
+  - imagestream.yaml
+  - connect-secret-access.yaml
+  - kafkaconnect.yaml
+patches:
+  # The two extra databases belong to other Part 6 examples.
+  - target: {group: postgresql.cnpg.io, kind: Database}
+    patch: |-
+      $patch: delete
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Database
+      metadata: {name: ignored}

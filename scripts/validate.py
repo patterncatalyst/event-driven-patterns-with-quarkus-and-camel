@@ -411,6 +411,13 @@ def check_examples(rep: Report):
                         and re.search(r"--force-recreate --renew-anon-volumes", body)):
                     rep.err(v, None, "Appendix B verify.sh needs both fresh halves: compose `down -v --remove-orphans` "
                                      "and `--force-recreate --renew-anon-volumes`, and k8s_fresh / k8s_teardown")
+            elif d.name.startswith("ah-"):
+                # Appendix H: CRC, started by the orchestrator; fresh state comes from install.sh after teardown.sh.
+                if not (re.search(r"^\s*source\s+\S*stack-guard\.sh\s+--crc\b", body, re.M)
+                        and re.search(r"^\s*(source|\.)\s+\S*crc-check\.sh", body, re.M)
+                        and (d / "install.sh").is_file() and (d / "teardown.sh").is_file()):
+                    rep.err(v, None, "Appendix H verify.sh must source stack-guard.sh --crc and crc-check.sh, "
+                                     "with install.sh and teardown.sh beside it")
             elif (d / "kustomization.yaml").is_file():
                 # Part 6: fresh namespaces on the shared minikube profile (examples/_k8s/lib.sh).
                 if not k8s_ok:
@@ -440,6 +447,9 @@ def check_examples(rep: Report):
         for m in IMG_RE.finditer(text):
             ref = m.group(1).strip("\"'")
             ln = line_of(text, m.start())
+            # Strimzi KafkaConnect build.output of type imagestream names an ImageStream tag, not a pulled image.
+            if re.search(r"^\s*type:\s*imagestream\s*$", "\n".join(text.split("\n")[max(0, ln - 3):ln - 1]), re.M):
+                continue
             dm = re.search(r"\$\{[^}:]+:?-([^}]*)\}", ref)
             if "${" in ref:
                 if not dm:
@@ -804,6 +814,26 @@ def self_test() -> int:
         e = run(r).errors
         results.append(("appendix manifest Never on upstream image caught", any("imagePullPolicy" in x for x in e), e))
         (ax / "app.yaml").unlink()
+        ah = r / "examples/ah-demo"
+        ah.mkdir(parents=True)
+        (ah / "README.md").write_text("x")
+        (ah / "verify.sh").write_text("#!/bin/bash\noc get pods -n edp\n")
+        (ah / "verify.sh").chmod(0o755)
+        (ah / "kafkaconnect.yaml").write_text("  build:\n    output:\n      type: imagestream\n      image: edp-connect:35\n")
+        e = run(r).errors
+        results.append(("Appendix H verify.sh without the CRC guard caught", any("Appendix H" in x for x in e), e))
+        results.append(("imagestream output tag not taken for an image",
+                        not any("edp-connect:35" in x for x in e), e))
+        (ah / "kafkaconnect.yaml").write_text("      image: edp-connect:35\n")
+        e = run(r).errors
+        results.append(("bare image outside an imagestream output caught",
+                        any("edp-connect:35" in x for x in e), e))
+        (ah / "kafkaconnect.yaml").unlink()
+        (ah / "install.sh").write_text("#!/bin/bash\n")
+        (ah / "teardown.sh").write_text("#!/bin/bash\n")
+        (ah / "verify.sh").write_text("#!/bin/bash\nsource ../../scripts/stack-guard.sh --crc\nsource ./crc-check.sh\n")
+        e = run(r).errors
+        results.append(("guarded Appendix H verify.sh passes", not any("Appendix H" in x for x in e), e))
         (r / "_docs/ah-demo.md").write_text("Build with podman and buildah.\n")
         (r / "_docs/02-demo.md").write_text("Build with podman.\n")
         e = run(r).errors

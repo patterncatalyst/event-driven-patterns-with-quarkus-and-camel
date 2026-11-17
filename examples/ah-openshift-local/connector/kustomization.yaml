@@ -1,0 +1,7 @@
+# The outbox connector. It is applied after order-service has started, because the Flyway migration creates the
+# table the connector captures. Applied with `oc apply --server-side -n edp -k connector`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp
+resources:
+  - order-outbox.yaml
