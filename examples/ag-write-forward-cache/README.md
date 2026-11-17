@@ -2,7 +2,7 @@
 
 `order-service` stores every order and an outbox row carrying its full state in one PostgreSQL transaction. Debezium Connect publishes the row to `edp.orders.placed` or `edp.orders.cancelled`, keyed by order id. One Camel route applies each event to a Redis hash `order:{id}` behind a version guard (the Quarkus Redis client's typed `withTransaction` with a watched key). `GET /orders/{id}` reads Redis only; `GET /orders/{id}/db` reads PostgreSQL for comparison.
 
-Quarkus, Hibernate ORM with Panache, Flyway, `debezium-quarkus-outbox`, `quarkus-redis-client`, Camel Kafka, SmallRye Health, PostgreSQL, Debezium Connect, Redis and OpenTelemetry to the LGTM stack. Redis 8 runs as the unmodified upstream image under the AGPLv3 option of its licence. The connector file is the chapter 08 file.
+Quarkus, Hibernate ORM with Panache, Flyway, `debezium-quarkus-outbox`, `quarkus-redis-client`, Camel Kafka, SmallRye Health, PostgreSQL, Debezium Connect, Redis and OpenTelemetry to the LGTM stack. Redis 8 runs as the unmodified upstream image under the AGPLv3 option of its licence. The connector file is the Debezium outbox connector with the Outbox Event Router.
 
 ## Service
 

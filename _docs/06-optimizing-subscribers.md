@@ -11,7 +11,7 @@ duration: "45 minutes"
 
 The notification service reads three catalog topics, `edp.orders.placed`, `edp.payments.processed` and `edp.shipping.scheduled`, with three partitions each. After a weekend outage it has a backlog to drain, and every record costs it a template render and a database write. The route works. The questions are how fast it drains, whether it drains each record once, and what happens to the other replicas when one more starts.
 
-The consumer has a handful of settings that answer those questions, and most of them do something other than what their names suggest. Each one below is a Camel option, set from an environment variable, so a run changes one setting and nothing else.
+The consumer has a handful of settings that answer those questions. Each one below is a Camel option, set from an environment variable, so a run changes one setting and nothing else.
 
 {% include excalidraw.html file="06-fetch-poll-process" alt="A fetch request fills a client buffer, poll returns at most max.poll.records of it, and a batch that takes longer than max.poll.interval.ms to process gets the member removed" caption="Figure 6.1: A fetch fills a buffer; poll hands out a bounded slice" %}
 

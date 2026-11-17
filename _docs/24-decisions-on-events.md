@@ -65,7 +65,7 @@ from("kafka:" + Topics.SHIPPING_DELIVERY_EXCEPTIONS
 
 `DeliveryExceptionAnalysed` carries the reason, the evidence phrase, the model name and digest and the prompt version. `DeliveryExceptionDecided` carries RESHIP or REFUND, the rule name and the rules version. The AI service gives a typed return value and a place to put the prompt, so the route only calls a bean. The AI service is `@ApplicationScoped`, because the default is the request scope and a Kafka consumer thread has no request.
 
-When the model is unreachable the call fails, is retried, and then `breakOnFirstError` seeks the consumer back to the record. The note waits and the consumer group shows lag. No analysis is made up and nothing is decided without one, the same behaviour as an enricher with its owner down.
+When the model is unreachable the call fails, is retried, and then `breakOnFirstError` seeks the consumer back to the record. The note waits and the consumer group shows lag. No analysis is made up and nothing is decided without one.
 
 ## A closed answer from an open text
 

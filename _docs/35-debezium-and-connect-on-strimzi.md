@@ -69,7 +69,7 @@ The operator starts a build pod when the resource has a `build` section. The pod
 
 The registry is a Deployment of the CNCF Distribution image in `edp-kafka`, on an emptyDir volume, behind a Service with a fixed ClusterIP inside the service range. The push is plain HTTP, so Buildah is told not to verify TLS. The pull is the node's: Strimzi references the new image by digest, and containerd on the node does not pull over HTTP from an address it has not been told to trust. The cluster setup tells it, for that one address. An external registry is not needed, nothing leaves the machine, and the image disappears with the namespace, so every run builds it again.
 
-The build pod needs no extra privilege in a namespace with no Pod Security labels. With the namespace labelled `pod-security.kubernetes.io/enforce=restricted` the build pod is refused: the `KafkaConnect` turns NotReady with a message that the pod violates `restricted:latest` on `allowPrivilegeEscalation`, the capabilities, `runAsNonRoot` and `seccompProfile`. That is why these namespaces carry no labels. The other workloads can run under that profile.
+The build pod needs no extra privilege in a namespace with no Pod Security labels. With the namespace labelled `pod-security.kubernetes.io/enforce=restricted` the build pod is refused: the `KafkaConnect` turns NotReady with a message that the pod violates `restricted:latest` on `allowPrivilegeEscalation`, the capabilities, `runAsNonRoot` and `seccompProfile`. So the namespaces of this setup carry no Pod Security labels.
 
 A build is the slow part: the `KafkaConnect` becomes Ready about 80 to 100 s after the apply, build and pull included.
 
@@ -165,7 +165,7 @@ kubectl -n edp-kafka annotate kafkaconnector inventory-cdc strimzi.io/connector-
 kubectl -n edp-kafka patch kafkaconnector inventory-cdc --type=merge -p '{"spec":{"state":"running"}}'
 ```
 
-Connect reads back the new position within seconds. The outcome: a row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
+Connect reads back the new position within seconds. A row changed while the connector was stopped sits before the new position and is skipped, and the next row changed after the resume arrives. The stop, the new position and the resume are three edits that a pull request can review.
 
 The Connect REST status of a stopped connector shows no tasks, while the status of the resource can trail it by one poll. A connector created with `state: stopped` starts in that state (Strimzi changelog).
 

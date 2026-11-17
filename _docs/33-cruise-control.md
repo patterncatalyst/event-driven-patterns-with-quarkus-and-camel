@@ -103,7 +103,7 @@ spec:
 
 A template is a `KafkaRebalance` with the annotation `strimzi.io/rebalance-template: "true"` and, as the Strimzi blog on auto-rebalancing explains, its `mode` and `brokers` are ignored: the operator fills them in. The trigger is a change of `spec.replicas` of an existing node pool. Strimzi creates a resource named after the cluster and the mode, `edp-auto-rebalancing-add-brokers`, requests the proposal, approves it and applies it. The progress is in `status.autoRebalance` of the `Kafka` resource, which reports `RebalanceOnScaleUp` and then `Idle`, and the generated `KafkaRebalance` is deleted when it is done.
 
-The order of configuration matters for a first look. With `autoRebalance` present, the pool that grows is rebalanced at once, and no empty broker is left to propose against. The manual rebalance therefore runs on a pool that has no `autoRebalance` block, and the block is added afterwards. A pool that is created is not a scaling event: the documentation says auto-rebalancing is not triggered when a node pool is created or deleted.
+With `autoRebalance` present, the pool that grows is rebalanced at once, and no empty broker is left to propose against. The manual rebalance therefore runs on a pool that has no `autoRebalance` block, and the block is added afterwards. A pool that is created is not a scaling event: the documentation says auto-rebalancing is not triggered when a node pool is created or deleted.
 
 The operator's own rebalance runs on the same timer, so how long growing from three brokers to four takes depends on where the timer is: from the scale change to the operator reporting `Idle` it takes anywhere from under a minute to several minutes.
 

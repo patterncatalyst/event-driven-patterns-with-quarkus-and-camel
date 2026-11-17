@@ -45,7 +45,7 @@ docker compose down -v
 
 The Maven build runs the order service against PostgreSQL and Kafka from Dev Services: the order row and the outbox row are written together, a rolled-back order leaves neither, a duplicate is refused without a second row, the commit-first route loses an event when the crash switch fires, and the publish-first route invents one when its commit fails. `verify.sh` starts Kafka, PostgreSQL, Connect, the LGTM stack and the service, registers the connector and prints `27/27 checks passed`.
 
-The checks read the effects, not the status codes:
+The checks read the effects:
 
 - Placing `O-1001` leaves exactly one record on `edp.orders.placed`, keyed `O-1001`, with an `id` header, `eventType` `OrderPlaced` and the order as a JSON object. The order row exists, the outbox table is empty, and no `outbox.event.*` topic was created.
 - A second `O-1001` is refused with 409, and after a wait there is still one record and one row.

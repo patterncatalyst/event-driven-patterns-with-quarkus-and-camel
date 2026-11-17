@@ -2,7 +2,7 @@
 
 A Kafka cluster of two brokers with Cruise Control is filled with data, its node pool is grown, and the example checks what Kafka and Strimzi do about the empty broker: a new broker holds nothing, a `KafkaRebalance` proposal moves nothing until it is approved, an approved rebalance spreads the replicas, a scale-down of a broker with replicas is refused, and with `autoRebalance` the operator rebalances a pool that grows and drains a broker before it removes it.
 
-Manifests only: a kustomize overlay on `examples/_k8s`, a load Job and a small Python helper. No Java, no pom, no application and no PostgreSQL. Namespaces carry no Pod Security labels in this chapter.
+Manifests only: a kustomize overlay on `examples/_k8s`, a load Job and a small Python helper. No Java, no pom, no application and no PostgreSQL. Namespaces carry no Pod Security labels in this example.
 
 ## What the overlay changes
 
@@ -45,7 +45,7 @@ Demo code, labelled in `verify.sh` and the chapter.
 3. The four catalog topics are `KafkaTopic` resources with two replicas and are Ready.
 4. The load Job completes and reports 100000 records for each of the four topics.
 5. Every replica sits on the two original brokers (the ids read from the pool).
-6. After the pool grows to three, the new broker pod is Ready, Kafka is Ready and a Cruise Control pod created after the broker's pod is Ready, the new broker holds no replica.
+6. After the pool grows to three, the new broker pod is Ready, Kafka is Ready and a Cruise Control pod created after the broker's pod is Ready, and the new broker holds no replica.
 7. An `add-brokers` `KafkaRebalance` for the new broker reaches `ProposalReady` within 240 s with `numReplicaMovements` above 0; a `NotReady` state is refreshed.
 8. The replica placement is unchanged for 20 s while the proposal waits.
 9. After the approve annotation the rebalance reaches `Ready` within 240 s.

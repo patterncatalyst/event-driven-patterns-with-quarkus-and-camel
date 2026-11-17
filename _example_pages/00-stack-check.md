@@ -34,5 +34,3 @@ mvn -B verify
 ```
 
 Quarkus Dev Services starts a Kafka container for the tests. No compose stack is needed.
-
-The setup and the stack are the ones the accompanying page describes.

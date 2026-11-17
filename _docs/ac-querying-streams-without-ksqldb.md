@@ -25,7 +25,7 @@ The input is one JSON record per delivery on a single-partition topic:
 
 The answer is one row per carrier per window: carrier, window start, deliveries. A window is a tumbling minute of event time, so every delivery is in exactly one. Each engine takes event time from `deliveredAt`, and each closes a window by a lateness bound; how the bound advances differs between them.
 
-Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression. It is one number in one place, and each engine receives it.
+Every engine gets the same lateness bound, 10 seconds. A window closes when the newest event time seen passes the window's end plus 10 seconds, and a record for a closed window is dropped. In Kafka Streams the bound is the grace period, in Flink and RisingWave it is the delay in the watermark expression.
 
 ## Kafka Streams: ask the application
 

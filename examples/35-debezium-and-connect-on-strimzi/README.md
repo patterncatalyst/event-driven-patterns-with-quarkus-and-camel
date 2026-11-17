@@ -1,8 +1,8 @@
 # 35 Debezium and Connect on Strimzi
 
-Kafka Connect and two Debezium connectors run as resources on the Strimzi cluster of Part 6. A `KafkaConnect` builds its own image with the PostgreSQL connector plugin and pushes it to a registry inside the cluster. Two `KafkaConnector` resources declare the chapter 08 outbox connector and the chapter 10 inventory connector against CloudNativePG, and the inventory connector's offsets are listed, refused, altered and resumed through its resource.
+Kafka Connect and two Debezium connectors run as resources on the Strimzi cluster. A `KafkaConnect` builds its own image with the PostgreSQL connector plugin and pushes it to a registry inside the cluster. Two `KafkaConnector` resources declare the example 08 outbox connector and the example 10 inventory connector against CloudNativePG, and the inventory connector's offsets are listed, refused, altered and resumed through its resource.
 
-It is manifests and a `verify.sh`: no Java. The applications are the chapter 08 `order-service` and the chapter 09 `inventory-service`, built from their own Containerfiles and loaded into the node unchanged. The connectors are the chapter 08 and chapter 10 configurations with the host and the credentials replaced and, for the inventory connector, a different `topic.prefix` (see the chapter).
+It is manifests and a `verify.sh`: no Java. The applications are the example 08 `order-service` and the example 09 `inventory-service`, built from their own Containerfiles and loaded into the node unchanged. The connectors are the example 08 and example 10 configurations with the host and the credentials replaced and, for the inventory connector, a different `topic.prefix` (see the chapter).
 
 ## What runs
 
@@ -24,7 +24,7 @@ No Pod Security labels are set on the namespaces, so the build pod runs unlabell
 | `connect/kafkaconnect.yaml` | `KafkaConnect` with `build`: plugin archive, sha512, output to the registry; the config provider; the Metrics Reporter |
 | `connectors/` | `order-outbox` and `inventory-cdc` as `KafkaConnector` resources |
 | `demo/plugin-sha-wrong/` | Demo code: the same `KafkaConnect` with a checksum that does not match |
-| `tables/inventory.sql` | The chapter 10 legacy tables, created as the role `edp` |
+| `tables/inventory.sql` | The example 10 legacy tables, created as the role `edp` |
 | `tools/read.py` | Reads consumer output and offset JSON for the checks |
 | `images.txt` | The two images `verify.sh` builds and loads |
 
@@ -70,7 +70,7 @@ There is no `mvn verify`; the example has no Java. The checks read effects:
 - An alter while the connector runs is refused: since the annotation was set, the operator log holds `Altering offsets of connector inventory-cdc` followed by the warning `Connector is not in STOPPED state` (it writes no Kubernetes event), the annotation still reads `alter`, and the offsets read from Connect are unchanged. `verify.sh` removes the annotation before the next step.
 - With `spec.state: stopped` the REST status is `STOPPED` with no task. `SKU-4` is set to 401 while it is stopped. An alter to the current WAL position, from the ConfigMap `inventory-cdc-offsets-alter`, is read back from Connect as that position. After `spec.state: running`, the update of `SKU-5` to 502 arrives and the update of `SKU-4` to 401 never does.
 - `kafka_connect_connector_metrics_status{connector="inventory-cdc",status="running"}` is 1 in Prometheus.
-- The image IDs on the node equal the ones built from the chapter 08 and 09 Containerfiles.
+- The image IDs on the node equal the ones built from the example 08 and 09 Containerfiles.
 
 ## Experiments
 

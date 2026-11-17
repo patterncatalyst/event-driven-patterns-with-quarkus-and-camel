@@ -1,15 +1,15 @@
 # 30 Server-side apply
 
-Two tools write one Deployment, and a client-side apply keeps the last one. This example applies the chapter 02 services under the field manager `edp-apps`, patches one field as `edp-platform`, applies the CloudNativePG install both ways, and adds a foreign annotation to a Service that the Strimzi operator applies. Every owner is read back from `managedFields`.
+Two tools write one Deployment, and a client-side apply keeps the last one. This example applies the example 02 services under the field manager `edp-apps`, patches one field as `edp-platform`, applies the CloudNativePG install both ways, and adds a foreign annotation to a Service that the Strimzi operator applies. Every owner is read back from `managedFields`.
 
-Manifests only: overlays over `examples/_k8s`, no pom and no Java. The applications are the unchanged chapter 02 images (`images.txt`).
+Manifests only: overlays over `examples/_k8s`, no pom and no Java. The applications are the unchanged example 02 images (`images.txt`).
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
 | `kustomization.yaml` | The platform bases from `_k8s` plus `apps`; applied by `k8s_fresh` under `edp-apps` |
-| `apps/` | The chapter 02 Deployments and Services (writer `edp-apps`) |
+| `apps/` | The example 02 Deployments and Services (writer `edp-apps`) |
 | `platform/order-service-memory.yaml` | A partial Deployment setting `limits.memory: 512Mi` (writer `edp-platform`) |
 | `changes/label/` | `apps` plus one label, applied by `edp-apps`; applying `apps` again removes it |
 | `changes/memory/` | `apps` with `400Mi`, used only by `kubectl diff` |

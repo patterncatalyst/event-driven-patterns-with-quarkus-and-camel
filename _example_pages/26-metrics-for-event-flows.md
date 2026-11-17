@@ -28,4 +28,4 @@ mvn -B verify
 
 ## Infrastructure
 
-Kafka, PostgreSQL, Connect and the LGTM stack from `examples/_infra`, merged with two small files of the example, plus the two services. The compose project is `edp-26`.
+Kafka, PostgreSQL, Connect and the LGTM stack from `examples/_infra`, merged with two small files, plus the two services. The compose project is `edp-26`.

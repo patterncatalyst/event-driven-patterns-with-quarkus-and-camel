@@ -80,7 +80,7 @@ Pick a pattern by the symptom:
 
 ## EIP Camel by pattern and event
 
-EIP Camel teaches the patterns in Camel on one runtime; this book repeats those that Kafka changes and goes deeper on one stack. The relation is one word: deeper means this book adds Kafka specifics, contrasts means the Kafka form and the Camel form differ in behaviour, and extends means the pattern goes past what EIP Camel covers.
+EIP Camel teaches the patterns in Camel on one runtime; this book repeats those that Kafka changes and goes deeper on one stack. The relation is one word: same means EIP Camel covers the pattern as this book does, deeper means this book adds Kafka specifics, contrasts means the Kafka form and the Camel form differ in behaviour, and extends means the pattern goes past what EIP Camel covers.
 
 | Pattern | Chapter | EIP Camel chapter | Relation |
 |---|---|---|---|

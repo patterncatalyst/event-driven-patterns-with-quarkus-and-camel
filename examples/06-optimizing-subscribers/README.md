@@ -53,7 +53,7 @@ docker compose --profile '*' down -v
 2. Drains with the defaults: one row per record, lag 0, one attempt per row, all nine partitions, one consumer thread.
 3. `consumersCount=3`: three members, none idle, three consumer threads. `consumersCount=12`: with the default `RangeAssignor` only three members own partitions (three each) and nine are idle; with `RoundRobinAssignor` nine own one each and exactly three are idle.
 4. Poll interval: with 50 ms of work per record and an interval of 5 seconds, `max.poll.records=500` delivers records again (attempts above 1) and logs the client leaving the group; `max.poll.records=20` does neither and stores every record.
-5. Fetch sizing: while 6000 records arrive at 300 per second, `fetch.min.bytes=65536` sends at most a third of the fetch requests the defaults send, with preconditions on both runs (36 checks in all).
+5. Fetch sizing: while 6000 records arrive at 300 per second, `fetch.min.bytes=65536` sends at most a third of the fetch requests the defaults send, with preconditions on both runs.
 6. Rebalance: replica 2 joins two-thread replica 1. Under the classic protocol (group type Classic) replica 1 gives up all nine partitions. Under the consumer protocol (group type Consumer) it gives up at least one and fewer than nine.
 7. Tempo, Prometheus and Loki hold telemetry from the service.
 

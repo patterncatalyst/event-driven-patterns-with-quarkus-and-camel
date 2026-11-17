@@ -9,7 +9,7 @@ duration: "75 minutes"
 
 In the choreographed saga nobody holds the whole sequence. Each service knows its own next step, so changing the order of the steps, adding one, or finding out why an order is stuck touches three codebases. An orchestrator holds the sequence in one place and tells each participant what to do.
 
-`order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them. Having both in the same run shows where they differ: who holds the state, who triggers the compensation, and what happens to a participant that answers late.
+`order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them.
 
 ## Pattern: Orchestrated saga
 

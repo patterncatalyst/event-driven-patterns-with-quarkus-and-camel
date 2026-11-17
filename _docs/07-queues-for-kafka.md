@@ -17,7 +17,7 @@ The notification service sends an email for every order placed. The email provid
 
 A topic's partitions are split among the members of a consumer group, and each partition has exactly one owner in the group. The owner delivers its records one after another. A job that takes eight seconds therefore keeps every later job of its partition waiting for eight seconds, even when other workers are idle. Adding workers beyond the number of partitions does not help: the extra ones own nothing.
 
-Partitioned ordering is what makes this the right design when order per key matters. When the jobs are independent, as emails are, the per-partition order limits parallelism and gives the jobs nothing they need.
+Order per partition makes this the right design when order per key matters. When the jobs are independent, as emails are, the per-partition order limits parallelism and gives the jobs nothing they need.
 
 ### The solution
 
@@ -77,7 +77,7 @@ The consumer runs in explicit acknowledgement mode, so it refuses to poll again 
 
 The share group's own settings live on the group, not on the consumer. A share group starts at the end of the topic, so `share.auto.offset.reset=earliest` is set on the group resource with `kafka-configs.sh --entity-type groups` before the first job is published. The same command sets the lock duration and the delivery count limit.
 
-The group side is Camel, the book's tool for consumer groups. `GroupDeliveryRoute` reads the same topic with `groupId=notification-workers`, unmarshals the job and calls the same `DeliveryService`. A transient failure is thrown back into the route, whose redelivery policy retries it in place:
+The group side is Camel. `GroupDeliveryRoute` reads the same topic with `groupId=notification-workers`, unmarshals the job and calls the same `DeliveryService`. A transient failure is thrown back into the route, whose redelivery policy retries it in place:
 
 {% raw %}
 ```java

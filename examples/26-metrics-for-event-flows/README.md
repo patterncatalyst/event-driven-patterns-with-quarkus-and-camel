@@ -1,6 +1,6 @@
 # 26 Metrics for event flows
 
-Orders wait in a paused relay or behind a stopped consumer while every service reports healthy. This example measures the flow where the work waits: the outbox backlog in the replication slot, consumer group lag at the broker, the age of an event from the time stamped when it happened, and dead letters as a rate. A dashboard and one alert rule are provisioned from files.
+Orders wait in a paused relay or behind a stopped consumer while every service reports healthy. It measures the flow where the work waits: the outbox backlog in the replication slot, consumer group lag at the broker, the age of an event from the time stamped when it happened, and dead letters as a rate. A dashboard and one alert rule are provisioned from files.
 
 Quarkus, Micrometer with OpenTelemetry export, SmallRye Reactive Messaging, Debezium outbox and Connect, Kafka, PostgreSQL and the LGTM stack. There is no Camel. Topic names come from `Topics` in `examples/domain-model`.
 
@@ -8,8 +8,8 @@ Quarkus, Micrometer with OpenTelemetry export, SmallRye Reactive Messaging, Debe
 
 | Service | Port | Purpose |
 |---|---|---|
-| `order-service` | 8080 | `POST /orders` writes the order and `OrderPlaced` through the outbox (chapter 8). `OutboxBacklog` is the `outbox.backlog` gauge |
-| `inventory-service` | 8082 | Reserves stock from `edp.orders.placed`; a failure goes to `edp.orders.placed-dlq` (chapter 13). `FlowAge` records `order.flow.event.age` and `order.flow.record.age` |
+| `order-service` | 8080 | `POST /orders` writes the order and `OrderPlaced` through the outbox. `OutboxBacklog` is the `outbox.backlog` gauge |
+| `inventory-service` | 8082 | Reserves stock from `edp.orders.placed`; a failure goes to `edp.orders.placed-dlq`. `FlowAge` records `order.flow.event.age` and `order.flow.record.age` |
 
 One connector, `order-flow-outbox`, reads `orders.outboxevent` with slot `edp_order_flow`. It stamps the outbox timestamp on each record as header `occurredAt` and sends a heartbeat every second that writes a row to `orders.heartbeat`; a Filter transform drops those rows before a topic. Both topics have one partition. The consumer group is `inventory-placed`; its session timeout is 10 s.
 
@@ -51,7 +51,7 @@ Order ids are `O-2600` to `O-2690`, and `O-260000` to `O-260499` for the burst. 
 
 | Path | Purpose |
 |---|---|
-| `order-service/.../OrderResource`, `OrderService`, `OrderPlacedEvent` | The order and its outbox event (chapter 8) |
+| `order-service/.../OrderResource`, `OrderService`, `OrderPlacedEvent` | The order and its outbox event |
 | `order-service/.../db/migration/V2__heartbeat.sql` | The heartbeat table the connector writes and captures |
 | `order-service/.../OutboxBacklog` | The gauge: slot lag in bytes, or table rows as demo code |
 | `inventory-service/.../OrderPlacedConsumer`, `ReservationService` | The consumer; a failure is nacked to the dead letter topic |
