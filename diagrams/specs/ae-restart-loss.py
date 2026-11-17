@@ -11,7 +11,7 @@ emit(
         {"x": 270, "y": 120, "w": 200, "h": 90, "style": "accent", "lines": ["Resequencer memory", "holds 502 to 506", "501 is missing"]},
         {"x": 530, "y": 120, "w": 170, "h": 90, "style": "kernel", "lines": ["Restart", "memory is gone"]},
         {"x": 760, "y": 120, "w": 190, "h": 90, "style": "ink", "lines": ["After the restart", "only 501 is applied", "502 to 506 not re-read"]},
-        {"x": 270, "y": 260, "w": 430, "h": 70, "style": "user", "lines": ["Per-order buffer in PostgreSQL (chapter 4)", "held rows survive the restart"]},
+        {"x": 270, "y": 260, "w": 430, "h": 70, "style": "user", "lines": ["Per-order buffer in PostgreSQL", "held rows survive the restart"]},
     ],
     edges=[
         {"x1": 210, "y1": 165, "x2": 270, "y2": 165, "amber": True},

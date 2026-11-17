@@ -246,6 +246,12 @@ PRD §14, decided:
 - A check asserts only what the mechanism guarantees: a request the client saw fail can already have been accepted (the order-service publishes before answering), so Appendix F retries every failed request and asserts 201 or 409 and exactly one event per order.
 - Example comments and check descriptions name examples ("example 02"), never chapters.
 
+2026-11-17 (r15, the deck):
+
+- The deck is generated: `lgtm-presentation/deck.js` plus `sections/NN-*.js` on pptxgenjs 4.0.1 (exact, lockfile committed). Code slides are read from `examples/` by line range with the first line asserted (common indentation stripped, at most 22 lines, 120 columns, 11 pt). Figures are the book's SVGs rendered to PNG by `render-png.sh`; a wrong figure is fixed in its spec. To change a slide: edit its section, `node deck.js`, `python3 scripts/deck_text.py --write`, and record it in `edits/`.
+- `text/` is the reviewable copy; CI rebuilds the deck and fails on drift (`deck_text.py --check --pptx`). `validate.py check_decks` enforces the stand-alone rule on slide text and notes (no chapter, appendix, part or example pointers, no positional or indirect pointers, no self-reference, the site only on the last slide), notes floors, no dashes, identifier case, `PatternCatalyst` metadata and host_ids rules over the pptx XML. Figure SVG text may not point at another chapter (`ad-*` exempt).
+- QR codes (segno 1.6.6) are decoded by zxing-cpp 3.1.1 to the exact site and hub URLs at render time.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.

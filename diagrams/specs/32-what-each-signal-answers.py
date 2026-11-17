@@ -33,6 +33,6 @@ emit(
         {"x": 425, "y": 70, "anchor": "middle", "size": 13, "color": "#555555", "text": "Metric family"},
         {"x": 810, "y": 70, "anchor": "middle", "size": 13, "color": "#555555", "text": "Question"},
         {"x": 500, "y": 455, "anchor": "middle", "size": 13, "color": "#555555",
-         "text": "Lag comes from chapter 26's receiver; the rest from the reporter, the operator and kube-state-metrics"},
+         "text": "Lag is asked of the broker by the collector; the rest from the reporter, the operator and kube-state-metrics"},
     ],
 )

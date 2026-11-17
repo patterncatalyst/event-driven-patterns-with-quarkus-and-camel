@@ -15,6 +15,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import html
+import posixpath
 import xml.dom.minidom
 import zipfile
 from pathlib import Path
@@ -22,6 +24,9 @@ from pathlib import Path
 import yaml
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import host_ids  # noqa: E402  (rules read host values at run time; none are stored)
+
 MAX_WORDS = 2500
 MAX_BRO_WORDS = 250  # soft cap (warning), owner 2026-11-13
 MAX_BRO_BULLETS = 3
@@ -252,10 +257,159 @@ def check_diagrams(rep: Report):
 
 def check_dashes(rep: Report):
     for p in files(rep.root, "_docs/*", "_parts/*", "_example_pages/*", "index.html", "chapters.html",
-                   "README.md", "bibliography.md", "examples/**/README.md", "diagrams/*.svg"):
+                   "README.md", "bibliography.md", "examples/**/README.md", "diagrams/*.svg",
+                   "lgtm-presentation/text/*.md", "lgtm-presentation/BUILD.md", "lgtm-presentation/edits/*.md",
+                   "lgtm-presentation/deck.js", "lgtm-presentation/deck-lib.js", "lgtm-presentation/sections/*.js"):
         for i, ln in enumerate(p.read_text(encoding="utf-8", errors="replace").split("\n"), 1):
             if DASH_RE.search(ln):
                 rep.err(p, i, "em dash or en dash (use a comma, colon, parentheses or 'to')")
+
+
+SVG_TEXT_RE = re.compile(r"<text\b[^>]*>(.*?)</text>", re.S)
+
+
+def svg_text_lines(svg: str) -> list[str]:
+    return [html.unescape(re.sub(r"<[^>]+>", "", m.group(1))).strip() for m in SVG_TEXT_RE.finditer(svg)]
+
+
+def check_svg_xrefs(rep: Report):
+    """Figure text stands alone too: no reference to another chapter, appendix or part (ad-* is the pattern map)."""
+    for svg in files(rep.root, "diagrams/*.svg"):
+        if svg.name.startswith("ad-"):
+            continue
+        for t in svg_text_lines(svg.read_text(encoding="utf-8", errors="replace")):
+            hit = xref_hit(t)
+            if hit:
+                rep.err(svg, None, f"figure text references another chapter, appendix or part: {hit!r}")
+
+
+# ---- deck (.pptx) checks: standard library only -------------------------------------------------
+
+DECK_OWNER = "PatternCatalyst"
+DECK_NOTES_FLOOR = 90
+DECK_NOTES_FLOOR_PANEL = 45
+DECK_PANEL_FILL = "AB0000"
+DECK_BANNED = (
+    (DASH_RE, "em or en dash"),
+    (re.compile(r"\bslides?\s*\d+\b", re.I), "slide number reference"),
+    (re.compile(
+        r"\b(next|previous|following|closing|last|earlier|later)\s+(\w+\s+)?(slides?|sections?)\b"
+        r"|\b(that|which)\s+follows?\b(?!\s+from)"
+        r"|\b(listings?|slides?|figures?|tables?|sections?)\s+(before|after)\s+it\b"
+        r"|\b(?:tables?|listings?|figures?|slides?|code|lists?|bullets?|diagrams?|examples?)"
+        r"\s+(?:above|below)\b|\bthe\s+(?:above|below)\b|\b(?:above|below)\s*(?:[.,;:)]|$)"
+        r"|\b(?:shown|listed|given|see|as)\s+(?:above|below)\b", re.I), "positional slide reference"),
+    (re.compile(
+        r"\b(?:from|as)\s+before\b|\b(?:shown|seen|covered|mentioned|discussed|described|noted)\s+(?:earlier|before)\b"
+        r"|\bearlier\s+on\b|\bas\s+we\s+(?:saw|saw\s+earlier|discussed|covered)\b"
+        r"|\b(?:discussed|covered|shown|described)\s+later\b|\b(?:detail|rest|more)\s+comes?\s+later\b|\bsee\s+later\b", re.I),
+     "indirect back or forward pointer"),
+    (re.compile(r"\b(this|these) (deck|slides?)\b|\bthe deck\b", re.I), "self-reference to the deck"),
+    # Service and product identifiers keep their case at the start of a sentence (order-service, ksqlDB).
+    (re.compile(r"\b(?:Order|Inventory|Payment|Shipping|Notification)-service\b|\bKsqlDB\b"), "capitalised identifier"),
+    (SELFREF_RE, "self-reference to the chapter or section"),
+)
+DECK_BOOK_RE = re.compile(r"\b(the|this) (book|site)('s)?\b", re.I)
+DECK_SLIDE_RE = re.compile(r"ppt/slides/slide(\d+)\.xml$")
+DECK_FIELD_RE = re.compile(r"<a:fld\b.*?</a:fld>", re.S)
+DECK_PARA_RE = re.compile(r"<a:p\b.*?</a:p>|<a:p/>", re.S)
+DECK_RUN_RE = re.compile(r"<a:t(?:\s[^>]*)?>(.*?)</a:t>", re.S)
+DECK_BG_RE = re.compile(r'<p:bg>.*?<a:srgbClr val="([0-9A-Fa-f]{6})"', re.S)
+DECK_NOTES_REL_RE = re.compile(r'Target="[^"]*notesSlides/(notesSlide\d+\.xml)"')
+_DECK_RULES: list | None = None
+
+
+def deck_text(xml_text: str, *, drop_fields: bool) -> str:
+    if drop_fields:
+        xml_text = DECK_FIELD_RE.sub("", xml_text)
+    paras = ["".join(html.unescape(r) for r in DECK_RUN_RE.findall(p)) for p in DECK_PARA_RE.findall(xml_text)]
+    return "\n".join(p for p in paras if p.strip())
+
+
+def deck_field(xml_text: str, tag: str) -> str | None:
+    m = re.search(rf"<{tag}(?:\s[^>]*)?>(.*?)</{tag}>", xml_text, re.S)
+    return html.unescape(m.group(1)) if m else None
+
+
+def deck_rules() -> list:
+    global _DECK_RULES
+    if _DECK_RULES is None:
+        _DECK_RULES = host_ids.all_rules(host_ids.gather(None))
+    return _DECK_RULES
+
+
+def check_deck(rel: str, path: Path) -> list[str]:
+    out: list[str] = []
+
+    def err(msg: str) -> None:
+        out.append(f"{rel}: {msg}")
+
+    try:
+        with zipfile.ZipFile(path) as zf:
+            parts = {n: zf.read(n) for n in zf.namelist() if not n.endswith("/")}
+    except (zipfile.BadZipFile, OSError) as exc:
+        return [f"{rel}: not a readable pptx: {exc}"]
+    xml_parts: dict[str, str] = {}
+    for name, raw in parts.items():
+        if name.endswith((".xml", ".rels")):
+            try:
+                xml_parts[name] = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                err(f"{name}: part is not UTF-8")
+    slides = sorted((int(m.group(1)), n) for n in xml_parts if (m := DECK_SLIDE_RE.search(n)))
+    if not slides:
+        err("no slides")
+    texts: list[tuple[str, str]] = []
+    with_notes = 0
+    for number, name in slides:
+        body = xml_parts[name]
+        texts.append((f"slide {number}", deck_text(body, drop_fields=False)))
+        rels = xml_parts.get(posixpath.join("ppt/slides/_rels", f"slide{number}.xml.rels"), "")
+        m = DECK_NOTES_REL_RE.search(rels)
+        notes = deck_text(xml_parts.get(f"ppt/notesSlides/{m.group(1)}", ""), drop_fields=True) if m else ""
+        texts.append((f"notes {number}", notes))
+        bg = DECK_BG_RE.search(body.split("</p:bg>")[0] + "</p:bg>") if "<p:bg>" in body else None
+        panel = bg is not None and bg.group(1).upper() == DECK_PANEL_FILL
+        floor = DECK_NOTES_FLOOR_PANEL if (panel or number in (1, len(slides))) else DECK_NOTES_FLOOR
+        words = len(notes.split())
+        if words:
+            with_notes += 1
+        if words < floor:
+            err(f"slide {number}: notes have {words} words, floor {floor}")
+    if slides and with_notes != len(slides):
+        err(f"{len(slides)} slides but {with_notes} notes slides with text")
+    core, app = xml_parts.get("docProps/core.xml", ""), xml_parts.get("docProps/app.xml", "")
+    for label, value in (("creator", deck_field(core, "dc:creator")),
+                         ("lastModifiedBy", deck_field(core, "cp:lastModifiedBy")),
+                         ("company", deck_field(app, "Company"))):
+        if value != DECK_OWNER:
+            err(f"docProps {label} is {value!r}, expected {DECK_OWNER!r}")
+    last = f"{len(slides)}"
+    for where, text in texts:
+        for rx, label in DECK_BANNED:
+            if where == "notes 1" and label == "self-reference to the deck":
+                # the cover notes may name the deck once, in their opening sentence
+                parts_ = re.split(r"(?<=[.!?])\s", text, maxsplit=1)
+                if rx.search(parts_[1] if len(parts_) > 1 else ""):
+                    err(f"{where}: {label}")
+            elif rx.search(text):
+                err(f"{where}: {label}")
+        hit = xref_hit(text)
+        if hit:
+            err(f"{where}: cross-reference {hit!r}")
+        if where.split()[-1] != last and DECK_BOOK_RE.search(text):
+            err(f"{where}: book or site pointer outside the last slide")
+    cfg = host_ids.Config()
+    for name, body in xml_parts.items():
+        if host_ids.hits(body, deck_rules(), cfg, "-"):
+            err(f"{name}: host_ids rule matches this part")
+    return out
+
+
+def check_decks(rep: Report):
+    for deck in sorted((rep.root / "lgtm-presentation").glob("*.pptx")):
+        for msg in check_deck(deck.relative_to(rep.root).as_posix(), deck):
+            rep.err(deck.relative_to(rep.root).as_posix(), None, msg.split(": ", 1)[1] if ": " in msg else msg)
 
 
 def chapter_words(body: str) -> int:
@@ -618,7 +772,7 @@ def check_domain_names(rep: Report):
                 rep.err(p, i, f"banned freight-domain name '{m.group(0)}' (use the order-to-delivery domain)")
 
 
-CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters, check_example_pages,
+CHECKS = [check_front_matter, check_liquid, check_diagrams, check_svg_xrefs, check_dashes, check_decks, check_chapters, check_example_pages,
           check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_ah_tls, check_domain_names]
 
 
@@ -907,6 +1061,102 @@ def self_test() -> int:
             "quarkus.redis.devservices.image-name=" + REDIS_PIN + "\n")
         e = run(r).errors
         results.append(("Redis Dev Services with the pinned image passes", not any("Redis Dev Services" in x for x in e), e))
+
+        # ---- deck rules
+        long = " ".join(["word"] * 95)
+        short = " ".join(["word"] * 50)
+
+        def deck(slides, panel=(2,), creator=DECK_OWNER, name="d.pptx", extra_part=""):
+            r = Path(tmp) / f"deck-{len(results)}"
+            (r / "lgtm-presentation").mkdir(parents=True)
+            ns = 'xmlns:a="a" xmlns:p="p" xmlns:dc="d" xmlns:cp="c"'
+            with zipfile.ZipFile(r / "lgtm-presentation" / name, "w") as zf:
+                zf.writestr("docProps/core.xml", f"<cp:coreProperties {ns}><dc:creator>{creator}</dc:creator>"
+                            f"<cp:lastModifiedBy>{DECK_OWNER}</cp:lastModifiedBy></cp:coreProperties>")
+                zf.writestr("docProps/app.xml", f"<Properties><Company>{DECK_OWNER}</Company></Properties>")
+                if extra_part:
+                    zf.writestr("ppt/extra.xml", extra_part)
+                for i, (text, notes) in enumerate(slides, start=1):
+                    bg = f'<p:bg><a:srgbClr val="{DECK_PANEL_FILL}"/></p:bg>' if i in panel else ""
+                    zf.writestr(f"ppt/slides/slide{i}.xml", f"<p:sld {ns}>{bg}<a:p><a:r><a:t>{text}</a:t></a:r></a:p></p:sld>")
+                    zf.writestr(f"ppt/slides/_rels/slide{i}.xml.rels",
+                                f'<Relationships><Relationship Target="../notesSlides/notesSlide{i}.xml"/></Relationships>')
+                    run_ = f"<a:p><a:r><a:t>{notes}</a:t></a:r></a:p>" if notes else ""
+                    zf.writestr(f"ppt/notesSlides/notesSlide{i}.xml", f"<p:notes {ns}>{run_}</p:notes>")
+            return run(r).errors
+
+        good = [("Cover", short), ("Section", short), ("Body", long), ("Close", short)]
+        e = deck(good)
+        results.append(("deck passes", not e, e))
+        no_deck = run(build("nodeck")).errors
+        results.append(("deck absent is green", not no_deck, no_deck))
+        for label, slides, kw in (
+            ("deck divider floor needs the AB0000 background", good, {"panel": ()}),
+            ("deck empty notes", [*good[:2], ("Body", ""), good[3]], {}),
+            ("deck short content notes", [*good[:2], ("Body", short), good[3]], {}),
+            ("deck short closing notes", [*good[:3], ("Close", "few words")], {}),
+            ("deck wrong creator", good, {"creator": "Someone"}),
+            ("deck em dash", [*good[:2], ("Body", long + " a \u2014 b"), good[3]], {}),
+            ("deck en dash", [*good[:2], ("Body " + "\u2013", long), good[3]], {}),
+            ("deck chapter reference", [*good[:2], ("Body", long + " see Chapter 7"), good[3]], {}),
+            ("deck chapter in words", [*good[:2], ("Body", long + " in the outbox chapter"), good[3]], {}),
+            ("deck self-reference", [*good[:2], ("Body", long + " in this chapter"), good[3]], {}),
+            ("deck this deck", [*good[:2], ("Body", long + " this deck covers"), good[3]], {}),
+            ("deck slide number", [*good[:2], ("Body", long + " on slide 4"), good[3]], {}),
+            ("deck next slide", [*good[:2], ("Body", long + " the next slide shows"), good[3]], {}),
+            ("deck shown earlier", [*good[:2], ("Body", long + " as shown earlier"), good[3]], {}),
+            ("deck from before", [*good[:2], ("Body", long + " the figure from before"), good[3]], {}),
+            ("deck as we saw", [*good[:2], ("Body", long + " as we saw"), good[3]], {}),
+            ("deck covered later", [*good[:2], ("Body", long + " covered later"), good[3]], {}),
+            ("deck comes later", [*good[:2], ("Body", long + " the detail comes later"), good[3]], {}),
+            ("deck earlier on", [*good[:2], ("Body", long + " earlier on"), good[3]], {}),
+            ("deck capitalised service", [*good[:2], ("Body", long + " Order-service publishes"), good[3]], {}),
+            ("deck capitalised ksqlDB", [*good[:2], ("Body", long + " KsqlDB is not used"), good[3]], {}),
+            ("deck positional above", [*good[:2], ("Body", long + " the table above"), good[3]], {}),
+            ("deck the book off the last slide", [*good[:2], ("Body", long + " as the book says"), good[3]], {}),
+            ("deck the site off the last slide", [*good[:2], ("Body", long + " on the site"), good[3]], {}),
+        ):
+            e = deck(slides, **kw)
+            results.append((f"{label} caught", bool(e), e))
+        for label, slides in (
+            ("deck plain above is fine", [*good[:2], ("Body", long + " a weight above 30 kg"), good[3]]),
+            ("deck earlier offsets is fine", [*good[:2], ("Body", long + " the earlier offsets are replayed"), good[3]]),
+            ("deck an earlier version is fine", [*good[:2], ("Body", long + " an earlier version of the event"), good[3]]),
+            ("deck comes later than is fine", [*good[:2], ("Body", long + " the payment event comes later than the shipment"), good[3]]),
+            ("deck lower-case service is fine", [*good[:2], ("Body", long + " order-service publishes"), good[3]]),
+            ("deck book pointer on the last slide is fine", [*good[:3], ("Close", short + " the book and the site")]),
+        ):
+            e = deck(slides)
+            results.append((label, not e, e))
+        e = deck(good, extra_part="<x>/" + "home/zzqq9/work</x>")
+        results.append(("deck host_ids rule runs over every part (home path)", bool(e), e))
+
+        # ---- SVG cross-references
+        def svg_tree(name: str, fname: str, text: str) -> list[str]:
+            r = build(name)
+            (r / "diagrams" / fname).write_text(f'<svg xmlns="http://www.w3.org/2000/svg"><text x="1">{text}</text></svg>')
+            return run(r).errors
+
+        e = svg_tree("svgx", "02-x.svg", "See Chapter 7")
+        results.append(("svg chapter reference caught", any("figure text" in x for x in e), e))
+        e = svg_tree("svgx2", "02-x.svg", "Parts 1 to 5")
+        results.append(("svg part reference caught", any("figure text" in x for x in e), e))
+        e = svg_tree("svgx3", "ad-map.svg", "See Chapter 7")
+        results.append(("svg ad-* exempt", not any("figure text" in x for x in e), e))
+        e = svg_tree("svgx4", "02-x.svg", "Order flows to the broker")
+        results.append(("svg clean text passes", not any("figure text" in x for x in e), e))
+
+        # ---- dash coverage for the deck sources
+        r = build("deckdash")
+        (r / "lgtm-presentation/sections").mkdir(parents=True)
+        (r / "lgtm-presentation/text").mkdir()
+        (r / "lgtm-presentation/sections/01-a.js").write_text("// a \u2014 b\n")
+        (r / "lgtm-presentation/text/d.md").write_text("ok\n")
+        e = run(r).errors
+        results.append(("deck source dash caught", any("sections/01-a.js:1" in x for x in e), e))
+        (r / "lgtm-presentation/sections/01-a.js").write_text("// a, b\n")
+        e = run(r).errors
+        results.append(("deck source clean passes", not any("em dash" in x for x in e), e))
 
     ok = True
     for name, passed, errs in results:
