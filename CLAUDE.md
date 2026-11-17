@@ -232,6 +232,13 @@ PRD §14, decided:
 - Appendices B and F run on the Part 6 substrate; F deploys the notification and order services unchanged. Blue-green copies committed offsets with `kafka-consumer-groups.sh --reset-offsets --from-file`; nothing is missed, the re-read is bounded, not zero. An HTTP rollout loses a fraction of a percent of requests as connection resets, stated as measured; no graceful-shutdown demo.
 - Each chapter stands alone (owner rule, 2026-11-16): see Chapter spine and writing rules.
 
+2026-11-16 (r13b, Appendix H on OpenShift Local):
+
+- The orchestrator starts CRC itself (`crc setup`, `crc start`; owner, 2026-11-16) and never changes `crc config`. CRC 2.64.0 / OpenShift 4.22.14 held. After the runs: full teardown, `crc stop`, `crc delete -f`; the bundle stays cached.
+- Kafka on CRC is the Strimzi community operator 1.3.1 (community-operators, channel `strimzi-1.x`), Kafka 4.3.2 as Part 6. AMQ Streams is not installed: it is "provided through a software subscription" (no-fees rule), ships Kafka 4.2 only and is untested on OpenShift 4.22. CloudNativePG 1.30.1 comes from certified-operators (EDB-published upstream build). Both pinned by `startingCSV`, Manual approval, only the named InstallPlan approved.
+- No Helm, no S2I, no LGTM on CRC. `buildah build` of chapter 08's unchanged Containerfile, `skopeo copy --preserve-digests --dest-cert-dir --dest-registry-token` into the internal registry (CA from configmap `default-ingress-cert`, never `router-certs-default`); Deployment by digest; `QUARKUS_OTEL_SDK_DISABLED=true`. Never `--tls-verify=false`, `curl -k`, `oc proxy` (validate.py enforces in `examples/ah-*`).
+- install.sh refuses when Strimzi or CloudNativePG CRDs already exist; teardown.sh refuses when another install owns them, deletes the 8 OLM ClusterRoles only by exact name and owner label, and guards the cluster-wide `oc adm prune images` by its dry-run candidate list.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.

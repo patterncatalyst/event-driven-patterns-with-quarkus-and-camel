@@ -219,13 +219,13 @@ r13b steps (after r13.0):
 
 | Step | Work | Owner | Depends | Status |
 |---|---|---|---|---|
-| b0 | Preflight: no compose, no minikube; orchestrator runs `crc setup` and `crc start` (decision 19 amended); inventory `oc get sub,csv -A` and non-system namespaces | owner, orchestrator | r13.0 | in progress (2026-11-16: branch cut from main at 7511c2e; no compose, no minikube; crc 2.64.0, bundle 4.22.14 cached, no VM; pull secret file present; oc, podman, buildah, skopeo on PATH) |
+| b0 | Preflight: no compose, no minikube; orchestrator runs `crc setup` and `crc start` (decision 19 amended); inventory `oc get sub,csv -A` and non-system namespaces | owner, orchestrator | r13.0 | done (CRC started by the orchestrator after `crc setup` unpacked the cached bundle; inventory: only packageserver) |
 | b1 | Survey on the cluster: Strimzi community and CNPG packagemanifests (channel, CSV); sources rows H | exec b1 | b0 | docs half done 2026-11-16 (`## r13b sources`, 53 rows; AMQ Streams dropped by owner, decision 22 amended); cluster half done in bG0 (HF2) |
 | bG0 | CRC spike: H-Q1 to H-Q7 (below) | exec bG0 | b1 | done 2026-11-16 (HF1 to HF13; CRC started by orchestrator 20:25 to 20:28) |
-| b2 | `ah-openshift-local` scripts, overlays, README, page, appendix, figures; validate CRC branch; stack-guard `--crc` | exec b2, orchestrator | bG0 | pending |
-| b3 | Live: install, build, copy, verify, demo once; full teardown; reinstall and verify again (the second clean run; proves teardown and install repeat) | orchestrator | b2 | pending |
-| b4 | Teardown evidence, `crc stop`, `crc delete -f` (decision 20) | orchestrator | b3 | pending |
-| b5 | Opus validation (static and evidence; at most 2 rounds); ship r13b.0 | validator, orchestrator | b4 | pending |
+| b2 | `ah-openshift-local` scripts, overlays, README, page, appendix, figures; validate CRC branch; stack-guard `--crc` | exec b2, orchestrator | bG0 | done (examples/ah-openshift-local, page, example page, 2 figures, validate CRC branch, stack-guard --crc) |
+| b3 | Live: install, build, copy, verify, demo once; full teardown; reinstall and verify again (the second clean run; proves teardown and install repeat) | orchestrator | b2 | done (orchestrator runs 1 and 2, 20/20 each, clean teardowns; final run after round-2 fixes 20/20) |
+| b4 | Teardown evidence, `crc stop`, `crc delete -f` (decision 20) | orchestrator | b3 | done (teardown inventory empty; `crc stop`, `crc delete -f`; bundle kept; docker 104 images before and after) |
+| b5 | Opus validation (static and evidence; at most 2 rounds); ship r13b.0 | validator, orchestrator | b4 | done (2 Opus rounds: r1 FIX, 2 High fixed in repair 1; r2 PASS, Medium and Low fixed by the orchestrator) |
 
 r13b G0 questions:
 
