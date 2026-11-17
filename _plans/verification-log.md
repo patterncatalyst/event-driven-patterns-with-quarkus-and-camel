@@ -815,3 +815,62 @@ Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appen
 | final (orchestrator, after round-2 fixes) | 131 s | 60 s | 10 s | 43 s, 20/20 | 45 s | none of ours; 29 CRDs and ClusterRoles deleted by owner label |
 
 Docker image count 104 before and after; podman keeps only the two UBI 10 base images.
+
+## r14 full re-run (2026-11-17)
+
+Freeze F = 3c1f626. Orchestrator, `scripts/verify-all.sh`, one window at a time under the stack lock, fresh containers or a fresh minikube profile per window; logs filtered through `host_ids.py filter` (`<scratchpad>/r14-run/W*/`). Appendix H not re-run (decision: `git diff 02bfec9..F` touches no `examples/ah-*`, no 08 order-service and not the `--crc` branch of `stack-guard.sh`).
+
+W1 `--mvn`: domain-model installed, then 32 more poms, all BUILD SUCCESS (33 poms, 1811 s).
+
+| Example | Checks | Wall | Teardown | Window | Log |
+|---|---|---|---|---|---|
+| 00-stack-check | 17/17 | 112 s | clean | W2 | `00-stack-check.log` |
+| 01-crud-vs-events | 19/19 | 101 s | clean | W2 | `01-crud-vs-events.log` |
+| 02-event-notification | 21/21 | 169 s | clean | W2 | `02-event-notification.log` |
+| 03-event-carried-state-transfer | 30/30 | 194 s | clean | W2 | `03-event-carried-state-transfer.log` |
+| 04-ordering-and-partitioning | 28/28 | 196 s | clean | W2 | `04-ordering-and-partitioning.log` |
+| 05-optimizing-publishers | 24/24 | 139 s | clean | W2 | `05-optimizing-publishers.log` |
+| 06-optimizing-subscribers | 36/36 | 543 s | clean | W2 | `06-optimizing-subscribers.log` |
+| 07-queues-for-kafka | 27/27 | 179 s | clean | W2 | `07-queues-for-kafka.log` |
+| 08-transactional-outbox | 27/27 | 213 s | clean | W2 | `08-transactional-outbox.log` |
+| 09-log-tailing-with-debezium | 35/35 | 312 s | clean | W2 | `09-log-tailing-with-debezium.log` |
+| 10-managing-connector-offsets | 40/40 | 216 s | clean | W2 | `10-managing-connector-offsets.log` |
+| 11-idempotent-consumer-and-inbox | 29/29 | 219 s | clean | W2 | `11-idempotent-consumer-and-inbox.log` |
+| 12-exactly-once-with-kafka-transactions | 21/21 | 199 s | clean | W2 | `12-exactly-once-with-kafka-transactions.log` |
+| 13-retry-and-dead-letter | 31/31 | 152 s | clean | W2 | `13-retry-and-dead-letter.log` |
+| 14-aggregate-root-and-event-store | 33/33 | 269 s | clean | W2 | `14-aggregate-root-and-event-store.log` |
+| 15-snapshots | 27/27 | 102 s | clean | W2 | `15-snapshots.log` |
+| 16-cqrs-and-projections | 29/29 | 207 s | clean | W2 | `16-cqrs-and-projections.log` |
+| 17-aggregate-replay-or-projection | 22/22 | 184 s | clean | W2 | `17-aggregate-replay-or-projection.log` |
+| 18-schema-evolution-and-upcasting | 21/21 | 151 s | clean | W2 | `18-schema-evolution-and-upcasting.log` |
+| 19-enrich | 20/20 | 237 s | clean | W2 | `19-enrich.log` |
+| 20-join | 24/24 | 194 s | clean | W2 | `20-join.log` |
+| 21-aggregate | 22/22 | 193 s | clean | W2 | `21-aggregate.log` |
+| 22-saga | 30/30 | 257 s | clean | W2 | `22-saga.log` |
+| 23-orchestrated-sagas | 33/33 | 333 s | clean | W2 | `23-orchestrated-sagas.log` |
+| 24-decisions-on-events | 17/17 | 438 s | clean | W2 | `24-decisions-on-events.log` |
+| 25-tracing-across-async-hops | 22/22 | 207 s | clean | W2 | `25-tracing-across-async-hops.log` |
+| 26-metrics-for-event-flows | 37/37 | 227 s | clean | W2 | `26-metrics-for-event-flows.log` |
+| 27-correlated-logs-and-traces | 31/31 | 255 s | clean | W2 | `27-correlated-logs-and-traces.log` |
+| 28-strimzi-and-kraft | 39/39 | 350 s | 45 s | W4 | `28-strimzi-and-kraft.log` |
+| 29-unidirectional-topic-operator | 17/17 | 192 s | 43 s | W4 | `29-unidirectional-topic-operator.log` |
+| 30-server-side-apply | 25/25 | 109 s | 58 s | W4 | `30-server-side-apply.log` |
+| 31-security-context-and-pod-security | 26/26 | 88 s | 43 s | W4 | `31-security-context-and-pod-security.log` |
+| 32-monitoring-strimzi | 20/20 | 142 s | 37 s | W4 | `32-monitoring-strimzi.log` |
+| 33-cruise-control | 17/17 | 887 s | 11 s | W4 | `33-cruise-control.log` |
+| 34-mirrormaker-2 | 18/18 | 165 s | 30 s | W4 | `34-mirrormaker-2.log` |
+| 35-debezium-and-connect-on-strimzi | 25/25 | 318 s | 43 s | W4 | `35-debezium-and-connect-on-strimzi.log` |
+| ab-compose-to-kubernetes:k8s | 9/9 | 135 s | 18 s | W5 | `ab-compose-to-kubernetes-k8s.log` |
+| af-deploying-event-driven-services | 29/30 (fail: check 30, see below) | 432 s | 20 s | W5 | `af-deploying-event-driven-services.log` |
+| af-deploying-event-driven-services | 30/30 | 470 s | 35 s | W5b | `af-deploying-event-driven-services.log` |
+| aa-testing-event-driven-code | 7/7 | 176 s | clean | W6 | `aa-testing-event-driven-code.log` |
+| ab-compose-to-kubernetes:compose | 9/9 | 71 s | clean | W6 | `ab-compose-to-kubernetes-compose.log` |
+| ac-querying-streams-without-ksqldb | 18/18 | 122 s | clean | W6 | `ac-querying-streams-without-ksqldb.log` |
+| ae-resequencing-across-partitions | 23/23 | 246 s | clean | W6 | `ae-resequencing-across-partitions.log` |
+| ag-write-forward-cache | 24/24 | 215 s | clean | W6 | `ag-write-forward-cache.log` |
+| ab-compose-to-kubernetes:compare | 23/23 | 1 s | clean | W6 | `ab-compose-to-kubernetes-compare.log` |
+| ah-openshift-local | not re-run: decision | | | | r13b runs, 20/20 |
+
+Window walls: W2+W3 6198 s (compose 00 to 27), W4 2251 s (plus profile create and delete), W5 567 s, W5b 470 s, W6 831 s. Profiles: three created and deleted (W4, W5, W5b). Every compose teardown clean; every k8s teardown at most 58 s. After the last window: no compose container or volume, no minikube profile, no CRC; `edp-ollama-models` present.
+
+Appendix F check 30 failed in W5 (29/30): `published_for_failed=2`. The check asserted that a request the client saw fail leaves no event, but the order-service publishes before it answers, so a request whose connection fails after the publish has left its event (2 of 11 failed requests). Fix (after F): `tools/http.py retry` posts every failed order id again; check 30 asserts each retry is answered 201 or 409 and every order then has exactly one event (`missing=0 duplicate=0 unresolved=0`); prose, Figure F.7, README rows 29, 30 and the measured paragraph updated; AF-12 cut and restated, AF-13 widened to 0.2 to 0.5 percent over seven runs. W5b on a fresh profile: 30/30, 6 failed requests, all 6 retries answered 201.

@@ -78,7 +78,7 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 18 | the blue group is Empty within 60 s of the scale-down |
 | 19 | the green group holds blue's committed offsets, partition by partition |
 | 20 | every one of the 4,000 records has a row in blue or green |
-| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over eight clean runs (bound 742 to 788) |
+| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over eight clean runs (bound 742 to 1,150) |
 | 22 | the green group is Empty within 60 s of the scale-down |
 | 23 | the blue group holds green's committed offsets, partition by partition |
 | 24 | every one of the 3,000 records of the rollback range has a row in blue or green |
@@ -86,8 +86,8 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 26 | without a rollout every request is answered 201, 1,584 of 1,584 in each of the six clean runs |
 | 27 | the rollout ran while requests were flowing |
 | 28 | no request was answered with a 5xx status |
-| 29 | failed requests stay below 2 percent, 0.2 to 0.3 percent over five clean runs |
-| 30 | a retry of an accepted order is answered 409, every 201 left exactly one event and a failed request left none |
+| 29 | failed requests stay below 2 percent, 0.2 to 0.5 percent over seven clean runs |
+| 30 | a retry of an accepted order is answered 409; every failed request is retried, each retry is answered 201 or 409, and then each order has exactly one event |
 
 Notes on how the checks read their evidence:
 
@@ -108,6 +108,6 @@ Each run starts from fresh namespaces. The failing sets are frozen after the liv
 
 ## Measurements
 
-Redelivery depends on timing and can be zero. In six clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384 and 0), and the stop and restart delivered 0 to 460 again over eight runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 18 s from the blue scale-down to green live (8 s without the offset copy).
+Redelivery depends on timing and can be zero. In six clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384 and 0), and the stop and restart delivered 0 to 460 again over eight runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 20 s from the blue scale-down to green live (8 s without the offset copy).
 
-Requests in flight when a pod of `order-service` is removed can fail at the connection level. In five clean runs 5, 8, 5, 5 and 8 of about 2,380 to 2,390 requests failed and none was answered with a 5xx status; in the two runs that split them, the failures were 1 reset and 4 timeouts, and 4 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it.
+Requests in flight when a pod of `order-service` is removed can fail at the connection level. In seven clean runs 5, 8, 5, 5, 8, 11 and 6 of about 2,380 to 2,391 requests failed and none was answered with a 5xx status; in the four runs that split them, the failures were 1 reset and 4 timeouts, 4 resets and 4 timeouts, 7 resets and 4 timeouts, and 2 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it. In one run 2 of the 11 failed requests had been accepted before the connection failed, and their events were on the topic; in the first run that retried every failed request, all 6 retries were answered 201.

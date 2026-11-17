@@ -5,8 +5,9 @@
                                                          creates the flowing file once the first request is answered
   http.py post <order id>                                one POST of that order id; prints the status (a retry of an accepted order)
   http.py report <out-file>                              requests, failed (split into reset, timeout and refused), 5xx and the time of the first and last request
-  http.py once <out-file>...                             reads kafka-console-consumer output (key, tab, value) on stdin
-                                                         and checks one event per 201 and none for a failed request
+  http.py retry <retry-file> <out-file>...               posts every failed order id once more; writes one line per retry
+  http.py once <retry-file> <out-file>...                reads kafka-console-consumer output (key, tab, value) on stdin
+                                                         and checks one event per order answered 201 by its request or its retry
 The out file has one line per request: <time> <order id> <status or error name>.
 """
 
@@ -88,18 +89,36 @@ def report(path):
     out(f"requests={len(rows)} failed={failed} reset={reset} timeout={timeout} refused={refused} status5xx={five} first={min(times):.3f} last={max(times):.3f}")
 
 
-def once(paths, text):
+def retry(retry_path, paths):
+    """A failed request may or may not have been accepted before its connection failed; its retry tells which."""
+    with open(retry_path, "w", encoding="utf-8") as f:
+        for path in paths:
+            for _, oid, code in read(path):
+                if code != "201":
+                    t = time.time()
+                    try:
+                        status = str(post(oid))
+                    except Exception as e:
+                        status = type(e).__name__
+                    f.write(f"{t:.3f} {oid} {status}\n")
+
+
+def once(retry_path, paths, text):
     published = collections.Counter(line.split("\t")[0] for line in text.splitlines() if line.startswith("O-"))
-    missing = duplicate = for_failed = 0
+    retried = {oid: code for _, oid, code in read(retry_path)}
+    missing = duplicate = unresolved = accepted_before_retry = 0
     for path in paths:
         for _, oid, code in read(path):
+            if code != "201":
+                code = retried.get(oid, "none")
+                if code not in ("201", "409"):
+                    unresolved += 1
+                    continue
+                accepted_before_retry += code == "409"
             n = published.get(oid, 0)
-            if code == "201":
-                missing += n == 0
-                duplicate += n > 1
-            else:
-                for_failed += n > 0
-    out(f"missing={missing} duplicate={duplicate} published_for_failed={for_failed}")
+            missing += n == 0
+            duplicate += n > 1
+    out(f"missing={missing} duplicate={duplicate} unresolved={unresolved} accepted_before_retry={accepted_before_retry}")
 
 
 if __name__ == "__main__":
@@ -110,7 +129,9 @@ if __name__ == "__main__":
         sys.stdout.write(f"{post(sys.argv[2])}\n")
     elif cmd == "report":
         report(sys.argv[2])
+    elif cmd == "retry":
+        retry(sys.argv[2], sys.argv[3:])
     elif cmd == "once":
-        once(sys.argv[2:], sys.stdin.read())
+        once(sys.argv[2], sys.argv[3:], sys.stdin.read())
     else:
         sys.exit(f"unknown command {cmd}")

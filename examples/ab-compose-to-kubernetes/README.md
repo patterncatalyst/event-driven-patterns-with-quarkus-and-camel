@@ -70,4 +70,4 @@ Each run starts from fresh containers or namespaces. `DRIFT=partitions` is demo 
 
 ## Timings
 
-Compose half: 70 to 71 s from `down -v` to `down -v`, images already present. Kubernetes half: 2 min to 2 min 14 s on a warm profile, of which the captures take about a minute and the deletion of the namespaces 18 to 19 s. `cluster.sh up` on a fresh profile took 41 to 44 s with the images and manifests cached.
+Compose half: 70 to 71 s from `down -v` to `down -v`, images already present. Kubernetes half: 2 min to 2 min 15 s on a warm profile, of which the captures take about a minute and the deletion of the namespaces 18 to 19 s. `cluster.sh up` on a fresh profile took 41 to 44 s with the images and manifests cached.

@@ -79,7 +79,7 @@ Checks 9, 13 and 16 depend on the group offset sync. They are the negative witne
 
 `verify.sh` prints each value on a `measured:` line; ranges are over the verified runs.
 
-- The `Kafka` `edp-dr` Ready: 33 to 37 s after its creation. `edp-mm2` Ready: 68 to 74 s.
+- The `Kafka` `edp-dr` Ready: 33 to 37 s after its creation. `edp-mm2` Ready: 68 to 86 s.
 - Group offsets on `edp-dr` with 5 s intervals and `offset.lag.max: 0`: 6 to 7 s after the five orders were notified and the record counts on both clusters matched. With the default `offset.lag.max` of 100, a cluster spike found the group still behind the source after 140 s.
 - From the change of the bootstrap address to the five orders notified: 7 to 8 s.
-- Deleting the mirror, both clusters, the apps and the three namespaces: 33 to 68 s.
+- Deleting the mirror, both clusters, the apps and the three namespaces: 30 to 68 s.

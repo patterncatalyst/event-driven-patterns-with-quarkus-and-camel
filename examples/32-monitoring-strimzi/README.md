@@ -71,4 +71,4 @@ In-run changes to the Kafka resource use `kubectl patch --type merge`; the initi
 | Topic raised from 3 to 6 partitions to Ready 0 with `NotSupported` | 18 to 39 s over six runs (the Topic Operator reconciles every 15 s) |
 | `allowList` patched to the family gone from the endpoint | 1 to 3 s, pods unchanged |
 | `metricsConfig` removed (`METRICS=off`), pods rolled to Ready | about 75 s; restoring it rolls them again |
-| Deleting the topics, Kafka and the three namespaces | 38 to 47 s |
+| Deleting the topics, Kafka and the three namespaces | 37 to 47 s |
