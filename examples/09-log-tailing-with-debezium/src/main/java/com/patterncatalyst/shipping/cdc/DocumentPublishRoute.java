@@ -1,6 +1,7 @@
 package com.patterncatalyst.shipping.cdc;
 
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.kafka.KafkaConstants;
 
 import com.patterncatalyst.shipping.Topics;
 
@@ -14,6 +15,7 @@ public class DocumentPublishRoute extends RouteBuilder {
                 .choice()
                     .when(body().isNotNull()).marshal().json()
                 .end()
-                .toD("kafka:" + Topics.INVENTORY_ITEMS + "?key=${header.sku}");
+                .setHeader(KafkaConstants.KEY, header("sku"))
+                .to("kafka:" + Topics.INVENTORY_ITEMS);
     }
 }

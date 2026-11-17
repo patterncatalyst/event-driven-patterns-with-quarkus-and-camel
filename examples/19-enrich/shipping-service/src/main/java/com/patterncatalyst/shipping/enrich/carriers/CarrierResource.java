@@ -15,7 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 /**
  * The lookup the Content Enricher calls for every shipment. The PUT is demo code: it stands for an operator changing a
  * carrier's tracking page. Publishing the change to the compacted topic is the owner's job in a real service, through
- * the outbox of chapter 8 or the log tailing of chapter 9; the example's verify.sh publishes it instead.
+ * a transactional outbox or log tailing; the example's verify.sh publishes it instead.
  */
 @Path("/carriers/{carrier}")
 @Produces(MediaType.APPLICATION_JSON)

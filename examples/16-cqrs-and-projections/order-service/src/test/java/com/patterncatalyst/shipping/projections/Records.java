@@ -15,6 +15,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.awaitility.Awaitility;
 
 import com.patterncatalyst.shipping.Carrier;
 import com.patterncatalyst.shipping.Order;
@@ -90,14 +91,8 @@ final class Records {
         }
     }
 
-    static void await(BooleanSupplier condition) throws Exception {
-        long end = System.nanoTime() + Duration.ofSeconds(60).toNanos();
-        while (System.nanoTime() < end) {
-            if (condition.getAsBoolean()) {
-                return;
-            }
-            Thread.sleep(200);
-        }
-        throw new AssertionError("condition not met within 60 seconds");
+    static void await(BooleanSupplier condition) {
+        Awaitility.await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofMillis(200))
+                .until(condition::getAsBoolean);
     }
 }

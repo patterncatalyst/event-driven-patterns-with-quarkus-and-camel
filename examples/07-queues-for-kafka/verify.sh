@@ -53,7 +53,7 @@ fail_loudly() { printf 'PRECONDITION FAILED: %s\n' "$1" >&2; exit 1; }
 
 kafka() { docker exec edp-kafka "/opt/kafka/bin/$1" --bootstrap-server localhost:9092 "${@:2}"; }
 sql() { "${PSQL[@]}" -c "$1"; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep '"traceID"' >/dev/null; }
 
 members_stable() { # every member has a share-partition assignment, and two reads 3 s apart agree
     local a b

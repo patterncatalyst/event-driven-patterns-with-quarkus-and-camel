@@ -10,7 +10,7 @@ import com.patterncatalyst.shipping.Carrier;
 import com.patterncatalyst.shipping.OrderStatus;
 
 /**
- * The order aggregate of chapter 14, reduced to what this chapter needs: it is rebuilt from its stream, decides a
+ * The order aggregate, reduced to what this example needs: it is rebuilt from its stream, decides a
  * command against its state and returns the events that follow. A replay folds one of these per stream.
  */
 public final class OrderAggregate {

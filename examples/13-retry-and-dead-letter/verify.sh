@@ -107,7 +107,7 @@ group_lag_zero() {
     kafka kafka-consumer-groups.sh --describe --group "$1" 2>/dev/null | awk -v t="$TOPIC" '
         $2 == t && $3 == 0 {seen = 1; if ($4 == "-" || $6 != 0) bad = 1} END {exit !(seen && !bad)}'
 }
-prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
+prom_holds() { local out; out="$(curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1")" || return 1; [[ "$out" == *'"value"'* ]]; }
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
 

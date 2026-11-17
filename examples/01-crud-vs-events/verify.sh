@@ -43,7 +43,7 @@ status() { curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/
 statuses() { grep -o '"status":"[A-Z_]*"' | cut -d'"' -f4 | paste -sd, -; }
 count_events() { "${PSQL[@]}" -c "SELECT count(*) FROM order_event WHERE stream_id='$ID'"; }
 count_all() { "${PSQL[@]}" -c "SELECT count(*) FROM order_event"; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode 'tags=service.name=crud-vs-events' | grep -q '"traceID"'; }
+tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode 'tags=service.name=crud-vs-events' | grep '"traceID"' >/dev/null; }
 expect() { [[ "$1" == "$2" ]]; } # expect <actual> <expected>
 refused() { ! "${PSQL[@]}" -c "$1" ; } # the statement must fail
 

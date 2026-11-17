@@ -1,6 +1,8 @@
 package com.patterncatalyst.shipping.join;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.awaitility.Awaitility.await;
+
+import java.time.Duration;
 
 import javax.sql.DataSource;
 
@@ -38,12 +40,16 @@ class MemoryRepositoryTest {
             }
         });
         Kafka.reserve(bootstrap, "O-M2", "09:02");
-        Thread.sleep(1500);
+        // The open group O-M2 is held in the JVM, so the table stays empty, sampled over a further 1.5 s.
+        await().during(Duration.ofMillis(1500)).atMost(Duration.ofSeconds(30)).until(() -> rows() == 0);
+    }
+
+    private long rows() throws Exception {
         try (var connection = dataSource.getConnection();
                 var statement = connection.createStatement();
                 var result = statement.executeQuery("SELECT count(*) FROM shipping.readiness")) {
             result.next();
-            assertEquals(0, result.getLong(1), "the group O-M2 is open and is not in the table");
+            return result.getLong(1);
         }
     }
 }

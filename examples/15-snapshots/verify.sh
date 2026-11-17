@@ -89,12 +89,12 @@ sql_quantity() { # the quantity on hand, folded in SQL from the payloads
          FROM inventory.events WHERE stream_id = '$1'"
 }
 
-prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep -q '"value"'; }
+prom_holds() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" | grep '"value"' >/dev/null; } # grep without -q: under pipefail an early exit would fail the pipeline with SIGPIPE
 prom_value() { curl -sf -G "http://localhost:19090/api/v1/query" --data-urlencode "query=$1" \
     | python3 -I -c 'import json, sys; r = json.load(sys.stdin)["data"]["result"]; print(r[0]["value"][1] if r else "none")'; }
 tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 loki_has_log() { local out; out="$(curl -sf -G "http://localhost:3100/loki/api/v1/query_range" --data-urlencode "query={service_name=\"$1\"}")" || return 1; [[ "$out" == *'"values"'* ]]; }
-app_logged() { docker logs "$APP" 2>&1 | grep -qF "$1"; }
+app_logged() { docker logs "$APP" 2>&1 | grep -F -- "$1" >/dev/null; } # no -q: pipefail + SIGPIPE
 
 # --- seed and state checks -----------------------------------------------------------------------------------------
 seed_counts() { expect "$(event_count SKU-1501)/$(event_count SKU-1502)/$(event_count SKU-1503)/$(sql 'SELECT count(*) FROM inventory.snapshots')" "1000/10000/100000/0"; }

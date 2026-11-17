@@ -1,9 +1,10 @@
 package com.patterncatalyst.shipping.join;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
+import java.time.Duration;
 
 import javax.sql.DataSource;
 
@@ -87,8 +88,8 @@ class CamelAggregationTest {
         Kafka.pay(bootstrap, "O-C6", "09:00");
         Kafka.await(() -> unchecked(() -> rows("readiness", "O-C6") == 1));
         Kafka.await(() -> unchecked(() -> rows("readiness", "O-C6") == 0));
-        Thread.sleep(1500);
-        assertTrue(camel("O-C6").isEmpty(), "a payment with no reservation says nothing");
+        // A payment with no reservation says nothing: the output stays empty, sampled over a further 1.5 s.
+        await().during(Duration.ofMillis(1500)).atMost(Duration.ofSeconds(30)).until(() -> unchecked(() -> camel("O-C6").isEmpty()));
     }
 
     private interface Check {

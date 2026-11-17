@@ -2,6 +2,7 @@ package com.patterncatalyst.shipping.cache;
 
 import java.net.URI;
 
+import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -11,7 +12,6 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 
 @Path("/orders")
 public class OrderResource {
@@ -31,21 +31,21 @@ public class OrderResource {
 
     @POST
     @Path("{id}/cancel")
-    public OrderView cancel(@PathParam("id") String id) {
+    public OrderView cancel(@RestPath String id) {
         return service.cancel(id);
     }
 
     /** Reads Redis and nothing else: a cache miss is a 404, never a fallback to the database. */
     @GET
     @Path("{id}")
-    public OrderView get(@PathParam("id") String id) throws JsonProcessingException {
+    public OrderView get(@RestPath String id) throws JsonProcessingException {
         return cache.find(id).orElseThrow(NotFoundException::new);
     }
 
     /** The source of truth, for comparison with the cache. */
     @GET
     @Path("{id}/db")
-    public OrderView fromDatabase(@PathParam("id") String id) {
+    public OrderView fromDatabase(@RestPath String id) {
         return service.fromDatabase(id);
     }
 }

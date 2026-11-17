@@ -52,7 +52,7 @@ fail_loudly() { printf 'PRECONDITION FAILED: %s\n' "$1" >&2; exit 1; }
 kafka() { docker exec edp-kafka "/opt/kafka/bin/$1" --bootstrap-server localhost:9092 "${@:2}"; }
 sql() { "${PSQL[@]}" -c "$1"; }
 sql_script() { "${PSQL[@]}" -q -f -; }
-tempo_has_trace() { curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1" | grep -q '"traceID"'; }
+tempo_has_trace() { local out; out="$(curl -sf -G "http://localhost:3200/api/search" --data-urlencode "tags=service.name=$1")" || return 1; [[ "$out" == *'"traceID"'* ]]; }
 py() { python3 -I -c "$@"; }
 
 # --- Kafka Connect REST ---
@@ -132,8 +132,9 @@ make_slot_lost() { # one batch of WAL is enough; the loop is a bound, not an exp
     return 1
 }
 offsets_topic_has_key() {
-    kafka kafka-console-consumer.sh --topic edp-connect-offsets --from-beginning --timeout-ms 5000 --property print.key=true 2>/dev/null \
-        | grep -qF "[\"$NAME\",{\"server\":\"edp\"}]"
+    local out
+    out="$(kafka kafka-console-consumer.sh --topic edp-connect-offsets --from-beginning --timeout-ms 5000 --property print.key=true 2>/dev/null)" || return 1
+    [[ "$out" == *"[\"$NAME\",{\"server\":\"edp\"}]"* ]]
 }
 connect_logged_unobtainable_slot() { local log; log="$(docker logs edp-connect 2>&1)"; [[ "$log" == *"Cannot obtain valid replication slot"* ]]; } # no pipe: grep -q would SIGPIPE docker logs under pipefail
 stays() { # stays <seconds> <command...>: the command succeeds now and keeps succeeding for the whole period

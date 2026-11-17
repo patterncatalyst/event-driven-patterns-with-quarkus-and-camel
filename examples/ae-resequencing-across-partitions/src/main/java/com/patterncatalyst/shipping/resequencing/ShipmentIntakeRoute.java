@@ -26,7 +26,7 @@ public class ShipmentIntakeRoute extends RouteBuilder {
         if ("none".equals(mode)) {
             intake.to("direct:apply");
         } else {
-            intake.to("direct:" + mode);
+            intake.to("direct:{{resequencer.mode}}");
         }
     }
 }

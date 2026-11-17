@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.Instant;
 
 import org.hibernate.exception.ConstraintViolationException;
+import org.jboss.resteasy.reactive.RestPath;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
@@ -15,7 +16,6 @@ import jakarta.transaction.RollbackException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 
 @Path("/orders")
 public class OrderResource {
@@ -38,7 +38,7 @@ public class OrderResource {
 
     @GET
     @Path("{id}")
-    public RestResponse<OrderView> get(@PathParam("id") String id) {
+    public RestResponse<OrderView> get(@RestPath String id) {
         OrderEntity order = OrderEntity.findById(id);
         SagaEntity state = SagaEntity.findById(id);
         if (order == null || state == null) {
