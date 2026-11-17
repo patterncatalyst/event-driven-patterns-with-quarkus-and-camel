@@ -73,8 +73,8 @@ summary() {
 
 # ---- access -------------------------------------------------------------------------------------
 
-http_get() { curl -sf "$1"; }
-ready() { curl -sf "http://127.0.0.1:$1/q/health/ready"; } # ready <nodeport>
+http_get() { curl -sf --max-time 10 "$1"; }
+ready() { curl -sf --max-time 5 "http://127.0.0.1:$1/q/health/ready"; } # ready <nodeport>
 
 kafka_exec_on() { # kafka_exec_on <pod> <tool> <args...>: a Kafka CLI tool in that broker pod (any cluster), bootstrap added
     local pod="$1" tool="$2"; shift 2
@@ -98,7 +98,7 @@ group_offsets_copy() { # group_offsets_copy <from> <to>: copy committed offsets 
     csv=$(kafka_exec kafka-consumer-groups.sh --group "$from" --reset-offsets --to-current --all-topics \
             --dry-run --export 2>/dev/null) || return 1
     [[ -n "$csv" ]] || { echo "group_offsets_copy: $from has no committed offsets" >&2; return 1; }
-    kc -n edp-kafka exec -i edp-broker-0 -- sh -c 'cat > /tmp/edp-offsets.csv' <<<"$csv"
+    kc -n "$NS_KAFKA" exec -i edp-broker-0 -- sh -c 'cat > /tmp/edp-offsets.csv' <<<"$csv"
     kafka_exec kafka-consumer-groups.sh --group "$to" --reset-offsets --from-file /tmp/edp-offsets.csv --execute >/dev/null
 }
 connect_get() { # connect_get <path> [connect-pod]: read-only GET on a Connect worker, for status and offsets. Changes go through the CRs.
@@ -123,10 +123,12 @@ prom_query() { # prom_query <promql>: prints the scalar of a one-series result, 
     python3 -I "$_LIB_DIR/tools/prom.py" "$PROM" "$1"
 }
 grafana_dashboard() { # grafana_dashboard <uid>: Grafana serves the provisioned dashboard
-    [[ "$(curl -s -o /dev/null -w '%{http_code}' "$GRAFANA/api/dashboards/uid/$1")" == "200" ]]
+    [[ "$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$GRAFANA/api/dashboards/uid/$1")" == "200" ]]
 }
 prom_has() { # prom_has <metric> <service>: Prometheus holds a sample of the metric for the service
-    curl -sf -G "$PROM/api/v1/query" --data-urlencode "query=$1{service_name=\"$2\"}" | grep -q '"value"'
+    local out
+    out="$(curl -sf --max-time 10 -G "$PROM/api/v1/query" --data-urlencode "query=$1{service_name=\"$2\"}")" || return 1
+    [[ "$out" == *'"value"'* ]]
 }
 
 # ---- images -------------------------------------------------------------------------------------
@@ -300,10 +302,9 @@ _wait_apps() { # every Deployment in edp rolled out, every Job complete
     fi
     # A Ready pod is not yet reachable through the published NodePort: wait until the published ports answer.
     if [[ -n "$(kc -n "$NS_APPS" get deploy -o name 2>/dev/null)" ]]; then
-        local port i
+        local port
         for port in $APP_PORTS; do
-            for i in $(seq 1 60); do ready "$port" >/dev/null 2>&1 && continue 2; sleep 1; done
-            echo "k8s: NodePort $port does not answer" >&2; return 1
+            poll 60 ready "$port" >/dev/null 2>&1 || { echo "k8s: NodePort $port does not answer" >&2; return 1; }
         done
     fi
 }

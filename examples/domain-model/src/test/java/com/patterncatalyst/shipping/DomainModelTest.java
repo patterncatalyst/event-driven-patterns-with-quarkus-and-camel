@@ -36,6 +36,11 @@ class DomainModelTest {
         }
 
         @Test
+        void rejectsAnAmountThatRoundsToZero() {
+            assertThrows(IllegalArgumentException.class, () -> order(1, new BigDecimal("0.004")));
+        }
+
+        @Test
         void rejectsBlankId() {
             assertThrows(IllegalArgumentException.class, () -> new Order(" ", "C-7", "SKU-1", 1, TEN));
         }

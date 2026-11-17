@@ -7,7 +7,7 @@ services:
     entrypoint: []
     command: ["bash", "/opt/edp/start.sh"]
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       - POSTGRES_DB=edp
       - POSTGRES_USER=edp

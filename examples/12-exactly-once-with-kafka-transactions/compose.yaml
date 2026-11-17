@@ -27,7 +27,7 @@ services:
       dockerfile: 12-exactly-once-with-kafka-transactions/payment-service/Containerfile
     container_name: edp-payment-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
       KAFKA_BOOTSTRAP_SERVERS: kafka:9094

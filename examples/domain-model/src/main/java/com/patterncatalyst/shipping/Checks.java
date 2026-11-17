@@ -18,13 +18,14 @@ final class Checks {
         return value;
     }
 
-    /** Requires a positive amount and normalises it to two decimals, HALF_UP. */
+    /** Normalises an amount to two decimals, HALF_UP, and requires the result to be positive. */
     static BigDecimal money(BigDecimal value, String name) {
         Objects.requireNonNull(value, name);
-        if (value.signum() <= 0) {
+        BigDecimal scaled = value.setScale(2, RoundingMode.HALF_UP);
+        if (scaled.signum() <= 0) {
             throw new IllegalArgumentException(name + " must be positive");
         }
-        return value.setScale(2, RoundingMode.HALF_UP);
+        return scaled;
     }
 
     static int positive(int value, String name) {

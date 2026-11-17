@@ -55,7 +55,7 @@ fetch_manifest() { # fetch_manifest <url> <sha256> <relative file>
         echo "cluster: $3 does not match the pinned sha256; delete it to download again" >&2; return 1
     fi
     tmp="$(mktemp)"
-    curl -fsSL -o "$tmp" "$url"
+    curl -fsSL -o "$tmp" "$url" || { rm -f "$tmp"; echo "cluster: download of $3 failed" >&2; return 1; }
     got="$(sha256sum "$tmp" | cut -d' ' -f1)"
     if [[ "$got" != "$want" ]]; then
         rm -f "$tmp"

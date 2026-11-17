@@ -47,7 +47,7 @@ services:
       dockerfile: 18-schema-evolution-and-upcasting/order-service/Containerfile
     container_name: edp-order-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       <<: *app-env
       # Demo code: 1 behaves as the previous release, 2 is the current one, 3 publishes a shippingPriority without a default.
@@ -70,7 +70,7 @@ services:
       dockerfile: 18-schema-evolution-and-upcasting/notification-service/Containerfile
     container_name: edp-notification-service
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     environment:
       <<: *app-env
       # prod (default) reads OrderPlaced through the SmallRye channel; camel-reader reads it through the Camel route.

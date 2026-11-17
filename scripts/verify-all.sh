@@ -90,9 +90,11 @@ fi
 if [[ $list -eq 1 ]]; then printf '%s\n' "${entries[@]}"; exit 0; fi
 
 leftovers() { # compose containers and volumes still present (tooling containers and the model volume excepted)
-    local c v
-    c="$(docker ps -a --filter label=com.docker.compose.project --format '{{.Names}}' | grep -cv '^quarkus-agent-mcp' || true)"
-    v="$(docker volume ls -q --filter label=com.docker.compose.project | grep -cvx 'edp-ollama-models' || true)"
+    local ps vols c v
+    ps="$(docker ps -a --filter label=com.docker.compose.project --format '{{.Names}}')" || { echo "LEFT? docker unreachable"; return; }
+    vols="$(docker volume ls -q --filter label=com.docker.compose.project)" || { echo "LEFT? docker unreachable"; return; }
+    c="$(grep -cv '^quarkus-agent-mcp' <<<"$ps" || true)"; [[ -z "$ps" ]] && c=0
+    v="$(grep -cvx 'edp-ollama-models' <<<"$vols" || true)"; [[ -z "$vols" ]] && v=0
     if [[ "$c" == 0 && "$v" == 0 ]]; then echo clean; else echo "LEFT ${c} container(s), ${v} volume(s)"; fi
 }
 

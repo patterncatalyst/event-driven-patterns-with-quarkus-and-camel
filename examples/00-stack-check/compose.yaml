@@ -14,7 +14,7 @@ services:
       dockerfile: 00-stack-check/Containerfile
     container_name: edp-stack-check
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
       QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318

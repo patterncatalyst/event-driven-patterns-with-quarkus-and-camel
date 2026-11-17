@@ -37,7 +37,7 @@ services:
       dockerfile: 24-decisions-on-events/shipping-service/Containerfile
     container_name: edp-shipping-service
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       <<: *app-env
       # The model recorded on every analysis. The digest is the one scripts/ollama-model.sh pins.
