@@ -1,6 +1,6 @@
 # 17 Aggregate replay or CQRS projection
 
-`order-service` keeps orders as streams of `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` events in PostgreSQL, the event store of chapter 14. One question spans every order: how many orders each carrier shipped each UTC day. `ReplayReport` answers it by folding every `OrderAggregate` on request. `CarrierDailyProjector` answers it from `carrier_daily_shipments`, a table it builds from the whole history and keeps current, with a checkpoint that only advances past transactions that can no longer commit.
+`order-service` keeps orders as streams of `OrderPlaced`, `OrderPaid`, `OrderShipped`, `OrderDelivered` and `OrderCancelled` events in PostgreSQL, as an event store. One question spans every order: how many orders each carrier shipped each UTC day. `ReplayReport` answers it by folding every `OrderAggregate` on request. `CarrierDailyProjector` answers it from `carrier_daily_shipments`, a table it builds from the whole history and keeps current, with a checkpoint that only advances past transactions that can no longer commit.
 
 Quarkus, Hibernate ORM with Panache (a projection for the replay), Flyway, Quarkus REST, Quarkus Scheduler, PostgreSQL, SmallRye Health, Micrometer and OpenTelemetry to the LGTM stack. There is no Kafka and no Camel: the decision needs a database and nothing else.
 
@@ -68,7 +68,7 @@ Each row changes a single thing and names the checks that fail.
 
 | Path | Purpose |
 |---|---|
-| `order-service/.../OrderAggregate`, `OrderEvent`, `Command`, `OrderCommands` | The aggregate of chapter 14 with smaller payloads and an `OrderDelivered` event, and its transactional command |
+| `order-service/.../OrderAggregate`, `OrderEvent`, `Command`, `OrderCommands` | The event-sourced order aggregate with smaller payloads and an `OrderDelivered` event, and its transactional command |
 | `order-service/.../EventStore` | `load`, `append` and `replayStream`, a Panache projection that folds one stream at a time |
 | `order-service/.../ReplayReport` | The replay: every stream, one aggregate at a time |
 | `order-service/.../CarrierDailyProjector`, `ProjectionBatch` | The timer and the transactional batch with the locked checkpoint |

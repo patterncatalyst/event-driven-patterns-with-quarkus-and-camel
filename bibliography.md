@@ -12,6 +12,8 @@ runtime documentation is the authority for every API the examples use. These are
 reference works, not sources: no text or code from any of them is reproduced here.
 Lawrence's code is Node.js and TypeScript, and none of it is ported.
 
+This page lists works: books, papers and specifications. Documentation pages are cited on each page under References.
+
 ## Books
 
 <table class="bib bib--books">

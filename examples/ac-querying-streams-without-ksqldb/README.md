@@ -43,7 +43,7 @@ Event times are seconds after a minute boundary ten minutes in the past (`counts
 
 ## Measurements
 
-Three clean runs with the default lateness (18/18 each), printed as `NOTE` lines by `verify.sh`. The submit and DDL times and the memory sample are printed in two of the three; the demo run with `KS_GRACE_SECONDS=0` is not used.
+Four clean runs with the default lateness (18/18 each), printed as `NOTE` lines by `verify.sh`. The submit and DDL times and the memory sample are printed in three of the four; the demo run with `KS_GRACE_SECONDS=0` is not used.
 
 | Item | Value |
 |---|---|

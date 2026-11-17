@@ -1,4 +1,4 @@
-# Appendix F: the shared Part 6 platform without LGTM, and the chapter 06 notification-service and chapter 02
+# Deployment appendix: the shared platform without LGTM, and the notification-service and the
 # order-service deployed unchanged. Producer Jobs are applied by verify.sh from tools/producer-job.yaml.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the order-service image with buildah from the chapter 08 Containerfile, unchanged, into rootless
+# Builds the order-service image with buildah from the order-service Containerfile, unchanged, into rootless
 # containers-storage, and copies it to the ImageStream edp/order-service with skopeo. The copy keeps the manifest
 # digest (--preserve-digests), so the digest in the cluster is the digest of the local build. TLS is verified with
 # the cluster's ingress CA through --dest-cert-dir. The token of the project's builder ServiceAccount lives in a
