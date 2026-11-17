@@ -299,6 +299,11 @@ DECK_BANNED = (
         r"|\b(?:tables?|listings?|figures?|slides?|code|lists?|bullets?|diagrams?|examples?)"
         r"\s+(?:above|below)\b|\bthe\s+(?:above|below)\b|\b(?:above|below)\s*(?:[.,;:)]|$)"
         r"|\b(?:shown|listed|given|see|as)\s+(?:above|below)\b", re.I), "positional slide reference"),
+    (re.compile(
+        r"\b(?:from|as)\s+before\b|\b(?:shown|seen|covered|mentioned|discussed|described|noted)\s+(?:earlier|before)\b"
+        r"|\bearlier\s+on\b|\bas\s+we\s+(?:saw|saw\s+earlier|discussed|covered)\b"
+        r"|\b(?:discussed|covered|shown|described)\s+later\b|\bcomes?\s+later\b|\bsee\s+later\b", re.I),
+     "indirect back or forward pointer"),
     (re.compile(r"\b(this|these) (deck|slides?)\b|\bthe deck\b", re.I), "self-reference to the deck"),
     (SELFREF_RE, "self-reference to the chapter or section"),
 )
@@ -1097,6 +1102,12 @@ def self_test() -> int:
             ("deck this deck", [*good[:2], ("Body", long + " this deck covers"), good[3]], {}),
             ("deck slide number", [*good[:2], ("Body", long + " on slide 4"), good[3]], {}),
             ("deck next slide", [*good[:2], ("Body", long + " the next slide shows"), good[3]], {}),
+            ("deck shown earlier", [*good[:2], ("Body", long + " as shown earlier"), good[3]], {}),
+            ("deck from before", [*good[:2], ("Body", long + " the figure from before"), good[3]], {}),
+            ("deck as we saw", [*good[:2], ("Body", long + " as we saw"), good[3]], {}),
+            ("deck covered later", [*good[:2], ("Body", long + " covered later"), good[3]], {}),
+            ("deck comes later", [*good[:2], ("Body", long + " the detail comes later"), good[3]], {}),
+            ("deck earlier on", [*good[:2], ("Body", long + " earlier on"), good[3]], {}),
             ("deck positional above", [*good[:2], ("Body", long + " the table above"), good[3]], {}),
             ("deck the book off the last slide", [*good[:2], ("Body", long + " as the book says"), good[3]], {}),
             ("deck the site off the last slide", [*good[:2], ("Body", long + " on the site"), good[3]], {}),
@@ -1105,6 +1116,8 @@ def self_test() -> int:
             results.append((f"{label} caught", bool(e), e))
         for label, slides in (
             ("deck plain above is fine", [*good[:2], ("Body", long + " a weight above 30 kg"), good[3]]),
+            ("deck earlier offsets is fine", [*good[:2], ("Body", long + " the earlier offsets are replayed"), good[3]]),
+            ("deck an earlier version is fine", [*good[:2], ("Body", long + " an earlier version of the event"), good[3]]),
             ("deck book pointer on the last slide is fine", [*good[:3], ("Close", short + " the book and the site")]),
         ):
             e = deck(slides)

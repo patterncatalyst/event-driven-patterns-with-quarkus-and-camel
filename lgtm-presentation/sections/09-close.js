@@ -40,10 +40,11 @@ module.exports = function (lib) {
       ["Danilo Sato", "Parallel Change"],
       ["R. A. DeMillo, R. J. Lipton, F. G. Sayward", "Hints on Test Data Selection: Help for the Practicing Programmer"],
       ["Hector Garcia-Molina, Kenneth Salem", "Sagas"],
+      ["Microsoft Azure Architecture Center", "Materialized View pattern; Saga design pattern"],
       ["W3C", "Trace Context"],
     ],
     [4.6, 7.49],
-    `The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.`,
+    `The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. The Azure Architecture Center's pattern pages describe the materialized view and the saga's step kinds. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.`,
     { fontSize: 13, rowH: 0.36 },
   );
 };

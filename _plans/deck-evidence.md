@@ -18,12 +18,12 @@ Internal map from each slide number (as in `lgtm-presentation/text/`) to the cla
 | 16, 17 | murmur2 key hash; event-type key regresses DELIVERED to SHIPPED; carrier key uses two of three partitions | 04-02, 04-16, 04-17; _docs/04 figure 4.1 |
 | 19, 20 | sequence number, row lock; run 3 ends SHIPPED, run 4 ends DELIVERED | 04-23, 04-24, 04-40 |
 | 21 | linger 5 ms (formerly 0, KIP-1030), batch.size 16384, 20,000 orders | 05-02; _docs/05 lines 22, 77 |
-| 21 | default route 4.9 of unbatched throughput (median of five rounds, range 2.1 to 6.0), tuned route 0.40 (0.39 to 0.40), both ratios to the unbatched route of the same run; tuned is 20 ms, 128 KiB, lz4 | 05-08; _docs/05 lines 54, 81 to 87 |
+| 21 | default route 4.9 of unbatched throughput (median of five rounds, range 2.1 to 6.0), tuned route 0.40 of the unbatched throughput (0.39 to 0.40), both ratios to the unbatched route of the same run; tuned is 20 ms, 128 KiB, lz4 | 05-08; _docs/05 lines 54, 81 to 87 |
 | 21 | 200 callers each waiting for an acknowledgement; lz4 0.38 and zstd 0.19 bytes per record against none | 05-08; _docs/05 lines 32, 103, 105 |
 | 22 | unbatched route about 3 records per request | 05-08 (records per request table); _docs/05 line 87 |
 | 23 | nine partitions; drain ratios 0.33 (three threads) and 0.12 (twelve, RoundRobinAssignor), 3000 records at 5 ms | 06-04; _docs/06 line 50 |
 | 23 | fetch.min.bytes 65536 cuts about 2,400 fetches to 60; up to 500 ms delay; max.poll.interval 300000 | 06-06, 06-02; _docs/06 lines 32, 38 |
-| 24 | classic gives up all 9, consumer protocol 4 or 5, CooperativeSticky 4 | 06-07 |
+| 24 | classic protocol with an eager assignor gives up all 9, consumer protocol 4 or 5, CooperativeSticky on the classic protocol 4 | 06-07 |
 | 25 | lock 30 s, delivery limit 5, no ordering guarantee, accept, release, reject | 07-09 |
 | 25 | eight-second job, twelve jobs behind it | _docs/07 line 10; 07-r2-01 |
 | 25 | fast partition 2 to 7 s through the share group against under 1 s through the consumer group; slow partition 8 to 9.4 s against 8.8 s | 07-r2-07 |
@@ -32,7 +32,7 @@ Internal map from each slide number (as in `lgtm-presentation/text/`) to the cla
 | 29 | at least once; 201 in about 10 ms with Kafka stopped; commit-first 500 after 60 s | 08-10 |
 | 29, 31, 32 | EventRouter keyed by aggregate id, row id header, at least once; rollback leaves no outbox row | 08-13, 08-16, 08-10; examples/08-transactional-outbox OrderService.java:26-31 |
 | 33, 34 | slot, publication on three tables, heartbeat query releases WAL, one tombstone, snapshot as r events | 09-01, 09-04, 09-08, 09-09; _docs/09 figure 9.1 |
-| 35 | offsets API only while stopped; flush every 60 s default; lost slot RUNNING with no task, retry loop about 30 minutes | 10-03, 10-14, 10-15, 10-11, 10-12; _docs/10 lines 28, 68 |
+| 35 | offsets API lists at any time, alter and reset only while stopped (PATCH, DELETE); flush every 60 s default; lost slot RUNNING with no task, retry loop about 30 minutes | 10-03, 10-14, 10-15, 10-11, 10-12; _docs/10 lines 28, 68 |
 | 36 | stream starts at the greater of offset and slot; alter ahead skips, behind does not rewind | 10-05, 10-06 |
 | 37, 38 | ON CONFLICT DO NOTHING inbox, commit before acknowledge; session timeout 45 s default, 10 s set | 11-g; _docs/11 line 81; examples/11-idempotent-consumer-and-inbox ReservationService.java:19-34 |
 | 40 | key store table: JPA repository in a transacted route, not transacted, JDBC under JTA, Kafka repository, natural idempotence | _docs/11 comparison table; verify.sh 11 |

@@ -7,15 +7,15 @@ module.exports = function (lib) {
   divider(
     "Testing, querying and deploying",
     "Proving the guards, asking the stream, changing the running system",
-    `How do you test code that fails by omission, with a notification that never left or a second one that did? How do you ask a stream a question without a ksqlDB-style service? What happens to records when a consumer group is redeployed? Two smaller patterns complete the set: a resequencer for events that span partitions, and a cache that is written only from committed events.`,
+    `Code that fails by omission, such as a notification that never left or a second one that did, needs tests that can see absence. A stream can be asked a question without a ksqlDB-style service. A redeployed consumer group has a defined effect on the records it reads. Two smaller patterns complete the set: a resequencer for events that span partitions, and a cache that is written only from committed events.`,
   );
 
   bulletSlide("TESTING", "Event-driven tests that bite", [
-    ["Real brokers:", " Dev Services starts real Kafka and PostgreSQL, so a test meets the real behaviour of what it guards."],
-    ["Bite cycle:", " prove a guard by removing it from an altered copy of the route. Exactly the one test that names the guard must fail."],
-    ["Drain, not first match:", " a first match passes on a route that notifies twice. Only a read that waits out the window can assert absence."],
-    ["Oracles:", " compute the expected partition with Kafka's own hash, and write the arrival order down. Do not wait for the application to produce it."],
-    ["Limit:", " 20 rounds without a failure is not proof of no race. Compare against a run with the guard switched off."],
+    ["Real brokers.", " Dev Services starts real Kafka and PostgreSQL, so a test meets the real behaviour of what it guards."],
+    ["Bite cycle.", " Prove a guard by removing it from an altered copy of the route. Exactly the one test that names the guard must fail."],
+    ["Drain, not first match.", " A first match passes on a route that notifies twice. Only a read that waits out the window can assert absence."],
+    ["Oracles.", " Compute the expected partition with Kafka's own hash, and write the arrival order down. Do not wait for the application to produce it."],
+    ["Limit.", " 20 rounds without a failure is not proof of no race. Compare against a run with the guard switched off."],
   ], `A synchronous service fails loudly with an exception or a status code. An event-driven one fails by omission: the notification that never left, the second one that did, the record keyed by the wrong field. A test that sends a message and waits for an answer passes on all of these. The route here has three guards: a repeated event id is dropped, a cancelled order gets no notification, and the notification is keyed by the order id. Each is a line a refactoring can delete while the tests stay green. Mutation testing, proposed by DeMillo, Lipton and Sayward, is the idea behind the bite cycle: the three hand-written patches are the mutants. The harness costs one Maven run per patch, so it runs from the verify script and not on every save.`);
 
   figSlide("TESTING", "Prove a guard by breaking it", "aa-bite-cycle",
@@ -27,11 +27,11 @@ module.exports = function (lib) {
     `Moving a service from compose to Kubernetes changes its addresses, and the settings underneath move too, with no report when one is lost. Reading two files side by side finds the lines that were copied. It does not find what an operator adds or changes, because the operator's defaults are in neither file. CloudNativePG defaults the write-ahead log level to logical, so its Cluster needs no line for it while compose has to ask. The complete view is the running system's own answer. The same fixed list of keys is read from the broker and from PostgreSQL on both targets, and the comparison lists what differs. Four settings differ here, each with a stated cause, and any other difference fails the comparison. A capture with a missing key fails too, because an empty file equals an empty file.`);
 
   bulletSlide("QUERYING STREAMS", "Querying streams without ksqlDB", [
-    ["Question:", " deliveries per carrier per minute of event time, correct when a record arrives a few seconds after its minute ended."],
-    ["Kafka Streams:", " ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint."],
-    ["Flink SQL:", " a job writes closed windows to a topic. A second system to run, and no question the job does not already compute."],
-    ["RisingWave:", " materialized views read with psql. A new question is one more query, with state in the database."],
-    ["Licences:", " ksqlDB and Materialize are not open source, so neither is used."],
+    ["Question.", " Deliveries per carrier per minute of event time, correct when a record arrives a few seconds after its minute ended."],
+    ["Kafka Streams.", " Ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint."],
+    ["Flink SQL.", " A job writes closed windows to a topic. A second system to run, and no question the job does not already compute."],
+    ["RisingWave.", " Materialized views read with psql. A new question is one more query, with state in the database."],
+    ["Licences.", " KsqlDB and Materialize are not open source, so neither is used."],
   ], `Operations wants the number of deliveries per carrier per minute, and wants it right when a record turns up late. A consumer that increments a counter counts by arrival time, so a paused or replayed consumer puts a delivery in the wrong minute. Three open source engines answer the question from one topic. Each takes event time from the delivery timestamp and each closes a window by a lateness bound. The bound is the grace period in Kafka Streams and the delay in the watermark expression in Flink and RisingWave. All three get the same value, ten seconds. The engines agree only when an out-of-order record is inside the lateness of every one of them. None of them tells the reader about a record it dropped.`);
 
   figSlide("QUERYING STREAMS", "One topic, three ways to ask", "ac-three-ways",

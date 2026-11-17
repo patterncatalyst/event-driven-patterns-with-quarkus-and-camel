@@ -17,12 +17,12 @@ module.exports = function (lib) {
     "Aggregate: one object decides",
     [
       ["An aggregate", " is one object, reached through its root, that rebuilds its state from its own event stream, decides each command and appends the result at the version it loaded."],
-      ["Problem:", " a cancellation and a shipment that both read PAID are each correct against what they saw, and together leave CANCELLED after SHIPPED."],
-      ["Rebuilt per command:", " no stored copy of the state exists, so none can be stale."],
-      ["Decide, then record:", " a refused command returns no events and writes nothing."],
-      ["Version check:", " the append names the version it was decided against, and a unique (stream_id, version) constraint rejects a stale one."],
+      ["Problem.", " A cancellation and a shipment that both read PAID are each correct against what they saw, and together leave CANCELLED after SHIPPED."],
+      ["Rebuilt per command.", " No stored copy of the state exists, so none can be stale."],
+      ["Decide, then record.", " A refused command returns no events and writes nothing."],
+      ["Version check.", " The append names the version it was decided against, and a unique (stream_id, version) constraint rejects a stale one."],
     ],
-    `Three callers change an order: a REST request cancels it, a payment record marks it paid, and a shipment record ships it. If each one reads the status, checks the move and writes the result, the rules live in three places and drift apart. Worse, two callers acting on the same status at the same moment both pass their own check. The aggregate removes that by being the only place a rule lives. It is rebuilt from the stream for every command, so there is nothing cached to go stale. It decides before it records, and the append carries the version it was decided against, which lets the store refuse it when the stream has moved on. The order service keeps no order table at all: the stream is the state.`,
+    `Three callers change an order: a REST request cancels it, a payment record marks it paid, and a shipment record ships it. If each one reads the status, checks the move and writes the result, the rules live in three places and drift apart. Two callers acting on the same status at the same moment both pass their own check. The aggregate removes that by being the only place a rule lives. It is rebuilt from the stream for every command, so there is nothing cached to go stale. It decides before it records, and the append carries the version it was decided against, which lets the store refuse it when the stream has moved on. The order service keeps no order table at all, and every status is derived from the stream.`,
   );
 
   figSlide(
@@ -49,11 +49,11 @@ module.exports = function (lib) {
     EYE,
     "A lost race: decide again or report",
     [
-      ["Rule:", " retry what does not depend on what the caller saw, and report what does."],
-      ["No precondition:", " a cancellation means \"cancel if the rules allow\", so the server reloads the stream and decides again, up to three times with SmallRye Fault Tolerance."],
-      ["With If-Match:", " a client that decided from version 2 gets 412 Precondition Failed when the stream has moved, and no command runs."],
-      ["Never blind:", " appending the decided events at the new head puts CANCELLED after SHIPPED into the history."],
-      ["A refusal is an outcome:", " 409 over REST, logged and acknowledged on a Kafka channel."],
+      ["Rule.", " Retry what does not depend on what the caller saw, and report what does."],
+      ["No precondition.", " A cancellation means \"cancel if the rules allow\", so the server reloads the stream and decides again, up to three times with SmallRye Fault Tolerance."],
+      ["With If-Match.", " A client that decided from version 2 gets 412 Precondition Failed when the stream has moved, and no command runs."],
+      ["Never blind.", " Appending the decided events at the new head puts CANCELLED after SHIPPED into the history."],
+      ["A refusal is an outcome.", " 409 over REST, logged and acknowledged on a Kafka channel."],
     ],
     `When two commands load the same version, one append wins and the other fails with a conflict, and the loser's transaction writes nothing. What happens next depends on who made the decision. A cancellation sent with no precondition does not depend on the state the server read, so the server loads the stream again and decides again: if a shipment won, the second decision is a refusal, and if a payment won, the cancellation is accepted at the next version. A client that cancelled because of what it saw has not asked for a cancellation at whatever version exists by the time it runs, so it sends its ETag as If-Match and a stale tag is answered with 412. The retry wraps a call to another bean, so every attempt is a new transaction.`,
   );
@@ -72,9 +72,9 @@ module.exports = function (lib) {
     "Snapshot: replay only the tail",
     [
       ["A snapshot", " stores the aggregate's state at one version, so a load reads it and replays only the events after it."],
-      ["Problem:", " a load costs the length of the stream. SKU-1503 holds 100,000 events and every reservation reads all of them."],
-      ["A cache, not a record:", " it can be deleted at any time and the events rebuild it. Only the newest is kept, and the aggregate's own code writes it."],
-      ["Measured:", " streams of 1,100, 10,100 and 100,200 events load in 1.6, 11.6 and 127.7 ms in full, and in 0.50, 0.63 and 0.95 ms with a snapshot."],
+      ["Problem.", " A load costs the length of the stream. SKU-1503 holds 100,000 events and every reservation reads all of them."],
+      ["A cache, not a record.", " It can be deleted at any time and the events rebuild it. Only the newest is kept, and the aggregate's own code writes it."],
+      ["Measured.", " Streams of 1,100, 10,100 and 100,200 events load in 1.6, 11.6 and 127.7 ms in full, and in 0.50, 0.63 and 0.95 ms with a snapshot."],
       ["Skip it", " for short streams: 1,100 events load in 1.6 ms without one."],
     ],
     `Most streams stay short, but stock, an account or a counter takes an event for every change, and the oldest events still count in the answer. The obvious fixes each give something up: deleting old events destroys the history, a second table of current quantity is a source of truth nothing marks as derived, and an in-memory cache is lost on restart and does not help a second instance. A snapshot keeps the stream as the record and only controls how many events a load reads. The timings are medians of three runs, each in a new JVM, taken inside the service with 99 events after the snapshot, the longest tail the policy allows. The full load is linear in the stream, between 1.2 and 1.4 microseconds per event.`,
@@ -94,9 +94,9 @@ module.exports = function (lib) {
     "CQRS: a read model beside the stream",
     [
       ["CQRS", " keeps a read model apart from the write model and feeds it from the write model's events, so each side has the shape its questions need."],
-      ["Problem:", " the aggregate answers whether a command may happen. A customer's order list needs facts from three services, for many orders, and no index by customer."],
-      ["Three rules:", " each column is written by the one event that owns it, each update only moves forward and is safe twice, and each answer says how current it is."],
-      ["Cost:", " the view is eventually consistent, so a customer may list orders and not yet see the one just placed."],
+      ["Problem.", " The aggregate answers whether a command may happen. A customer's order list needs facts from three services, for many orders, and no index by customer."],
+      ["Three rules.", " Each column is written by the one event that owns it, each update only moves forward and is safe twice, and each answer says how current it is."],
+      ["Cost.", " The view is eventually consistent, so a customer may list orders and not yet see the one just placed."],
     ],
     `The write model is shaped for one job: load one stream, decide, append. A customer's question is another job. The events table has no index by customer, its payloads are the owner's private format, and it holds none of the payment or shipping facts. Reading another service's store couples every reader to its schema, and asking each service per order makes the list as slow as the slowest of three. So the order service builds a table of its own from the topics the other services already publish. It is disposable, because it can be rebuilt from the events, and no request writes to it. Fowler cautions that for most systems the pattern adds risky complexity, so it belongs on a bounded context and not on a whole system.`,
   );
@@ -123,9 +123,9 @@ module.exports = function (lib) {
     "Replay or project",
     [
       ["A projection", " is a read model built by folding the event history in order, kept current by applying each new event once, and rebuilt from the first event when its logic or question changes."],
-      ["Problem:", " shipments per carrier per day touch every stream, and nothing indexes them."],
-      ["Replay:", " fold every aggregate when the question arrives. Correct by construction and no new moving part, but it pays the size of the store on every request."],
-      ["Projection:", " a table, a checkpoint and a timer. Fast to read, one tick behind, and wrong until rebuilt if its fold has a bug."],
+      ["Problem.", " Shipments per carrier per day touch every stream, and nothing indexes them."],
+      ["Replay.", " Fold every aggregate when the question arrives. Correct by construction and no new moving part, but it pays the size of the store on every request."],
+      ["Projection.", " A table, a checkpoint and a timer. Fast to read, one tick behind, and wrong until rebuilt if its fold has a bug."],
     ],
     `Operations asks how many orders each carrier shipped each day. The order service has no table to ask, and a snapshot bounds one aggregate's load without helping a question about all of them. Replay answers it with the same fold the commands use. A projection answers it from a small table kept current by a checkpointed poller. The events remain the only record in both cases, so losing a projection costs time and never data. The Azure Architecture Center calls a materialized view completely disposable for that reason. A projection is worth its extra model only when the question is asked often enough, and a replay is slow enough, to justify a second thing that can be wrong.`,
   );
@@ -160,9 +160,9 @@ module.exports = function (lib) {
     "Upcaster: old events, current shape",
     [
       ["An upcaster", " turns an event stored in an older shape into the same event in the current shape, on a copy, when the event is read."],
-      ["Problem:", " the store is append-only, so a new field such as shippingPriority has no place to be fixed in the old rows."],
-      ["Chain:", " one small step per schema version, so a version 1 row passes through every step to the current one. An unknown version is an error."],
-      ["On the wire:", " an Avro registry with BACKWARD_TRANSITIVE refuses a version that a reader built on it could not use on every record ever published."],
+      ["Problem.", " The store is append-only, so a new field such as shippingPriority has no place to be fixed in the old rows."],
+      ["Chain.", " One small step per schema version, so a version 1 row passes through every step to the current one. An unknown version is an error."],
+      ["On the wire.", " An Avro registry with BACKWARD_TRANSITIVE refuses a version that a reader built on it could not use on every record ever published."],
     ],
     `Customers can now ask for express delivery, so OrderPlaced gains a shipping priority. Two kinds of reader already hold the old shape: the aggregate loads rows written before the field existed and can never rewrite them, and a consumer replaying the topic from its first record meets records without the field. Rewriting the old rows breaks the rule that made the store trustworthy. Teaching the aggregate every shape spreads the history of the schema through code that should know only the order. An upcaster keeps the stored history as recorded, and a bug in a step is fixed in code with nothing to repair. The default a step supplies is a business decision, so it is written once and the published contract states the same value.`,
   );

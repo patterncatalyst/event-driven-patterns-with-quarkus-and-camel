@@ -14,9 +14,10 @@ byte-exact with its source.
 | image-size | 2.1.0, `overrides` only | clears the advisories against the 1.2.1 that pptxgenjs pulls in (`npm audit` reports 2 high without it); pptxgenjs never loads it |
 | cairosvg | 2.9.1 | `uv run --no-project --with`; never added to a workspace |
 | segno | 1.6.6 | QR generation, BSD-3-Clause, `uv run --no-project --with` |
+| pillow | 13.0.0 | opens the QR PNGs for the decode check, `uv run --no-project --with` |
 | zxing-cpp | 3.1.1 | QR decode check, Apache-2.0, `uv run --no-project --with` |
 | python-pptx | 1.0.2 | text extraction and checks, `uv run --no-project --with` |
-| Node.js, npm | 22, 10 | host tools, not installed by this repo |
+| Node.js, npm | 22.23.1 (exact in CI), 10 | host tools, not installed by this repo |
 
 `package-lock.json` is committed (lockfileVersion 3). `npm audit` reports 0
 vulnerabilities.
@@ -40,14 +41,15 @@ succeeds and writes a two-slide skeleton (cover and QR).
 ## The helper
 
 `deck-helpers.js` is the skill's `scripts/deck-helpers.js` (md5
-`ce44b9de9820ba7e115d729c5de9e63a`) with one local delta: its eight em-dash
-lines are reworded, so the repo-wide dash gate passes without an exclusion. No
-code changed. The new md5 is `d816b5e4dd0555d4ff31bac21b21ae64`.
+`ce44b9de9820ba7e115d729c5de9e63a`) with two local deltas: its eight em-dash
+lines are reworded, so the repo-wide dash gate passes without an exclusion, and
+the `newDeck()` defaults name this deck. No other code changed. The new md5 is
+`ee4ca2f7916c2ba7b6896e21c735d2a8`.
 
 | Line | What changed |
 | --- | --- |
 | 1 | header comment: the dash after the file name became a colon |
-| 66 | default `pres.title`: the dash became a colon |
+| 66 to 68 | default `pres.title`, `pres.author` and `pres.company`: another deck's title, a personal name and a company name became this deck's title and `PatternCatalyst` |
 | 80 | logo comment: dash to comma |
 | 137, 178, 234, 311, 341 | comments: dash to colon |
 
@@ -91,7 +93,7 @@ come back:
 `./render-png.sh --check` renders into a temporary directory and compares each
 committed PNG; any difference means the SVG changed or the PNG is stale. A
 figure that is wrong is fixed in its spec under `diagrams/specs/`, never
-redrawn for the deck.
+redrawn for the deck. Two specs were reworded for this deck: `00-compose-stack` (the text that numbered the Parts that share the services now reads "One compose project runs every shared service"; the SVG cross-reference check flagged the Part numbers) and `19-enricher-vs-table-join` (a self-reference removed).
 
 ## Determinism
 

@@ -6,7 +6,7 @@ Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 120 slides
 
 Kafka, Debezium, Strimzi and the patterns that keep services in step
 
-> Event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. It is written for Java developers, Camel integrators, platform engineers and architects who already know what a topic is. The code comes from tested examples, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.
+> Event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. The material assumes Java developers, Camel integrators, platform engineers and architects who already know what a topic is. The code comes from tested examples, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.
 
 ## [002] AGENDA · Eight sections and a decision table
 
@@ -110,7 +110,7 @@ p. 10
 
 - Event notification announces that something happened and names the thing, leaving each consumer to ask the source for the details it needs.
 - Problem. A service that calls every interested party must know them all and wait for each. A consumer told only that something happened cannot act.
-- Solution. order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP.
+- Solution. Order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP.
 - Cost. Each consumer adds one request per event, reads current state instead of state at event time, and cannot finish while the source is down.
 - Fit. Use it when the details change and the latest value is what matters.
 
@@ -215,7 +215,7 @@ p. 19
 - A Resequencer is a stateful filter that holds out-of-sequence messages and releases them in order (Hohpe and Woolf).
 - Problem. When several producers or topics describe one order, no single key puts its events in one partition, so Kafka cannot keep them in sequence.
 - Solution. Each event carries a sequence number. Replicas hold early events in a table and apply from the next expected number under a row lock.
-- Result. The stalled-replica run that ended SHIPPED ends DELIVERED, in lifecycle order.
+- Result. With the event type as key, the stalled-replica run that ended SHIPPED now ends DELIVERED, in lifecycle order.
 - Cost. One row per early event and one lock per event. A missing event holds that order's following events until someone repairs it.
 
 > Keying by entity id is the first answer because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays with held rows and with events that wait. Every shipment event already carries its number within the order, and both order-service replicas share the database, so the database is where an order's events wait. One transactional method inserts the order's row if it is missing, locks it, ignores an event already applied or held, stores the event, and applies every event from the next expected number. An event is either held or applied, never both. If order only matters for the final state, a version number checked at the write can reject an older event with no buffer at all.
@@ -234,9 +234,9 @@ p. 21
 
 - The producer batches records into one open batch per partition and sends every ready batch in one request, trading a little latency for fewer, larger requests.
 - Problem. A flash sale of 20,000 orders costs the broker one request per record unless sends overlap and batches fill.
-- Settings. linger.ms (5 ms by default), batch.size (16384 bytes by default), compression, and acks. acks=all and idempotence are the defaults.
+- Settings. Four settings matter: linger.ms (5 ms by default), batch.size (16384 bytes by default), compression, and acks. acks=all and idempotence are the defaults.
 - Overlap. A caller that waits for each acknowledgement never fills a batch. Batches fill only when several sends are in the producer at once.
-- Measured. The default route moved 4.9 times the unbatched throughput (median of five rounds, range 2.1 to 6.0). The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times that throughput, because every record waits out the linger.
+- Measured. The default route moved 4.9 times the unbatched throughput (median of five rounds, range 2.1 to 6.0). The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times the unbatched throughput, because every record waits out the linger.
 
 > Send does not write to the network. The producer appends the record to an open batch and returns, and a background thread sends batches that are full or have waited long enough. The linger default was 0 and is now 5 milliseconds, raised by KIP-1030. The numbers are ratios to the unbatched route in the same run, medians of five rounds. 200 callers each waited for an acknowledgement, so a longer linger only added latency. Compression is the part that pays, with lz4 cutting bytes per record to 0.38 of none and zstd to 0.19. Tune when records per request is close to one while sends are concurrent, or when bytes are the cost, and raise the linger only as far as the latency budget allows.
 
@@ -266,7 +266,7 @@ p. 24
 
 Nine partitions assigned to the first nine of twelve consumers; the last three are idle
 
-> Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol makes every member give up everything and rejoin, and a replica that started a moment ago interrupts all the others. With the consumer protocol from KIP-848, the first replica gave up fewer than half of its nine partitions, four or five in recorded runs, and CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.
+> Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol with an eager assignor makes every member give up all of its partitions and rejoin, and a replica that started a moment ago interrupts all the others: the first replica gave up all nine. With the consumer protocol from KIP-848 it gave up fewer than half, four or five in recorded runs. On the classic protocol, CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.
 
 ## [025] SHARE GROUPS · Share groups
 
@@ -373,7 +373,7 @@ Writes land in the write-ahead log; the publication filters three tables; the sl
 
 p. 35
 
-- Connector offsets are a source connector's position, stored by Kafka Connect in an offsets topic. The offsets API lists, alters and resets them, only while the connector is stopped.
+- Connector offsets are a source connector's position, stored by Kafka Connect in an offsets topic. The offsets API lists them at any time. Altering or resetting them needs the connector stopped.
 - Problem. After a bad batch or a day of maintenance, where does the connector start reading, and who decides?
 - The slot wins. PostgreSQL streams from the greater of the offset and the slot's confirmed position. Altering forward skips changes. Altering backward does not rewind.
 - Reset. With snapshot.mode=initial a reset reads the current rows as snapshot events, not the history of how they got there.
@@ -568,12 +568,12 @@ An order is the stream of its own events
 p. 48
 
 - An aggregate is one object, reached through its root, that rebuilds its state from its own event stream, decides each command and appends the result at the version it loaded.
-- Problem: a cancellation and a shipment that both read PAID are each correct against what they saw, and together leave CANCELLED after SHIPPED.
-- Rebuilt per command: no stored copy of the state exists, so none can be stale.
-- Decide, then record: a refused command returns no events and writes nothing.
-- Version check: the append names the version it was decided against, and a unique (stream_id, version) constraint rejects a stale one.
+- Problem. A cancellation and a shipment that both read PAID are each correct against what they saw, and together leave CANCELLED after SHIPPED.
+- Rebuilt per command. No stored copy of the state exists, so none can be stale.
+- Decide, then record. A refused command returns no events and writes nothing.
+- Version check. The append names the version it was decided against, and a unique (stream_id, version) constraint rejects a stale one.
 
-> Three callers change an order: a REST request cancels it, a payment record marks it paid, and a shipment record ships it. If each one reads the status, checks the move and writes the result, the rules live in three places and drift apart. Worse, two callers acting on the same status at the same moment both pass their own check. The aggregate removes that by being the only place a rule lives. It is rebuilt from the stream for every command, so there is nothing cached to go stale. It decides before it records, and the append carries the version it was decided against, which lets the store refuse it when the stream has moved on. The order service keeps no order table at all: the stream is the state.
+> Three callers change an order: a REST request cancels it, a payment record marks it paid, and a shipment record ships it. If each one reads the status, checks the move and writes the result, the rules live in three places and drift apart. Two callers acting on the same status at the same moment both pass their own check. The aggregate removes that by being the only place a rule lives. It is rebuilt from the stream for every command, so there is nothing cached to go stale. It decides before it records, and the append carries the version it was decided against, which lets the store refuse it when the stream has moved on. The order service keeps no order table at all, and every status is derived from the stream.
 
 ## [049] EVENT SOURCING · One command, one transaction
 
@@ -622,11 +622,11 @@ order-service · EventStore.java
 
 p. 51
 
-- Rule: retry what does not depend on what the caller saw, and report what does.
-- No precondition: a cancellation means "cancel if the rules allow", so the server reloads the stream and decides again, up to three times with SmallRye Fault Tolerance.
-- With If-Match: a client that decided from version 2 gets 412 Precondition Failed when the stream has moved, and no command runs.
-- Never blind: appending the decided events at the new head puts CANCELLED after SHIPPED into the history.
-- A refusal is an outcome: 409 over REST, logged and acknowledged on a Kafka channel.
+- Rule. Retry what does not depend on what the caller saw, and report what does.
+- No precondition. A cancellation means "cancel if the rules allow", so the server reloads the stream and decides again, up to three times with SmallRye Fault Tolerance.
+- With If-Match. A client that decided from version 2 gets 412 Precondition Failed when the stream has moved, and no command runs.
+- Never blind. Appending the decided events at the new head puts CANCELLED after SHIPPED into the history.
+- A refusal is an outcome. 409 over REST, logged and acknowledged on a Kafka channel.
 
 > When two commands load the same version, one append wins and the other fails with a conflict, and the loser's transaction writes nothing. What happens next depends on who made the decision. A cancellation sent with no precondition does not depend on the state the server read, so the server loads the stream again and decides again: if a shipment won, the second decision is a refusal, and if a payment won, the cancellation is accepted at the next version. A client that cancelled because of what it saw has not asked for a cancellation at whatever version exists by the time it runs, so it sends its ETag as If-Match and a stale tag is answered with 412. The retry wraps a call to another bean, so every attempt is a new transaction.
 
@@ -643,9 +643,9 @@ order-service · a cancellation at version 2 loses to a shipment at version 3
 p. 53
 
 - A snapshot stores the aggregate's state at one version, so a load reads it and replays only the events after it.
-- Problem: a load costs the length of the stream. SKU-1503 holds 100,000 events and every reservation reads all of them.
-- A cache, not a record: it can be deleted at any time and the events rebuild it. Only the newest is kept, and the aggregate's own code writes it.
-- Measured: streams of 1,100, 10,100 and 100,200 events load in 1.6, 11.6 and 127.7 ms in full, and in 0.50, 0.63 and 0.95 ms with a snapshot.
+- Problem. A load costs the length of the stream. SKU-1503 holds 100,000 events and every reservation reads all of them.
+- A cache, not a record. It can be deleted at any time and the events rebuild it. Only the newest is kept, and the aggregate's own code writes it.
+- Measured. Streams of 1,100, 10,100 and 100,200 events load in 1.6, 11.6 and 127.7 ms in full, and in 0.50, 0.63 and 0.95 ms with a snapshot.
 - Skip it for short streams: 1,100 events load in 1.6 ms without one.
 
 > Most streams stay short, but stock, an account or a counter takes an event for every change, and the oldest events still count in the answer. The obvious fixes each give something up: deleting old events destroys the history, a second table of current quantity is a source of truth nothing marks as derived, and an in-memory cache is lost on restart and does not help a second instance. A snapshot keeps the stream as the record and only controls how many events a load reads. The timings are medians of three runs, each in a new JVM, taken inside the service with 99 events after the snapshot, the longest tail the policy allows. The full load is linear in the stream, between 1.2 and 1.4 microseconds per event.
@@ -663,9 +663,9 @@ inventory-service · a load reads one snapshot row and the events after it
 p. 55
 
 - CQRS keeps a read model apart from the write model and feeds it from the write model's events, so each side has the shape its questions need.
-- Problem: the aggregate answers whether a command may happen. A customer's order list needs facts from three services, for many orders, and no index by customer.
-- Three rules: each column is written by the one event that owns it, each update only moves forward and is safe twice, and each answer says how current it is.
-- Cost: the view is eventually consistent, so a customer may list orders and not yet see the one just placed.
+- Problem. The aggregate answers whether a command may happen. A customer's order list needs facts from three services, for many orders, and no index by customer.
+- Three rules. Each column is written by the one event that owns it, each update only moves forward and is safe twice, and each answer says how current it is.
+- Cost. The view is eventually consistent, so a customer may list orders and not yet see the one just placed.
 
 > The write model is shaped for one job: load one stream, decide, append. A customer's question is another job. The events table has no index by customer, its payloads are the owner's private format, and it holds none of the payment or shipping facts. Reading another service's store couples every reader to its schema, and asking each service per order makes the list as slow as the slowest of three. So the order service builds a table of its own from the topics the other services already publish. It is disposable, because it can be rebuilt from the events, and no request writes to it. Fowler cautions that for most systems the pattern adds risky complexity, so it belongs on a bounded context and not on a whole system.
 
@@ -690,9 +690,9 @@ order-service · the shipment upsert refuses an event that does not advance the 
 p. 58
 
 - A projection is a read model built by folding the event history in order, kept current by applying each new event once, and rebuilt from the first event when its logic or question changes.
-- Problem: shipments per carrier per day touch every stream, and nothing indexes them.
-- Replay: fold every aggregate when the question arrives. Correct by construction and no new moving part, but it pays the size of the store on every request.
-- Projection: a table, a checkpoint and a timer. Fast to read, one tick behind, and wrong until rebuilt if its fold has a bug.
+- Problem. Shipments per carrier per day touch every stream, and nothing indexes them.
+- Replay. Fold every aggregate when the question arrives. Correct by construction and no new moving part, but it pays the size of the store on every request.
+- Projection. A table, a checkpoint and a timer. Fast to read, one tick behind, and wrong until rebuilt if its fold has a bug.
 
 > Operations asks how many orders each carrier shipped each day. The order service has no table to ask, and a snapshot bounds one aggregate's load without helping a question about all of them. Replay answers it with the same fold the commands use. A projection answers it from a small table kept current by a checkpointed poller. The events remain the only record in both cases, so losing a projection costs time and never data. The Azure Architecture Center calls a materialized view completely disposable for that reason. A projection is worth its extra model only when the question is asked often enough, and a replay is slow enough, to justify a second thing that can be wrong.
 
@@ -727,9 +727,9 @@ What goes wrong | Read cost grows with the store | Lag, a bug repeated until reb
 p. 61
 
 - An upcaster turns an event stored in an older shape into the same event in the current shape, on a copy, when the event is read.
-- Problem: the store is append-only, so a new field such as shippingPriority has no place to be fixed in the old rows.
-- Chain: one small step per schema version, so a version 1 row passes through every step to the current one. An unknown version is an error.
-- On the wire: an Avro registry with BACKWARD_TRANSITIVE refuses a version that a reader built on it could not use on every record ever published.
+- Problem. The store is append-only, so a new field such as shippingPriority has no place to be fixed in the old rows.
+- Chain. One small step per schema version, so a version 1 row passes through every step to the current one. An unknown version is an error.
+- On the wire. An Avro registry with BACKWARD_TRANSITIVE refuses a version that a reader built on it could not use on every record ever published.
 
 > Customers can now ask for express delivery, so OrderPlaced gains a shipping priority. Two kinds of reader already hold the old shape: the aggregate loads rows written before the field existed and can never rewrite them, and a consumer replaying the topic from its first record meets records without the field. Rewriting the old rows breaks the rule that made the store trustworthy. Teaching the aggregate every shape spreads the history of the schema through code that should know only the order. An upcaster keeps the stored history as recorded, and a bug in a step is fixed in code with nothing to repair. The default a step supplies is a business decision, so it is written once and the published contract states the same value.
 
@@ -773,9 +773,9 @@ Enrich, join, window, coordinate and decide
 p. 65
 
 - A Content Enricher uses data in the incoming message to fetch the missing details from an external source and attaches them to the message.
-- Problem: shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one.
-- Lookup: ask the owner for each record. Always the current row, but the consumer depends on the owner being up.
-- Table join: keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change.
+- Problem. Shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one.
+- Lookup. Ask the owner for each record. Always the current row, but the consumer depends on the owner being up.
+- Table join. Keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change.
 
 > Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. Notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic, and both read the same input.
 
@@ -846,9 +846,9 @@ notification-service · ShipmentEnrichmentTopology.java
 p. 69
 
 - A stream-stream join pairs two events that share a key and fall within a time window of each other, and keeps each side in state until the window closes.
-- Streams: the window is measured on occurredAt in the payload, so late and replayed records land where they happened.
-- Camel Aggregator: the timeout counts the time a group has been quiet on the service's clock, so a replay looks like a burst.
-- Unmatched: Streams emits PaymentOverdue only when stream time passes the window. Camel emits it when the timeout expires.
+- Streams. The window is measured on occurredAt in the payload, so late and replayed records land where they happened.
+- Camel Aggregator. The timeout counts the time a group has been quiet on the service's clock, so a replay looks like a burst.
+- Unmatched. Streams emits PaymentOverdue only when stream time passes the window. Camel emits it when the timeout expires.
 
 > Shipping may book a carrier only when the stock is reserved and the payment is taken. The two facts come from two services on two topics, keyed by the same order id, and either may arrive first. Hohpe and Woolf call the correlating unit an Aggregator, a stateful filter that stores related messages until a complete set has arrived. Both forms are Aggregators in that sense, and they differ in how they decide a set is complete and which clock they use. A payment within 30 minutes of the reservation is a statement about when things happened, and only event time can keep it. A payment within 10 seconds of reaching this service is a statement about the service, and the timeout is the direct form of it.
 
@@ -865,9 +865,9 @@ shipping-service · Kafka Streams left join against Camel Aggregator
 p. 71
 
 - A windowed aggregation groups records by key into windows of event time, keeps each open for a grace period, emits one final result when stream time passes its end plus the grace, and drops a record that arrives after that.
-- Problem: nothing says when a pickup list is complete, and waiting for everything never ends on a stream.
-- Grace is latency: the 09:00 slot ends at 09:15 and its list leaves when stream time passes 09:20.
-- Late and dropped: a record past the grace is not an error. Only a dropped-records counter shows it, so alert on that.
+- Problem. Nothing says when a pickup list is complete, and waiting for everything never ends on a stream.
+- Grace is latency. The 09:00 slot ends at 09:15 and its list leaves when stream time passes 09:20.
+- Late and dropped. A record past the grace is not an error. Only a dropped-records counter shows it, so alert on that.
 
 > Each carrier collects parcels in pickup slots, and the warehouse needs one list per carrier per slot. Arrival time is the wrong clock here, because a paused consumer, a replay or a republish through the outbox would move shipments into the wrong slot, so the slot comes from the time the shipment was scheduled. Stream time is the newest event time seen and advances only when a record arrives, so the wall clock never closes a window. A longer grace waits longer for stragglers and delays every list by the difference. A shorter one sends lists sooner and drops more of them, so the right value is the largest disorder the source produces. A pickup slot is a tumbling window, because windows that advance by less than their size would put every shipment in several lists.
 
@@ -908,9 +908,9 @@ shipping-service · PickupTopology.java
 p. 74
 
 - A saga is a sequence of local transactions, each publishing the event that triggers the next, in which a failure is undone by compensating transactions that are new events.
-- Problem: an order touches three databases and no transaction spans them, so a declined payment leaves the stock reserved.
-- Choreography: each service reacts to the events of the others, with no coordinator. Each publishes through an outbox so a committed step always announces itself.
-- No isolation: while it runs, readers see reserved stock for an order that may be cancelled.
+- Problem. An order touches three databases and no transaction spans them, so a declined payment leaves the stock reserved.
+- Choreography. Each service reacts to the events of the others, with no coordinator. Each publishes through an outbox so a committed step always announces itself.
+- No isolation. While it runs, readers see reserved stock for an order that may be cancelled.
 
 > Garcia-Molina and Salem introduced the saga in 1987, and Richardson names the two ways to coordinate one: choreography, where each participant reacts to events, and orchestration, where a central unit gives the instructions. The outbox gives every service an atomic step, its row and its event committing together. It does not give the order a way to go back. A compensation does not restore the previous state. It records a new fact that makes the previous one harmless: a declined payment publishes PaymentFailed, order-service cancels the order and publishes OrderCancelled, and inventory releases on either event. Inventory may see both in no guaranteed order, either twice, or before the reservation exists, so the release has to survive all of it.
 
@@ -941,9 +941,9 @@ Schedule shipment | Book the carrier | None; retried until it succeeds | Retriab
 p. 77
 
 - An orchestrated saga keeps the sequence and each compensation in one orchestrator that sends a command, waits for the reply, and on a failure or an expired limit tells the participants to undo.
-- Camel Saga EIP: an LRA coordinator holds the saga state, and participants register their own undo.
-- Quarkus Flow: a workflow lists the tasks, and the undo is a task you write.
-- Both: every saga gets an explicit time limit, and participants only execute commands.
+- Camel Saga EIP. An LRA coordinator holds the saga state, and participants register their own undo.
+- Quarkus Flow. A workflow lists the tasks, and the undo is a task you write.
+- Both. Every saga gets an explicit time limit, and participants only execute commands.
 
 > Three things push a flow toward a central owner: the sequence changes and every change is a coordinated release, someone has to answer where an order is when the answer is spread over three tables, and a time limit belongs to the whole saga. Hohpe and Woolf call the central unit a Process Manager. The same flow, order then stock then payment, runs here under two orchestrators over the same participants. With the Camel Saga EIP, the coordinator holds the saga and calls each registered compensation when it is cancelled. With a Quarkus Flow workflow, the state is a row per waiting instance in PostgreSQL, and the compensation is the tasks run after a failed or timed-out wait.
 
@@ -979,9 +979,9 @@ order-service · CamelOrderSagaRoute.java
 p. 80
 
 - Analyse then decide lets a model turn text into a value from a closed set, records it with the model and prompt that produced it, and lets rules decide from the record, never from the model.
-- Problem: a model that also decides can answer differently tomorrow, gives no reason but more text, and puts a refund behind a prompt.
-- Closed answer: a schema forces one of seven values, with temperature 0, a fixed seed and a versioned prompt.
-- Rules decide: each decision names the rule that fired, and a replay makes no model call.
+- Problem. A model that also decides can answer differently tomorrow, gives no reason but more text, and puts a refund behind a prompt.
+- Closed answer. A schema forces one of seven values, with temperature 0, a fixed seed and a versioned prompt.
+- Rules decide. Each decision names the rule that fired, and a replay makes no model call.
 
 > A carrier reports a parcel it could not deliver in a sentence its driver typed, and shipping-service has to decide whether to ship again or refund. Extraction from text is fuzzy and tolerates a small error rate, and a model reads that box crushed at the depot and torn wrapping are the same kind of event without a keyword list. A decision is business policy: it has to be exact, explainable and open to change by whoever owns the policy. The recorded analysis is the boundary. Everything before it may vary and is paid for once per note. Everything after it is a function of the record, so it is repeatable, explainable and replayable. Unknown refunds, so no customer waits on a parcel nobody understood.
 
@@ -1024,10 +1024,10 @@ Traces, metrics and logs across a commit, a log reader and a topic
 p. 84
 
 - Trace context propagation writes the trace context into the message, copies it at every relay, and lets the consumer continue the trace as a child or start a new one with a link.
-- Problem: an HTTP call carries its trace in a header. A message has no request to ride on, and the outbox adds a table row and a log reader between the commit and the topic.
-- Carriers: the outbox row keeps the context in a column, Debezium puts a traceparent header on the record, and the consumer reads it.
-- Without it: the consumer starts a trace of its own and the picture ends at the commit.
-- Parent or link: a single prompt record fits a child span. A batch, or work that runs after a delay, fits a link.
+- Problem. An HTTP call carries its trace in a header. A message has no request to ride on, and the outbox adds a table row and a log reader between the commit and the topic.
+- Carriers. The outbox row keeps the context in a column, Debezium puts a traceparent header on the record, and the consumer reads it.
+- Without it. The consumer starts a trace of its own and the picture ends at the commit.
+- Parent or link. A single prompt record fits a child span. A batch, or work that runs after a delay, fits a link.
 
 > An HTTP call carries its trace in a request header, and the server reads it before it starts work. A message has no request to ride on. The producer finishes, the transaction commits, and a relay publishes the event from another process. With the outbox there are two extra hops: the event is first a row in a table, then an entry in the database log that Connect reads. Each relay has to receive the trace context from the one before and pass it on. The W3C traceparent is the carrier: a version, a trace id, the parent span id and flags. Without it, the consumer starts a new trace and nothing connects it to the order.
 
@@ -1044,10 +1044,10 @@ order-service to inventory-service through the outbox and Debezium: spans in one
 p. 86
 
 - Flow metrics measure each stage where its work waits: backlog at the relay, lag at the broker, event age on arrival, dead letters as a rate. Alert on the signal that grows while the flow is stuck.
-- Problem: a service's own counters see only the work that reaches it. A paused connector leaves every service dashboard green.
-- Backlog: the distance in bytes between the replication slot's write position and the position the connector confirmed. The outbox table itself holds no rows to count.
-- Lag: read from the broker, because a stopped consumer's own metric simply stops.
-- Age: recorded on arrival, so it is a graph and the number a customer feels, not the alert.
+- Problem. A service's own counters see only the work that reaches it. A paused connector leaves every service dashboard green.
+- Backlog. The distance in bytes between the replication slot's write position and the position the connector confirmed. The outbox table itself holds no rows to count.
+- Lag. Read from the broker, because a stopped consumer's own metric simply stops.
+- Age. Recorded on arrival, so it is a graph and the number a customer feels, not the alert.
 
 > A service's metrics describe the service: requests handled, errors, latency. An event flow also has places that belong to no service. The outbox sits between a commit and a topic, and a stall there leaves both sides healthy. The obvious readings fail in specific ways. The outbox table is emptied in the transaction that fills it, so counting rows always reads zero. A consumer's lag metric disappears with the consumer. And event age is measured when something arrives, so it says nothing until the stall ends. The backlog gauge works because it reads the replication slot. A heartbeat query keeps the confirmed position moving, and the alert threshold sits at 16 KiB, between the idle reading and a paused connector.
 
@@ -1064,10 +1064,10 @@ order-service, Debezium Connect, Kafka and inventory-service: what each signal r
 p. 88
 
 - A correlation identifier puts the business identifier on every span and in every handler's log context, puts the trace identifier on every log line, and links any trace that a timer starts to the one it continues.
-- Problem: a trace id means nothing to a customer, and an order id means nothing to a tracing library. Support starts from the order id.
-- Three keys: the trace id finds one request tree and its lines, the order id finds every trace and line for the order, the link joins a timer's trace to its origin.
-- Loki: one label per service. The order id and trace id are structured metadata, so the index does not grow with the orders.
-- Risk: a business id that is personal data, or not unique, spreads or misleads.
+- Problem. A trace id means nothing to a customer, and an order id means nothing to a tracing library. Support starts from the order id.
+- Three keys. The trace id finds one request tree and its lines, the order id finds every trace and line for the order, the link joins a timer's trace to its origin.
+- Loki. One label per service. The order id and trace id are structured metadata, so the index does not grow with the orders.
+- Risk. A business id that is personal data, or not unique, spreads or misleads.
 
 > Someone phones to say an order never got its payment. They have an order id. Tempo is indexed by trace id and Loki holds lines of text, and neither knows what an order is. Three things break the link: a handler that never records which order its trace is about, a timer that starts work with no trace behind it, and a log line written without a trace id. Hohpe and Woolf describe the Correlation Identifier for matching a reply to a request. Here the same idea ties traces and logs together. The order id as a Loki label would open a stream per order, so it travels as structured metadata instead, which costs a filter at query time and keeps the index the size of the service list.
 
@@ -1090,10 +1090,10 @@ Kafka, topics, connectors and failover as resources an operator keeps true
 p. 91
 
 - Operator-managed Kafka describes the cluster as resources and lets an operator create and keep the pods, volumes, Services and configuration that realise it.
-- Problem: a broker needs a node id that survives restarts, a volume bound to the node, a stable address, and in KRaft a controller quorum. Deployments cannot decide restart order.
-- Node pools: a group of nodes with the same roles, resources and storage. A node is a broker, a controller or both.
-- Broker identity: a replaced pod keeps its node id and its volume claim, and the topic end offsets are unchanged.
-- Services: clients use the bootstrap Service, whose name does not change when a pod does.
+- Problem. A broker needs a node id that survives restarts, a volume bound to the node, a stable address, and in KRaft a controller quorum. Deployments cannot decide restart order.
+- Node pools. A group of nodes with the same roles, resources and storage. A node is a broker, a controller or both.
+- Broker identity. A replaced pod keeps its node id and its volume claim, and the topic end offsets are unchanged.
+- Services. Clients use the bootstrap Service, whose name does not change when a pod does.
 
 > A compose stack starts one Kafka container. On Kubernetes a broker is a pod that can disappear at any moment, so four things have to be held by something other than the pod: the node id, the volume, the address and, in KRaft mode, the controller quorum. A set of Deployments can start containers but cannot choose the restart order of brokers or give a replaced pod its old identity. Strimzi does that through a Kafka resource for what the cluster shares and KafkaNodePool resources for groups of nodes. In the cluster measured, one controller pool and one broker pool are the smallest cluster that shows the two roles apart. Dedicated controllers suit production. Surviving N controller failures takes 2N + 1 controllers, so a real cluster runs at least three.
 
@@ -1141,10 +1141,10 @@ KafkaNodePool · nodepool-broker.yaml
 p. 94
 
 - Topics as declared resources declares every topic as a Kubernetes resource, turns off broker auto-creation, and lets the operator reconcile Kafka toward the resources and never the other way.
-- Problem: with auto-creation a typo in a topic name creates a second topic and a healthy send. No list says which topics the system needs.
-- Effect: an undeclared name fails at the first send with a metadata timeout, and no topic is created.
-- Drift: a changed setting is reverted on the next pass. Partitions cannot be lowered, so that mismatch is reported as not ready, not repaired.
-- Cost: a topic created in Kafka with the command line tools gets no resource and stays invisible to the list.
+- Problem. With auto-creation a typo in a topic name creates a second topic and a healthy send. No list says which topics the system needs.
+- Effect. An undeclared name fails at the first send with a metadata timeout, and no topic is created.
+- Drift. A changed setting is reverted on the next pass. Partitions cannot be lowered, so that mismatch is reported as not ready, not repaired.
+- Cost. A topic created in Kafka with the command line tools gets no resource and stays invisible to the list.
 
 > The list of topics a system needs is part of the system, and Kubernetes already keeps lists of things and compares them with what runs. With auto-creation on, a topic appears as a side effect of a send, with broker defaults, and a producer configured with a misspelled name gets a new topic, a healthy send and a consumer that waits for events that never come. Strimzi's Unidirectional Topic Operator reads KafkaTopic resources and changes Kafka to match them. It never creates a resource from a topic it finds. The documented rule is that configuration changes flow from the resource to the topic, and changes made outside are reverted. That makes a missing resource visible too: leave one topic out of the set and the producer cannot publish.
 
@@ -1185,10 +1185,10 @@ KafkaTopic · kafkatopics.yaml
 p. 97
 
 - Server-side apply applies under a named field manager, so the API server records who owns each field and refuses a write from another manager that would change it.
-- Problem: client-side apply refuses neither of two writers. A platform patch to a memory limit is silently overwritten by the next deployment.
-- Size limit: client-side apply copies the manifest into an annotation, capped at 256 KiB. The CloudNativePG install fails on its two largest CRDs.
-- Conflict: a second manager gets an error naming the manager and the field. Forcing takes the field.
-- Operators: Strimzi applies its Services server-side too, so a foreign annotation survives but a change to its own field is put back.
+- Problem. Client-side apply refuses neither of two writers. A platform patch to a memory limit is silently overwritten by the next deployment.
+- Size limit. Client-side apply copies the manifest into an annotation, capped at 256 KiB. The CloudNativePG install fails on its two largest CRDs.
+- Conflict. A second manager gets an error naming the manager and the field. Forcing takes the field.
+- Operators. Strimzi applies its Services server-side too, so a foreign annotation survives but a change to its own field is put back.
 
 > Application manifests set a memory limit, a platform team raises it with a patch, and the next deployment puts it back. Nothing reports an error, and the last writer wins. Client-side apply compares the manifest, the live object and a copy of the last manifest stored in an annotation. That copy has two consequences. The annotation counts toward a 256 KiB limit for all annotations on one object, so a large CRD cannot be applied. And the server treats every write as an ordinary update. Server-side apply sends the manifest to the API server, which records field owners in managed fields. Fields set to the same value by two managers are shared. Different values are a conflict until a manager forces. Force in a pipeline with nobody watching turns the report off, so keep it for a decision.
 
@@ -1205,10 +1205,10 @@ Deployment managed fields: edp-apps and edp-platform, a conflict and a forced ch
 p. 99
 
 - Restricted pods by default labels every namespace that runs workloads with the restricted Pod Security level, and gives each workload the security context that level requires from the one place that owns it.
-- Problem: Kubernetes admits any well-formed pod. Operators create most pods in a cluster, and the operator decides their security context.
-- Applications: a patch adds non-root, no privilege escalation, dropped capabilities, a seccomp profile and a read-only root filesystem with a writable temporary directory.
-- Strimzi: select the restricted pod security provider, or the default provider's Kafka pods are refused.
-- Exceptions: an image that cannot comply gets a namespace of its own, because a label cannot exempt one pod.
+- Problem. Kubernetes admits any well-formed pod. Operators create most pods in a cluster, and the operator decides their security context.
+- Applications. A patch adds non-root, no privilege escalation, dropped capabilities, a seccomp profile and a read-only root filesystem with a writable temporary directory.
+- Strimzi. Select the restricted pod security provider, or the default provider's Kafka pods are refused.
+- Exceptions. An image that cannot comply gets a namespace of its own, because a label cannot exempt one pod.
 
 > Kubernetes ships three Pod Security Standards: privileged, baseline and restricted. Nothing applies one until a namespace asks. Telling every team to write a good security context depends on every team remembering, and most pods in a cluster are written by operators, not by the team. A namespace label turns the rule on, and the API server then refuses a violating pod whoever created it. Labelling a namespace that already holds pods prints a warning for each pod that would fail and evicts nothing, so the refusal arrives with the next pod creation, usually a rollout. The UBI images name a numeric user, so the kubelet can check the non-root requirement. The level checks pod specs and nothing else: it does not scan images or limit network paths.
 
@@ -1233,10 +1233,10 @@ Strimzi Metrics Reporter, operator endpoint and kube-state-metrics into one coll
 p. 102
 
 - Rebalance by proposal asks Cruise Control for a proposal, reads what it would move, approves it only when acceptable, and lets the operator ask and approve when a pool grows or shrinks.
-- Problem: a new broker joins empty, because placement is decided once at topic creation. A broker that holds replicas cannot simply be deleted.
-- Proposal: a status on the KafkaRebalance resource with replicas to move, data to copy and balance before and after. Nothing moves until approval.
-- Auto-rebalance: templates for adding and removing brokers. A scale-down without one is refused while the broker holds replicas.
-- Cost: a rebalance copies data and competes with clients for disk and network.
+- Problem. A new broker joins empty, because placement is decided once at topic creation. A broker that holds replicas cannot simply be deleted.
+- Proposal. A status on the KafkaRebalance resource with replicas to move, data to copy and balance before and after. Nothing moves until approval.
+- Auto-rebalance. Templates for adding and removing brokers. A scale-down without one is refused while the broker holds replicas.
+- Cost. A rebalance copies data and competes with clients for disk and network.
 
 > A cluster that runs out of room gets another broker, which in Kubernetes is one number in a node pool. The pod starts, joins, passes readiness and holds nothing, because every existing partition stays where it was created. Cruise Control keeps a model of the cluster built from partition load and proposes the smallest set of movements that brings it within its goals. Strimzi surfaces that as a KafkaRebalance resource. The proposal appears in the resource's status, and approval is an annotation, a human decision by default. A large amount of data to move is the signal to wait for a quiet hour. The operator can also do both steps for the two cases it recognises, a pool that grows and a pool that shrinks.
 
@@ -1261,10 +1261,10 @@ edp and edp-dr: mirrored topics, checkpoints and a consumer moved by bootstrap a
 p. 105
 
 - Connectors as resources declare the Connect image, every connector and every offset operation as Kubernetes resources, and let the operator reconcile the worker toward them.
-- Problem: a worker image must contain plugins, a connector is JSON sent over HTTP, and an offset change leaves no trace in the repository.
-- Build: the operator runs a build pod, checks each artifact's checksum, and pushes an image to a registry the setup names. A wrong checksum stops the build.
-- Credentials: a config provider reads the database secret in the Connect pod, so the password is never in the resource.
-- Offsets: an annotation lists or alters them through a ConfigMap, only while the connector is stopped.
+- Problem. A worker image must contain plugins, a connector is JSON sent over HTTP, and an offset change leaves no trace in the repository.
+- Build. The operator runs a build pod, checks each artifact's checksum, and pushes an image to a registry the setup names. A wrong checksum stops the build.
+- Credentials. A config provider reads the database secret in the Connect pod, so the password is never in the resource.
+- Offsets. An annotation lists or alters them through a ConfigMap. A list works while the connector runs, an alter only while it is stopped.
 
 > On a compose stack a connector is a JSON file that a script sends to the Connect REST API. Nothing in the repository says which connectors should exist, and nothing notices when one is missing. On Kubernetes the operator that runs Kafka can run Connect too. The image becomes a build section of the KafkaConnect resource, each connector a KafkaConnector, and an offset operation an annotation on the connector. The REST API stays for reading status and offsets. Strimzi runs no registry, so one has to be named for the build. Two Debezium connectors in one Connect cluster must not share a topic prefix, or the second never takes its snapshot. The captured table must be owned by the connector's role, or the publication cannot be created.
 
@@ -1280,17 +1280,17 @@ KafkaConnect build pod, registry, worker and KafkaConnector resources on CloudNa
 
 Proving the guards, asking the stream, changing the running system
 
-> How do you test code that fails by omission, with a notification that never left or a second one that did? How do you ask a stream a question without a ksqlDB-style service? What happens to records when a consumer group is redeployed? Two smaller patterns complete the set: a resequencer for events that span partitions, and a cache that is written only from committed events.
+> Code that fails by omission, such as a notification that never left or a second one that did, needs tests that can see absence. A stream can be asked a question without a ksqlDB-style service. A redeployed consumer group has a defined effect on the records it reads. Two smaller patterns complete the set: a resequencer for events that span partitions, and a cache that is written only from committed events.
 
 ## [108] TESTING · Event-driven tests that bite
 
 p. 108
 
-- Real brokers: Dev Services starts real Kafka and PostgreSQL, so a test meets the real behaviour of what it guards.
-- Bite cycle: prove a guard by removing it from an altered copy of the route. Exactly the one test that names the guard must fail.
-- Drain, not first match: a first match passes on a route that notifies twice. Only a read that waits out the window can assert absence.
-- Oracles: compute the expected partition with Kafka's own hash, and write the arrival order down. Do not wait for the application to produce it.
-- Limit: 20 rounds without a failure is not proof of no race. Compare against a run with the guard switched off.
+- Real brokers. Dev Services starts real Kafka and PostgreSQL, so a test meets the real behaviour of what it guards.
+- Bite cycle. Prove a guard by removing it from an altered copy of the route. Exactly the one test that names the guard must fail.
+- Drain, not first match. A first match passes on a route that notifies twice. Only a read that waits out the window can assert absence.
+- Oracles. Compute the expected partition with Kafka's own hash, and write the arrival order down. Do not wait for the application to produce it.
+- Limit. 20 rounds without a failure is not proof of no race. Compare against a run with the guard switched off.
 
 > A synchronous service fails loudly with an exception or a status code. An event-driven one fails by omission: the notification that never left, the second one that did, the record keyed by the wrong field. A test that sends a message and waits for an answer passes on all of these. The route here has three guards: a repeated event id is dropped, a cancelled order gets no notification, and the notification is keyed by the order id. Each is a line a refactoring can delete while the tests stay green. Mutation testing, proposed by DeMillo, Lipton and Sayward, is the idea behind the bite cycle: the three hand-written patches are the mutants. The harness costs one Maven run per patch, so it runs from the verify script and not on every save.
 
@@ -1314,11 +1314,11 @@ Kafka and PostgreSQL settings captured from Docker Compose and from Kubernetes, 
 
 p. 111
 
-- Question: deliveries per carrier per minute of event time, correct when a record arrives a few seconds after its minute ended.
-- Kafka Streams: ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint.
-- Flink SQL: a job writes closed windows to a topic. A second system to run, and no question the job does not already compute.
-- RisingWave: materialized views read with psql. A new question is one more query, with state in the database.
-- Licences: ksqlDB and Materialize are not open source, so neither is used.
+- Question. Deliveries per carrier per minute of event time, correct when a record arrives a few seconds after its minute ended.
+- Kafka Streams. Ask the application. State lives in a window store in the service and a REST call reads it. A new question is a new endpoint.
+- Flink SQL. A job writes closed windows to a topic. A second system to run, and no question the job does not already compute.
+- RisingWave. Materialized views read with psql. A new question is one more query, with state in the database.
+- Licences. KsqlDB and Materialize are not open source, so neither is used.
 
 > Operations wants the number of deliveries per carrier per minute, and wants it right when a record turns up late. A consumer that increments a counter counts by arrival time, so a paused or replayed consumer puts a delivery in the wrong minute. Three open source engines answer the question from one topic. Each takes event time from the delivery timestamp and each closes a window by a lateness bound. The bound is the grace period in Kafka Streams and the delay in the watermark expression in Flink and RisingWave. All three get the same value, ten seconds. The engines agree only when an out-of-order record is inside the lateness of every one of them. None of them tells the reader about a record it dropped.
 
@@ -1432,9 +1432,11 @@ R. A. DeMillo, R. J. Lipton, F. G. Sayward | Hints on Test Data Selection: Help 
 
 Hector Garcia-Molina, Kenneth Salem | Sagas
 
+Microsoft Azure Architecture Center | Materialized View pattern; Saga design pattern
+
 W3C | Trace Context
 
-> The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.
+> The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. The Azure Architecture Center's pattern pages describe the materialized view and the saga's step kinds. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.
 
 ## [120] SCAN TO EXPLORE · Take it with you
 

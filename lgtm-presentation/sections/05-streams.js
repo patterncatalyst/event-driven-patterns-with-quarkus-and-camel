@@ -18,9 +18,9 @@ module.exports = function (lib) {
     "Content Enricher",
     [
       ["A Content Enricher", " uses data in the incoming message to fetch the missing details from an external source and attaches them to the message."],
-      ["Problem:", " shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one."],
-      ["Lookup:", " ask the owner for each record. Always the current row, but the consumer depends on the owner being up."],
-      ["Table join:", " keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change."],
+      ["Problem.", " Shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one."],
+      ["Lookup.", " Ask the owner for each record. Always the current row, but the consumer depends on the owner being up."],
+      ["Table join.", " Keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change."],
     ],
     `Hohpe and Woolf define the enricher by its source being external to the message. Whether that source is a call or a local copy is a choice the pattern leaves open, and it decides how the enrichment behaves when the world changes. Notification-service builds the message the customer reads, so it needs carrier mode and a tracking link without owning that reference data. Putting the page into every event would repeat reference data in every record. Making the receiver keep its own data would give two services one truth to maintain. So the same enrichment is written twice, as a Camel route that calls the owner and as a Kafka Streams topology that joins against a compacted topic, and both read the same input.`,
   );
@@ -61,9 +61,9 @@ module.exports = function (lib) {
     "Event time or arrival time",
     [
       ["A stream-stream join", " pairs two events that share a key and fall within a time window of each other, and keeps each side in state until the window closes."],
-      ["Streams:", " the window is measured on occurredAt in the payload, so late and replayed records land where they happened."],
-      ["Camel Aggregator:", " the timeout counts the time a group has been quiet on the service's clock, so a replay looks like a burst."],
-      ["Unmatched:", " Streams emits PaymentOverdue only when stream time passes the window. Camel emits it when the timeout expires."],
+      ["Streams.", " The window is measured on occurredAt in the payload, so late and replayed records land where they happened."],
+      ["Camel Aggregator.", " The timeout counts the time a group has been quiet on the service's clock, so a replay looks like a burst."],
+      ["Unmatched.", " Streams emits PaymentOverdue only when stream time passes the window. Camel emits it when the timeout expires."],
     ],
     `Shipping may book a carrier only when the stock is reserved and the payment is taken. The two facts come from two services on two topics, keyed by the same order id, and either may arrive first. Hohpe and Woolf call the correlating unit an Aggregator, a stateful filter that stores related messages until a complete set has arrived. Both forms are Aggregators in that sense, and they differ in how they decide a set is complete and which clock they use. A payment within 30 minutes of the reservation is a statement about when things happened, and only event time can keep it. A payment within 10 seconds of reaching this service is a statement about the service, and the timeout is the direct form of it.`,
   );
@@ -82,9 +82,9 @@ module.exports = function (lib) {
     "Windows with grace",
     [
       ["A windowed aggregation", " groups records by key into windows of event time, keeps each open for a grace period, emits one final result when stream time passes its end plus the grace, and drops a record that arrives after that."],
-      ["Problem:", " nothing says when a pickup list is complete, and waiting for everything never ends on a stream."],
-      ["Grace is latency:", " the 09:00 slot ends at 09:15 and its list leaves when stream time passes 09:20."],
-      ["Late and dropped:", " a record past the grace is not an error. Only a dropped-records counter shows it, so alert on that."],
+      ["Problem.", " Nothing says when a pickup list is complete, and waiting for everything never ends on a stream."],
+      ["Grace is latency.", " The 09:00 slot ends at 09:15 and its list leaves when stream time passes 09:20."],
+      ["Late and dropped.", " A record past the grace is not an error. Only a dropped-records counter shows it, so alert on that."],
     ],
     `Each carrier collects parcels in pickup slots, and the warehouse needs one list per carrier per slot. Arrival time is the wrong clock here, because a paused consumer, a replay or a republish through the outbox would move shipments into the wrong slot, so the slot comes from the time the shipment was scheduled. Stream time is the newest event time seen and advances only when a record arrives, so the wall clock never closes a window. A longer grace waits longer for stragglers and delays every list by the difference. A shorter one sends lists sooner and drops more of them, so the right value is the largest disorder the source produces. A pickup slot is a tumbling window, because windows that advance by less than their size would put every shipment in several lists.`,
   );
@@ -114,9 +114,9 @@ module.exports = function (lib) {
     "Saga: compensation, not rollback",
     [
       ["A saga", " is a sequence of local transactions, each publishing the event that triggers the next, in which a failure is undone by compensating transactions that are new events."],
-      ["Problem:", " an order touches three databases and no transaction spans them, so a declined payment leaves the stock reserved."],
-      ["Choreography:", " each service reacts to the events of the others, with no coordinator. Each publishes through an outbox so a committed step always announces itself."],
-      ["No isolation:", " while it runs, readers see reserved stock for an order that may be cancelled."],
+      ["Problem.", " An order touches three databases and no transaction spans them, so a declined payment leaves the stock reserved."],
+      ["Choreography.", " Each service reacts to the events of the others, with no coordinator. Each publishes through an outbox so a committed step always announces itself."],
+      ["No isolation.", " While it runs, readers see reserved stock for an order that may be cancelled."],
     ],
     `Garcia-Molina and Salem introduced the saga in 1987, and Richardson names the two ways to coordinate one: choreography, where each participant reacts to events, and orchestration, where a central unit gives the instructions. The outbox gives every service an atomic step, its row and its event committing together. It does not give the order a way to go back. A compensation does not restore the previous state. It records a new fact that makes the previous one harmless: a declined payment publishes PaymentFailed, order-service cancels the order and publishes OrderCancelled, and inventory releases on either event. Inventory may see both in no guaranteed order, either twice, or before the reservation exists, so the release has to survive all of it.`,
   );
@@ -149,9 +149,9 @@ module.exports = function (lib) {
     "Orchestrated sagas: LRA and Quarkus Flow",
     [
       ["An orchestrated saga", " keeps the sequence and each compensation in one orchestrator that sends a command, waits for the reply, and on a failure or an expired limit tells the participants to undo."],
-      ["Camel Saga EIP:", " an LRA coordinator holds the saga state, and participants register their own undo."],
-      ["Quarkus Flow:", " a workflow lists the tasks, and the undo is a task you write."],
-      ["Both:", " every saga gets an explicit time limit, and participants only execute commands."],
+      ["Camel Saga EIP.", " An LRA coordinator holds the saga state, and participants register their own undo."],
+      ["Quarkus Flow.", " A workflow lists the tasks, and the undo is a task you write."],
+      ["Both.", " Every saga gets an explicit time limit, and participants only execute commands."],
     ],
     `Three things push a flow toward a central owner: the sequence changes and every change is a coordinated release, someone has to answer where an order is when the answer is spread over three tables, and a time limit belongs to the whole saga. Hohpe and Woolf call the central unit a Process Manager. The same flow, order then stock then payment, runs here under two orchestrators over the same participants. With the Camel Saga EIP, the coordinator holds the saga and calls each registered compensation when it is cancelled. With a Quarkus Flow workflow, the state is a row per waiting instance in PostgreSQL, and the compensation is the tasks run after a failed or timed-out wait.`,
   );
@@ -181,9 +181,9 @@ module.exports = function (lib) {
     "Analyse with a model, decide with rules",
     [
       ["Analyse then decide", " lets a model turn text into a value from a closed set, records it with the model and prompt that produced it, and lets rules decide from the record, never from the model."],
-      ["Problem:", " a model that also decides can answer differently tomorrow, gives no reason but more text, and puts a refund behind a prompt."],
-      ["Closed answer:", " a schema forces one of seven values, with temperature 0, a fixed seed and a versioned prompt."],
-      ["Rules decide:", " each decision names the rule that fired, and a replay makes no model call."],
+      ["Problem.", " A model that also decides can answer differently tomorrow, gives no reason but more text, and puts a refund behind a prompt."],
+      ["Closed answer.", " A schema forces one of seven values, with temperature 0, a fixed seed and a versioned prompt."],
+      ["Rules decide.", " Each decision names the rule that fired, and a replay makes no model call."],
     ],
     `A carrier reports a parcel it could not deliver in a sentence its driver typed, and shipping-service has to decide whether to ship again or refund. Extraction from text is fuzzy and tolerates a small error rate, and a model reads that box crushed at the depot and torn wrapping are the same kind of event without a keyword list. A decision is business policy: it has to be exact, explainable and open to change by whoever owns the policy. The recorded analysis is the boundary. Everything before it may vary and is paid for once per note. Everything after it is a function of the record, so it is repeatable, explainable and replayable. Unknown refunds, so no customer waits on a parcel nobody understood.`,
   );

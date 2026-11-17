@@ -13,10 +13,10 @@ module.exports = function (lib) {
   // Operator-managed Kafka
   bulletSlide("OPERATOR-MANAGED KAFKA", "KRaft roles and node pools", [
     ["Operator-managed Kafka", " describes the cluster as resources and lets an operator create and keep the pods, volumes, Services and configuration that realise it."],
-    ["Problem:", " a broker needs a node id that survives restarts, a volume bound to the node, a stable address, and in KRaft a controller quorum. Deployments cannot decide restart order."],
-    ["Node pools:", " a group of nodes with the same roles, resources and storage. A node is a broker, a controller or both."],
-    ["Broker identity:", " a replaced pod keeps its node id and its volume claim, and the topic end offsets are unchanged."],
-    ["Services:", " clients use the bootstrap Service, whose name does not change when a pod does."],
+    ["Problem.", " A broker needs a node id that survives restarts, a volume bound to the node, a stable address, and in KRaft a controller quorum. Deployments cannot decide restart order."],
+    ["Node pools.", " A group of nodes with the same roles, resources and storage. A node is a broker, a controller or both."],
+    ["Broker identity.", " A replaced pod keeps its node id and its volume claim, and the topic end offsets are unchanged."],
+    ["Services.", " Clients use the bootstrap Service, whose name does not change when a pod does."],
   ], `A compose stack starts one Kafka container. On Kubernetes a broker is a pod that can disappear at any moment, so four things have to be held by something other than the pod: the node id, the volume, the address and, in KRaft mode, the controller quorum. A set of Deployments can start containers but cannot choose the restart order of brokers or give a replaced pod its old identity. Strimzi does that through a Kafka resource for what the cluster shares and KafkaNodePool resources for groups of nodes. In the cluster measured, one controller pool and one broker pool are the smallest cluster that shows the two roles apart. Dedicated controllers suit production. Surviving N controller failures takes 2N + 1 controllers, so a real cluster runs at least three.`);
 
   figSlide("OPERATOR-MANAGED KAFKA", "Controllers, brokers and observers", "28-kraft-roles",
@@ -31,10 +31,10 @@ module.exports = function (lib) {
   // Topics
   bulletSlide("TOPICS AS RESOURCES", "Topics as declared resources", [
     ["Topics as declared resources", " declares every topic as a Kubernetes resource, turns off broker auto-creation, and lets the operator reconcile Kafka toward the resources and never the other way."],
-    ["Problem:", " with auto-creation a typo in a topic name creates a second topic and a healthy send. No list says which topics the system needs."],
-    ["Effect:", " an undeclared name fails at the first send with a metadata timeout, and no topic is created."],
-    ["Drift:", " a changed setting is reverted on the next pass. Partitions cannot be lowered, so that mismatch is reported as not ready, not repaired."],
-    ["Cost:", " a topic created in Kafka with the command line tools gets no resource and stays invisible to the list."],
+    ["Problem.", " With auto-creation a typo in a topic name creates a second topic and a healthy send. No list says which topics the system needs."],
+    ["Effect.", " An undeclared name fails at the first send with a metadata timeout, and no topic is created."],
+    ["Drift.", " A changed setting is reverted on the next pass. Partitions cannot be lowered, so that mismatch is reported as not ready, not repaired."],
+    ["Cost.", " A topic created in Kafka with the command line tools gets no resource and stays invisible to the list."],
   ], `The list of topics a system needs is part of the system, and Kubernetes already keeps lists of things and compares them with what runs. With auto-creation on, a topic appears as a side effect of a send, with broker defaults, and a producer configured with a misspelled name gets a new topic, a healthy send and a consumer that waits for events that never come. Strimzi's Unidirectional Topic Operator reads KafkaTopic resources and changes Kafka to match them. It never creates a resource from a topic it finds. The documented rule is that configuration changes flow from the resource to the topic, and changes made outside are reverted. That makes a missing resource visible too: leave one topic out of the set and the producer cannot publish.`);
 
   figSlide("TOPICS AS RESOURCES", "Changes go in one direction", "29-one-direction",
@@ -49,10 +49,10 @@ module.exports = function (lib) {
   // Field ownership
   bulletSlide("FIELD OWNERSHIP", "Server-side apply and field managers", [
     ["Server-side apply", " applies under a named field manager, so the API server records who owns each field and refuses a write from another manager that would change it."],
-    ["Problem:", " client-side apply refuses neither of two writers. A platform patch to a memory limit is silently overwritten by the next deployment."],
-    ["Size limit:", " client-side apply copies the manifest into an annotation, capped at 256 KiB. The CloudNativePG install fails on its two largest CRDs."],
-    ["Conflict:", " a second manager gets an error naming the manager and the field. Forcing takes the field."],
-    ["Operators:", " Strimzi applies its Services server-side too, so a foreign annotation survives but a change to its own field is put back."],
+    ["Problem.", " Client-side apply refuses neither of two writers. A platform patch to a memory limit is silently overwritten by the next deployment."],
+    ["Size limit.", " Client-side apply copies the manifest into an annotation, capped at 256 KiB. The CloudNativePG install fails on its two largest CRDs."],
+    ["Conflict.", " A second manager gets an error naming the manager and the field. Forcing takes the field."],
+    ["Operators.", " Strimzi applies its Services server-side too, so a foreign annotation survives but a change to its own field is put back."],
   ], `Application manifests set a memory limit, a platform team raises it with a patch, and the next deployment puts it back. Nothing reports an error, and the last writer wins. Client-side apply compares the manifest, the live object and a copy of the last manifest stored in an annotation. That copy has two consequences. The annotation counts toward a 256 KiB limit for all annotations on one object, so a large CRD cannot be applied. And the server treats every write as an ordinary update. Server-side apply sends the manifest to the API server, which records field owners in managed fields. Fields set to the same value by two managers are shared. Different values are a conflict until a manager forces. Force in a pipeline with nobody watching turns the report off, so keep it for a decision.`);
 
   figSlide("FIELD OWNERSHIP", "Two managers, one field", "30-field-managers",
@@ -62,10 +62,10 @@ module.exports = function (lib) {
   // Admission
   bulletSlide("ADMISSION", "Restricted pods by default", [
     ["Restricted pods by default", " labels every namespace that runs workloads with the restricted Pod Security level, and gives each workload the security context that level requires from the one place that owns it."],
-    ["Problem:", " Kubernetes admits any well-formed pod. Operators create most pods in a cluster, and the operator decides their security context."],
-    ["Applications:", " a patch adds non-root, no privilege escalation, dropped capabilities, a seccomp profile and a read-only root filesystem with a writable temporary directory."],
-    ["Strimzi:", " select the restricted pod security provider, or the default provider's Kafka pods are refused."],
-    ["Exceptions:", " an image that cannot comply gets a namespace of its own, because a label cannot exempt one pod."],
+    ["Problem.", " Kubernetes admits any well-formed pod. Operators create most pods in a cluster, and the operator decides their security context."],
+    ["Applications.", " A patch adds non-root, no privilege escalation, dropped capabilities, a seccomp profile and a read-only root filesystem with a writable temporary directory."],
+    ["Strimzi.", " Select the restricted pod security provider, or the default provider's Kafka pods are refused."],
+    ["Exceptions.", " An image that cannot comply gets a namespace of its own, because a label cannot exempt one pod."],
   ], `Kubernetes ships three Pod Security Standards: privileged, baseline and restricted. Nothing applies one until a namespace asks. Telling every team to write a good security context depends on every team remembering, and most pods in a cluster are written by operators, not by the team. A namespace label turns the rule on, and the API server then refuses a violating pod whoever created it. Labelling a namespace that already holds pods prints a warning for each pod that would fail and evicts nothing, so the refusal arrives with the next pod creation, usually a rollout. The UBI images name a numeric user, so the kubelet can check the non-root requirement. The level checks pod specs and nothing else: it does not scan images or limit network paths.`);
 
   figSlide("ADMISSION", "What the API server admits", "31-admission",
@@ -80,10 +80,10 @@ module.exports = function (lib) {
   // Cruise Control
   bulletSlide("REBALANCE BY PROPOSAL", "Scaling and moving partitions", [
     ["Rebalance by proposal", " asks Cruise Control for a proposal, reads what it would move, approves it only when acceptable, and lets the operator ask and approve when a pool grows or shrinks."],
-    ["Problem:", " a new broker joins empty, because placement is decided once at topic creation. A broker that holds replicas cannot simply be deleted."],
-    ["Proposal:", " a status on the KafkaRebalance resource with replicas to move, data to copy and balance before and after. Nothing moves until approval."],
-    ["Auto-rebalance:", " templates for adding and removing brokers. A scale-down without one is refused while the broker holds replicas."],
-    ["Cost:", " a rebalance copies data and competes with clients for disk and network."],
+    ["Problem.", " A new broker joins empty, because placement is decided once at topic creation. A broker that holds replicas cannot simply be deleted."],
+    ["Proposal.", " A status on the KafkaRebalance resource with replicas to move, data to copy and balance before and after. Nothing moves until approval."],
+    ["Auto-rebalance.", " Templates for adding and removing brokers. A scale-down without one is refused while the broker holds replicas."],
+    ["Cost.", " A rebalance copies data and competes with clients for disk and network."],
   ], `A cluster that runs out of room gets another broker, which in Kubernetes is one number in a node pool. The pod starts, joins, passes readiness and holds nothing, because every existing partition stays where it was created. Cruise Control keeps a model of the cluster built from partition load and proposes the smallest set of movements that brings it within its goals. Strimzi surfaces that as a KafkaRebalance resource. The proposal appears in the resource's status, and approval is an annotation, a human decision by default. A large amount of data to move is the signal to wait for a quiet hour. The operator can also do both steps for the two cases it recognises, a pool that grows and a pool that shrinks.`);
 
   figSlide("REBALANCE BY PROPOSAL", "Grow, propose, approve, move", "33-scale-and-move",
@@ -98,10 +98,10 @@ module.exports = function (lib) {
   // Connect
   bulletSlide("CONNECTORS AS RESOURCES", "Connect built in the cluster", [
     ["Connectors as resources", " declare the Connect image, every connector and every offset operation as Kubernetes resources, and let the operator reconcile the worker toward them."],
-    ["Problem:", " a worker image must contain plugins, a connector is JSON sent over HTTP, and an offset change leaves no trace in the repository."],
-    ["Build:", " the operator runs a build pod, checks each artifact's checksum, and pushes an image to a registry the setup names. A wrong checksum stops the build."],
-    ["Credentials:", " a config provider reads the database secret in the Connect pod, so the password is never in the resource."],
-    ["Offsets:", " an annotation lists or alters them through a ConfigMap, only while the connector is stopped."],
+    ["Problem.", " A worker image must contain plugins, a connector is JSON sent over HTTP, and an offset change leaves no trace in the repository."],
+    ["Build.", " The operator runs a build pod, checks each artifact's checksum, and pushes an image to a registry the setup names. A wrong checksum stops the build."],
+    ["Credentials.", " A config provider reads the database secret in the Connect pod, so the password is never in the resource."],
+    ["Offsets.", " An annotation lists or alters them through a ConfigMap. A list works while the connector runs, an alter only while it is stopped."],
   ], `On a compose stack a connector is a JSON file that a script sends to the Connect REST API. Nothing in the repository says which connectors should exist, and nothing notices when one is missing. On Kubernetes the operator that runs Kafka can run Connect too. The image becomes a build section of the KafkaConnect resource, each connector a KafkaConnector, and an offset operation an annotation on the connector. The REST API stays for reading status and offsets. Strimzi runs no registry, so one has to be named for the build. Two Debezium connectors in one Connect cluster must not share a topic prefix, or the second never takes its snapshot. The captured table must be owned by the connector's role, or the publication cannot be created.`);
 
   figSlide("CONNECTORS AS RESOURCES", "From resource to running connector", "35-build-and-run",

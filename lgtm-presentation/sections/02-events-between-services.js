@@ -16,7 +16,7 @@ module.exports = function (lib) {
     [
       ["Event notification", " announces that something happened and names the thing, leaving each consumer to ask the source for the details it needs."],
       ["Problem.", " A service that calls every interested party must know them all and wait for each. A consumer told only that something happened cannot act."],
-      ["Solution.", " order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP."],
+      ["Solution.", " Order-service publishes OrderPlaced with the order id after the commit. notification-service fetches the order over HTTP."],
       ["Cost.", " Each consumer adds one request per event, reads current state instead of state at event time, and cannot finish while the source is down."],
       ["Fit.", " Use it when the details change and the latest value is what matters."],
     ],
@@ -107,7 +107,7 @@ module.exports = function (lib) {
       ["A Resequencer", " is a stateful filter that holds out-of-sequence messages and releases them in order (Hohpe and Woolf)."],
       ["Problem.", " When several producers or topics describe one order, no single key puts its events in one partition, so Kafka cannot keep them in sequence."],
       ["Solution.", " Each event carries a sequence number. Replicas hold early events in a table and apply from the next expected number under a row lock."],
-      ["Result.", " The stalled-replica run that ended SHIPPED ends DELIVERED, in lifecycle order."],
+      ["Result.", " With the event type as key, the stalled-replica run that ended SHIPPED now ends DELIVERED, in lifecycle order."],
       ["Cost.", " One row per early event and one lock per event. A missing event holds that order's following events until someone repairs it."],
     ],
     `Keying by entity id is the first answer because it needs no buffer. A resequencer is for the cases where the key cannot change, and it pays with held rows and with events that wait. Every shipment event already carries its number within the order, and both order-service replicas share the database, so the database is where an order's events wait. One transactional method inserts the order's row if it is missing, locks it, ignores an event already applied or held, stores the event, and applies every event from the next expected number. An event is either held or applied, never both. If order only matters for the final state, a version number checked at the write can reject an older event with no buffer at all.`,
@@ -127,9 +127,9 @@ module.exports = function (lib) {
     [
       ["The producer batches", " records into one open batch per partition and sends every ready batch in one request, trading a little latency for fewer, larger requests."],
       ["Problem.", " A flash sale of 20,000 orders costs the broker one request per record unless sends overlap and batches fill."],
-      ["Settings.", " linger.ms (5 ms by default), batch.size (16384 bytes by default), compression, and acks. acks=all and idempotence are the defaults."],
+      ["Settings.", " Four settings matter: linger.ms (5 ms by default), batch.size (16384 bytes by default), compression, and acks. acks=all and idempotence are the defaults."],
       ["Overlap.", " A caller that waits for each acknowledgement never fills a batch. Batches fill only when several sends are in the producer at once."],
-      ["Measured.", " The default route moved 4.9 times the unbatched throughput (median of five rounds, range 2.1 to 6.0). The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times that throughput, because every record waits out the linger."],
+      ["Measured.", " The default route moved 4.9 times the unbatched throughput (median of five rounds, range 2.1 to 6.0). The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times the unbatched throughput, because every record waits out the linger."],
     ],
     `Send does not write to the network. The producer appends the record to an open batch and returns, and a background thread sends batches that are full or have waited long enough. The linger default was 0 and is now 5 milliseconds, raised by KIP-1030. The numbers are ratios to the unbatched route in the same run, medians of five rounds. 200 callers each waited for an acknowledgement, so a longer linger only added latency. Compression is the part that pays, with lz4 cutting bytes per record to 0.38 of none and zstd to 0.19. Tune when records per request is close to one while sends are concurrent, or when bytes are the cost, and raise the linger only as far as the latency budget allows.`,
   );
@@ -160,7 +160,7 @@ module.exports = function (lib) {
     "Parallelism stops at the partition count",
     "06-concurrency-cap",
     "Nine partitions assigned to the first nine of twelve consumers; the last three are idle",
-    `Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol makes every member give up everything and rejoin, and a replica that started a moment ago interrupts all the others. With the consumer protocol from KIP-848, the first replica gave up fewer than half of its nine partitions, four or five in recorded runs, and CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.`,
+    `Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol with an eager assignor makes every member give up all of its partitions and rejoin, and a replica that started a moment ago interrupts all the others: the first replica gave up all nine. With the consumer protocol from KIP-848 it gave up fewer than half, four or five in recorded runs. On the classic protocol, CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.`,
   );
 
   lib.bulletSlide(

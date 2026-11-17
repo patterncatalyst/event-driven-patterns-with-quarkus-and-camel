@@ -16,6 +16,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 diagrams="$here/../diagrams"
 CAIROSVG="2.9.1"
 SEGNO="1.6.6"
+PILLOW="13.0.0"
 ZXING="3.1.1"
 WIDTH=1600
 SITE_URL="https://patterncatalyst.github.io/event-driven-patterns-with-quarkus-and-camel/"
@@ -74,7 +75,7 @@ for name in "${figs[@]}"; do
 done
 
 # QR codes: generate with segno, decode with zxing-cpp, require the exact URL.
-uv run --no-project --quiet --with "segno==$SEGNO" --with "zxing-cpp==$ZXING" --with pillow \
+uv run --no-project --quiet --with "segno==$SEGNO" --with "zxing-cpp==$ZXING" --with "pillow==$PILLOW" \
   python -I - "$out" "qr-site=$SITE_URL" "qr-hub=$HUB_URL" <<'PY'
 import sys
 import segno

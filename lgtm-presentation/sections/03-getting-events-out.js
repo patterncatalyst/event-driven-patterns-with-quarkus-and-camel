@@ -75,7 +75,7 @@ module.exports = function (lib) {
     "CONNECTOR OFFSETS",
     "Offsets and replication slots",
     [
-      ["Connector offsets", " are a source connector's position, stored by Kafka Connect in an offsets topic. The offsets API lists, alters and resets them, only while the connector is stopped."],
+      ["Connector offsets", " are a source connector's position, stored by Kafka Connect in an offsets topic. The offsets API lists them at any time. Altering or resetting them needs the connector stopped."],
       ["Problem.", " After a bad batch or a day of maintenance, where does the connector start reading, and who decides?"],
       ["The slot wins.", " PostgreSQL streams from the greater of the offset and the slot's confirmed position. Altering forward skips changes. Altering backward does not rewind."],
       ["Reset.", " With snapshot.mode=initial a reset reads the current rows as snapshot events, not the history of how they got there."],

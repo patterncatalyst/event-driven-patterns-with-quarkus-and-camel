@@ -63,9 +63,9 @@ const H = 7.5;
 function newDeck() {
   const pres = new PptxGenJS();
   pres.layout = "LAYOUT_WIDE";
-  pres.title = "Designing Cloud-Native REST APIs: Python";
-  pres.author = "Robert Sedor";
-  pres.company = "Red Hat";
+  pres.title = "Event-Driven Patterns with Quarkus and Camel";
+  pres.author = "PatternCatalyst";
+  pres.company = "PatternCatalyst";
   return pres;
 }
 

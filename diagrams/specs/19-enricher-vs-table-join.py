@@ -36,6 +36,6 @@ emit(
         {"x": 490, "y": 30, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
          "text": "The same merge, from two places: the owner's answer now, or the owner's last published record"},
         {"x": 490, "y": 545, "anchor": "middle", "size": 11, "color": "#555555",
-         "text": "A real service runs one of the two; the example runs both on the same input."},
+         "text": "One service needs only one of the two forms."},
     ],
 )

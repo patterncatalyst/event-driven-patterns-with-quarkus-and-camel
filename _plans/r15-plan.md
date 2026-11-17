@@ -49,8 +49,9 @@ Pins and tools: pptxgenjs 4.0.1 (npm latest), `image-size` 2.1.0 override only i
 
 1. `.gitignore` ignores `package-lock.json` everywhere: add `!lgtm-presentation/package-lock.json`.
 2. `host_ids.py check` skips binary files, so the `.pptx` gets no host check: `check_decks` runs the host_ids rules over the deck's XML parts.
-3. Two figure specs carry cross-chapter text: `32-what-each-signal-answers` ("Lag comes from chapter 26's receiver") and `ae-restart-loss` ("(chapter 4)"). Fix the specs; add an SVG-text cross-reference check (`ad-*` exempt).
+3. Two figure specs carry cross-chapter text: `32-what-each-signal-answers` ("Lag comes from chapter 26's receiver") and `ae-restart-loss` ("(chapter 4)"). Fix the specs; add an SVG-text cross-reference check (`ad-*` exempt). The `00-compose-stack` figure text "One compose project runs every service Parts 1 to 5 share" became "One compose project runs every shared service", because the new check flags it (orchestrator).
 4. Neither `voice-scan.sh` nor `check_dashes` covers `lgtm-presentation`: add `text/*.md`, `BUILD.md`, `edits/*.md`, `deck.js`, `sections/*.js`.
+5. `19-enricher-vs-table-join` carried self-reference in its figure text ("the example runs both on the same input"); restated as "One service needs only one of the two forms." Only that spec's .svg and .excalidraw changed (repair round 1).
 
 ## Steps
 
