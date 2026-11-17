@@ -9,9 +9,9 @@ description: "The outbox order-service, Strimzi and CloudNativePG on a single-no
 duration: "45 minutes"
 ---
 
-The outbox `order-service` has no Java, Containerfile or connector that is specific to a platform. The same image, the same Debezium connector and the same Kafka and PostgreSQL run on Docker Compose and on minikube. OpenShift Local (CRC) is a third place to run them: a single-node OpenShift cluster in a virtual machine on the workstation, a stand-in for an on-premises distribution. Nothing in the service depends on it, and what follows is a demonstration of that, not a deployment guide.
+The outbox `order-service` has no Java, Containerfile or connector that is specific to a platform. The same image, the same Debezium connector and the same Kafka and PostgreSQL run on Docker Compose and on minikube. OpenShift Local (CRC) is a third place to run them: a single-node OpenShift cluster in a virtual machine on the workstation, a stand-in for an on-premises distribution. Nothing in the service depends on it.
 
-What differs is everything around the code. Operators arrive from catalogs instead of release files, the image is copied into a registry that the cluster already runs, and no pod is allowed to pick its own user.
+What differs is everything around the code. Operators arrive from catalogs instead of release files, the image is copied into a registry that the cluster already runs, and the platform assigns each pod its user.
 
 {% include excalidraw.html file="ah-crc-layout" alt="Two Subscriptions in the namespace edp-operators install Strimzi and CloudNativePG and watch the namespace edp, which holds Kafka, a PostgreSQL Cluster, Connect with an ImageStream, a connector and order-service behind a Route that curl reaches over verified HTTPS" caption="Figure H.1: Operators in one namespace, the workload in another" %}
 
@@ -26,18 +26,18 @@ What differs is everything around the code. Operators arrive from catalogs inste
 | Exposure | NodePort published at `minikube start` | An edge-TLS `Route` with a host name the workstation resolves |
 | Telemetry | LGTM in the cluster | None: the OpenTelemetry SDK is switched off |
 
-The manifests for Kafka and the PostgreSQL `Cluster` are the ones minikube uses, with the namespace set by kustomize. Every command names its namespace with `-n`, and every apply is `oc apply --server-side`. There is no Helm and no port forwarding of any kind.
+The manifests for Kafka and the PostgreSQL `Cluster` are the ones minikube uses, with the namespace set by kustomize. Every command names its namespace with `-n`, and every apply is `oc apply --server-side`. There is no Helm and no port forwarding of any kind. The example needs a cluster with no other Strimzi or CloudNativePG install: the operators' CRDs are cluster-wide, so `install.sh` refuses when any exist and `teardown.sh` removes them.
 
 ## Starting CRC
 
-The instance is started by its owner with `crc start`. Setting it up edits the host's DNS and installs a helper, so the scripts do not do it: `crc-check.sh` stops them unless CRC is running and the current context is `crc-admin`, and `scripts/stack-guard.sh --crc` refuses while a Compose project or a minikube node is running. One stack at a time holds here as everywhere.
+The instance is started by its owner with `crc start`. Setting it up edits the host's DNS, so the scripts do not do it: `crc-check.sh` stops them unless CRC is running and the current context is `crc-admin`, and `scripts/stack-guard.sh --crc` refuses while a Compose project or a minikube node is running. One stack at a time holds here as everywhere.
 
 ```bash
 crc status                    # OpenShift: Running
 oc config current-context     # crc-admin
 ```
 
-CRC is one node that is both control plane and worker, and the cluster is ephemeral: the documentation says it is not meant for production and has no upgrade path. Its pull secret comes from a Red Hat account that costs nothing. Network mode `user` is the default. Under it the CRC daemon adds each Route's host name to the hosts file while the Route exists and removes it afterwards, so `curl` reaches a Route by name and the example changes nothing on the host.
+CRC is one node that is both control plane and worker, and the cluster is ephemeral: the documentation says it is not meant for production and has no upgrade path. Its pull secret comes from a Red Hat account that costs nothing. Network mode `user` is the default. Under it the CRC daemon adds each Route's host name to the hosts file while the Route exists and removes it afterwards, so `curl` reaches a Route by name. The scripts change nothing on the host, and the daemon's entry goes when the Route goes.
 
 Trust is the other piece. The default ingress certificate is signed by a CA that is public, in the ConfigMap `default-ingress-cert` in `openshift-config-managed`. The scripts read that and never touch the secret `router-certs-default`, which holds the private key. Every TLS call, `curl` and `skopeo` alike, is verified against that CA. No script turns verification off.
 
@@ -66,7 +66,7 @@ oc patch installplan "$PLAN" -n edp-operators --type merge -p '{"spec":{"approve
 
 Strimzi comes from the community catalog, on the channel `strimzi-1.x`. The channel `stable` stops at an old release, so a channel is read from the catalog, not assumed. CloudNativePG comes from the certified catalog, where EDB publishes the package with the upstream images, on the channel `stable-v1`. Both are open source and need no key. Red Hat's supported downstream of Strimzi, AMQ Streams, is sold as a subscription and ships a Kafka release older than the one used here, so it is not installed.
 
-One `OperatorGroup` in `edp-operators` targets the namespace `edp`, so both operators watch the project and nothing else. In the run measured, the first operator was ready 37 s after its plan was approved and the second 9 s after its.
+One `OperatorGroup` in `edp-operators` targets the namespace `edp`, so both operators watch the project and nothing else. Over the runs measured, the first operator was ready 34 to 37 s after its plan was approved and the second 9 to 14 s after its.
 
 ## Building with buildah, copying with skopeo
 
@@ -82,11 +82,11 @@ skopeo copy --preserve-digests \
   docker://$REGISTRY/edp/order-service:08
 ```
 
-`buildah` builds rootless, with no daemon, into containers-storage. CRC already publishes the registry through its default route, so nothing is exposed. The project's `builder` service account may push to its own project, and its token is short-lived and lives in one shell variable for one call: it is neither written to a file nor printed. `--dest-cert-dir` holds the ingress CA.
+`buildah` builds rootless, with no daemon, into containers-storage. CRC already publishes the registry through its default route, so nothing is exposed. The project's `builder` service account may push to its own project, and its token is short-lived and lives in one shell variable for one call: it is neither written to a file nor printed, though it is on skopeo's command line while the copy runs. `--dest-cert-dir` holds the ingress CA.
 
 {% include excalidraw.html file="ah-build-and-copy" alt="A rootless buildah build of the unchanged Containerfile gives an image with digest D in containers-storage; skopeo copy with preserve-digests sends it through the registry route with verified TLS to the ImageStream order-service:08, and the Deployment references the internal registry at D" caption="Figure H.2: The digest of the local build is the digest in the cluster" %}
 
-A plain copy changes the digest. Skopeo compresses the layers that buildah stored uncompressed, so the same image id arrives under a different manifest digest. `--preserve-digests` keeps the manifest as it is, or fails. The Deployment then names the image by digest, and the script compares the digest in the `ImageStream` with the one of the local build before it deploys. A rebuild changes the digest too, because the image records when it was created, so the digest is written to a file at copy time and read at deploy time. The build took 50 s and the copy 2 s.
+On a first copy into an empty registry, a plain copy changes the digest: skopeo compresses the layers that buildah stored uncompressed, so the same image id arrives under a different manifest digest. A layer the registry already holds is reused as it is. `--preserve-digests` keeps the manifest as it is, or fails. The Deployment then names the image by digest, and the script compares the digest in the `ImageStream` with the one of the local build before it deploys. A rebuild changes the digest too, because the image records when it was created, so the digest is written to a file at copy time and read at deploy time. The build took 49 to 55 s and the copy 2 to 3 s.
 
 Connect is built in the cluster. `KafkaConnect.spec.build` with `output.type: imagestream` makes the operator run an OpenShift build that downloads the Debezium plugin, checks its sha512 and pushes to the `ImageStream`, which must exist first. OpenShift admits that build pod under the privileged constraint, a property of OpenShift builds and not of the example; the Connect pod it produces runs under `restricted-v2`.
 
@@ -94,7 +94,7 @@ Connect is built in the cluster. `KafkaConnect.spec.build` with `output.type: im
 
 `POST /orders` writes the order and its outbox row in one transaction. Debezium reads the write-ahead log, and the Outbox Event Router publishes the row to `edp.orders.placed` with the event type as a header. The connector is the one from the other platforms with a different host and credentials taken from the secret CloudNativePG creates, referenced by a Connect config provider so that no resource holds the password. The `Cluster` declares the application role with the `REPLICATION` attribute in `managed.roles`, and the connector is applied only after `order-service` has run, because its Flyway migration creates the table the connector captures.
 
-The Deployment sets `QUARKUS_OTEL_SDK_DISABLED=true`, a runtime property, because no collector runs here. It sets no user. `restricted-v2` drops every capability and assigns a user from the project's range, so the image's own user 185 is replaced and the service runs unchanged. Every pod in both namespaces carries `openshift.io/scc: restricted-v2`.
+The Deployment sets `QUARKUS_OTEL_SDK_DISABLED=true`, a runtime property, because no collector runs here. It sets no user. `restricted-v2` drops every capability and assigns a user from the project's range, so the image's own user 185 is replaced and the service runs unchanged. Every running pod in both namespaces except the Connect build pod carries `openshift.io/scc: restricted-v2`.
 
 ```bash
 curl --cacert "$CA" -X POST -H 'Content-Type: application/json' "https://$HOST/orders" \
@@ -104,13 +104,13 @@ oc exec -n edp edp-broker-0 -c kafka -- /opt/kafka/bin/kafka-console-consumer.sh
   --formatter-property print.key=true --formatter-property print.headers=true
 ```
 
-The consumer prints the headers, then the key `O-4301`, then the payload. The header `eventType:OrderPlaced` is among them. Connect's state is read through its REST API with `oc exec`, because the `KafkaConnector` resource lists its tasks only after the operator's next poll, and in one run it listed none while records were flowing. PostgreSQL is reached over TCP with the application role: the pod's user is a random number with no matching role, so peer authentication does not apply.
+The consumer prints the headers, then the key `O-4301`, then the payload. The header `eventType:OrderPlaced` is among them. Connect's state is read through its REST API with `oc exec`, because in one run the `KafkaConnector` resource listed no tasks while records were flowing. PostgreSQL is reached over TCP with the application role: the pod's user is a random number with no matching role, so peer authentication does not apply.
 
 ## Teardown
 
 A shared cluster is left as it was found, and deleting the namespaces does not do that. Deleting an operator by CLI removes the Subscription and the CSV, not the CRDs or the resources they define. What survives the namespaces is cluster-scoped: 21 CRDs, 8 ClusterRoles named `cnpg-*-editor-role`, `cnpg-*-viewer-role`, `strimzi-kafka-broker` and `strimzi-kafka-client`, the volumes with the `Retain` policy that the claims left behind, and the image objects and blobs in the registry.
 
-`teardown.sh` removes them in dependency order: connector, application, Connect, Kafka, `Cluster`, `ImageStream`s, Subscriptions, CSVs, install plans, the `OperatorGroup`, CRDs, ClusterRoles, namespaces, volumes. `oc adm prune images` is the only cluster-wide step, so it lists what it would delete and stops unless every image is the project's. It then removes the local buildah image and prints an inventory. It never strips a finalizer: a delete that does not finish stops the script and names the resource. It fails if anything of the project remains, and it takes 44 s. It does not stop CRC; that belongs to whoever started it.
+`teardown.sh` removes them in dependency order: connector, application, Connect, Kafka, `Cluster`, `ImageStream`s, Subscriptions, CSVs, install plans, the `OperatorGroup`, CRDs, ClusterRoles, namespaces, volumes. `oc adm prune images` is the only cluster-wide step, so it lists what it would delete and stops unless every image is the project's. It then removes the local buildah image and prints an inventory. It never strips a finalizer: a delete that does not finish stops the script and names the resource. It fails if anything of the project remains, and it takes 43 to 44 s. It does not stop CRC; that belongs to whoever started it.
 
 The UBI 10 base images stay in rootless storage, because buildah keeps them for the next build. The scripts delete the volume objects and do not inspect the node's disk behind them.
 
@@ -127,18 +127,18 @@ The install waits for two operators, Kafka, the `Cluster` and a Connect build; t
 
 Try one change and rerun:
 
-- Remove `--preserve-digests` from `build-and-copy.sh`: the script stops because the digest in the cluster differs from the local build.
+- Remove `--preserve-digests` from `build-and-copy.sh` and run it again: the rebuilt layers are new to the registry, skopeo compresses them, and the script stops because the digest in the cluster differs from the local build.
 - Call the Route with `curl` and no `--cacert`: it stops at the certificate.
 
 ## When not to use it
 
 CRC is one ephemeral node for learning how the code behaves on OpenShift, not a place to keep data. Its registry, volumes and operators are meant to be thrown away.
 
-The pinned, manually approved Subscription trades upgrades for repeatability: a security fix in an operator waits for a person. Copying an image from outside the cluster suits a demonstration where the image must be the one built elsewhere; a team that builds in the cluster pays less and gets a different image, which is a decision about provenance, not about the platform.
+The pinned, manually approved Subscription trades upgrades for repeatability: a security fix in an operator waits for a person. Copying an image from outside the cluster suits a demonstration where the image must be the one built elsewhere; a team that builds in the cluster pays less and gets a different image than the one built elsewhere.
 
 > **🤖 Explore with your agent**
 > "In examples/ah-openshift-local, run build-and-copy.sh with and without --preserve-digests and compare skopeo inspect of containers-storage:localhost/edp/08-order-service:crc with oc get istag order-service:08 -n edp -o jsonpath='{.image.metadata.name}'. Then state which value the Deployment in deploy/ must reference and why the tag 08 is not enough."
-> Check: with the flag the two digests are equal and the Deployment image ends in @sha256 and that digest; without it they differ.
+> Check: with the flag the two digests are equal and the Deployment image ends in @sha256 and that digest; without it, on a rebuild whose layers the registry does not hold yet, they differ.
 
 ## References
 

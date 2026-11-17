@@ -808,5 +808,8 @@ Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appen
 |---|---|---|---|---|---|---|
 | 1 | 144 s | 59 s | 12 s | 43 s, 20/20 | 45 s | none of ours (2 image objects and 26 blobs pruned) |
 | 2 (after full teardown) | 138 s | 53 s | 12 s | 44 s, 20/20 | 43 s | none of ours |
+| b2 executor final (before the orchestrator runs) | 138 s | 54 s | 12 s | 45 s, 20/20 | 44 s | none of ours |
+| validator round 1 | 137 s | 51 s | 12 s | 20/20 | 44 s | none of ours; bites: check 9 alone, checks 11 and 12 |
+| repair round 1 (shared-cluster guards, oc wait) | 142 s | 53 s | 10 s | 43 s, 20/20 | 44 s | none of ours; install refuses with a foreign `kafka.strimzi.io` CRD present |
 
 Docker image count 104 before and after; podman keeps only the two UBI 10 base images.

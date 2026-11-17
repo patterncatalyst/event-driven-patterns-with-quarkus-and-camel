@@ -32,6 +32,5 @@ oc apply --server-side --field-manager=edp-ah -n "$NS" -k "$OVERLAY" >/dev/null
 oc rollout status deployment/order-service -n "$NS" --timeout=300s
 say "== outbox connector"
 oc apply --server-side --field-manager=edp-ah -n "$NS" -k connector >/dev/null
-connector_ready() { [[ "$(oc get kafkaconnector order-outbox -n "$NS" -o 'jsonpath={.status.conditions[?(@.type=="Ready")].status}')" == True ]]; }
-wait_for 300 "KafkaConnector order-outbox Ready" connector_ready
+wait_ready "KafkaConnector order-outbox Ready" oc wait kafkaconnector/order-outbox -n "$NS" --for=condition=Ready --timeout=300s
 say "deploy: done in $((SECONDS - T0)) s"

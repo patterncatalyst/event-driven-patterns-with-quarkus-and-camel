@@ -28,4 +28,4 @@ cd examples/ah-openshift-local
 
 ## Infrastructure
 
-An OpenShift Local instance that is running, with the context `crc-admin`; `oc`, `buildah`, `skopeo`, `jq` and `curl` on the host. No Docker Compose project and no minikube node may be running.
+An OpenShift Local instance that is running, with the context `crc-admin`; `oc`, `buildah`, `skopeo`, `podman`, `jq`, `curl` and `docker` on the host (`podman` only for `rmi`, `docker` only for the stack guard). The cluster must have no other Strimzi or CloudNativePG install. No Docker Compose project and no minikube node may be running.

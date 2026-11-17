@@ -448,7 +448,14 @@ def check_examples(rep: Report):
             ref = m.group(1).strip("\"'")
             ln = line_of(text, m.start())
             # Strimzi KafkaConnect build.output of type imagestream names an ImageStream tag, not a pulled image.
-            if re.search(r"^\s*type:\s*imagestream\s*$", "\n".join(text.split("\n")[max(0, ln - 3):ln - 1]), re.M):
+            # Only in Appendix H examples, and the tag is still required and may not be latest.
+            if ("/examples/ah-" in c.as_posix() or c.as_posix().startswith("examples/ah-")) and re.search(
+                    r"^\s*type:\s*imagestream\s*$", "\n".join(text.split("\n")[max(0, ln - 3):ln - 1]), re.M):
+                istag = ref.rsplit(":", 1)[1] if ":" in ref else ""
+                if not istag:
+                    rep.err(c, ln, f"imagestream output '{ref}' has no tag")
+                elif istag == "latest":
+                    rep.err(c, ln, f"imagestream output '{ref}' uses :latest")
                 continue
             dm = re.search(r"\$\{[^}:]+:?-([^}]*)\}", ref)
             if "${" in ref:
@@ -531,7 +538,7 @@ def check_podman(rep: Report):
              "README.md", "bibliography.md", "examples/**/*", ".github/**/*", "diagrams/*", "scripts/*.sh"]
     for p in files(rep.root, *roots):
         rel = p.relative_to(rep.root)
-        if (rel.parts[0] == "_docs" and p.name.startswith("ah-")) or (
+        if (rel.parts[0] in ("_docs", "_example_pages") and p.name.startswith("ah-")) or (
                 rel.parts[0] == "examples" and len(rel.parts) > 1 and rel.parts[1].startswith("ah-")):
             continue
         try:
@@ -545,7 +552,10 @@ def check_podman(rep: Report):
 
 FORWARDING = re.compile(
     r"port-forward|minikube\s+tunnel|\bssh\s+(?:\S+\s+)*-[LRD]\b|ip_forward|\biptables\b|\bnft\b|"
-    r"firewall-cmd|sysctl\s+-w|\bsocat\b", re.I)
+    r"firewall-cmd|sysctl\s+-w|\bsocat\b|\b(?:oc|kubectl)\s+proxy\b", re.I)
+# Appendix H verifies every TLS connection against the cluster's ingress CA.
+TLS_OFF = re.compile(r"--tls-verify[= ]+false|--dest-tls-verify[= ]+false|--src-tls-verify[= ]+false|"
+                     r"\bcurl\b[^\n]*\s(?:-[a-zA-Z]*k[a-zA-Z]*|--insecure)\b|--insecure-skip-tls-verify|--insecure\b")
 
 
 def check_no_forwarding(rep: Report):
@@ -561,6 +571,18 @@ def check_no_forwarding(rep: Report):
             rep.err(p, line_of(text, m.start()),
                     f"forwarding or host network change '{m.group(0)}' is banned: publish ports "
                     "(compose ports, minikube start --ports, NodePorts) instead")
+
+
+def check_ah_tls(rep: Report):
+    """Appendix H examples never turn TLS verification off."""
+    for p in files(rep.root, "examples/ah-*/**/*"):
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for m in TLS_OFF.finditer(text):
+            rep.err(p, line_of(text, m.start()),
+                    f"TLS verification off '{m.group(0)}' is banned in Appendix H: verify against the ingress CA")
 
 
 BANNED_DOMAIN = re.compile(
@@ -596,7 +618,7 @@ def check_domain_names(rep: Report):
 
 
 CHECKS = [check_front_matter, check_liquid, check_diagrams, check_dashes, check_chapters, check_example_pages,
-          check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_domain_names]
+          check_examples, check_camel_schemes, check_redis_devservices, check_podman, check_no_forwarding, check_ah_tls, check_domain_names]
 
 
 def run(root: Path) -> Report:
@@ -649,6 +671,25 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
         e = run(r).errors
         results.append(("port-forward caught", any("forwarding" in x for x in e), e))
+
+        (r / "_docs/01-demo.md").write_text(good_doc + "\nStart oc proxy and browse.\n")
+        e = run(r).errors
+        results.append(("oc proxy caught", any("forwarding" in x for x in e), e))
+
+        r = build("tlsoff")
+        (r / "examples/ah-demo").mkdir(parents=True)
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\nskopeo copy --dest-tls-verify=false a b\n")
+        e = run(r).errors
+        results.append(("--tls-verify=false in an Appendix H example caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\ncurl -k https://x\n")
+        e = run(r).errors
+        results.append(("curl -k in an Appendix H example caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\ncurl --insecure https://x\n")
+        e = run(r).errors
+        results.append(("curl --insecure in an Appendix H example caught", any("TLS verification off" in x for x in e), e))
+        (r / "examples/ah-demo/copy.sh").write_text("#!/bin/bash\ncurl --cacert ca.crt -sS https://x\n")
+        e = run(r).errors
+        results.append(("verified curl in an Appendix H example passes", not any("TLS verification off" in x for x in e), e))
 
         r = build("xref")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nA Kafka transaction (chapter 12) stops at the cluster.\n"
@@ -824,6 +865,12 @@ def self_test() -> int:
         results.append(("Appendix H verify.sh without the CRC guard caught", any("Appendix H" in x for x in e), e))
         results.append(("imagestream output tag not taken for an image",
                         not any("edp-connect:35" in x for x in e), e))
+        (ah / "kafkaconnect.yaml").write_text("  build:\n    output:\n      type: imagestream\n      image: edp-connect\n")
+        e = run(r).errors
+        results.append(("imagestream output without a tag caught", any("has no tag" in x for x in e), e))
+        (ah / "kafkaconnect.yaml").write_text("  build:\n    output:\n      type: imagestream\n      image: edp-connect:latest\n")
+        e = run(r).errors
+        results.append(("imagestream output with :latest caught", any("uses :latest" in x for x in e), e))
         (ah / "kafkaconnect.yaml").write_text("      image: edp-connect:35\n")
         e = run(r).errors
         results.append(("bare image outside an imagestream output caught",

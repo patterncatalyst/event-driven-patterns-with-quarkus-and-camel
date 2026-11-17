@@ -8,6 +8,7 @@ It is shell scripts and kustomize manifests: no Java, no pom, no Helm and no S2I
 
 - OpenShift Local running, with the context `crc-admin`. The scripts never start, stop or configure CRC: `crc setup` and `crc start` are yours. `crc-check.sh` refuses to continue otherwise.
 - `oc`, `buildah`, `skopeo`, `podman` (for `rmi`), `jq`, `curl` and `docker` (only for the stack guard) on the host. Docker Engine is not used for anything else.
+- A cluster with no other Strimzi or CloudNativePG install. Their CRDs are cluster-wide: `install.sh` refuses when any exists, and `teardown.sh` refuses to delete them while another install owns them.
 - No Docker Compose project and no minikube node running: `scripts/stack-guard.sh --crc` refuses both.
 - Network access for the Debezium plugin (Maven Central) and for the UBI 10 and Maven downloads of the image build.
 
@@ -22,7 +23,7 @@ cd examples/ah-openshift-local
 ./teardown.sh
 ```
 
-Each script starts from nothing and refuses to continue over leftovers: `install.sh` stops when the namespace `edp` or `edp-operators` exists. `verify.sh` places the order `O-4301`, so it runs once per install.
+Each script starts from nothing and refuses to continue over leftovers: `install.sh` stops when the namespace `edp` or `edp-operators` exists, or any CRD of `kafka.strimzi.io`, `core.strimzi.io` or `postgresql.cnpg.io` does. `verify.sh` places the order `O-4301`, so it runs once per install.
 
 | Script | Does |
 |---|---|
@@ -76,34 +77,34 @@ There is no `mvn verify`. `verify.sh` reads effects and ends with `20/20 checks 
 10. The Deployment references the image by that digest and the running pod reports the same digest.
 11. Every running pod in `edp` and `edp-operators` carries `openshift.io/scc: restricted-v2`. Build pods belong to the platform and are skipped.
 12. `order-service` runs as a user inside the project's `openshift.io/sa.scc.uid-range` and not as 185, the user of the image.
-13. Negative witness: a Deployment with `privileged: true` is not admitted; the ReplicaSet reports `unable to validate against any security context constraint`. The Deployment is deleted at once.
+13. Negative witness: a Deployment `scc-witness` with `privileged: true` is not admitted. Only a `FailedCreate` event on the witness's own ReplicaSet (`scc-witness-*`), raised after the Deployment was created, with the message `unable to validate against any security context constraint` counts, and the witness never has an available replica. The Deployment is deleted at once.
 14. The Route answers `/q/health/ready` with 200 through `curl --cacert` with the ingress CA. No `-k`, no `--resolve`.
 15. Plain HTTP to the Route is redirected to HTTPS.
 16. Negative witness: `curl` without `--cacert` fails with exit code 60, the certificate check.
 17. `POST /orders` for `O-4301` through the Route returns 201.
 18. One record on `edp.orders.placed`, keyed `O-4301`, with the header `eventType:OrderPlaced`.
-19. The order row exists and the outbox table is empty.
+19. The order row exists and the outbox table holds no row. The application deletes the outbox row in the same transaction that writes it (`quarkus.debezium-outbox.remove-after-insert=true` in `order-service`), so this holds whatever Connect does; Connect's read is witnessed by check 18, the record on the topic.
 20. A second `O-4301` returns 409 and the topic still holds one record after eight seconds.
 
 The connector is declared by `connector/order-outbox.yaml` and the image the pod runs is addressed by digest, so check 9 and check 10 together show that the bytes running are the bytes built on the host.
 
 ## Teardown
 
-`teardown.sh` deletes, waiting for each: connector, application, `KafkaConnect`, Kafka and its node pools, the `Cluster`, `ImageStream`s, build configs and builds, Subscriptions, CSVs, InstallPlans, the OperatorGroup, the 21 CRDs of the two operators, the 8 ClusterRoles that OLM leaves (`cnpg-*-editor-role`, `cnpg-*-viewer-role`, `strimzi-kafka-broker`, `strimzi-kafka-client`), both namespaces and the `Retain` volumes claimed from `edp`. Then `oc adm prune images --keep-younger-than=0` with the registry URL and the CA removes the image objects and registry blobs. The prune is cluster-wide, so a dry run lists the candidates first and the script stops unless every one is an image of `edp`. Last, `podman rmi` removes the local image and `.state/` is deleted.
+Before it deletes anything, `teardown.sh` stops when a CSV outside `edp-operators` that is not a copy owns a CRD of the two operators, or a `Kafka`, `KafkaConnect` or `Cluster` exists outside `edp`. Then it deletes, waiting for each: connector, application, `KafkaConnect`, Kafka and its node pools, the `Cluster`, `ImageStream`s, build configs and builds, Subscriptions, CSVs, InstallPlans, the OperatorGroup, the 21 CRDs of the two operators, the 8 ClusterRoles that OLM leaves (`cnpg-database-`, `cnpg-publication-` and `cnpg-subscription-` `editor-role` and `viewer-role`, `strimzi-kafka-broker`, `strimzi-kafka-client`; deleted by exact name, and only when the labels OLM put on them name one of the two CSVs), both namespaces and the `Retain` volumes claimed from `edp`. Then `oc adm prune images --keep-younger-than=0` with the registry URL and the CA removes the image objects and registry blobs. The prune is cluster-wide, so a dry run lists the candidates first and the script stops unless every one is an image of `edp`, stops when the project had image objects and the list is empty, and stops when the prune reports a different count than the list. Last, `podman rmi` removes the local image and `.state/` is deleted.
 
 The inventory prints one line per group (namespaces, Subscriptions and CSVs, CRDs, ClusterRoles, volumes, image objects, the local image) and `teardown.sh` exits non-zero if any is not empty. It never removes a finalizer: when a delete does not finish, the script stops and names the resource. The base images `ubi10/openjdk-25` and `-runtime` stay in rootless containers-storage, where buildah keeps them. The scripts remove the volume objects and do not inspect the node's disk behind them. `docker` is not touched, and the volume `edp-ollama-models` is not involved.
 
 ## Measurements
 
-Wall times of one clean sequence on an empty cluster. The build downloads Maven artefacts; the UBI 10 base images were already in rootless storage:
+Wall times of clean sequences on an empty cluster: the range over five full sequences. The build downloads Maven artefacts; the UBI 10 base images were already in rootless storage:
 
 | Step | Wall time |
 |---|---|
-| `install.sh` | 138 s (both operators Succeeded 53 s after the first Subscription; Kafka, the `Cluster` and Connect, build included, Ready 84 s after the apply) |
-| `build-and-copy.sh` | 54 s (build 50 s, copy 2 s) |
-| `deploy.sh` | 12 s |
-| `verify.sh` | 45 s |
-| `teardown.sh` | 44 s |
+| `install.sh` | 137 to 143 s (both operators Succeeded 53 to 56 s after the first Subscription, the first 34 to 37 s and the second 9 to 14 s after their approvals; Kafka, the `Cluster` and Connect, build included, Ready 81 to 87 s after the apply) |
+| `build-and-copy.sh` | 51 to 58 s (build 49 to 55 s, copy 2 to 3 s) |
+| `deploy.sh` | 10 to 12 s |
+| `verify.sh` | 43 to 45 s |
+| `teardown.sh` | 43 to 44 s |
 
 ## Limits
 

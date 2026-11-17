@@ -39,16 +39,18 @@ summary() {
 say() { printf '%s\n' "$*"; }
 die() { printf '%s\n' "$*" >&2; exit 1; }
 
-# wait_for <seconds> <description> <command...>
-wait_for() {
-    local t=$1 d=$2; shift 2
-    local end=$((SECONDS + t)) start=$SECONDS
-    until "$@" >/dev/null 2>&1; do
-        (( SECONDS < end )) || { say "timeout after ${t}s: $d" >&2; return 1; }
-        sleep 3
-    done
+# wait_ready <description> <oc wait ...>: the wait is oc's own; this prints how long it took
+wait_ready() {
+    local d=$1 start=$SECONDS; shift
+    "$@" >/dev/null || { say "not met: $d" >&2; return 1; }
     say "ready: $d ($((SECONDS - start)) s)"
 }
+
+# The API groups of the two operators. Their CRDs are cluster-wide, so the example needs a cluster with no other
+# Strimzi or CloudNativePG install: install.sh refuses when any of these CRDs exists, teardown.sh when another
+# install owns them.
+CRD_GROUPS='\.(kafka\.strimzi\.io|core\.strimzi\.io|postgresql\.cnpg\.io)$'
+our_crds() { oc get crd -o name | grep -E "$CRD_GROUPS" || true; }
 
 # ---- the ingress CA ---------------------------------------------------------------------------------------------
 # The public CA of the cluster's default ingress certificate, from a ConfigMap. The key of the certificate
@@ -65,11 +67,12 @@ plan_for() { # plan_for <csv>: the name of the InstallPlan that installs the CSV
         | jq -r --arg c "$1" '[.items[] | select(.spec.clusterServiceVersionNames | index($c)) | .metadata.name][0] // empty'
 }
 csv_phase() { oc get csv "$1" -n "$NS_OP" -o 'jsonpath={.status.phase}' 2>/dev/null; }
+csv_exists() { oc get csv "$1" -n "$NS_OP" >/dev/null 2>&1; }
 csv_succeeded() { [[ "$(csv_phase "$1")" == Succeeded ]]; }
 
 install_operator() { # install_operator <package> <channel> <catalog> <csv>
     local pkg=$1 channel=$2 catalog=$3 csv=$4 plan
-    oc apply -n "$NS_OP" -f - >/dev/null <<YAML
+    oc apply --server-side --field-manager=edp-ah -n "$NS_OP" -f - >/dev/null <<YAML
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata: {name: $pkg}
@@ -81,13 +84,14 @@ spec:
   installPlanApproval: Manual
   startingCSV: $csv
 YAML
-    wait_for 300 "an InstallPlan for $csv" _has_plan "$csv"
+    wait_ready "an InstallPlan for $csv" oc wait "subscription/$pkg" -n "$NS_OP" --for='jsonpath={.status.installPlanRef.name}' --timeout=300s
     plan="$(plan_for "$csv")"
+    [[ -n "$plan" ]] || die "the Subscription $pkg has an InstallPlan, but none installs $csv"
     say "approving InstallPlan $plan for $csv (the only plan approved for it)"
     oc patch installplan "$plan" -n "$NS_OP" --type merge -p '{"spec":{"approved":true}}' >/dev/null
-    wait_for 600 "$csv Succeeded" csv_succeeded "$csv"
+    poll 60 csv_exists "$csv" || die "the CSV $csv did not appear after the approval"
+    wait_ready "$csv Succeeded" oc wait "csv/$csv" -n "$NS_OP" --for='jsonpath={.status.phase}'=Succeeded --timeout=600s
 }
-_has_plan() { [[ -n "$(plan_for "$1")" ]]; }
 
 # ---- the application image ---------------------------------------------------------------------------------------
 local_digest() { # the manifest digest of the image in rootless containers-storage

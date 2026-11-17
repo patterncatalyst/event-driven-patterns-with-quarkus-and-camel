@@ -90,7 +90,7 @@ uid_in_project_range() {
     (( uid >= first && uid < first + size && uid != 185 ))
 }
 privileged_refused() {
-    act oc apply -n "$NS" -f - <<YAML
+    act oc apply --server-side --field-manager=edp-ah -n "$NS" -f - <<YAML
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: scc-witness}
@@ -105,9 +105,18 @@ spec:
           image: $APP_INTERNAL_REPO:$APP_TAG
           securityContext: {privileged: true}
 YAML
-    local ok=1
-    refused() { oc get event -n "$NS" -o json | jq -e '[.items[] | select(.reason == "FailedCreate" and (.message | test("unable to validate against any security context constraint")))] | length > 0' >/dev/null; }
+    # Only an event on the witness's own ReplicaSet, raised after the witness was created, counts; and no replica
+    # of the witness may ever become available.
+    local ok=1 since
+    since="$(oc get deployment scc-witness -n "$NS" -o 'jsonpath={.metadata.creationTimestamp}')"
+    refused() {
+        oc get event -n "$NS" -o json | jq -e --arg since "$since" '[.items[]
+            | select(.reason == "FailedCreate" and (.involvedObject.name | startswith("scc-witness-"))
+                     and ((.lastTimestamp // .eventTime // .metadata.creationTimestamp)[0:19] >= $since[0:19])
+                     and (.message | test("unable to validate against any security context constraint")))] | length > 0' >/dev/null
+    }
     poll 60 refused || ok=0
+    [[ "$(oc get deployment scc-witness -n "$NS" -o 'jsonpath={.status.availableReplicas}')" =~ ^0?$ ]] || ok=0
     act oc delete deployment scc-witness -n "$NS" --wait=true
     (( ok ))
 }
@@ -125,7 +134,7 @@ one_record() { # exactly one record, keyed O-4301, with the eventType header Ord
     local out; out="$(consume "$TOPIC")"
     [[ "$(awk -F'\t' -v k="$ORDER" 'index("," $1 ",", ",eventType:OrderPlaced,") && $2 == k' <<<"$out" | wc -l)" == 1 ]]
 }
-row_and_empty_outbox() { [[ "$(sql "SELECT (SELECT count(*) FROM orders.orders WHERE id='$ORDER') || '/' || (SELECT count(*) FROM orders.outboxevent)")" == 1/0 ]]; }
+row_and_outbox_removed() { [[ "$(sql "SELECT (SELECT count(*) FROM orders.orders WHERE id='$ORDER') || '/' || (SELECT count(*) FROM orders.outboxevent)")" == 1/0 ]]; }
 second_refused() { [[ "$(post "$ORDER")" == 409 ]] && poll 10 one_record && stays 8 one_record; }
 
 # --- checks (numbering is frozen: the README and the appendix quote the pass count only)
@@ -147,7 +156,7 @@ check "plain HTTP to the Route is redirected to HTTPS" http_redirects
 check "without the CA, curl refuses the Route's certificate" without_ca_refused
 check "$ORDER is accepted through the Route with 201" expect "$(post "$ORDER")" 201
 check "one record on $TOPIC, keyed $ORDER, with the eventType header OrderPlaced" poll 90 one_record
-check "the order row exists and the outbox table is empty" poll 20 row_and_empty_outbox
+check "the order row exists and the outbox row is already removed (the application deletes it in the same transaction)" poll 20 row_and_outbox_removed
 check "a second $ORDER is refused with 409 and no second record appears" second_refused
 
 summary
