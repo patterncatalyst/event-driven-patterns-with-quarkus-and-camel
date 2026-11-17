@@ -799,3 +799,14 @@ Fixes: B check 7 reads the PostgreSQL manifest as written (CloudNativePG adds `w
 ### r13 validation (2026-11-16)
 
 Round 1 (Opus): FIX, 20 findings (4 blocking: credits for Parallel Change, Appendix D sources, mutation testing; idiomatic CI). Repair 1: three executors; E 23/23 twice with demos; B 9/9, 9/9, 23/23 twice; F 30/30 twice with demos, repeat checks moved from a fixed ceiling to a bound computed from an audit trigger (writes in the last 7 s before a replica gave up a partition). Round 2 (Opus): all 20 fixed; E 23/23, F 30/30, B 9/9 + 9/9 + 23/23 reproduced; the halved-window bite fails F checks 21 and 25; one High (three missed cross-references) and Medium/Low items fixed by the orchestrator. F ranges restated over eight runs including the validator's.
+
+## r13b CRC window (2026-11-16, CRC 2.64.0, OpenShift 4.22.14, network mode user)
+
+`crc setup` unpacked the cached bundle (no sudo); `crc start` 20:25 to 20:28 (about 3.5 min). Spike HF1 to HF13 about 10 min cluster time. Orchestrator runs on an empty cluster, each step's wall time:
+
+| Run | install | build-and-copy | deploy | verify | teardown | Inventory after |
+|---|---|---|---|---|---|---|
+| 1 | 144 s | 59 s | 12 s | 43 s, 20/20 | 45 s | none of ours (2 image objects and 26 blobs pruned) |
+| 2 (after full teardown) | 138 s | 53 s | 12 s | 44 s, 20/20 | 43 s | none of ours |
+
+Docker image count 104 before and after; podman keeps only the two UBI 10 base images.
