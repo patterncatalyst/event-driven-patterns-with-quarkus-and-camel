@@ -294,3 +294,7 @@ Surveyed for iteration r13 (Appendices A to G), step 1A. Latest stable only; pre
 
 Decisions for the orchestrator at G0: (a) Flink is held at 2.2.1 below the newest 2.3.0 because the Kafka connector has no 2.3 build; (b) Redis is pinned at 8.10.3-alpine, one patch above the sibling books' 8.10.2-alpine; (c) Central publishes no `.sha512` for the connector, so the book's sha512 is computed from the jar and cross-checked against the published sha1 and md5; (d) the Redis Dev Services default is Redis 7, so the override property is mandatory wherever Dev Services start Redis.
 
+
+## r14 (2026-11-16)
+
+Re-survey dropped (owner, 2026-11-16): pins stay frozen at the r13b.0 state for the book's final run. Every "revisit at the r14 re-survey" note above (PostgreSQL 18.7 among them) keeps its hold; the held version stands.
