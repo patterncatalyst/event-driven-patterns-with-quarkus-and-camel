@@ -51,11 +51,35 @@ jobs:
       - name: Host identifiers (paths only, values never printed)
         run: python scripts/host_ids.py check
 
+  deck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Install deck dependencies
+        working-directory: lgtm-presentation
+        run: npm ci
+      - name: Audit deck dependencies
+        working-directory: lgtm-presentation
+        run: npm audit --audit-level=low
+      - name: Build the deck (figure and QR PNGs are committed)
+        working-directory: lgtm-presentation
+        run: node deck.js --out "$RUNNER_TEMP/deck.pptx"
+      - name: Deck text matches the committed copy
+        run: python3 scripts/deck_text.py --check
+      - name: Built deck matches the committed text
+        run: python3 scripts/deck_text.py --check --pptx "$RUNNER_TEMP/deck.pptx"
+
   # The one check branch protection requires: fails unless every job above succeeded.
   content-ok:
     name: content-ok
     if: always()
-    needs: [validate, voice, idiomatic, host-ids]
+    needs: [validate, voice, idiomatic, host-ids, deck]
     runs-on: ubuntu-latest
     steps:
       - env:

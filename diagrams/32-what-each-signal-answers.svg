@@ -44,5 +44,5 @@
 <text x="150" y="70" font-size="13" fill="#555555" text-anchor="middle">Source</text>
 <text x="425" y="70" font-size="13" fill="#555555" text-anchor="middle">Metric family</text>
 <text x="810" y="70" font-size="13" fill="#555555" text-anchor="middle">Question</text>
-<text x="500" y="455" font-size="13" fill="#555555" text-anchor="middle">Lag comes from chapter 26&#x27;s receiver; the rest from the reporter, the operator and kube-state-metrics</text>
+<text x="500" y="455" font-size="13" fill="#555555" text-anchor="middle">Lag is asked of the broker by the collector; the rest from the reporter, the operator and kube-state-metrics</text>
 </svg>

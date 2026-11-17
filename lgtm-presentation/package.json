@@ -1,0 +1,12 @@
+{
+  "name": "event-driven-patterns-deck",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Companion slide deck for Event-Driven Patterns with Quarkus and Camel",
+  "dependencies": {
+    "pptxgenjs": "4.0.1"
+  },
+  "overrides": {
+    "image-size": "2.1.0"
+  }
+}

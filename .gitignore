@@ -21,6 +21,9 @@ target/
 # Node (pptxgenjs build tooling)
 node_modules/
 package-lock.json
+!lgtm-presentation/package-lock.json
+lgtm-presentation/node_modules/
+lgtm-presentation/qa/
 
 # IDE
 .idea/

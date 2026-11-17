@@ -9,7 +9,7 @@ START_DIR="$PWD"
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 SCAN=(bash scripts/voice/scan.sh)
 
-SITE_ROOTS=(_docs _parts _example_pages _includes _layouts index.html chapters.html README.md bibliography.md diagrams)
+SITE_ROOTS=(_docs _parts _example_pages _includes _layouts index.html chapters.html README.md bibliography.md diagrams lgtm-presentation/text lgtm-presentation/BUILD.md lgtm-presentation/edits)
 SITE_ROOTS=($(for p in "${SITE_ROOTS[@]}"; do [[ -e "$p" ]] && echo "$p"; done))
 EXAMPLE_ROOTS=()
 [[ -d examples ]] && EXAMPLE_ROOTS=(examples)

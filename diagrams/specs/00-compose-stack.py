@@ -32,7 +32,7 @@ emit(
     ],
     notes=[
         {"x": 530, "y": 26, "anchor": "middle", "bold": True, "size": 15, "color": "#444444",
-         "text": "One compose project runs every service Parts 1 to 5 share"},
+         "text": "One compose project runs every shared service"},
         {"x": 530, "y": 412, "anchor": "middle", "size": 11, "color": "#555555",
          "text": "The app publishes to Kafka and consumes the same topic; everything it emits lands in LGTM."},
     ],
