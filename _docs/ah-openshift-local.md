@@ -66,7 +66,7 @@ oc patch installplan "$PLAN" -n edp-operators --type merge -p '{"spec":{"approve
 
 Strimzi comes from the community catalog, on the channel `strimzi-1.x`. The channel `stable` stops at an old release, so a channel is read from the catalog, not assumed. CloudNativePG comes from the certified catalog, where EDB publishes the package with the upstream images, on the channel `stable-v1`. Both are open source and need no key. Red Hat's supported downstream of Strimzi, AMQ Streams, is sold as a subscription and ships a Kafka release older than the one used here, so it is not installed.
 
-One `OperatorGroup` in `edp-operators` targets the namespace `edp`, so both operators watch the project and nothing else. Over the runs measured, the first operator was ready 34 to 37 s after its plan was approved and the second 9 to 14 s after its.
+One `OperatorGroup` in `edp-operators` targets the namespace `edp`, so both operators watch the project and nothing else. Over the runs measured, the first operator was ready 34 to 37 s after its plan was approved and the second 8 to 14 s after its.
 
 ## Building with buildah, copying with skopeo
 

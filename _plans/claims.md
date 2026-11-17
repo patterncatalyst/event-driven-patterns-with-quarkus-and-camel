@@ -1936,7 +1936,7 @@ Runs cited: b2 final (S/r13b-b2/final-*.log), b3 runs 1 and 2 (S/r13b-b3), valid
 | AH-17 | H | CNPG in the certified catalog, published by EDB with upstream images, stable-v1 | HF2 | _docs/ah:67; README:56, 62 | verified |
 | AH-18 | H | AMQ Streams sold as a subscription, ships an older Kafka | Streams 3.2 overview Appendix A, release notes (sources rows) | _docs/ah:67; README:62 | verified |
 | AH-19 | H | One OperatorGroup in edp-operators targets edp | operators/operatorgroup.yaml | _docs/ah:69 | verified |
-| AH-20 | H | First operator ready 34 to 37 s after approval, second 9 to 14 s | logs: 37/9, 37/12, 37/12, 34/12, 34/14; validator r2 34/9 | _docs/ah:69; README:103 | verified |
+| AH-20 | H | First operator ready 34 to 37 s after approval, second 8 to 14 s | logs: final 34/8, 37/9, 37/12, 37/12, 34/12, 34/14; validator r2 34/9 | _docs/ah:69; README:103 | verified |
 | AH-21 | H | Registry already published through its default route | HF4; /etc/hosts default-route entry | _docs/ah:85 | verified |
 | AH-22 | H | builder SA may push to its own project | system:image-builders rolebinding in edp; 6 runs pushed with its token | _docs/ah:85 | verified |
 | AH-23 | H | Token short-lived, one shell variable, not written or printed, on skopeo's command line during the copy | build-and-copy.sh:30-33 (--duration=15m, --dest-registry-token); grep eyJ/sha256~ over all r13b logs: none | _docs/ah:85; README:111 | verified |

@@ -100,7 +100,7 @@ Wall times of clean sequences on an empty cluster: the range over seven full seq
 
 | Step | Wall time |
 |---|---|
-| `install.sh` | 130 to 144 s (both operators Succeeded 47 to 56 s after the first Subscription, the first 34 to 37 s and the second 9 to 14 s after their approvals; Kafka, the `Cluster` and Connect, build included, Ready 81 to 87 s after the apply) |
+| `install.sh` | 130 to 144 s (both operators Succeeded 47 to 56 s after the first Subscription, the first 34 to 37 s and the second 8 to 14 s after their approvals; Kafka, the `Cluster` and Connect, build included, Ready 81 to 87 s after the apply) |
 | `build-and-copy.sh` | 51 to 60 s (build 49 to 56 s, copy 2 to 3 s) |
 | `deploy.sh` | 9 to 12 s |
 | `verify.sh` | 43 to 45 s |
