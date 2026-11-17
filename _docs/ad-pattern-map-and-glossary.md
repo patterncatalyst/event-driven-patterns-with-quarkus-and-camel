@@ -110,13 +110,13 @@ The same events appear in many chapters. The catalog below lists the chapters fr
 
 | Event | Topic | Chapters |
 |---|---|---|
-| OrderPlaced | edp.orders.placed | 1, 2, 3, 5, 8, 11, 13, 14, 16, 17, 18, 22, 25, 26, 27 |
+| OrderPlaced | edp.orders.placed | 1, 2, 3, 5, 6, 7, 8, 11, 13, 14, 16, 17, 18, 22, 25, 26, 27 |
 | OrderCancelled | edp.orders.cancelled | 1, 3, 14, 16, 17, 18, 22, 23, 27 |
 | InventoryReserved | edp.inventory.reserved | 12, 15, 20, 22, 23, 27 |
 | InventoryInsufficient | edp.inventory.insufficient | 22, 23, 27 |
-| PaymentProcessed | edp.payments.processed | 12, 14, 16, 20, 22, 23, 27 |
+| PaymentProcessed | edp.payments.processed | 6, 12, 14, 16, 20, 22, 23, 27 |
 | PaymentFailed | edp.payments.failed | 22, 23, 27 |
-| ShipmentScheduled | edp.shipping.scheduled | 4, 14, 16, 19, 21 |
+| ShipmentScheduled | edp.shipping.scheduled | 4, 6, 14, 16, 19, 21 |
 | ShipmentInTransit | edp.shipping.in-transit | 4, 16 |
 | ShipmentDelivered | edp.shipping.delivered | 4, 16 |
 

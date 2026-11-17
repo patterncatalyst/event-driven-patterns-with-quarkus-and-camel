@@ -146,7 +146,7 @@ Neither form fits a count or a sum that a reader may poll at any moment. That is
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html), Addison-Wesley, 2003: Aggregator
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Aggregator](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html)
 - Apache Kafka, [Kafka Streams core concepts](https://kafka.apache.org/42/streams/core-concepts/) (event time, stream time, grace and out-of-order records), [DSL API](https://kafka.apache.org/42/streams/developer-guide/dsl-api/) (windowing and suppression), [configuration](https://kafka.apache.org/42/streams/developer-guide/config-streams/) (`commit.interval.ms`, `statestore.cache.max.bytes`) and [monitoring](https://kafka.apache.org/42/operations/monitoring/) (`dropped-records-total`)
 - Apache Kafka, [Kafka Streams Javadoc](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/TimeWindows.html) for `TimeWindows.ofSizeAndGrace` and [Suppressed](https://kafka.apache.org/42/javadoc/org/apache/kafka/streams/kstream/Suppressed.html) for `untilWindowCloses`
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/guides/kafka-streams)

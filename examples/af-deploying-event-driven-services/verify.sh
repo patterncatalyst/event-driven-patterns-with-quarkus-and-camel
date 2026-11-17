@@ -120,7 +120,7 @@ for t in edp.orders.placed edp.payments.processed edp.shipping.scheduled; do
 done
 precondition "Kafka edp is Ready" kafka_ready edp
 precondition "the three input topics have three partitions" topics_ok
-precondition "the node runs the chapter 06 and chapter 02 images, unchanged" images_unchanged
+precondition "the node runs the notification-service and order-service images, unchanged" images_unchanged
 poll 180 install_audit || { echo "the notification table did not appear" >&2; exit 1; }
 
 # --- stop and restart: Recreate

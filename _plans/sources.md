@@ -173,7 +173,7 @@ Reference entries for Strimzi, Debezium, Apicurio, Quarkus, Camel, Camel Quarkus
 | enterprise-integration-patterns-with-camel | https://github.com/patterncatalyst/enterprise-integration-patterns-with-camel | confirmed (gh repo view) |
 | cloud-native-design-patterns | https://github.com/patterncatalyst/cloud-native-design-patterns | confirmed |
 | datamesh-reference-arch-quarkus | https://github.com/patterncatalyst/datamesh-reference-arch-quarkus | confirmed |
-| quarkus-observability | https://github.com/patterncatalyst/quarkus-observability | confirmed |
+| quarkus-observability | https://github.com/patterncatalyst/quarkus-observability | removed r14: the repository is private, so readers get a 404; otel-observability-tutorial below stays |
 | otel-observability-tutorial | https://github.com/patterncatalyst/otel-observability-tutorial | confirmed |
 | domain-driven-design-observability-workshop | https://github.com/patterncatalyst/domain-driven-design-observability-workshop | confirmed |
 

@@ -138,5 +138,5 @@ A publisher that sends a few records a second is already inside Kafka's defaults
 - KIP-1030: [Change constraints and default values for various configurations](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1030%3A+Change+constraints+and+default+values+for+various+configurations)
 - Paul Mellor, Strimzi blog, 2020: [Optimizing Kafka producers](https://strimzi.io/blog/2020/10/15/producer-tuning/)
 - Strimzi blog, 2023: [Developing Kafka client applications: A simple producer](https://strimzi.io/blog/2023/10/03/kafka-producer-client-essentials/)
-- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 11, Basic Producer and Consumer Microservices
+- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 11: Basic Producer and Consumer Microservices
 - Apache Camel: [Kafka component](https://camel.apache.org/components/latest/kafka-component.html)

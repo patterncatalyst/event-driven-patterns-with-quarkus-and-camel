@@ -172,7 +172,7 @@ State grows with the number of open windows and keys. A count per carrier per mi
 - Apache Flink, [Windowing table-valued functions](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/dev/table/sql/queries/window-tvf/), [Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/kafka/) (watermarks per partition, idle partitions) and [Upsert Kafka SQL connector](https://nightlies.apache.org/flink/flink-docs-release-2.2/docs/connectors/table/upsert-kafka/)
 - RisingWave, [Kafka source](https://docs.risingwave.com/ingestion/sources/kafka), [time windows](https://docs.risingwave.com/processing/sql/time-windows), [emit on window close](https://docs.risingwave.com/processing/emit-on-window-close) and [premium features](https://docs.risingwave.com/get-started/premium-features)
 - Apache Pinot, [home page](https://pinot.apache.org/); Apache Druid, [home page](https://druid.apache.org/)
-- Confluent, [Confluent Community License](https://www.confluent.io/confluent-community-license/) (ksqlDB)
+- Confluent, [Confluent Community License](https://www.confluent.io/confluent-community-license/) and the ksqlDB [LICENSE](https://github.com/confluentinc/ksql/blob/master/LICENSE)
 - Materialize, [LICENSE](https://raw.githubusercontent.com/MaterializeInc/materialize/main/LICENSE) (Business Source License)
 - Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 14: Streaming SQL
 - *Cloud-Native Design Patterns*, [chapter 6: Stream Processing](https://patterncatalyst.github.io/cloud-native-design-patterns/docs/06-stream-processing/)

@@ -121,5 +121,5 @@ The defaults drain a backlog correctly. Tune when a measurement says so: a lag t
 - Strimzi blog, 2023: [Developing Kafka client applications: A simple consumer](https://strimzi.io/blog/2023/11/09/kafka-consumer-client-essentials/)
 - Apache Kafka documentation, [Consumer configs](https://kafka.apache.org/43/configuration/consumer-configs/)
 - [KIP-848: The Next Generation of the Consumer Rebalance Protocol](https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol)
-- Adam Bellemare, *Building Event-Driven Microservices*, Second Edition, O'Reilly, 2025: Chapter 11, Basic Producer and Consumer Microservices
+- Adam Bellemare, *Building Event-Driven Microservices*, 2nd ed., O'Reilly, 2025, chapter 11: Basic Producer and Consumer Microservices
 - Apache Camel, [Kafka component](https://camel.apache.org/components/latest/kafka-component.html)

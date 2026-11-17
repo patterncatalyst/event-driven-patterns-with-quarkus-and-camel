@@ -138,7 +138,7 @@ If the two facts already sit in one database, a SQL join answers the question wi
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [Aggregator](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html), *Enterprise Integration Patterns*, Addison-Wesley, 2003
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Aggregator](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html)
 - Apache Kafka, [Kafka Streams DSL](https://kafka.apache.org/42/streams/developer-guide/dsl-api/) (joins, windows, co-partitioning) and [core concepts](https://kafka.apache.org/42/streams/core-concepts/) (event time, stream time, grace)
 - Apache Kafka, [Kafka Streams configuration](https://kafka.apache.org/42/streams/developer-guide/config-streams/) and [testing](https://kafka.apache.org/42/streams/developer-guide/testing/)
 - Quarkus, [Using Apache Kafka Streams](https://quarkus.io/guides/kafka-streams)

@@ -173,7 +173,7 @@ Choreography stops scaling at the point where nobody can say what the whole flow
 - Hector Garcia-Molina and Kenneth Salem, [*Sagas*](https://doi.org/10.1145/38713.38742), Proceedings of the 1987 ACM SIGMOD International Conference on Management of Data
 - Microsoft, [Saga design pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/saga), Azure Architecture Center (compensable, pivot and retryable transactions; semantic lock and commutative updates)
 - Chris Richardson, [Pattern: Saga](https://microservices.io/patterns/data/saga.html), microservices.io, and *Microservices Patterns*, Manning, 2018
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html), Addison-Wesley, 2003: Process Manager
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Process Manager](https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html)
 - Apache Camel, [Saga EIP](https://camel.apache.org/components/4.22.x/eips/saga-eip.html) (compensations that are idempotent and commutative)
 - Debezium, [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) and the [Quarkus outbox extension](https://debezium.io/documentation/reference/stable/integrations/outbox.html)
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 7: Long-Running Processes

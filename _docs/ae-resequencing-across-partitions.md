@@ -105,7 +105,7 @@ A global sequencer is a bottleneck and a single point of failure. If events cann
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, [*Enterprise Integration Patterns*](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html), Addison-Wesley, 2003: Resequencer
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Resequencer](https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html)
 - Apache Camel, [Resequence EIP](https://camel.apache.org/components/4.22.x/eips/resequence-eip.html) (batch and stream forms, capacity, timeout and `rejectOld`) and [Kafka component](https://camel.apache.org/components/4.22.x/kafka-component.html)
 - Apache Kafka, [documentation](https://kafka.apache.org/documentation/): ordering within a partition and consumer offset commits
 - Alex Lawrence, *Message- and Event-Driven Systems with CQRS and Event Sourcing*, Addison-Wesley, 2026, chapter 2: Anatomy of Message-Driven Systems

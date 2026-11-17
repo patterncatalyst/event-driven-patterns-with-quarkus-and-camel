@@ -156,7 +156,7 @@ Labels and metric dimensions are different from attributes. The order id as a Lo
 
 ## References
 
-- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003, [Correlation Identifier](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (written for request and reply)
+- Gregor Hohpe and Bobby Woolf, *Enterprise Integration Patterns*, Addison-Wesley, 2003: [Correlation Identifier](https://www.enterpriseintegrationpatterns.com/patterns/messaging/CorrelationIdentifier.html) (written for request and reply)
 - W3C, [Trace Context](https://www.w3.org/TR/trace-context/) (the `traceparent` header)
 - OpenTelemetry, [Semantic conventions for messaging spans](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/) (the creation context as a link, or as the parent of a single message)
 - Quarkus, [Using OpenTelemetry Tracing](https://quarkus.io/guides/opentelemetry-tracing) (`@WithSpan`) and [OpenTelemetry logging](https://quarkus.io/guides/opentelemetry-logging)

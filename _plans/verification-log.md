@@ -95,7 +95,7 @@ Each chapter executor had an exclusive window under the stack lock.
 
 - 05-optimizing-publishers: verify.sh 24/24 from clean. Experiments, one guard broken each: A fails check 12; B fails 14, 15, 16, 20; C fails 13; D fails 17; E fails 22; F fails 19; G (`REQUIRED_ACKS=1` with idempotence left on) stops at startup with a `ConfigException`. Bench 5 repeats, `results/bench-2026-11-10.csv` and summary; linger and codec sweeps recorded.
 - 06-optimizing-subscribers: verify.sh 36/36 from clean. Combined experiment run 29/36: `FIXED_MAX_POLL_RECORDS=500` fails 21 to 23; `CLASSIC_ASSIGNOR=CooperativeStickyAssignor` fails 29 (4 revoked instead of 9); `TRICKLE_MIN_BYTES=1` fails 26; `SECOND_PROTOCOL=classic` fails 30 and 33. Probe: after eviction 55 of 500 rows had attempts 2. Bench 5 repeats, `results/bench-2026-11-11.csv` (merged from two invocations; `consumers-12-roundrobin` run separately with `PROFILES`).
-- 07-queues-for-kafka: verify.sh 26/26 from clean (two consecutive runs). `DELIVERY_MODE=group` gives 12/26 (check 9 and 15 among the failures); `SEED_LINGER_MS=500` gives 25/26 (check 9 fails). With a 15 s record lock checks 5 and 6 failed (the 8 s job was redelivered). Not run: pause-based lock expiry, `share.delivery.count.limit=2`.
+- 07-queues-for-kafka: verify.sh 26/26 from clean (two consecutive runs). `DELIVERY_MODE=group` gives 12/26 (check 9 and 15 among the failures); `SEED_LINGER_MS=500` gives 25/26 (check 9 fails). With a 15 s record lock checks 5 and 6 failed (the 8 s job was redelivered). Not run: pause-based lock expiry, `share.delivery.count.limit=2`. (superseded: 27/27, see the final serial run tables below; the r07 script gained a check)
 
 ## r03 final serial run (2026-11-11)
 
@@ -112,7 +112,7 @@ Under the stack lock, one at a time:
 
 - 05: bite run with the request metric renamed to a nonexistent series gives 19/24 (checks 5, 8, 11, 18, 20 fail); restored. Final verify.sh 24/24; mvn 6 tests, BUILD SUCCESS.
 - 06: final verify.sh 36/36; mvn 4 tests, BUILD SUCCESS (label-only verify.sh edit after the mvn run).
-- 07: `ShareDeliveryWorker` now a `@Blocking` method: verify.sh 26/26. `DELIVERY_MODE=group`: 11/26 (4 to 15 and 19 to 21 fail; new check 11 among them). `SHARE_RECORD_LOCK_MS=15000`: 22/26 (5 to 8 fail; slow job O-7001 sent at delivery count 1, 15.8 to 23.8 s, and count 2, 32.7 to 40.7 s; seven others twice; O-7028 five times). Orchestrator run `SHARE_ACQUIRE_MODE=record_limit`: 24/26 (5 and 6 fail, one job sent twice). Final verify.sh 26/26; mvn 10 tests, BUILD SUCCESS.
+- 07: `ShareDeliveryWorker` now a `@Blocking` method: verify.sh 26/26. `DELIVERY_MODE=group`: 11/26 (4 to 15 and 19 to 21 fail; new check 11 among them). `SHARE_RECORD_LOCK_MS=15000`: 22/26 (5 to 8 fail; slow job O-7001 sent at delivery count 1, 15.8 to 23.8 s, and count 2, 32.7 to 40.7 s; seven others twice; O-7028 five times). Orchestrator run `SHARE_ACQUIRE_MODE=record_limit`: 24/26 (5 and 6 fail, one job sent twice). Final verify.sh 26/26; mvn 10 tests, BUILD SUCCESS. (superseded: 27/27, see the final serial run tables below)
 
 ## r03 repair round 2, chapter 07 (2026-11-11)
 
@@ -564,7 +564,7 @@ Gate wiring test (chapter 22): the runtime window found that `CancellationGateRo
 | Example | mvn verify tests (BUILD SUCCESS) | verify.sh | Logs |
 |---|---|---|---|
 | 22 | 12 + 7 + 9 = 28 | 30/30 | `s45-final-22-mvn.log`, `s45-final-22.log` |
-| 23 | 13 + 7 + 5 = 25 | 32/32 | `s45-final-23-mvn.log`, `s45-final-23.log` |
+| 23 | 13 + 7 + 5 = 25 | 32/32 (superseded: 33/33, see "r09 validation round 2" below) | `s45-final-23-mvn.log`, `s45-final-23.log` |
 | 24 | 23 | 17/17 with the model (digest 0edcdef34593 checked first) | `s45-final-24-mvn.log`, `s45-final-24.log` |
 | 24 `MODEL=off` | | 9/9 (model checks not run) | `s45-final-24-off.log` |
 

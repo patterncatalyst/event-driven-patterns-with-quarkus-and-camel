@@ -166,6 +166,6 @@ The label is only as good as the version it names. `latest` moves with the clust
 - Kubernetes, [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) and [Enforce Pod Security Standards with Namespace Labels](https://kubernetes.io/docs/tasks/configure-pod-container/enforce-standards-namespace-labels/) (the modes, the version pin and the dry-run label)
 - Strimzi, [Deploying and Managing](https://strimzi.io/docs/operators/latest/deploying.html), the pod security provider section (the Baseline and Restricted providers, `STRIMZI_POD_SECURITY_PROVIDER_CLASS`, template precedence), and [Writing custom pod security providers](https://strimzi.io/blog/2023/04/05/writing-custom-pod-security-providers/)
 - CloudNativePG, [Security](https://github.com/cloudnative-pg/cloudnative-pg/blob/v1.30.1/docs/src/security.md) (the pod security context and Pod Security Admission)
-- Red Hat, [UBI OpenJDK images](https://catalog.redhat.com/software/containers/ubi10/openjdk-25/) (the 185 user)
+- Red Hat, [UBI OpenJDK images](https://catalog.redhat.com/software/containers/ubi10/openjdk-25/690ca440f43a9c6b120b2970) (the 185 user)
 - [Strimzi and KRaft]({{ '/docs/28-strimzi-and-kraft/' | relative_url }})
 - [Server-side apply]({{ '/docs/30-server-side-apply/' | relative_url }})
