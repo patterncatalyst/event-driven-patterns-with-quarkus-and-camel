@@ -22,7 +22,7 @@ module.exports = function (lib) {
       ["A stuck flow shows no error", "Trace context, flow metrics, correlation ids"],
     ],
     [6.0, 6.09],
-    `Each row starts from the problem, because a pattern is a response to a force and not a feature to adopt. If a consumer can ask the source for details, a notification is enough and the payload stays small. If it cannot call back, the event carries the state and the consumer keeps its own copy. If a service must change a database and publish, the outbox makes both one commit and a log reader publishes. Duplicate delivery is met with an idempotent consumer, and a failure that will not clear is moved aside with a dead letter. Every pattern here has a cost in operations or latency, and each has a case where it is the wrong choice, so the cheaper answer is the correct one whenever the problem is absent.`,
+    `If a consumer can ask the source for details, a notification is enough and the payload stays small. If it cannot call back, the event carries the state and the consumer keeps its own copy. If a service must change a database and publish, the outbox makes both one commit and a log reader publishes. Duplicate delivery is met with an idempotent consumer, and a failure that will not clear is moved aside with a dead letter. Every pattern here has a cost in operations or latency, and each has a case where it is the wrong choice.`,
     { fontSize: 13, rowH: 0.36 },
   );
 
@@ -43,7 +43,7 @@ module.exports = function (lib) {
       ["W3C", "Trace Context"],
     ],
     [4.6, 7.49],
-    `These are the outside works whose ideas shaped what is covered here and how carefully it treats each pattern. The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here. Each slide's code comes from tested examples written for these patterns.`,
+    `The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.`,
     { fontSize: 13, rowH: 0.36 },
   );
 };

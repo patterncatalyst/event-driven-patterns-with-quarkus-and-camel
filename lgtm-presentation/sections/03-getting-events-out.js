@@ -7,7 +7,7 @@ module.exports = function (lib) {
   lib.divider(
     "Getting events out reliably",
     "The database and the broker share no transaction",
-    `The patterns here are about the gap between a database commit and a Kafka record. A service that changes its own state and announces the change writes to two systems that cannot commit together, and every failure between the two writes leaves them disagreeing. The patterns here close the gap from both sides. The transactional outbox and log tailing carry changes out of PostgreSQL through its write-ahead log. Offset management decides where the reader resumes. The idempotent consumer, Kafka transactions and the dead letter channel decide what a receiver does with a duplicate, a batch that crashes midway and a record that can never be processed.`,
+    `A service that changes its own state and announces the change writes to two systems that cannot commit together, and every failure between the two writes leaves them disagreeing. The transactional outbox and log tailing carry changes out of PostgreSQL through its write-ahead log. Offset management decides where the reader resumes. The idempotent consumer, Kafka transactions and the dead letter channel decide what a receiver does with a duplicate, a batch that crashes midway and a record that can never be processed.`,
   );
 
   lib.bulletSlide(
@@ -28,7 +28,7 @@ module.exports = function (lib) {
     "The two orders of a dual write",
     "08-dual-write-gap",
     "Commit then publish loses the event on a crash; publish then commit announces an order that never committed",
-    `The figure shows the two orderings of a dual write and how each one fails. Commit first and a crash between the two lines leaves an order that exists with no event, so inventory never reserves the stock. Publish first and a failed commit leaves an event announcing an order that does not exist, and a published record cannot be taken back. The comparison code is two Camel routes, one per ordering, with a crash switch that halts the JVM right after the commit, which is what a power cut or an out-of-memory kill looks like to the code. The outbox path runs the same crash and loses nothing. Both comparison routes exist only to show what the pattern prevents.`,
+    `Commit first and a crash between the two lines leaves an order that exists with no event, so inventory never reserves the stock. Publish first and a failed commit leaves an event announcing an order that does not exist, and a published record cannot be taken back. The comparison code is two Camel routes, one per ordering, with a crash switch that halts the JVM right after the commit, which is what a power cut or an out-of-memory kill looks like to the code. The outbox path runs the same crash and loses nothing.`,
   );
 
   lib.figSlide(
@@ -191,7 +191,7 @@ module.exports = function (lib) {
     "Retry what can succeed, dead-letter the rest",
     "13-failure-classes",
     "An invalid record is tried once and dead-lettered; a locked row is retried; a record still failing after the last retry is dead-lettered",
-    `The figure sorts the failures by a single question: can trying again change the outcome. An unparseable or invalid record is tried once and goes to the dead letter topic. A record that fails on a locked row is retried after a delay, and succeeds once the lock is released. A record still failing after the last retry goes to the dead letter topic as well. A lock timeout of two seconds on the row turns the wait into an ordinary failure the retry policy acts on. Without it, the attempt waits until the holder releases the row and succeeds on its first and only attempt, so the policy never runs. A retry in place suits failures that clear in seconds; a dependency that is down for minutes holds the partition for as long.`,
+    `Failures sort by a single question: can trying again change the outcome. An unparseable or invalid record is tried once and goes to the dead letter topic. A record that fails on a locked row is retried after a delay, and succeeds once the lock is released. A record still failing after the last retry goes to the dead letter topic as well. A lock timeout of two seconds on the row turns the wait into an ordinary failure the retry policy acts on. Without it, the attempt waits until the holder releases the row and succeeds on its first and only attempt, so the policy never runs. A retry in place suits failures that clear in seconds; a dependency that is down for minutes holds the partition for as long.`,
   );
 
   lib.codeSlide(

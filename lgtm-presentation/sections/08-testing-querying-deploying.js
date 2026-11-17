@@ -7,7 +7,7 @@ module.exports = function (lib) {
   divider(
     "Testing, querying and deploying",
     "Proving the guards, asking the stream, changing the running system",
-    `The patterns so far describe how events move. These patterns cover what surrounds them in practice. How do you test code that fails by omission, with a notification that never left or a second one that did? How do you ask a stream a question without a ksqlDB-style service? What happens to records when a consumer group is redeployed? And two smaller patterns close it out: a resequencer for events that span partitions, and a cache that is written only from committed events. Each part is backed by an example that runs against real brokers, and each states what it costs.`,
+    `How do you test code that fails by omission, with a notification that never left or a second one that did? How do you ask a stream a question without a ksqlDB-style service? What happens to records when a consumer group is redeployed? Two smaller patterns complete the set: a resequencer for events that span partitions, and a cache that is written only from committed events.`,
   );
 
   bulletSlide("TESTING", "Event-driven tests that bite", [
@@ -52,7 +52,7 @@ module.exports = function (lib) {
 
   figSlide("WRITE-FORWARD CACHE", "A cache written only from events", "ag-write-forward-path",
     "order-service, Debezium, Kafka and a Camel route applying orders to Redis behind a version guard",
-    `PostgreSQL and Redis share no transaction, so a request that writes both can die between the writes. A write-forward cache is written only from the events of committed changes, so it can fall behind its source but never contain something the source did not commit. The request writes the order and an outbox row that carries the full state in one transaction. Debezium publishes the row, and one Camel route applies it to Redis, comparing a version with a watch and a transaction because Redis has no conditional upsert. The staleness is the delay of the path: measured from the answer to the first read that finds the order in Redis, the median was about 490 milliseconds, close to the connector's default poll interval of 500. The costs are an outbox, a connector, a slot, a consumer and a second store, and a delay the reader sees. Where a reader must see its own write, read the source.`);
+    `PostgreSQL and Redis share no transaction, so a request that writes both can die between the writes. A write-forward cache is written only from the events of committed changes, so it can fall behind its source but never contain something the source did not commit. The request writes the order and an outbox row that carries the full state in one transaction. Debezium publishes the row, and one Camel route applies it to Redis, comparing a version with a watch and a transaction because Redis has no conditional upsert. The staleness is the delay of the path: measured from the answer to the first read that finds the order in Redis, the median was 491 to 496 milliseconds across runs, close to the connector's default poll interval of 500. The costs are an outbox, a connector, a slot, a consumer and a second store, and a delay the reader sees. Where a reader must see its own write, read the source.`);
 
   figSlide("PRIVATE REGISTRY", "Build on the host, copy into a registry", "ah-build-and-copy",
     "buildah build, skopeo copy by digest into a private registry on an on-premises Kubernetes distribution",

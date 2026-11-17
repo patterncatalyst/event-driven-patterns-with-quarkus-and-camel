@@ -20,7 +20,7 @@ module.exports = function (lib) {
       ["Choosing a pattern", "One table from problem to pattern"],
     ],
     [3.9, 8.19],
-    `The sections follow one order-to-delivery system from the first event to a running Kubernetes cluster. Each pattern has the same shape: the problem, a one-sentence definition, a figure, code or a trade-off table, and when not to use it. For a 90-minute path, take the opening, events between services, getting events out reliably and event sourcing in full. Compress processing and coordinating streams to its headline slides on enrichment, windows and sagas. Compress running on Kubernetes with Strimzi to the figures, and testing, querying and deploying to the two deployment figures. Finish on the decision table and skip the code slides on the way if time runs short.`,
+    `The sections follow one order-to-delivery system from the first event to a running Kubernetes cluster. For a 90-minute path, take the opening, events between services, getting events out reliably and event sourcing in full. Compress processing and coordinating streams to its headline slides on enrichment, windows and sagas. Compress running on Kubernetes with Strimzi to the figures, and testing, querying and deploying to the two deployment figures. The first five sections run on Docker Compose and the Kubernetes section on minikube with the Strimzi operator. Finish on the decision table.`,
     { fontSize: 13, rowH: 0.42 },
   );
 
@@ -39,7 +39,7 @@ module.exports = function (lib) {
       ["Strimzi", "1.3.1", "Kafka operator for the Kubernetes runs"],
     ],
     [3.0, 2.6, 6.49],
-    `This material is written for Java and Quarkus developers, Camel integrators, platform engineers and architects who already know what a topic and a consumer group are. It covers one stack in depth: Quarkus services with Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. Every version is an exact pin, the newest stable release that works with the rest, and nothing needs a licence or a subscription. Kafka is 4.3.2 in both run targets because that is the newest version the latest Strimzi supports. Kafka runs in KRaft mode, so there is no ZooKeeper anywhere.`,
+    `The audience is Java and Quarkus developers, Camel integrators, platform engineers and architects who already know what a topic and a consumer group are. The stack is Quarkus services with Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. Every version is an exact pin, the newest stable release that works with the rest, and nothing needs a licence or a subscription. Kafka is 4.3.2 in both run targets because that is the newest version the latest Strimzi supports. Kafka runs in KRaft mode, so there is no ZooKeeper anywhere.`,
     { fontSize: 13, rowH: 0.42 },
   );
 

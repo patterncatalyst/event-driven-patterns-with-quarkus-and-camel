@@ -11,7 +11,7 @@ module.exports = function (lib) {
   );
 
   bulletSlide("TRACE CONTEXT", "Trace context in the message", [
-    ["Definition:", " write the trace context into the message, copy it at every relay, and let the consumer continue the trace as a child or start a new one with a link."],
+    ["Trace context propagation", " writes the trace context into the message, copies it at every relay, and lets the consumer continue the trace as a child or start a new one with a link."],
     ["Problem:", " an HTTP call carries its trace in a header. A message has no request to ride on, and the outbox adds a table row and a log reader between the commit and the topic."],
     ["Carriers:", " the outbox row keeps the context in a column, Debezium puts a traceparent header on the record, and the consumer reads it."],
     ["Without it:", " the consumer starts a trace of its own and the picture ends at the commit."],
@@ -20,10 +20,10 @@ module.exports = function (lib) {
 
   figSlide("TRACE CONTEXT", "One order, one trace, three services", "25-trace-waterfall",
     "order-service to inventory-service through the outbox and Debezium: spans in one trace",
-    `The waterfall shows one order from the request to the stock reservation. The request span has an outbox write as a child, Debezium adds a span for the time the change sat in the database log and one for reading it, and the consumer span in inventory-service hangs from the log span. Everything between the end of the outbox write and the start of the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. In the runs measured that gap stayed under a second. A trace of only the two services would show a quiet hole there, and a trace through Connect shows how much of it is Debezium. The trace does not say why a gap is long. A stopped connector, a slow broker and a lagging consumer look the same, so metrics at the relay and the broker are what explain it.`);
+    `The request span has an outbox write as a child, Debezium adds a span for the time the change sat in the database log and one for reading it, and the consumer span in inventory-service hangs from the log span. Everything between the end of the outbox write and the start of the consumer span is time the services did not spend: the log, the relay, the topic and the consumer's poll. In the runs measured that gap stayed under a second. A trace of only the two services would show a quiet hole there, and a trace through Connect shows how much of it is Debezium. The trace does not say why a gap is long. A stopped connector, a slow broker and a lagging consumer look the same, so metrics at the relay and the broker are what explain it.`);
 
   bulletSlide("FLOW METRICS", "Measure the flow, not the service", [
-    ["Definition:", " measure each stage where its work waits: backlog at the relay, lag at the broker, event age on arrival, dead letters as a rate. Alert on the signal that grows while the flow is stuck."],
+    ["Flow metrics", " measure each stage where its work waits: backlog at the relay, lag at the broker, event age on arrival, dead letters as a rate. Alert on the signal that grows while the flow is stuck."],
     ["Problem:", " a service's own counters see only the work that reaches it. A paused connector leaves every service dashboard green."],
     ["Backlog:", " the distance in bytes between the replication slot's write position and the position the connector confirmed. The outbox table itself holds no rows to count."],
     ["Lag:", " read from the broker, because a stopped consumer's own metric simply stops."],
@@ -35,7 +35,7 @@ module.exports = function (lib) {
     `Each signal is read in a different place and misses something. Outbox backlog comes from the replication slot and misses anything after the topic. Group lag comes from the broker, so it survives a stopped consumer, but a stalled relay never lets records reach the topic, so lag stays flat. Event age and record age come from the consumer, only when an event arrives. Behind a Debezium outbox the two agree, and they part when a record is written again: a redriven dead letter reads young by record age and old by event age. Dead letters are read as the end offset of the dead letter topic. In the run measured, with the connector paused, the alert on backlog reached Alerting a median of 29 seconds after the orders were placed. An alert on event age did not fire during the pause.`);
 
   bulletSlide("CORRELATION", "Correlation identifier across signals", [
-    ["Definition:", " put the business identifier on every span and in every handler's log context, put the trace identifier on every log line, and link any trace that a timer starts to the one it continues."],
+    ["A correlation identifier", " puts the business identifier on every span and in every handler's log context, puts the trace identifier on every log line, and links any trace that a timer starts to the one it continues."],
     ["Problem:", " a trace id means nothing to a customer, and an order id means nothing to a tracing library. Support starts from the order id."],
     ["Three keys:", " the trace id finds one request tree and its lines, the order id finds every trace and line for the order, the link joins a timer's trace to its origin."],
     ["Loki:", " one label per service. The order id and trace id are structured metadata, so the index does not grow with the orders."],

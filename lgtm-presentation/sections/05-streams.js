@@ -9,7 +9,7 @@ module.exports = function (lib) {
   divider(
     "Processing and coordinating streams",
     "Enrich, join, window, coordinate and decide",
-    `Once events flow, services need more than delivery. They need data the sender never carried, a correlation between two streams, a result for a slot of time, a way to undo a business transaction that spans databases, and a decision that stays repeatable when a model reads free text. For most of them, a Camel form and a Kafka Streams or workflow form run on the same input, so the differences are measured and not argued.`,
+    `Once events flow, services need more than delivery. They need data the sender never carried, a correlation between two streams, a result for a slot of time, a way to undo a business transaction that spans databases, and a decision that stays repeatable when a model reads free text. For most of them, a Camel form and a Kafka Streams or workflow form run on the same input.`,
   );
 
   // ---- Enricher ----------------------------------------------------------
@@ -17,7 +17,7 @@ module.exports = function (lib) {
     EYE,
     "Content Enricher",
     [
-      ["Definition:", " a Content Enricher uses data in the incoming message to fetch the missing details from an external source and attaches them to the message."],
+      ["A Content Enricher", " uses data in the incoming message to fetch the missing details from an external source and attaches them to the message."],
       ["Problem:", " shipping-service publishes the carrier and tracking number, not the carrier's tracking page. Copying the page into every event freezes an old value into each one."],
       ["Lookup:", " ask the owner for each record. Always the current row, but the consumer depends on the owner being up."],
       ["Table join:", " keep a copy fed by the owner's events. Works while the owner is down, but only as fresh as its last published change."],
@@ -60,7 +60,7 @@ module.exports = function (lib) {
     EYE,
     "Event time or arrival time",
     [
-      ["Definition:", " a stream-stream join pairs two events that share a key and fall within a time window of each other, and keeps each side in state until the window closes."],
+      ["A stream-stream join", " pairs two events that share a key and fall within a time window of each other, and keeps each side in state until the window closes."],
       ["Streams:", " the window is measured on occurredAt in the payload, so late and replayed records land where they happened."],
       ["Camel Aggregator:", " the timeout counts the time a group has been quiet on the service's clock, so a replay looks like a burst."],
       ["Unmatched:", " Streams emits PaymentOverdue only when stream time passes the window. Camel emits it when the timeout expires."],
@@ -81,7 +81,7 @@ module.exports = function (lib) {
     EYE,
     "Windows with grace",
     [
-      ["Definition:", " a windowed aggregation groups records by key into windows of event time, keeps each open for a grace period, emits one final result when stream time passes its end plus the grace, and drops a record that arrives after that."],
+      ["A windowed aggregation", " groups records by key into windows of event time, keeps each open for a grace period, emits one final result when stream time passes its end plus the grace, and drops a record that arrives after that."],
       ["Problem:", " nothing says when a pickup list is complete, and waiting for everything never ends on a stream."],
       ["Grace is latency:", " the 09:00 slot ends at 09:15 and its list leaves when stream time passes 09:20."],
       ["Late and dropped:", " a record past the grace is not an error. Only a dropped-records counter shows it, so alert on that."],
@@ -113,7 +113,7 @@ module.exports = function (lib) {
     EYE,
     "Saga: compensation, not rollback",
     [
-      ["Definition:", " a saga is a sequence of local transactions, each publishing the event that triggers the next, in which a failure is undone by compensating transactions that are new events."],
+      ["A saga", " is a sequence of local transactions, each publishing the event that triggers the next, in which a failure is undone by compensating transactions that are new events."],
       ["Problem:", " an order touches three databases and no transaction spans them, so a declined payment leaves the stock reserved."],
       ["Choreography:", " each service reacts to the events of the others, with no coordinator. Each publishes through an outbox so a committed step always announces itself."],
       ["No isolation:", " while it runs, readers see reserved stock for an order that may be cancelled."],
@@ -148,7 +148,7 @@ module.exports = function (lib) {
     EYE,
     "Orchestrated sagas: LRA and Quarkus Flow",
     [
-      ["Definition:", " an orchestrated saga keeps the sequence and each compensation in one orchestrator that sends a command, waits for the reply, and on a failure or an expired limit tells the participants to undo."],
+      ["An orchestrated saga", " keeps the sequence and each compensation in one orchestrator that sends a command, waits for the reply, and on a failure or an expired limit tells the participants to undo."],
       ["Camel Saga EIP:", " an LRA coordinator holds the saga state, and participants register their own undo."],
       ["Quarkus Flow:", " a workflow lists the tasks, and the undo is a task you write."],
       ["Both:", " every saga gets an explicit time limit, and participants only execute commands."],
@@ -161,7 +161,7 @@ module.exports = function (lib) {
     "Choreography, Camel Saga and Flow",
     "23-three-ways",
     "order-service · the same flow in three forms",
-    `With payment-service stopped, each form has a 20 second limit. The coordinator cancels the Camel saga when the limit passes, calls the compensations registered by then, and refuses the late payment service when it tries to join a cancelled saga, so no payment is taken. The workflow's wait gives up when its limit passes, then refunds, releases and cancels, so the late payment is taken and then refunded, and the money moved and came back. Both end with the order cancelled, the stock released and one OrderCancelled published. The Camel form makes 6 coordinator requests per order. A burst of 100 orders had the last one paid after 3.8 s with Camel and 2.0 s with Flow. Choreograph a short flow owned by one team, and orchestrate when the sequence changes often or has to be audited.`,
+    `With payment-service stopped, each form has a 20 second limit. The coordinator cancels the Camel saga when the limit passes, calls the compensations registered by then, and refuses a payment service that never joined when it tries to join a cancelled saga, so no payment is taken. The workflow's wait gives up when its limit passes, then refunds, releases and cancels, so the late payment is taken and then refunded, and the money moved and came back. Both end with the order cancelled, the stock released and one OrderCancelled published. The Camel form makes 6 coordinator requests per order. A burst of 100 orders had the last one paid after 3.8 s with Camel and 2.0 s with Flow. Choreograph a short flow owned by one team, and orchestrate when the sequence changes often or has to be audited.`,
   );
 
   codeSlide(
@@ -180,7 +180,7 @@ module.exports = function (lib) {
     EYE,
     "Analyse with a model, decide with rules",
     [
-      ["Definition:", " let a model turn text into a value from a closed set and record it with the model and prompt that produced it, then let rules decide from the record, never from the model."],
+      ["Analyse then decide", " lets a model turn text into a value from a closed set, records it with the model and prompt that produced it, and lets rules decide from the record, never from the model."],
       ["Problem:", " a model that also decides can answer differently tomorrow, gives no reason but more text, and puts a refund behind a prompt."],
       ["Closed answer:", " a schema forces one of seven values, with temperature 0, a fixed seed and a versioned prompt."],
       ["Rules decide:", " each decision names the rule that fired, and a replay makes no model call."],
@@ -204,6 +204,6 @@ module.exports = function (lib) {
     44, 50,
     "    Verdict fire(Analysis analysis, int limit) {",
     "shipping-service · DecisionService.java",
-    `The service creates a rule unit instance for each analysis, loads the analysis and the one parameter a rule reads, and fires the rules. The service then returns the single verdict. The six rules are written to be mutually exclusive, so exactly one fires for any reason and attempt. A rule that overlaps another, or a case no rule covers, throws instead of picking silently. The rule's name goes into the decision event, so a refund can be traced to Address problem or refused and not to a mood. Replay reads the recorded analyses from the first offset and runs this same method, with no model call. Replaying with the model asked again took about 13 s for eight notes instead of half a second, and a model that answers differently another day would change the decisions too.`,
+    `The service creates a rule unit instance for each analysis, loads the analysis and the one parameter a rule reads, and fires the rules. The service then returns the single verdict. The six rules are written to be mutually exclusive, so exactly one fires for any reason and attempt. A rule that overlaps another, or a case no rule covers, throws instead of picking silently. The rule's name goes into the decision event, so a refund can be traced to the rule that produced it. Replay reads the recorded analyses from the first offset and runs this same method, with no model call. Replaying with the model asked again took about 13 s for eight notes instead of half a second, and a model that answers differently another day would change the decisions too.`,
   );
 };

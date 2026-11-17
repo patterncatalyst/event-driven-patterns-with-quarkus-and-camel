@@ -8,7 +8,7 @@ module.exports = function (lib) {
   divider(
     "Event sourcing",
     "An order is the stream of its own events",
-    `An event-sourced service keeps no table of current state. The state of an order is the fold of its events, and the only way to change it is to append another one. Follow one order through that model: the aggregate that decides each command, what happens when two commands race, how a snapshot keeps a long stream cheap to load, how a read model answers the questions a stream cannot, when to replay and when to project, and how old events stay readable after the schema changes.`,
+    `An event-sourced service keeps no table of current state. The state of an order is the fold of its events, and the only way to change it is to append another one. The parts are the aggregate that decides each command, what happens when two commands race, how a snapshot keeps a long stream cheap to load, how a read model answers the questions a stream cannot, when to replay and when to project, and how old events stay readable after the schema changes.`,
   );
 
   // ---- Aggregate ---------------------------------------------------------
@@ -16,7 +16,7 @@ module.exports = function (lib) {
     EYE,
     "Aggregate: one object decides",
     [
-      ["Definition:", " an aggregate is one object, reached through its root, that rebuilds its state from its own event stream, decides each command and appends the result at the version it loaded."],
+      ["An aggregate", " is one object, reached through its root, that rebuilds its state from its own event stream, decides each command and appends the result at the version it loaded."],
       ["Problem:", " a cancellation and a shipment that both read PAID are each correct against what they saw, and together leave CANCELLED after SHIPPED."],
       ["Rebuilt per command:", " no stored copy of the state exists, so none can be stale."],
       ["Decide, then record:", " a refused command returns no events and writes nothing."],
@@ -71,13 +71,13 @@ module.exports = function (lib) {
     EYE,
     "Snapshot: replay only the tail",
     [
-      ["Definition:", " a snapshot stores the aggregate's state at one version, so a load reads it and replays only the events after it."],
+      ["A snapshot", " stores the aggregate's state at one version, so a load reads it and replays only the events after it."],
       ["Problem:", " a load costs the length of the stream. SKU-1503 holds 100,000 events and every reservation reads all of them."],
       ["A cache, not a record:", " it can be deleted at any time and the events rebuild it. Only the newest is kept, and the aggregate's own code writes it."],
       ["Measured:", " streams of 1,100, 10,100 and 100,200 events load in 1.6, 11.6 and 127.7 ms in full, and in 0.50, 0.63 and 0.95 ms with a snapshot."],
       ["Skip it", " for short streams: 1,100 events load in 1.6 ms without one."],
     ],
-    `Most streams stay short, but stock, an account or a counter takes an event for every change, and the oldest events still count in the answer. The obvious fixes each give something up: deleting old events destroys the history, a second table of current quantity is a source of truth nothing marks as derived, and an in-memory cache is lost on restart and does not help a second instance. A snapshot keeps the stream as the record and only controls how many events a load reads. The timings are medians of three runs, each in a new JVM, taken inside the service with 99 events after the snapshot, the longest tail the policy allows. The full load is linear in the stream, about 1.3 microseconds per event.`,
+    `Most streams stay short, but stock, an account or a counter takes an event for every change, and the oldest events still count in the answer. The obvious fixes each give something up: deleting old events destroys the history, a second table of current quantity is a source of truth nothing marks as derived, and an in-memory cache is lost on restart and does not help a second instance. A snapshot keeps the stream as the record and only controls how many events a load reads. The timings are medians of three runs, each in a new JVM, taken inside the service with 99 events after the snapshot, the longest tail the policy allows. The full load is linear in the stream, between 1.2 and 1.4 microseconds per event.`,
   );
 
   figSlide(
@@ -93,7 +93,7 @@ module.exports = function (lib) {
     EYE,
     "CQRS: a read model beside the stream",
     [
-      ["Definition:", " CQRS keeps a read model apart from the write model and feeds it from the write model's events, so each side has the shape its questions need."],
+      ["CQRS", " keeps a read model apart from the write model and feeds it from the write model's events, so each side has the shape its questions need."],
       ["Problem:", " the aggregate answers whether a command may happen. A customer's order list needs facts from three services, for many orders, and no index by customer."],
       ["Three rules:", " each column is written by the one event that owns it, each update only moves forward and is safe twice, and each answer says how current it is."],
       ["Cost:", " the view is eventually consistent, so a customer may list orders and not yet see the one just placed."],
@@ -122,7 +122,7 @@ module.exports = function (lib) {
     EYE,
     "Replay or project",
     [
-      ["Definition:", " a projection is a read model built by folding the event history in order, kept current by applying each new event once, and rebuilt from the first event when its logic or question changes."],
+      ["A projection", " is a read model built by folding the event history in order, kept current by applying each new event once, and rebuilt from the first event when its logic or question changes."],
       ["Problem:", " shipments per carrier per day touch every stream, and nothing indexes them."],
       ["Replay:", " fold every aggregate when the question arrives. Correct by construction and no new moving part, but it pays the size of the store on every request."],
       ["Projection:", " a table, a checkpoint and a timer. Fast to read, one tick behind, and wrong until rebuilt if its fold has a bug."],
@@ -159,7 +159,7 @@ module.exports = function (lib) {
     EYE,
     "Upcaster: old events, current shape",
     [
-      ["Definition:", " an upcaster turns an event stored in an older shape into the same event in the current shape, on a copy, when the event is read."],
+      ["An upcaster", " turns an event stored in an older shape into the same event in the current shape, on a copy, when the event is read."],
       ["Problem:", " the store is append-only, so a new field such as shippingPriority has no place to be fixed in the old rows."],
       ["Chain:", " one small step per schema version, so a version 1 row passes through every step to the current one. An unknown version is an error."],
       ["On the wire:", " an Avro registry with BACKWARD_TRANSITIVE refuses a version that a reader built on it could not use on every record ever published."],

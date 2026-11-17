@@ -12,7 +12,7 @@ module.exports = function (lib) {
 
   // Operator-managed Kafka
   bulletSlide("OPERATOR-MANAGED KAFKA", "KRaft roles and node pools", [
-    ["Definition:", " describe the cluster as resources and let an operator create and keep the pods, volumes, Services and configuration that realise it."],
+    ["Operator-managed Kafka", " describes the cluster as resources and lets an operator create and keep the pods, volumes, Services and configuration that realise it."],
     ["Problem:", " a broker needs a node id that survives restarts, a volume bound to the node, a stable address, and in KRaft a controller quorum. Deployments cannot decide restart order."],
     ["Node pools:", " a group of nodes with the same roles, resources and storage. A node is a broker, a controller or both."],
     ["Broker identity:", " a replaced pod keeps its node id and its volume claim, and the topic end offsets are unchanged."],
@@ -26,11 +26,11 @@ module.exports = function (lib) {
   codeSlide("OPERATOR-MANAGED KAFKA", "A broker node pool", "YAML", "_k8s/kafka/nodepool-broker.yaml", 1, 18,
     "apiVersion: kafka.strimzi.io/v1",
     "KafkaNodePool · nodepool-broker.yaml",
-    `The pool is a short resource. The label ties it to its Kafka resource, the roles list makes these nodes brokers, and the storage section asks for a persistent volume per node. The delete claim setting removes the volume when the pool goes, which suits a lab where a fresh namespace should start empty, and would be wrong for data that matters. The controller pool is the same resource with the controller role. Setting both roles on one pool gives the dual-role form that Strimzi suggests for development and testing. The operator turns these twenty lines into pods, claims, Services and listener configuration, and reports the node ids in the pool's status.`);
+    `The pool is a short resource. The label ties it to its Kafka resource, the roles list makes these nodes brokers, and the storage section asks for a persistent volume per node. The delete claim setting removes the volume when the pool goes, which suits a lab where a fresh namespace should start empty, and would be wrong for data that matters. The controller pool is the same resource with the controller role. Setting both roles on one pool gives the dual-role form that Strimzi suggests for development and testing. The operator turns this resource into pods, claims, Services and listener configuration, and reports the node ids in the pool's status.`);
 
   // Topics
   bulletSlide("TOPICS AS RESOURCES", "Topics as declared resources", [
-    ["Definition:", " declare every topic as a Kubernetes resource, turn off broker auto-creation, and let the operator reconcile Kafka toward the resources and never the other way."],
+    ["Topics as declared resources", " declares every topic as a Kubernetes resource, turns off broker auto-creation, and lets the operator reconcile Kafka toward the resources and never the other way."],
     ["Problem:", " with auto-creation a typo in a topic name creates a second topic and a healthy send. No list says which topics the system needs."],
     ["Effect:", " an undeclared name fails at the first send with a metadata timeout, and no topic is created."],
     ["Drift:", " a changed setting is reverted on the next pass. Partitions cannot be lowered, so that mismatch is reported as not ready, not repaired."],
@@ -39,7 +39,7 @@ module.exports = function (lib) {
 
   figSlide("TOPICS AS RESOURCES", "Changes go in one direction", "29-one-direction",
     "KafkaTopic resources and Kafka: what the operator reverts and what it cannot",
-    `The figure shows each action and its result. A KafkaTopic applied creates the topic. A declared setting changed in Kafka is put back on the next reconciliation pass, within a minute at the fifteen second interval used here. A topic deleted in Kafka is recreated from its resource, as a new topic with a new id. Partitions raised in Kafka cannot be lowered, so the resource turns not ready with a reason that says decreasing partitions is not supported, and the mismatch is reported, not repaired. A topic created in Kafka gets no resource. Deleting the resource deletes the topic, because of a finalizer, so a topic that must outlive its resource is made unmanaged first. Teams that administer topics with Kafka's own tools will see their edits reverted.`);
+    `A KafkaTopic applied creates the topic. A declared setting changed in Kafka is put back on the next reconciliation pass, within a minute at the fifteen second interval used here. A topic deleted in Kafka is recreated from its resource, as a new topic with a new id. Partitions raised in Kafka cannot be lowered, so the resource turns not ready with a reason that says decreasing partitions is not supported, and the mismatch is reported, not repaired. A topic created in Kafka gets no resource. Deleting the resource deletes the topic, because of a finalizer, so a topic that must outlive its resource is made unmanaged first. Teams that administer topics with Kafka's own tools will see their edits reverted.`);
 
   codeSlide("TOPICS AS RESOURCES", "A topic in the repository", "YAML", "29-unidirectional-topic-operator/base/topics/kafkatopics.yaml", 1, 11,
     "apiVersion: kafka.strimzi.io/v1",
@@ -48,7 +48,7 @@ module.exports = function (lib) {
 
   // Field ownership
   bulletSlide("FIELD OWNERSHIP", "Server-side apply and field managers", [
-    ["Definition:", " apply server-side under a named field manager, so the API server records who owns each field and refuses a write from another manager that would change it."],
+    ["Server-side apply", " applies under a named field manager, so the API server records who owns each field and refuses a write from another manager that would change it."],
     ["Problem:", " client-side apply refuses neither of two writers. A platform patch to a memory limit is silently overwritten by the next deployment."],
     ["Size limit:", " client-side apply copies the manifest into an annotation, capped at 256 KiB. The CloudNativePG install fails on its two largest CRDs."],
     ["Conflict:", " a second manager gets an error naming the manager and the field. Forcing takes the field."],
@@ -61,7 +61,7 @@ module.exports = function (lib) {
 
   // Admission
   bulletSlide("ADMISSION", "Restricted pods by default", [
-    ["Definition:", " label every namespace that runs workloads with the restricted Pod Security level, and give each workload the security context that level requires from the one place that owns it."],
+    ["Restricted pods by default", " labels every namespace that runs workloads with the restricted Pod Security level, and gives each workload the security context that level requires from the one place that owns it."],
     ["Problem:", " Kubernetes admits any well-formed pod. Operators create most pods in a cluster, and the operator decides their security context."],
     ["Applications:", " a patch adds non-root, no privilege escalation, dropped capabilities, a seccomp profile and a read-only root filesystem with a writable temporary directory."],
     ["Strimzi:", " select the restricted pod security provider, or the default provider's Kafka pods are refused."],
@@ -70,7 +70,7 @@ module.exports = function (lib) {
 
   figSlide("ADMISSION", "What the API server admits", "31-admission",
     "Namespace labels and pod specs: restricted namespaces, one exception namespace",
-    `The figure shows which pods pass and which do not. The two namespaces that hold Kafka, PostgreSQL and the applications carry the restricted label, pinned to a policy version so an upgrade does not move the rule. The applications pass with the security context patch. The Strimzi pods pass once the operator uses the restricted provider. The CloudNativePG pods need no change, because the operator and the instance pods already run as non-root with a runtime default seccomp profile. The observability image runs as published, with no security context, so it lives in a namespace without the label. A server dry-run of the label answers whether that image could be admitted, and repeats the answer whenever the image changes.`);
+    `The two namespaces that hold Kafka, PostgreSQL and the applications carry the restricted label, pinned to a policy version so an upgrade does not move the rule. The applications pass with the security context patch. The Strimzi pods pass once the operator uses the restricted provider. The CloudNativePG pods need no change, because the operator and the instance pods already run as non-root with a runtime default seccomp profile. The observability image runs as published, with no security context, so it lives in a namespace without the label. A server dry-run of the label answers whether that image could be admitted, and repeats the answer whenever the image changes.`);
 
   // Metrics
   figSlide("OPERATOR METRICS", "Three layers, one query language", "32-metrics-path",
@@ -79,7 +79,7 @@ module.exports = function (lib) {
 
   // Cruise Control
   bulletSlide("REBALANCE BY PROPOSAL", "Scaling and moving partitions", [
-    ["Definition:", " ask Cruise Control for a proposal, read what it would move, approve it only when acceptable, and let the operator ask and approve when a pool grows or shrinks."],
+    ["Rebalance by proposal", " asks Cruise Control for a proposal, reads what it would move, approves it only when acceptable, and lets the operator ask and approve when a pool grows or shrinks."],
     ["Problem:", " a new broker joins empty, because placement is decided once at topic creation. A broker that holds replicas cannot simply be deleted."],
     ["Proposal:", " a status on the KafkaRebalance resource with replicas to move, data to copy and balance before and after. Nothing moves until approval."],
     ["Auto-rebalance:", " templates for adding and removing brokers. A scale-down without one is refused while the broker holds replicas."],
@@ -97,7 +97,7 @@ module.exports = function (lib) {
 
   // Connect
   bulletSlide("CONNECTORS AS RESOURCES", "Connect built in the cluster", [
-    ["Definition:", " declare the Connect image, every connector and every offset operation as Kubernetes resources, and let the operator reconcile the worker toward them."],
+    ["Connectors as resources", " declare the Connect image, every connector and every offset operation as Kubernetes resources, and let the operator reconcile the worker toward them."],
     ["Problem:", " a worker image must contain plugins, a connector is JSON sent over HTTP, and an offset change leaves no trace in the repository."],
     ["Build:", " the operator runs a build pod, checks each artifact's checksum, and pushes an image to a registry the setup names. A wrong checksum stops the build."],
     ["Credentials:", " a config provider reads the database secret in the Connect pod, so the password is never in the resource."],
@@ -106,5 +106,5 @@ module.exports = function (lib) {
 
   figSlide("CONNECTORS AS RESOURCES", "From resource to running connector", "35-build-and-run",
     "KafkaConnect build pod, registry, worker and KafkaConnector resources on CloudNativePG",
-    `The figure follows the build and the run. The KafkaConnect resource carries a build section. The operator starts a build pod that downloads the Debezium plugin, verifies its checksum, assembles an image from Strimzi's Kafka image and pushes it to the registry. The worker pulls that image by digest. Two connectors are declared as resources: an outbox router for the order service and a log-tailing connector for the inventory table. Both read the database host from the CloudNativePG Service and the password from its Secret. In a namespace that enforces the restricted level the build pod is refused, so the build namespaces carry no Pod Security labels. Connect becomes ready about a minute and a half after the apply, build and pull included.`);
+    `The KafkaConnect resource carries a build section. The operator starts a build pod that downloads the Debezium plugin, verifies its checksum, assembles an image from Strimzi's Kafka image and pushes it to the registry. The worker pulls that image by digest. Two connectors are declared as resources: an outbox router for the order service and a log-tailing connector for the inventory table. Both read the database host from the CloudNativePG Service and the password from its Secret. In a namespace that enforces the restricted level the build pod is refused, so the build namespaces carry no Pod Security labels. Connect becomes ready 80 to 100 seconds after the apply, build and pull included.`);
 };

@@ -7,7 +7,7 @@ module.exports = function (lib) {
   lib.divider(
     "Events between services",
     "What an event carries, which partition it lands in, and how fast it moves",
-    `These are the choices a team makes the moment one service tells another that something happened. The first is the size of the event: only an identifier, the whole state, or a reference to a stored attachment. The second is order: Kafka orders records only within a partition, so the record key decides which events can be trusted to arrive in sequence. The third is speed: how a publisher batches, how a subscriber fetches and polls, and how a share group lets any worker take any record. Each pattern is shown with the Camel route or Quarkus code that implements it and the cost it adds.`,
+    `These are the choices a team makes the moment one service tells another that something happened. The first is the size of the event: only an identifier, the whole state, or a reference to a stored attachment. The second is order: Kafka orders records only within a partition, so the record key decides which events can be trusted to arrive in sequence. The third is speed: how a publisher batches, how a subscriber fetches and polls, and how a share group lets any worker take any record.`,
   );
 
   lib.bulletSlide(
@@ -97,7 +97,7 @@ module.exports = function (lib) {
     13, 27,
     "    @Override",
     "shipping-service · ShipmentPublishRoute.java",
-    `The route splits the plan into the three shipment events, sets the Kafka key header from a strategy bean, marshals each event to JSON and sends it with the Kafka producer, waiting for the broker's answer. The strategy is chosen by configuration, so switching from the order id to the event type changes one environment variable and no code. Waiting for the answer with synchronous true and recordMetadata true puts the partition and offset of every record in the response, which is how a run shows where each event landed. A route that sets the key from the order id needs no buffer at all. The key is the first answer to ordering, and it is free.`,
+    `The route splits the plan into the three shipment events, sets the Kafka key header from a strategy bean, marshals each event to JSON and sends it with the Kafka producer, waiting for the broker's answer. The strategy is chosen by configuration, so switching from the order id to the event type changes one environment variable and no code. Waiting for the answer with synchronous true and recordMetadata true puts the partition and offset of every record in the response, which is how a run shows where each event landed. A route that sets the key from the order id needs no buffer at all.`,
   );
 
   lib.bulletSlide(
@@ -129,9 +129,9 @@ module.exports = function (lib) {
       ["Problem.", " A flash sale of 20,000 orders costs the broker one request per record unless sends overlap and batches fill."],
       ["Settings.", " linger.ms (5 ms by default), batch.size (16384 bytes by default), compression, and acks. acks=all and idempotence are the defaults."],
       ["Overlap.", " A caller that waits for each acknowledgement never fills a batch. Batches fill only when several sends are in the producer at once."],
-      ["Measured.", " The default route moved 4.9 times the unbatched throughput. The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times, because every record waits out the linger."],
+      ["Measured.", " The default route moved 4.9 times the unbatched throughput (median of five rounds, range 2.1 to 6.0). The tuned route (20 ms, 128 KiB, lz4) moved 0.4 times that throughput, because every record waits out the linger."],
     ],
-    `Send does not write to the network. The producer appends the record to an open batch and returns, and a background thread sends batches that are full or have waited long enough. The linger default was 0 and is now 5 milliseconds, raised by KIP-1030. The numbers are ratios to the unbatched route in the same run, so they hold on any machine: 200 callers each waited for an acknowledgement, so a longer linger only added latency. Compression is the part that pays, with lz4 cutting bytes per record to 0.38 of none and zstd to 0.19. Tune when records per request is close to one while sends are concurrent, or when bytes are the cost, and raise the linger only as far as the latency budget allows.`,
+    `Send does not write to the network. The producer appends the record to an open batch and returns, and a background thread sends batches that are full or have waited long enough. The linger default was 0 and is now 5 milliseconds, raised by KIP-1030. The numbers are ratios to the unbatched route in the same run, medians of five rounds. 200 callers each waited for an acknowledgement, so a longer linger only added latency. Compression is the part that pays, with lz4 cutting bytes per record to 0.38 of none and zstd to 0.19. Tune when records per request is close to one while sends are concurrent, or when bytes are the cost, and raise the linger only as far as the latency budget allows.`,
   );
 
   lib.figSlide(
@@ -160,7 +160,7 @@ module.exports = function (lib) {
     "Parallelism stops at the partition count",
     "06-concurrency-cap",
     "Nine partitions assigned to the first nine of twelve consumers; the last three are idle",
-    `Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The rule is simple: the partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol makes every member give up everything and rejoin, and a replica that started a moment ago interrupts all the others. With the consumer protocol from KIP-848, the first replica gave up fewer than half of its nine partitions, four or five in recorded runs, and CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.`,
+    `Under RoundRobinAssignor the nine partitions are each assigned to one of the first nine consumers, and the last three own nothing. The partition count is the ceiling on how many members of one consumer group read at once, so beyond it a group needs more partitions. The classic rebalance protocol makes every member give up everything and rejoin, and a replica that started a moment ago interrupts all the others. With the consumer protocol from KIP-848, the first replica gave up fewer than half of its nine partitions, four or five in recorded runs, and CooperativeStickyAssignor gave up four. When the work per record is the problem, make it cheaper or move it out of the poll loop.`,
   );
 
   lib.bulletSlide(

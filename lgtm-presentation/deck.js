@@ -56,7 +56,7 @@ const lib = createDeck(pres);
     align: "left", valign: "top",
   });
   s.addImage({ path: `${ASSETS}/logo-candidate-2.png`, x: 11.10, y: 6.80, w: 1.55, h: 0.37 });
-  lib.notes(s, `This deck walks through event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. It is written for Java developers, Camel integrators, platform engineers and architects who already know what a topic is. Every code slide is read from a tested example, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.`, 45, "cover");
+  lib.notes(s, `Event-driven patterns on one stack: Quarkus services and Apache Camel routes on Kafka, run first on Docker Compose and then on Kubernetes with Strimzi. It is written for Java developers, Camel integrators, platform engineers and architects who already know what a topic is. The code comes from tested examples, and every example uses one order-to-delivery domain with order, inventory, payment, shipping and notification services.`, 45, "cover");
 }
 
 // Sections, in name order.
