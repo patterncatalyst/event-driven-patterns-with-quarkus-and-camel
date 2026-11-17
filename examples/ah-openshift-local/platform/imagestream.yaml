@@ -1,0 +1,4 @@
+# The KafkaConnect build pushes the image edp-connect:35 here; the ImageStream must exist before the build.
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata: {name: edp-connect}

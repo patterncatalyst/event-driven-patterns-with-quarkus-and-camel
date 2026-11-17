@@ -1910,3 +1910,60 @@ Evidence: verify.sh check numbers refer to the final-run logs `<scratchpad>/r12-
 | AG-21 | G | Dual write with Redis stopped fails the request | WC g-gd FAIL 19 | _docs/ag:91 | verified |
 | AG-22 | G | Dual: 20/24, fails 10,13,16,19; guard off: 23/24 fails 18; 24/24 | WC g-gd, g-go3, g2 | README:48-49; _docs/ag:102 | verified |
 | AG-23 | G | Fastest 413-487 ms; dual median 3 ms | WC min 413/487/452/487/484; g-gd p50=3 | README:51 | verified |
+
+## r13b (Appendix H, 2026-11-16, validation round 2, text at 69b3a7f)
+
+Runs cited: b2 final (S/r13b-b2/final-*.log), b3 runs 1 and 2 (S/r13b-b3), validator round 1 (S/r13b-validate/run-*.log), repair 1 (S/r13b-repair1/run-*.log), validator round 2 (S/r13b-validate2/run-*.log); wall times of the orchestrator rows in _plans/verification-log.md.
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| AH-01 | H | The outbox order-service has no platform-specific Java, Containerfile or connector; same image and connector on compose and minikube | ch08 Containerfile unchanged (pins.env); ah connector/order-outbox.yaml spec equals ch35 connectors/order-outbox.yaml (comments only) | _docs/ah:12; README:5 | verified |
+| AH-02 | H | Kafka and Cluster manifests are the minikube ones, namespace set by kustomize | platform/kustomization.yaml resources ../../_k8s/kafka, ../../_k8s/postgres, namespace edp | _docs/ah:29; README:5; example page:10 | verified |
+| AH-03 | H | Every command names its namespace; every apply is oc apply --server-side | grep: every `oc apply` in ah scripts has --server-side (lib.sh install_operator, verify.sh scc-witness fixed); oc calls namespaced or cluster-scoped | _docs/ah:29; README:49 | verified |
+| AH-04 | H | No Helm, no port forwarding, no S2I | grep of examples/ah-openshift-local: no helm, port-forward, oc proxy, sourceStrategy, new-build; validate.py FORWARDING + oc/kubectl proxy | _docs/ah:29; README:5 | verified |
+| AH-05 | H | The example needs a cluster with no other Strimzi or CloudNativePG; install.sh refuses when any CRD exists; teardown.sh refuses while another install owns them | install.sh:22-23 our_crds; repair-1 bite-install.log (foreign kafka.strimzi.io CRD: refused, no namespace created); teardown.sh refuse_if_shared; validator r2 bite-a.log (Kafka edp-bite/bite: teardown rc 1, edp inventory unchanged, 15 lines identical); CSV branch: jq over live CSV JSON with an injected non-copied CSV in openshift-operators prints it, live copies (reason Copied) are ignored (pre-teardown-evidence.txt) | _docs/ah:29; README:11, 26, 93; example page:31 | verified |
+| AH-06 | H | crc setup edits the host DNS | crc.dev networking: "The crc setup command detects and adjusts your system DNS configuration" (sources row) | _docs/ah:33 | verified |
+| AH-07 | H | crc-check.sh stops unless CRC running and context crc-admin; stack-guard --crc refuses compose or minikube | crc-check.sh; scripts/stack-guard.sh --crc; verify check 1 | _docs/ah:33; README:9, 12 | verified |
+| AH-08 | H | CRC is one node, control plane and worker, ephemeral, not for production, no upgrade path | crc.dev/docs/introducing (sources row) | _docs/ah:40 | verified |
+| AH-09 | H | Pull secret from a no-cost Red Hat account | sources rows (crc.dev using; developers.redhat.com/about) | _docs/ah:40 | verified |
+| AH-10 | H | Network mode user is the default | settings.go v2.64.0 (sources row); HF3 | _docs/ah:40 | verified |
+| AH-11 | H | The daemon adds each Route host to the hosts file while the Route exists and removes it; the scripts change nothing on the host | HF3; validator r1: order-service-edp host present after deploy, absent after teardown; validator r2 after-inventory: 0 order-service-edp lines; no script writes /etc/hosts | _docs/ah:40 | verified |
+| AH-12 | H | Ingress CA public in ConfigMap default-ingress-cert; router-certs-default never read | lib.sh fetch_ca reads only the ConfigMap; grep: no router-certs-default read | _docs/ah:42 | verified |
+| AH-13 | H | Every TLS call verified against the CA; no script turns verification off | grep; validate.py check_ah_tls (self-tests: --dest-tls-verify=false, curl -k, curl --insecure caught); verify check 16 | _docs/ah:42; example page:26 | verified |
+| AH-14 | H | startingCSV fixes the first version; Manual makes OLM propose and wait; automatic follows the channel; upgrades stay pending | OLM Subscription page; OpenShift 4.22 Administrator tasks (sources rows) | _docs/ah:46 | verified |
+| AH-15 | H | Only the plan for the named CSV is approved | verify check 4 in 6 runs | _docs/ah:46; README:31; example page:23 | verified |
+| AH-16 | H | Strimzi channel stable stops at an old release; strimzi-1.x used | HF2 (stable at 0.51.0) | _docs/ah:67 | verified |
+| AH-17 | H | CNPG in the certified catalog, published by EDB with upstream images, stable-v1 | HF2 | _docs/ah:67; README:56, 62 | verified |
+| AH-18 | H | AMQ Streams sold as a subscription, ships an older Kafka | Streams 3.2 overview Appendix A, release notes (sources rows) | _docs/ah:67; README:62 | verified |
+| AH-19 | H | One OperatorGroup in edp-operators targets edp | operators/operatorgroup.yaml | _docs/ah:69 | verified |
+| AH-20 | H | First operator ready 34 to 37 s after approval, second 8 to 14 s | logs: final 34/8, 37/9, 37/12, 37/12, 34/12, 34/14; validator r2 34/9 | _docs/ah:69; README:103 | verified |
+| AH-21 | H | Registry already published through its default route | HF4; /etc/hosts default-route entry | _docs/ah:85 | verified |
+| AH-22 | H | builder SA may push to its own project | system:image-builders rolebinding in edp; 6 runs pushed with its token | _docs/ah:85 | verified |
+| AH-23 | H | Token short-lived, one shell variable, not written or printed, on skopeo's command line during the copy | build-and-copy.sh:30-33 (--duration=15m, --dest-registry-token); grep eyJ/sha256~ over all r13b logs: none | _docs/ah:85; README:111 | verified |
+| AH-24 | H | A first plain copy into an empty registry changes the digest (skopeo compresses); a layer the registry holds is reused | HF5; validator r1 bite1.log (plain re-copy kept the digest) | _docs/ah:89 | verified |
+| AH-25 | H | A rebuild changes the digest (creation time) | buildah-build(1) --timestamp (sources row); digests differ across 6 runs (9927c5, f4fa81, 822156, 3c1a03, b89b73, cc6c39) | _docs/ah:89 | verified |
+| AH-26 | H | Pointing the local tag at another image fails only the digest check | validator round-1 bite 1: check 9 alone failed, restored 5/5 | _docs/ah:130 | verified (Try reworded by orchestrator after r2) |
+| AH-27 | H | Build 49 to 55 s, copy 2 to 3 s | logs: 50/2, 55/3, 50/2, 49/2, 51/2; r2 50/3 | _docs/ah:89; README:104 | verified |
+| AH-28 | H | build-and-copy.sh 51 to 60 s | verification-log walls 59, 53, 54, 51, 53, 60; r2 54 | README:104 | verified (range widened after r2) |
+| AH-29 | H | KafkaConnect imagestream output runs an OpenShift build, ImageStream must exist first; build pod privileged; Connect pod restricted-v2 | HF7; Streams API reference ImageStreamOutput; validator r1 pod list | _docs/ah:91; README:114 | verified |
+| AH-30 | H | Connector credentials via a Connect config provider; no resource holds the password | platform/connect-secret-access.yaml, connector/order-outbox.yaml | _docs/ah:95 | verified |
+| AH-31 | H | Cluster declares role edp with REPLICATION in managed.roles; connector after Flyway | _k8s/postgres/cluster.yaml; deploy.sh order; verify check 6 | _docs/ah:95 | verified |
+| AH-32 | H | QUARKUS_OTEL_SDK_DISABLED is a runtime property | Quarkus 3.40 OpenTelemetry guide (sources row) | _docs/ah:97 | verified |
+| AH-33 | H | restricted-v2 drops every capability, assigns a UID from the range replacing 185 | SCC page; verify check 12; validator r1 bite 2 | _docs/ah:97 | verified |
+| AH-34 | H | Every running pod in both namespaces except the Connect build pod carries restricted-v2 | verify check 11 (build pods skipped) in 6 runs | _docs/ah:97; README:78 | verified |
+| AH-35 | H | Every running pod except the Connect build pod runs under restricted-v2 | check 11; HF7 | example page:25 | verified (reworded after r2) |
+| AH-36 | H | A privileged Deployment is refused (check 13 scoped to scc-witness) | 6 runs; validator r2 bite13.log: with a decoy FailedCreate present and privileged granted, check 13 FAILS (old predicate would pass) | README:80; example page:25 | verified |
+| AH-37 | H | Consumer prints headers, key O-4301, payload with eventType:OrderPlaced | verify check 18 | _docs/ah:107 | verified |
+| AH-38 | H | In one run the KafkaConnector resource listed no tasks while records flowed | HF9 | _docs/ah:107 | verified |
+| AH-39 | H | Peer authentication does not apply (random UID) | verify.sh sql() design; b2 debug runs | _docs/ah:107 | verified |
+| AH-40 | H | Outbox row removed in the same transaction (remove-after-insert=true) | ch08 application.properties:14; verify check 19 | README:86 | verified |
+| AH-41 | H | Deleting an operator by CLI removes Subscription and CSV, not CRDs or CRs | OpenShift 4.22 Administrator tasks 4.3 | _docs/ah:111 | verified |
+| AH-42 | H | 21 CRDs and 8 ClusterRoles survive (names); Retain volumes; image objects and blobs | validator r2 pre-teardown: 21 new CRDs, the 8 roles with olm.managed=true and olm.owner = the two CSVs; 3 Retain PVs; 2 image objects | _docs/ah:111; README:93 | verified |
+| AH-43 | H | Teardown order; prune guard (all ours, non-empty list when images existed, count match); never strips finalizers; fails if anything remains | teardown.sh; validator r2: 2 candidates = 2 deleted, 0 groups left; before/after diffs of ns, CRD, ClusterRole, CRB, webhooks, PV, Image empty | _docs/ah:113; README:93-95 | verified |
+| AH-44 | H | Teardown takes 43 to 45 s | logs 44, 44, 43, 44, 44, 45, 45 | _docs/ah:113; README:107 | verified (range widened after r2) |
+| AH-45 | H | 20/20 checks; teardown ends with an empty inventory | b2 final, b3 1 and 2, validator r1, repair 1, validator r2 | _docs/ah:126; README:66 | verified |
+| AH-46 | H | Without --cacert curl stops at the certificate | verify check 16 (exit 60), 6 runs | _docs/ah:131; README:83 | verified |
+| AH-47 | H | install 130 to 144 s, operators 47 to 56 s after the first Subscription, platform 81 to 87 s | logs 137/53/84, 143/56/87, 137/56/81, 137/53/84, 142/55/87; run 1 wall 144; r2 133/49/83; final 130/47/82 | README:103 | verified (range widened after r2) |
+| AH-48 | H | deploy 10 to 12 s, verify 43 to 45 s | deploy 11, 11, 11, 12, 10 (walls 12, 12, 12, 12, 10); r2 9 s (10 wall); verify 43 to 45; r2 44 | README:105-106 | verified (r2 deploy 9 s script time) |
+| AH-49 | H | CRC 2.64.0, OpenShift 4.22.14, held | node v1.35.6 / crc status (validator r1); decision 21 | README:60 | verified |
+| AH-50 | H | Docker untouched; ollama volume not involved | scripts call docker only through stack-guard | README:95 | verified |

@@ -1,0 +1,38 @@
+# A Connect cluster whose image the operator builds: the PostgreSQL connector plugin is downloaded, checked against
+# its sha512 and baked into an image that is pushed to the ImageStream edp-connect, the registry that OpenShift
+# already runs. Nothing leaves the cluster. The plugin pin is the one in ../_k8s/versions.env; install.sh stops
+# when the two differ.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaConnect
+metadata:
+  name: edp-connect
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: 1
+  bootstrapServers: edp-kafka-bootstrap.edp.svc:9092
+  groupId: edp-connect
+  offsetStorageTopic: edp-connect-offsets
+  configStorageTopic: edp-connect-configs
+  statusStorageTopic: edp-connect-status
+  config:
+    offset.storage.replication.factor: 1
+    config.storage.replication.factor: 1
+    status.storage.replication.factor: 1
+    offset.flush.interval.ms: 1000
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+  build:
+    output:
+      type: imagestream
+      image: edp-connect:35
+    plugins:
+      - name: debezium-postgres
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.7.1.Final/debezium-connector-postgres-3.7.1.Final-plugin.tar.gz
+            sha512sum: d118c8eb994153c9cb687ee9071d09d07b5a03aafc03f5d898bd8ffa86ba801342be30723736f8d2803ae4a708a33295335f54d9f1af99d8c348461579a85868
+  resources:
+    requests: {memory: 768Mi}
+    limits: {memory: 1Gi}
+  jvmOptions: {-Xms: 384m, -Xmx: 384m}

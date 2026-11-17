@@ -1,0 +1,8 @@
+# The application project and the namespace that holds the operators (cluster-scoped objects).
+apiVersion: v1
+kind: Namespace
+metadata: {name: edp}
+---
+apiVersion: v1
+kind: Namespace
+metadata: {name: edp-operators}

@@ -17,7 +17,7 @@ Site: https://patterncatalyst.github.io/event-driven-patterns-with-quarkus-and-c
 | 6 | Running on Kubernetes with Strimzi |
 | Appendices | Reference material, tooling and optional extras |
 
-Appendices: A Testing event-driven code; B Compose to Kubernetes; C Querying streams without ksqlDB; D Pattern map, glossary and EIP Camel cross-reference; E Resequencing across partitions in depth; F Deploying event-driven services on minikube; G Write-forward cache with an outbox and CDC; H OpenShift Local (planned).
+Appendices: A Testing event-driven code; B Compose to Kubernetes; C Querying streams without ksqlDB; D Pattern map, glossary and EIP Camel cross-reference; E Resequencing across partitions in depth; F Deploying event-driven services on minikube; G Write-forward cache with an outbox and CDC; H OpenShift Local.
 
 ## Run targets
 
