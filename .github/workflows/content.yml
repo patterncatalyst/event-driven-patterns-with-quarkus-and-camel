@@ -73,7 +73,7 @@ jobs:
       - name: Deck text matches the committed copy
         run: python3 scripts/deck_text.py --check
       - name: Built deck matches the committed text
-        run: python3 scripts/deck_text.py --check --pptx "$RUNNER_TEMP/deck.pptx"
+        run: python3 scripts/deck_text.py --check --pptx "$RUNNER_TEMP/deck.pptx" --name Event-Driven-Patterns-with-Quarkus-and-Camel
 
   # The one check branch protection requires: fails unless every job above succeeded.
   content-ok:
