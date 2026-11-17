@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the chapter 02 pair on Kafka with the Strimzi Metrics Reporter and checks that the signals reach
+# Runs the example 02 pair on Kafka with the Strimzi Metrics Reporter and checks that the signals reach
 # Prometheus: broker and controller samples from the reporter, the operator's own metrics, the state of the
 # custom resources from kube-state-metrics, and the dashboard. A KafkaTopic made invalid shows Ready 0, and an
 # allowList change takes effect without a restart of the pods.
@@ -54,7 +54,7 @@ endpoint_lacks() { # the endpoint answers (it still serves jvm_ families) and th
 }
 serves_everywhere() { endpoint_has edp-broker-0 jvm_ && endpoint_has "$(controller_pod)" jvm_; }
 
-# --- the application flow: one order through the chapter 02 pair
+# --- the application flow: one order through the example 02 pair
 place() { # place <id>
     curl -s -m 90 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$ORDERS/orders" \
         --data "{\"id\":\"$1\",\"customerId\":\"CU-32\",\"itemSku\":\"SKU-32\",\"quantity\":1,\"amount\":19.90}"

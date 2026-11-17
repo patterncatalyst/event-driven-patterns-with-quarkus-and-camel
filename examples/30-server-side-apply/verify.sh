@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploys the chapter 02 pair with the field manager edp-apps and checks who owns what. A client-side apply of
+# Deploys the example 02 pair with the field manager edp-apps and checks who owns what. A client-side apply of
 # the CloudNativePG install fails with "Too long" and a server-side apply does not. A second writer, edp-platform,
 # sets the memory limit that edp-apps owns: the apply conflicts until it is forced, and ownership moves. Strimzi
 # applies its own fields server-side, so a foreign annotation on the bootstrap Service survives a reconcile and a

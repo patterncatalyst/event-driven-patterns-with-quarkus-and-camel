@@ -1,4 +1,4 @@
-# Chapter 29: the chapter 2 pair on a Kafka cluster that has no auto-created topics. Every topic of the event
+# Example 29: the example 02 pair on a Kafka cluster that has no auto-created topics. Every topic of the event
 # catalog is a KafkaTopic, reconciled one way by the Topic Operator. The set lives in base/ so that the
 # demo overlays can build on it.
 apiVersion: kustomize.config.k8s.io/v1beta1

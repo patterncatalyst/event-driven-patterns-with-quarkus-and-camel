@@ -1,4 +1,4 @@
-# The chapter 08 order-service and the chapter 09 inventory-service, deployed unchanged from their own Containerfiles.
+# The example 08 order-service and the example 09 inventory-service, deployed unchanged from their own Containerfiles.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: edp

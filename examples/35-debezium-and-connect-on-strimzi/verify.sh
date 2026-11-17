@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds a Connect image inside the cluster, declares the chapter 08 outbox connector and the chapter 10 inventory
+# Builds a Connect image inside the cluster, declares the example 08 outbox connector and the example 10 inventory
 # connector as KafkaConnector resources, and checks what each delivers: an outbox row on edp.orders.placed, a table
 # change on edp.inventory.item-changes and as a document on edp.inventory.items. Then it lists, refuses to alter,
 # stops, alters and resumes the inventory connector's offsets through the resource. Nothing is written through the

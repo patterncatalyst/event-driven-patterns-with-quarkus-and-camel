@@ -1,4 +1,4 @@
-# The chapter 10 connector (examples/10-managing-connector-offsets/connect/inventory-cdc.json) as a resource.
+# The example 10 connector (examples/10-managing-connector-offsets/connect/inventory-cdc.json) as a resource.
 # Differences: the host and credentials as in order-outbox, and topic.prefix edp-inventory with both reroute
 # regexes following it, because two Debezium connectors in one Connect cluster must not share a topic.prefix.
 # The output topics keep their names. listOffsets and alterOffsets name the ConfigMaps the offset operations use.

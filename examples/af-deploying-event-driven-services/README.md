@@ -64,12 +64,12 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 4 | the Recreate rollout leaves a period of at least 3 s with no row written, 4.8 to 9.3 s over eight clean runs |
 | 5 | the group has no lag once it has caught up |
 | 6 | every one of the 3,000 records has a row |
-| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 460 over eight clean runs (bound up to 1,469) |
+| 7 | the records delivered again (attempts above 1) stay within the bound from the old replicas' last commit interval (see below), 0 to 460 over ten clean runs (bound up to 1,469) |
 | 8 | `notify-roll` is listed as a consumer-protocol group |
 | 9 | the rolling update replaced every pod |
 | 10 | rows of the range were written by the old pods and by the new ones |
 | 11 | every one of the 3,000 records has a row |
-| 12 | the records delivered again stay within the same bound, 0 to 384 over eight clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 738) |
+| 12 | the records delivered again stay within the same bound, 0 to 384 over ten clean runs on the consumer protocol, 99 in a classic run (bounds 677 to 738) |
 | 13 | no record with the renamed field produced a row, 0 of 20 in each run |
 | 14 | the group has no lag: it committed past the records it could not store |
 | 15 | the consumer log holds `Failed delivery` |
@@ -78,11 +78,11 @@ There is no `mvn verify`: the example has no Java. Checks 1 to 3 are preconditio
 | 18 | the blue group is Empty within 60 s of the scale-down |
 | 19 | the green group holds blue's committed offsets, partition by partition |
 | 20 | every one of the 4,000 records has a row in blue or green |
-| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over eight clean runs (bound 742 to 1,150) |
+| 21 | the ids processed by both groups stay within what blue wrote in its last commit interval, 0 to 460 over ten clean runs (bound 742 to 1,150) |
 | 22 | the green group is Empty within 60 s of the scale-down |
 | 23 | the blue group holds green's committed offsets, partition by partition |
 | 24 | every one of the 3,000 records of the rollback range has a row in blue or green |
-| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 380 over eight clean runs (bound 690 to 904) |
+| 25 | the ids processed by both groups stay within what green wrote in its last commit interval, 0 to 380 over ten clean runs (bound 690 to 904) |
 | 26 | without a rollout every request is answered 201, 1,576 to 1,584 requests in each of the eight clean runs |
 | 27 | the rollout ran while requests were flowing |
 | 28 | no request was answered with a 5xx status |
@@ -108,6 +108,6 @@ Each run starts from fresh namespaces. The failing sets are frozen after the liv
 
 ## Measurements
 
-Redelivery depends on timing and can be zero. In eight clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384, 0, 160 and 0), and the stop and restart delivered 0 to 460 again over eight runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 20 s from the blue scale-down to green live (8 s without the offset copy).
+Redelivery depends on timing and can be zero. In eight clean runs the rolling update of a three-pod group at 100 records per second on the consumer protocol delivered 0 to 384 records again (47, 68, 372, 19, 384, 0, 66 and 35), and the stop and restart delivered 0 to 460 again over ten runs; the longest period with no row written in the stop and restart was 4.8 to 9.3 s. The classic-protocol runs delivered 0 and 99 again in the rolling update. Over eight runs the cut-over overlap was 0 to 460 ids and the rollback overlap 0 to 380; a clean shutdown can leave nothing to re-read. No run lost a record. The cut-over took 12 to 20 s from the blue scale-down to green live (8 s without the offset copy).
 
 Requests in flight when a pod of `order-service` is removed can fail at the connection level. In seven clean runs 5, 8, 5, 5, 8, 11 and 6 of about 2,380 to 2,391 requests failed and none was answered with a 5xx status; in the four runs that split them, the failures were 1 reset and 4 timeouts, 4 resets and 4 timeouts, 7 resets and 4 timeouts, and 2 resets and 4 timeouts. The control run without a rollout had none. A retry of an accepted order was answered 409 in each run that checked it. In one run 2 of the 11 failed requests had been accepted before the connection failed, and their events were on the topic; in the first run that retried every failed request, all 6 retries were answered 201.
