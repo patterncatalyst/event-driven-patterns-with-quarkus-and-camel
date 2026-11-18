@@ -15,7 +15,7 @@ In the choreographed saga nobody holds the whole sequence. Each service knows it
 
 ### The problem
 
-A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only, and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback (Richardson). The choreographed form coordinates that with events and no coordinator.
+A flow that spans services cannot be one transaction. A Kafka transaction covers Kafka only, and each service owns its database. The flow is a sequence of local transactions, and when a later step fails the earlier ones are undone by compensating actions: a new step that reverses the effect, never a rollback, as Richardson frames it. The choreographed form coordinates that with events and no coordinator.
 
 That works while the flow is short and one team owns it. Three things push toward a central owner. The sequence changes, and every change is a coordinated release. Someone has to answer where order O-2314 is, and the answer is spread over three tables. And a time limit is a property of the whole saga, not of any one service. Hohpe and Woolf call the central unit a Process Manager: it keeps the state of the sequence and chooses the next step from the intermediate results.
 

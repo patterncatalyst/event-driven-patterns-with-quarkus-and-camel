@@ -78,7 +78,7 @@ Camel never reads `occurredAt`. The completion timeout is the time a group has b
 
 {% include excalidraw.html file="20-event-vs-arrival-time" alt="O-2003 has event times two minutes apart and arrives more than the 10 second timeout apart, so Kafka Streams matches it and the Camel aggregator, with a 10 second timeout, emits PaymentOverdue first; O-2004 has event times 90 minutes apart and arrives back to back, so Kafka Streams emits PaymentOverdue and the Camel aggregator matches it" caption="Figure 20.2: Two clocks, two answers, in opposite directions" %}
 
-`O-2003` is reserved at 09:10 and paid at 09:12 in event time, and the two records are produced more than the 10 second timeout apart. Streams matches it. The Camel group times out first and emits `PaymentOverdue`; the payment then arrives alone and is ignored. `O-2004` is reserved at 09:20 and paid at 10:50, a replayed payment, and the two records are produced back to back. Streams sees 90 minutes and emits `PaymentOverdue`. Camel sees both facts together and emits `ReadyToShip`.
+One pair is reserved at 09:10 and paid at 09:12 in event time, two minutes apart, but its two records are produced more than the 10 second timeout apart (`O-2003`). Streams matches it. The Camel group times out first and emits `PaymentOverdue`; the payment then arrives alone and is ignored. The other pair is reserved at 09:20 and paid at 10:50 in event time, 90 minutes apart, but its records are produced back to back (`O-2004`), the payment a replay. Streams sees 90 minutes and emits `PaymentOverdue`. Camel sees both facts together and emits `ReadyToShip`.
 
 The question is which clock the business rule means. "Payment within 30 minutes of the reservation" is a statement about when things happened, and only the event-time form can keep it when records are late, replayed or backlogged. "Payment within 10 seconds of the reservation reaching this service" is a statement about the service, and the timeout is the direct form of it. A timeout chosen as a guess at the spread of arrival times is a third thing, and it moves the answer: a longer timeout makes `O-2003` match on the Camel path as well.
 
@@ -124,7 +124,7 @@ mvn -B verify
 Try one change and rerun:
 
 - `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code): the reservation open at the recreate is lost on the Camel path and never becomes `ReadyToShip` there.
-- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and `O-2005` is not reported within 15 seconds of arriving.
+- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and the unpaid reservation `O-2005` is not reported within 15 seconds of arriving.
 
 ## When not to use it
 
@@ -133,7 +133,7 @@ A window is for facts that happen close together. If the second fact can come a 
 If the two facts already sit in one database, a SQL join answers the question with no state to keep. If the correlation is short, live and low in volume, and arrival time is close enough to event time, the Camel aggregator is the lighter choice: no local store, no changelog, no partition rule. A Streams join also keeps both sides for longer than the window itself, so a long window on a busy topic is a large store.
 
 > **🤖 Explore with your agent**
-> "In examples/20-join, ReadinessTopology and ReadinessRoute join InventoryReserved and PaymentProcessed by order id. Produce the pair O-2003 (event times two minutes apart, records produced further apart than the route's completion timeout) and O-2004 (event times 90 minutes apart, produced back to back). From PayloadTimestampExtractor and completionTimeout, state which clock each output used and why the two disagree, then recreate the service with a reservation open and say where each form found it again."
+> "In examples/20-join, ReadinessTopology and ReadinessRoute join InventoryReserved and PaymentProcessed by order id. Produce one pair whose events are two minutes apart but whose records are produced further apart than the route's completion timeout (O-2003), and one whose events are 90 minutes apart but are produced back to back (O-2004). From PayloadTimestampExtractor and completionTimeout, state which clock each output used and why the two disagree, then recreate the service with a reservation open and say where each form found it again."
 > Check: O-2003 is ReadyToShip on the Streams output and PaymentOverdue on the Camel output, O-2004 is the opposite, and the reservation open at the recreate is paired afterwards on both outputs.
 
 ## References
