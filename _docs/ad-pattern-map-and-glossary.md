@@ -33,11 +33,11 @@ Pick a pattern by the symptom:
 | Two facts on two topics must meet | Stream-stream join | 20 |
 | A step failed after others committed | Saga, Orchestrated saga | 22, 23 |
 | Every service is healthy and orders wait | Measure the flow | 26 |
-| A batch has several steps and must survive a restart | Step-wise processing (Process Manager) | Appendix I |
+| A batch has several steps and must survive a restart | Step-wise batch with persisted step state (Process Manager) | Appendix I |
 | One input is too large for one worker | Fan-out over partitions (Splitter) | Appendix I |
 | A total is right only when every part is in | Aggregate on completion (Aggregator) | Appendix I |
-| A nightly batch overruns the cluster or starves other work | Admission control with Kueue (Admission) | Appendix I |
-| One part of a batch failed and the rest is done | Replay failed steps only (Replay) | Appendix I |
+| A nightly batch overruns the cluster or starves other work | Admission control with Kueue | Appendix I |
+| One part of a batch failed and the rest is done | Replay failed steps only | Appendix I |
 
 ## Glossary
 

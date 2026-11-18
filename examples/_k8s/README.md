@@ -46,7 +46,7 @@ Two functions in `lib.sh` serve the one example that uses Kueue:
 | Function | Does |
 |---|---|
 | `kueue_fresh` | runs `kueue_teardown`, fetches the manifest, applies `platform/kueue` with `--server-side`, waits for the controller Deployment to be Available, then waits until the webhook answers: a server-side dry-run Job in `edp` with the label `kueue.x-k8s.io/queue-name` must come back with `spec.suspend: true` |
-| `kueue_teardown` | deletes the Jobs labelled `edp.batch/run`, waits until their Workloads are gone, deletes LocalQueues, ClusterQueues, WorkloadPriorityClasses and ResourceFlavors, then `kubectl delete -k` of the platform directory; then fails loudly if a Kueue CRD, a Kueue webhook configuration, the APIService `v1beta2.visibility.kueue.x-k8s.io` or the namespace `kueue-system` remains. Finalizers are never stripped |
+| `kueue_teardown` | deletes the Jobs labelled `edp.batch/run`, waits until their Workloads are gone, deletes LocalQueues, ClusterQueues, WorkloadPriorityClasses and ResourceFlavors, then `kubectl delete -k` of the platform directory; then fails loudly if a Kueue CRD, a Kueue webhook configuration, the APIService `v1beta2.visibility.kueue.x-k8s.io` or the namespace `kueue-system` remains. With `--final` it also deletes the cluster-scoped ClusterRoleBinding `edp-lgtm-kueue-metrics` and fails if it remains; `kueue_fresh` calls it without the flag. Finalizers are never stripped |
 
 The example's `verify.sh` calls `kueue_fresh` after `k8s_fresh` and `kueue_teardown` before `k8s_teardown`.
 
