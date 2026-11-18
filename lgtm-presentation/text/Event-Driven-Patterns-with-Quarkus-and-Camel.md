@@ -1388,7 +1388,7 @@ p. 119
 
 batch-runner and batch-worker: a replay Job whose finished indexes exit at once
 
-> In the first attempt indexes 0 and 2 finish and index 1 exits with code 42, a poison partition. A pod failure policy turns that code into FailIndex, so the index fails at once without a retry and the other two carry on. The run is FAILED and its offsets are already fixed, so a replay does not plan again. It creates a new reconcile Job, a new attempt. A Job cannot be told to run only index 1, so all three indexes start, and the worker checks the partition row first. A row that is already DONE means exit 0 without reading Kafka. Index 1 reads its partition and becomes DONE, and aggregate then runs once on three DONE partitions. The totals are an upsert keyed by run, partition and carrier, so the guard saves the read and the upsert protects the result. A replay is cheap in Kafka reads and not in quota, because the Job still asks for all three pods, 1500m.
+> In the first attempt indexes 0 and 2 finish and index 1 exits with code 42, a poison partition. A pod failure policy turns that code into FailIndex, so the index fails at once without a retry and the other two carry on. The run is FAILED and its offsets are already fixed, so a replay does not plan again. It creates a new reconcile Job, a new attempt. A Job cannot be told to run only index 1, so all three indexes start, and the worker checks the partition row first. A row that is already DONE means exit 0 without reading Kafka. Index 1 reads its partition and becomes DONE, and aggregate then runs once on three DONE partitions. The totals are an upsert keyed by run, partition and carrier, so the guard avoids the read and the upsert keeps the result correct. A replay costs few Kafka reads and the full quota, because the Job still asks for all three pods, 1500m.
 
 ## [120] BATCH PROCESSING · Admission and quota with Kueue
 
@@ -1396,7 +1396,7 @@ p. 120
 
 - Suspended Jobs. The runner creates every Job with the queue-name label, and Kueue admits it only when the whole pod set fits the quota. Until then the step is QUEUED.
 - ClusterQueue. The quota is 1750m of CPU and 3Gi of memory. Three reconcile pods of 500m fill most of it, so a second reconcile Job waits.
-- Ledger, not capacity. Kueue never checks the node. The queue limits what the batch may ask for and the node limits what exists.
+- Quota, not capacity. Kueue never checks the node. The queue limits what the batch may request and the node limits what exists.
 - WorkloadPriorityClass. batch-low is 100 and batch-high is 1000, chosen by a second label on the Job. A Job without the label has priority 0.
 - Eviction. A suspended-again Job is not a failure. The step returns to QUEUED, and only a failed Job stops the run.
 

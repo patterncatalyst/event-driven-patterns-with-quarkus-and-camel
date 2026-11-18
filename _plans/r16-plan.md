@@ -19,16 +19,16 @@ Planned 2026-11-18 (Opus planner, lgtm-relay). Approved by the owner 2026-11-18 
 | 1A sources and pins | done |
 | 1B substrate | done |
 | G0 spike | done 2026-11-18 |
-| 2A Java | |
-| 2B manifests, verify.sh, README | |
-| 2C prose, example page, figures | |
-| 2D consistency | |
-| 3 live window | |
-| 4 fixes | |
-| 5 deck | |
-| 6 final fresh run, gates | |
-| 7 Opus validation | |
-| 8 ship, Notion | |
+| 2A Java | done (5092158) |
+| 2B manifests, verify.sh, README | done (49ece99) |
+| 2C prose, example page, figures | done (aaf1e4a) |
+| 2D consistency | done (b179b60) |
+| 3 live window | done: 34/34 twice, witnesses match |
+| 4 fixes | done (4b9a92e): 7 bugs |
+| 5 deck | done: slides 118 to 120, 123 total |
+| 6 final fresh run, gates | done: gates clean; repair-round live run 1 |
+| 7 Opus validation | done: 0 blocking, repair round 1 |
+| 8 ship, Notion |  |
 
 ## Approach
 

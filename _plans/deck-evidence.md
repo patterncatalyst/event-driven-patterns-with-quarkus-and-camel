@@ -112,7 +112,7 @@ Internal map from each slide number (as in `lgtm-presentation/text/`) to the cla
 
 | slide | claim (number or behaviour) | claims id or file:line |
 |---|---|---|
-| 118 | worker exit code 42 is poison and FailIndex fails only that index; index i reads partition i of both topics | examples/ai-batch-processing-with-kueue/batch-runner/src/main/resources/job-template.yaml (podFailurePolicy); verify.sh checks 15 to 18 |
+| 118 | worker exit code 42 is poison and FailIndex fails only that index; index i reads partition i of both topics | examples/ai-batch-processing-with-kueue/batch-runner/src/main/java/com/patterncatalyst/shipping/batch/runner/JobFactory.java:87-93 (podFailurePolicy); verify.sh checks 15 to 18 |
 | 118, 119 | replay reruns only indexes not DONE; a DONE row exits 0 without a Kafka read; aggregate runs once on three DONE partitions | verify.sh check 18 (guard); _docs/ai-batch-processing-with-kueue.md replay section |
 | 119 | a replay Job still asks for all three pods, 1500m (3 x 500m) | examples/ai-batch-processing-with-kueue/kueue/queues.yaml comment; _docs/ai Kueue section |
 | 119 | totals are an upsert keyed by run, partition and carrier | PartitionStore upsert; verify.sh check 18; REPLAY_GUARD=off witness fails 18 only (S/r16-window/results.md) |

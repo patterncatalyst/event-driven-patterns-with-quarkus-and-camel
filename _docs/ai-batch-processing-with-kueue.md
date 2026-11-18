@@ -9,11 +9,11 @@ description: "A batch has an input that ends and a moment when it is done. Each 
 duration: "75 minutes"
 ---
 
-Everything else in this book handles a stream: a topic that never ends and a consumer that never finishes. A batch is the other shape of work. Its input is bounded, such as all deliveries between two instants, and it has a moment when it is done and a result that can be checked. The result here is an end-of-day reconciliation per carrier: how many shipments were scheduled in a window, how many were delivered, and how many are still open.
+Most event-driven work is a stream: a topic that never ends and a consumer that never finishes. A batch is the other shape of work. Its input is bounded, such as all deliveries between two instants, and it has a moment when it is done and a result that can be checked. The result here is an end-of-day reconciliation per carrier: how many shipments were scheduled in a window, how many were delivered, and how many are still open.
 
 A batch raises questions that a consumer group does not. Which step runs next, and what happens to the steps already finished when one fails? How many pods may run at once when two batches arrive together? Which batch wins when the cluster is full? And what tells you, afterwards, why a run took as long as it did when its pods lived for seconds?
 
-The answers below run on minikube. A small Quarkus and Camel service, the `batch-runner`, is the Process Manager from Hohpe and Woolf: it keeps the state of each run and creates the Job for the next step. A second image, the `batch-worker`, is a Quarkus command-mode application with three commands, `plan`, `reconcile` and `aggregate`. Kueue admits the Jobs.
+The patterns here run on minikube. A small Quarkus and Camel service, the `batch-runner`, is the Process Manager from Hohpe and Woolf: it keeps the state of each run and creates the Job for the next step. A second image, the `batch-worker`, is a Quarkus command-mode application with three commands, `plan`, `reconcile` and `aggregate`. Kueue admits the Jobs.
 
 {% include excalidraw.html file="ai-reconciliation-run" alt="batch-runner creates a plan Job, then an Indexed reconcile Job of three pods where index i reads partition i, then an aggregate Job that writes to the reconciliations topic; run, step, run_partition, partition_result and carrier_total tables in PostgreSQL hold the state of each step" caption="Figure I.1: One run is three Jobs, created in order, with their state in PostgreSQL" %}
 
@@ -130,6 +130,8 @@ A bounded input is often larger than one process should read, and the work on ea
 
 **Run one Indexed Job whose pod index selects a partition of the input, so that each pod owns exactly the records that belong together.**
 
+This is the Splitter from Hohpe and Woolf, carried out by Kubernetes: one input becomes one unit of work per partition.
+
 ### How Quarkus and Camel model it
 
 The `plan` step reads the two topics and fixes, per partition, the offset range for the window: the first offset at or after the window start and the first offset at or after the window end. It stores them in `run_partition`, one row per partition, so the range is decided once and every attempt reads the same records. The table holds the range and the progress of each partition:
@@ -213,9 +215,9 @@ The per-partition counts are partial. The reconciliation for a carrier is their 
 
 ### How Quarkus and Camel model it
 
-The Camel Aggregator is the familiar answer in a stream: collect messages by correlation id until a completion condition holds. It fits a batch badly. It completes by counting messages, and a partition that is replayed sends its result a second time, which breaks the count. The batch has a stronger fact than a count: the fan-out Job is Complete, and the results are rows.
+The Aggregator from Hohpe and Woolf, which Camel implements, is the familiar answer in a stream: collect messages by correlation id until a completion condition holds. It fits a batch badly. Camel completes an aggregation by size, by predicate or by timeout, and size completion counts messages, so a partition that is replayed sends its result a second time, which breaks the count. The batch has a stronger fact than a count: the fan-out Job is Complete, and the results are rows.
 
-So the `aggregate` step is another Job. The runner creates it when the `reconcile` Job is Complete, not before. It reads `partition_result`, sums per carrier, upserts `carrier_total` and publishes one record per carrier to `edp.shipping.reconciliations` with the key `<run id>:<carrier>`. The topic is compacted, so the latest record per key is what remains. The publish is a Camel route: `split(body())` over the totals, one message each.
+So the `aggregate` step is another Job. The runner creates it when the `reconcile` Job is Complete, not before. It reads `partition_result`, sums per carrier, upserts `carrier_total` and publishes one record per carrier to `edp.shipping.reconciliations` with the key `<run id>:<carrier>`. The topic is compacted, so the latest record per key is what remains. The publish is a Camel route: `split(body())`, the Splitter from Hohpe and Woolf, turns the list of totals into one message each.
 
 ```java
 from("direct:publish-reconciliations").routeId("publish-reconciliations")
@@ -285,11 +287,12 @@ public RunPartition begin(String runId, int partition, boolean guard) {
     return row;
 }
 ```
- A Job cannot be told to run only index 1. A new Job runs every index, so the guard makes the finished ones free in time, and the aggregate step then runs once on three DONE partitions.
 
-The replay costs something the guard cannot remove. Kueue reserves quota for the whole pod set, three pods at 500m, so the replay Job waits for 1500m even though only one index has work to do. A replay is cheap in Kafka reads and not cheap in quota.
+A Job cannot be told to run only index 1. A new Job runs every index, so the guard makes the finished ones free in time, and the aggregate step then runs once on three DONE partitions.
 
-The guard is also what makes the totals right. The counts are an upsert keyed by run, partition and carrier, so a repeated write would store the same numbers and the totals would still be correct without the guard. The guard saves the read; the upsert protects the result.
+The replay costs something the guard cannot remove. Kueue reserves quota for the whole pod set, three pods at 500m, so the replay Job waits for 1500m even though only one index has work to do. A replay costs few Kafka reads and the full quota.
+
+The guard is also what makes the totals right. The counts are an upsert keyed by run, partition and carrier, so a repeated write would store the same numbers and the totals would still be correct without the guard. The guard avoids the read, and the upsert keeps the result correct.
 
 > **🤖 Explore with your agent**
 > "In examples/ai-batch-processing-with-kueue, inject exit 42 on partition 1 through the ai-demo-faults ConfigMap, start a run and replay it. Read the batch-runner step rows and the run_partition rows before and after the replay, and say which indexes read Kafka in the second attempt and why. Then read the replay rule in the batch-worker's reconcile command and state what it checks before it reads a partition."
@@ -365,13 +368,13 @@ metadata: {name: batch-high}
 value: 1000
 ```
 
-Kueue's webhook sets `suspend: true` on a Job that carries the queue label, so the runner creates the Job suspended and the webhook would do it regardless. The step is QUEUED. Kueue admits the Workload when the quota has room, unsuspends the Job, and the pods are created. When the Job finishes, the quota is released. On an empty quota a step is admitted about two seconds after the runner creates its Job, which is the runner's tick; the step itself then runs about 10 seconds for `plan` and `aggregate`, which is mostly JVM start. A step that waited for quota in the contention run waited 52 seconds and then ran 52 seconds.
+Kueue's webhook sets `suspend: true` on a Job that carries the queue label, so the runner creates the Job suspended and the webhook would do it regardless. The step is QUEUED. Kueue admits the Workload when the quota has room, unsuspends the Job, and the pods are created. When the Job finishes, the quota is released. On an empty quota the runner sees a step admitted about two seconds after it creates the Job, because it checks on a two-second tick. The step itself then runs about 10 seconds for `plan` and `aggregate`, which is JVM start plus the work. In one contended run a step waited 52 seconds for quota; it then ran 52 seconds because partition 2 was slowed by 40 seconds in that run.
 
 A Workload that does not fit stays pending. Its `QuotaReserved` condition is False with the reason `WaitingForQuota`, and the message says what is missing, for example insufficient unused quota for cpu in the flavor and how much more is needed. `Admitted` is False with the reason `NoReservation`. The Job is suspended and has no pods.
 
 The queueing strategy decides what a waiting Workload does to the ones behind it. With `BestEffortFIFO`, the default, the order is priority and then creation time, but an older Workload that cannot be admitted does not block a newer one that fits. A small Job passes a large one that is waiting. With `StrictFIFO`, an older Workload that cannot be admitted blocks newer ones even if they would fit (Kueue, Cluster Queue). A batch with one large step and several small ones wants the first; a queue where arrival order is a promise wants the second. The quota here is configured for `BestEffortFIFO`, and a one-pod, 250m Job was admitted while a three-pod Job waited.
 
-Quota is a ledger and not a capacity. The scheduler sees the node's allocatable resources, and Kueue never checks them. The queue limits what the batch may ask for; the node limits what exists. The quota here is set so the CPU is what binds: with three pods of 500m against 1750m, one `reconcile` Job runs at a time, and a second waits.
+Kueue's quota is a count of what the batch may request, not a measure of node capacity. The scheduler sees the node's allocatable resources, and Kueue never checks them. The queue limits what the batch may ask for; the node limits what exists. The quota here is set so the CPU is what binds: with three pods of 500m against 1750m, one `reconcile` Job runs at a time, and a second waits.
 
 {% include excalidraw.html file="ai-queueing-timeline" alt="Two runs against a quota of 1750m: the first reconcile Job runs with 3 pods at 1500m, the second waits suspended with reason WaitingForQuota and is admitted when the first completes; without the queue label both run at once and request 3000m" caption="Figure I.6: Two runs, one quota: the second reconcile Job waits" %}
 
@@ -393,15 +396,15 @@ A low-priority run was admitted and two of its three partitions finished. The th
 
 {% include excalidraw.html file="ai-preemption" alt="The low-priority run has index 0 and 1 done and index 2 running; when the high-priority run is submitted the low run's Workload is evicted with reason Preempted and its Job is suspended with completedIndexes 0,1 kept; the high run is admitted and completes; the low run is admitted again and starts one pod for index 2 only" caption="Figure I.7: Preemption suspends a Job and keeps what it finished" %}
 
-Kueue evicted the low-priority Workload within a tenth of a second. Its conditions were `Evicted` True with the reason `Preempted`, `Preempted` True with the reason `InClusterQueue`, and `Requeued` True. The Job was suspended again, and the runner moved the step to QUEUED, never to FAILED. The high-priority run was admitted in the same second, and in the spike run the low run was admitted again 15.6 seconds after the high run was submitted.
+Kueue evicted the low-priority Workload within a tenth of a second. Its conditions were `Evicted` True with the reason `Preempted`, `Preempted` True with the reason `InClusterQueue`, and `Requeued` True. The Job was suspended again, and the runner moved the step to QUEUED, never to FAILED. The high-priority run was admitted in the same second, and the low run was admitted again 15.6 seconds after the high run was submitted.
 
 Kueue evicted a run that had only one pod left because it reserves quota for the whole pod set: the low run still held 1500m with a single active pod, so the high run did not fit without evicting it.
 
 When the high run completed, the low run was admitted again. `completedIndexes` still read `0,1`, the pods of indexes 0 and 1 were the same pods as before, and the evicted pod of index 2 was deleted and replaced by one new pod, the only one created. Partitions 0 and 1 were not read again: their `attempts` stayed at 1 and their `completed_at` did not change. Index 2 shows 2 attempts, because the interrupted attempt had already counted when the worker began it. `status.failed` stayed at 0 and the failure count of every index was 0, because an eviction does not count as a failed attempt.
 
-In the spike run the pod that was running when the Job was suspended stayed Terminating for its grace period and overlapped with the high run's pods, so the sum of pod requests can briefly exceed the quota. The quota governs admission, not the time a pod takes to leave.
+The pod that was running when the Job was suspended stayed Terminating for its grace period and overlapped with the high run's pods, so the sum of pod requests can briefly exceed the quota. Quota limits admission and does not account for the time a pod takes to terminate.
 
-The `podFailurePolicy` also has a rule that ignores pod failures with the condition `DisruptionTarget`. It is a guard for disruptions such as node drains and evictions, so that they do not spend the per-index retry. The preemption above did not exercise it: the deleted pod carried no `DisruptionTarget` condition, which is why the failure count stayed at 0 without it.
+The `podFailurePolicy` also has a rule that ignores pod failures with the condition `DisruptionTarget`. It guards against API-initiated evictions such as a node drain, so that they do not spend the per-index retry. Kueue preemption does not exercise it: Kueue suspends the Job and the Job controller deletes the pod without that condition, so the deleted pod carried no `DisruptionTarget` condition, which is why the failure count stayed at 0 without it.
 
 ### Cohorts, borrowing and partial admission
 
@@ -411,7 +414,7 @@ A **cohort** groups ClusterQueues so that they can borrow unused quota from each
 
 **Partial admission** lets a Job run with less parallelism than it asked for. The annotation `kueue.x-k8s.io/job-min-parallelism` sets the minimum, and Kueue reduces the parallelism only after borrowing and preemption are not possible. The completions count does not change (Kueue, Run A Kubernetes Job). A reconciliation Job gains nothing from it, because the three indexes are three partitions and none can be dropped, but it suits work where fewer workers only means slower.
 
-**JobSet** treats a group of Jobs as one unit with one Workload, so Kueue admits all of them or none. The reconciliation steps are sequential and each is admitted separately, which is the point: with one Workload for all steps, a failure would restart the whole set. **MultiKueue** dispatches Workloads across clusters; the book uses one.
+**JobSet** treats a group of Jobs as one unit with one Workload, so Kueue admits all of them or none. The reconciliation steps are sequential and each is admitted separately, which is the point: with one Workload for all steps, a failure would restart the whole set. **MultiKueue** dispatches Workloads across clusters; this example uses one cluster.
 
 ## Observing a batch run
 
@@ -445,7 +448,7 @@ A dashboard, `edp-batch`, shows the queue depth, the quota in use against the no
 
 ## Installing and removing Kueue
 
-Kueue v0.20.6 is the newest stable release on the newest minor line at the time of writing. It is installed from the release manifest, checked against a recorded sha256, and applied server-side.
+Kueue v0.20.6 is the newest stable release on the newest minor line. It is installed from the release manifest, checked against a recorded sha256, and applied server-side.
 
 ```bash
 kubectl apply --server-side -f \
