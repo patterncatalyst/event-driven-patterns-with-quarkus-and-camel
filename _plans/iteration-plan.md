@@ -26,6 +26,7 @@ Source: PRD section 10 (Notion 41261a5f-8a3b-8148-9ffd-f5691ac1251d). Each itera
 | r13b | Appendix H: the chapter 08 outbox on OpenShift Local (CRC started by the orchestrator, Strimzi community operator (AMQ Streams dropped: subscription), CloudNativePG via OLM, buildah + skopeo); full teardown, crc stop and delete | H | CRC | shipped r13b.0 (2026-11-16) |
 | r14 | Retro: QA sweep, idiomatic review, voice review, host scrub, full re-run (re-survey dropped by the owner 2026-11-16: pins frozen; Appendix H not re-run unless its code changes) | all | C, K | shipped r14.0 (2026-11-17): every example re-run N/N from fresh state; Appendix F check 30 corrected (retry every failed request) |
 | r15 | The deck: `lgtm-presentation/` built like CNDP's, with `text/`, `edits/`, `BUILD.md` and a "Take it with you" QR slide; figures reused from chapter specs; stands alone | none | none | shipped r15.0 (2026-11-17): one 120-slide deck, generator plus `text/`, `edits/`, `BUILD.md`, QR slide; deck gates in CI |
+| r16 | Appendix I: batch processing with Kueue on minikube (step-wise state in CloudNativePG, fan-out over partitions, aggregate on completion, replay failed steps, admission, one live preemption case, observability); no word cap (owner); 3 deck slides | Kueue v0.20.6 | none | planned 2026-11-18 (`_plans/r16-plan.md`) |
 
 ## r01 in detail
 
