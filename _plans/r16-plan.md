@@ -28,7 +28,7 @@ Planned 2026-11-18 (Opus planner, lgtm-relay). Approved by the owner 2026-11-18 
 | 5 deck | done: slides 118 to 120, 123 total |
 | 6 final fresh run, gates | done: gates clean; repair-round live run 1 |
 | 7 Opus validation | done: 0 blocking, repair round 1 |
-| 8 ship, Notion | |
+| 8 ship, Notion | done 2026-11-18 (PR #18, r16.0) |
 
 ## Approach
 
