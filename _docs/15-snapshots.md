@@ -156,7 +156,7 @@ A snapshot cannot repair a wrong fold. If the aggregate's logic had a bug, the s
 When the read side is hot, a projection is the better cache: a table kept up to date from the events and built for queries. Snapshots serve the load path of the aggregate only.
 
 > **🤖 Explore with your agent**
-> "In examples/15-snapshots, load SKU-1503 with and without its snapshot, then find where InventoryItemAggregate, StockLedger, SnapshotterRoute and inventory.snapshot.schema decide what a load replays. Set SNAPSHOT_EVERY to 10 and state the most events a load can replay and what it costs in snapshot writes."
+> "In examples/15-snapshots, load SKU-1503, the 100,000-event stream, with and without its snapshot, then find where InventoryItemAggregate, StockLedger, SnapshotterRoute and inventory.snapshot.schema decide what a load replays. Set SNAPSHOT_EVERY to 10 and state the most events a load can replay and what it costs in snapshot writes."
 > Check: a load with a snapshot replays fewer than N events, a load without it replays the whole stream, and both give the same quantity and version.
 
 ## References
