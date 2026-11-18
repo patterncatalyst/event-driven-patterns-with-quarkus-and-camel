@@ -372,3 +372,83 @@ remove_set() { # remove_set <kustomize-dir>: delete an app set and wait until it
     # Deleting the Deployments returns before their pods are gone; wait so the next set starts clean.
     kc -n "$NS_APPS" wait --for=delete pod -l '!cnpg.io/cluster' --timeout=120s >/dev/null 2>&1 || true
 }
+
+# ---- Kueue (Appendix I only) -----------------------------------------------------------------------
+# Kueue's pod webhook is cluster-wide with failurePolicy Fail, so it is never part of cluster.sh up or k8s_fresh.
+# The appendix's verify.sh installs it after k8s_fresh and removes it before k8s_teardown.
+
+KUEUE_NS=kueue-system
+KUEUE_DIR="$_LIB_DIR/platform/kueue"
+
+_kueue_webhook_suspends() { # a server-side dry-run Job with the queue label comes back suspended
+    local out
+    out="$(kc -n "$NS_APPS" create --dry-run=server -o jsonpath='{.spec.suspend}' -f - 2>/dev/null <<'JOB'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: kueue-webhook-probe-
+  labels:
+    kueue.x-k8s.io/queue-name: reconciliation
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: probe
+          image: registry.k8s.io/pause:3.10
+JOB
+)" || return 1
+    [[ "$out" == "true" ]]
+}
+
+_kueue_leftovers() { # print what a finished kueue_teardown must not leave behind; empty output means clean
+    kc get crd -o name 2>/dev/null | grep 'kueue\.x-k8s\.io' || true
+    kc get mutatingwebhookconfiguration,validatingwebhookconfiguration -o name 2>/dev/null | grep -i kueue || true
+    kc get apiservice v1beta2.visibility.kueue.x-k8s.io -o name 2>/dev/null || true
+    kc get ns "$KUEUE_NS" -o name 2>/dev/null || true
+}
+
+kueue_teardown() { # Jobs, Workloads, queues, priority classes, flavors, then the manifest; fails loudly on a leftover
+    local t0=$SECONDS
+    if _have crd workloads.kueue.x-k8s.io; then
+        if _have ns "$NS_APPS"; then
+            kc -n "$NS_APPS" delete job -l edp.batch/run --ignore-not-found --wait --timeout=120s >/dev/null \
+                || { echo "kueue_teardown: batch Jobs did not delete in time" >&2; return 1; }
+            kc -n "$NS_APPS" wait --for=delete workload --all --timeout=120s >/dev/null 2>&1 \
+                || { echo "kueue_teardown: Workloads did not go away in time" >&2; kc -n "$NS_APPS" get workload >&2 || true; return 1; }
+            kc -n "$NS_APPS" delete localqueue --all --wait --timeout=60s >/dev/null \
+                || { echo "kueue_teardown: LocalQueues did not delete in time" >&2; return 1; }
+        fi
+        local kind
+        for kind in clusterqueue workloadpriorityclass resourceflavor; do
+            kc delete "$kind" --all --wait --timeout=60s >/dev/null \
+                || { echo "kueue_teardown: $kind did not delete in time (stuck finalizer?)" >&2; return 1; }
+        done
+    fi
+    if [[ -f "$KUEUE_DIR/$(basename "$KUEUE_FILE")" ]]; then
+        kc delete -k "$KUEUE_DIR" --ignore-not-found --wait --timeout=180s >/dev/null \
+            || { echo "kueue_teardown: the Kueue manifest did not delete in time" >&2; return 1; }
+    fi
+    _kueue_gone() { [[ -z "$(_kueue_leftovers)" ]]; }
+    poll 120 _kueue_gone || { echo "kueue_teardown: FAILED, left behind:" >&2; _kueue_leftovers >&2; return 1; }
+    echo "measured: Kueue removed in $((SECONDS - t0)) s"
+}
+
+kueue_fresh() { # remove any earlier Kueue, install the sha256-checked manifest server-side, wait for controller and webhook
+    local t0=$SECONDS
+    kueue_teardown || exit 1
+    "$_LIB_DIR/cluster.sh" kueue-manifest || exit 1
+    # Server-side apply, retried while the new CRDs are established (as _apply does for the other bases)
+    local n ok=0
+    for n in 1 2 3; do
+        if kc apply --server-side --field-manager=edp-verify -k "$KUEUE_DIR" >/dev/null; then ok=1; break; fi
+        echo "kueue: apply attempt $n failed; waiting for CRDs to be established" >&2
+        kc wait --for=condition=Established crd --all --timeout=60s >/dev/null 2>&1 || true
+    done
+    [[ "$ok" == 1 ]] || { echo "kueue: apply of the Kueue manifest failed" >&2; exit 1; }
+    kc -n "$KUEUE_NS" wait --for=condition=Available deploy/kueue-controller-manager --timeout=180s >/dev/null \
+        || { echo "kueue: controller not Available" >&2; _diagnostics; exit 1; }
+    poll 120 _kueue_webhook_suspends \
+        || { echo "kueue: the webhook did not answer (a dry-run Job with the queue label was not suspended)" >&2; _diagnostics; exit 1; }
+    echo "measured: Kueue $KUEUE_VERSION installed and answering in $((SECONDS - t0)) s"
+}
