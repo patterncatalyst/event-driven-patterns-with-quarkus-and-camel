@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
 <defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
-<rect x="20" y="60" width="450" height="270" rx="12" fill="#fafafa" stroke="#ddd"/>
+<rect x="20" y="60" width="450" height="280" rx="12" fill="#fafafa" stroke="#ddd"/>
 <text x="32" y="80" font-size="12" font-weight="700" fill="#888">Attempt 1: Job Failed</text>
-<rect x="500" y="60" width="480" height="270" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<rect x="500" y="60" width="480" height="280" rx="12" fill="#fff8ef" stroke="#ddd"/>
 <text x="512" y="80" font-size="12" font-weight="700" fill="#888">Replay: a new Job, attempt 2</text>
 <rect x="40" y="100" width="410" height="60" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
 <text x="245.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 0</text>
@@ -10,20 +10,22 @@
 <rect x="40" y="180" width="410" height="60" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
 <text x="245.0" y="208.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 1</text>
 <text x="245.0" y="225.0" font-size="11.5" fill="#555555" text-anchor="middle">exit 42, FailIndex, one pod</text>
-<rect x="40" y="260" width="410" height="50" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-<text x="245.0" y="290.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 2, DONE, counts written</text>
+<rect x="40" y="260" width="410" height="60" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="245.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 2</text>
+<text x="245.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">DONE, counts written</text>
 <rect x="520" y="100" width="440" height="60" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5"/>
 <text x="740.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 0</text>
 <text x="740.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">row is DONE: exit 0, no Kafka read</text>
 <rect x="520" y="180" width="440" height="60" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
 <text x="740.0" y="208.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 1</text>
 <text x="740.0" y="225.0" font-size="11.5" fill="#555555" text-anchor="middle">reads partition 1, row becomes DONE</text>
-<rect x="520" y="260" width="440" height="50" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5"/>
-<text x="740.0" y="290.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 2, row is DONE: exit 0</text>
-<rect x="40" y="360" width="920" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="500.0" y="388.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">aggregate runs once, after all three partitions are DONE</text>
-<text x="500.0" y="405.0" font-size="11.5" fill="#555555" text-anchor="middle">the failed attempt&#x27;s Job had completedIndexes 0,2 and failedIndexes 1</text>
+<rect x="520" y="260" width="440" height="60" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5"/>
+<text x="740.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 2</text>
+<text x="740.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">row is DONE: exit 0, no Kafka read</text>
+<rect x="40" y="380" width="920" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="500.0" y="408.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">aggregate runs once, after all three partitions are DONE</text>
+<text x="500.0" y="425.0" font-size="11.5" fill="#555555" text-anchor="middle">the failed attempt&#x27;s Job had completedIndexes 0,2 and failedIndexes 1</text>
 <path d="M470,195 L500,195" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
-<path d="M740,330 L740,360" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
+<path d="M740,340 L740,380" fill="none" stroke="#555" stroke-width="2" marker-end="url(#a)"/>
 <text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Only the failed partition is read again</text>
 </svg>

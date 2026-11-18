@@ -8,7 +8,7 @@ emit(
     420,
     bands=[
         {"x": 20, "y": 60, "w": 960, "h": 190, "fill": "#fff8ef", "label": "One run, three Jobs, each admitted by the queue"},
-        {"x": 20, "y": 270, "w": 960, "h": 130, "fill": "#fafafa", "label": "State in PostgreSQL"},
+        {"x": 20, "y": 270, "w": 960, "h": 130, "fill": "#fafafa", "label": "PostgreSQL"},
     ],
     nodes=[
         {"x": 40, "y": 110, "w": 160, "h": 90, "style": "accent", "lines": ["batch-runner", "Process Manager", "POST /runs"]},
