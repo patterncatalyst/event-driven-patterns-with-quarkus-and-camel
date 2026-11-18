@@ -47,6 +47,8 @@ Works only: books, papers and specifications. Documentation pages are cited unde
     <tr><td><a href="https://quarkus.io/version/3.40/guides/redis-reference" rel="noopener">Redis extension reference guide</a></td><td>Quarkus</td><td>The Redis client and its Dev Services image setting, for the write-forward cache</td></tr>
     <tr><td><a href="https://leanpub.com/esversioning" rel="noopener"><em>Versioning in an Event Sourced System</em></a></td><td>Greg Young</td><td>The topics of its chapters on versioning events and process managers (chapter titles only)</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html" rel="noopener">Claim Check</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Passing a reference instead of a large payload</td></tr>
+    <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Sequencer.html" rel="noopener">Splitter</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Appendix I: splitting one batch into independent parts</td></tr>
+    <tr><td><a href="https://jakarta.ee/specifications/batch/2.1/" rel="noopener">Jakarta Batch 2.1</a></td><td>Eclipse Foundation (Jakarta EE)</td><td>Appendix I: the batch vocabulary of jobs, steps, partitions and restart</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/Resequencer.html" rel="noopener">Resequencer</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Restoring order to out-of-sequence messages</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/CompetingConsumers.html" rel="noopener">Competing Consumers</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>Several consumers sharing one channel, as in a share group</td></tr>
     <tr><td><a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/PollingConsumer.html" rel="noopener">Polling Consumer</a></td><td>Gregor Hohpe, Bobby Woolf</td><td>A consumer that fetches when it is ready, as the Kafka poll loop does</td></tr>
@@ -235,6 +237,36 @@ and its title and date checked before any chapter cites it.
     <tr><td><a href="https://raw.githubusercontent.com/containers/skopeo/main/docs/skopeo-copy.1.md" rel="noopener">skopeo-copy(1)</a></td><td>Appendix H: <code>--dest-cert-dir</code>, <code>--dest-registry-token</code> and <code>--preserve-digests</code></td></tr>
     <tr><td><a href="https://raw.githubusercontent.com/containers/buildah/main/docs/buildah-build.1.md" rel="noopener">buildah-build(1)</a></td><td>Appendix H: building from a Containerfile and why a rebuild changes the digest</td></tr>
     <tr><td><a href="https://quarkus.io/version/3.40/guides/opentelemetry" rel="noopener">Using OpenTelemetry - 3.40 - Quarkus</a></td><td>Appendix H: <code>quarkus.otel.sdk.disabled</code> as a runtime property</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/overview/" rel="noopener">Overview | Kueue</a></td><td>Appendix I: what the job queueing system does</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/" rel="noopener">Resource Flavor | Kueue</a></td><td>Appendix I: ResourceFlavor</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/" rel="noopener">Cluster Queue | Kueue</a></td><td>Appendix I: ClusterQueue quota, queueing strategy and preemption settings</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/local_queue/" rel="noopener">Local Queue | Kueue</a></td><td>Appendix I: LocalQueue</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/workload/" rel="noopener">Workload | Kueue</a></td><td>Appendix I: Workload and admission</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/preemption/" rel="noopener">Preemption | Kueue</a></td><td>Appendix I: preemption</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/workload_priority_class/" rel="noopener">Workload Priority Class | Kueue</a></td><td>Appendix I: WorkloadPriorityClass</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/cohort/" rel="noopener">Cohort | Kueue</a></td><td>Appendix I: cohorts and borrowing</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/tasks/run/jobs/" rel="noopener">Run A Kubernetes Job | Kueue</a></td><td>Appendix I: the queue-name label, suspended Jobs and partial admission</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/tasks/manage/run_job_with_workload_priority/" rel="noopener">Run job with WorkloadPriority | Kueue</a></td><td>Appendix I: the priority-class label on a Job</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/reference/metrics/" rel="noopener">Prometheus Metrics | Kueue</a></td><td>Appendix I: queue, admission and quota metrics</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/v0.20/docs/tasks/manage/observability/metrics_access_control/" rel="noopener">Scrape metrics from a sidecar | Kueue</a></td><td>Appendix I: bearer-token access to the metrics endpoint</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/getting-started/installation/" rel="noopener">Installation | Kueue</a></td><td>Appendix I: installing from the release manifest</td></tr>
+    <tr><td><a href="https://kueue.sigs.k8s.io/docs/concepts/multikueue/" rel="noopener">MultiKueue | Kueue</a></td><td>Appendix I: dispatching workloads across clusters</td></tr>
+    <tr><td><a href="https://jobset.sigs.k8s.io/docs/" rel="noopener">Documentation | JobSet</a></td><td>Appendix I: groups of Jobs as one unit</td></tr>
+    <tr><td><a href="https://kubernetes.io/docs/concepts/workloads/controllers/job/" rel="noopener">Jobs | Kubernetes</a></td><td>Appendix I: Indexed Jobs, backoff limit per index, pod failure policy, suspending a Job</td></tr>
+    <tr><td><a href="https://kubernetes.io/docs/tasks/job/indexed-parallel-processing-static/" rel="noopener">Indexed Job for Parallel Processing with Static Work Assignment | Kubernetes</a></td><td>Appendix I: one pod per partition index</td></tr>
+    <tr><td><a href="https://kubernetes.io/docs/tasks/job/pod-failure-policy/" rel="noopener">Handling retriable and non-retriable pod failures with Pod failure policy | Kubernetes</a></td><td>Appendix I: failing an index on a poison exit code</td></tr>
+    <tr><td><a href="https://kubernetes.io/blog/2025/05/13/kubernetes-v1-33-jobs-backoff-limit-per-index-goes-ga/" rel="noopener">Kubernetes v1.33: Job's Backoff Limit Per Index Goes GA</a></td><td>Appendix I: per-index retry limits</td></tr>
+    <tr><td><a href="https://kubernetes.io/blog/2024/08/19/kubernetes-1-31-pod-failure-policy-for-jobs-goes-ga/" rel="noopener">Kubernetes 1.31: Pod Failure Policy for Jobs Goes GA</a></td><td>Appendix I: pod failure policy rules</td></tr>
+    <tr><td><a href="https://github.com/kubernetes/enhancements/tree/master/keps/sig-apps/3850-backoff-limits-per-index-for-indexed-jobs" rel="noopener">KEP-3850: Backoff Limits Per Index For Indexed Jobs</a></td><td>Appendix I: the design behind per-index backoff</td></tr>
+    <tr><td><a href="https://camel.apache.org/components/next/kubernetes-job-component.html" rel="noopener">Kubernetes Job component</a></td><td>Appendix I: creating and deleting Jobs from a route</td></tr>
+    <tr><td><a href="https://quarkus.io/version/3.40/guides/command-mode-reference" rel="noopener">Command mode applications - 3.40 - Quarkus</a></td><td>Appendix I: a worker that runs once and exits</td></tr>
+    <tr><td><a href="https://quarkus.io/version/3.40/guides/picocli" rel="noopener">Command mode with Picocli - 3.40 - Quarkus</a></td><td>Appendix I: command-line arguments for the worker</td></tr>
+    <tr><td><a href="https://quarkus.io/version/3.40/guides/kafka" rel="noopener">Apache Kafka reference guide - 3.40 - Quarkus</a></td><td>Appendix I: the Kafka client used by the worker</td></tr>
+    <tr><td><a href="https://opentelemetry.io/docs/specs/otel/context/env-carriers/" rel="noopener">Environment Variables as Context Propagation Carriers</a></td><td>Appendix I: passing the trace context to a Job through its environment</td></tr>
+    <tr><td><a href="https://docs.spring.io/spring-batch/reference/" rel="noopener">Spring Batch Reference</a></td><td>Appendix I: steps, partitioning and restart as a comparison</td></tr>
+    <tr><td><a href="https://docs.spring.io/spring-batch/reference/step.html" rel="noopener">Configuring a Step | Spring Batch Reference</a></td><td>Appendix I: step concepts</td></tr>
+    <tr><td><a href="https://docs.spring.io/spring-batch/reference/scalability.html" rel="noopener">Scaling and Parallel Processing | Spring Batch Reference</a></td><td>Appendix I: partitioning</td></tr>
+    <tr><td><a href="https://docs.spring.io/spring-batch/reference/step/chunk-oriented-processing/restart.html" rel="noopener">Configuring a Step for Restart | Spring Batch Reference</a></td><td>Appendix I: restart</td></tr>
   </tbody>
 </table>
 

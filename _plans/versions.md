@@ -298,3 +298,14 @@ Decisions for the orchestrator at G0: (a) Flink is held at 2.2.1 below the newes
 ## r14 (2026-11-16)
 
 Re-survey dropped (owner, 2026-11-16): pins stay frozen at the r13b.0 state for the book's final run. Every "revisit at the r14 re-survey" note above (PostgreSQL 18.7 among them) keeps its hold; the held version stands.
+
+## r16 (2026-11-18): Kueue for Appendix I
+
+New component introduced for Appendix I only (batch processing with Kueue); a new component's first pin is a valid reason under the frozen-pins rule. No existing pin changes. Surveyed 2026-11-18.
+
+| Component | Pin (exact) | Surveyed | Source URL | Notes/holds |
+|---|---|---|---|---|
+| Kueue | v0.20.6 (published 2026-11-12T17:27:56Z, prerelease false) | 2026-11-18 | https://api.github.com/repos/kubernetes-sigs/kueue/releases/tags/v0.20.6 ; https://github.com/kubernetes-sigs/kueue/releases/tag/v0.20.6 | Newest stable on the newest minor (v0.19.13 is the older line, same day). |
+| Kueue manifest | https://github.com/kubernetes-sigs/kueue/releases/download/v0.20.6/manifests.yaml (sha256 b5f643595cfe4799b47acd3499f535fb7137af1dd734a5a66ed67a4fe9f9e466) | 2026-11-18 | https://github.com/kubernetes-sigs/kueue/releases/tag/v0.20.6 | Downloaded again 2026-11-18; `sha256sum` output equals the recorded hash (compared with `[ = ]`). |
+| Kueue image | registry.k8s.io/kueue/kueue:v0.20.6 (index digest sha256:20465f0e56a4eed90ec07fa7838866a90f7b6890c0adc84be86aaee307a6744a) | 2026-11-18 | https://registry.k8s.io/v2/kueue/kueue/manifests/v0.20.6 | Digest of the OCI image index (platforms amd64, arm64, s390x, ppc64le). Obtained with `skopeo inspect --raw docker://registry.k8s.io/kueue/kueue:v0.20.6`; `sha256sum` of those bytes and the `Digest` field of `skopeo inspect` agree. Pin by this digest in the kustomize `images:` entry. Upstream sets `imagePullPolicy: Always`. |
+| Kueue and Kubernetes | Kubernetes v1.37.2 (book pin) is in range | 2026-11-18 | https://raw.githubusercontent.com/kubernetes-sigs/kueue/v0.20.6/README.md ; https://raw.githubusercontent.com/kubernetes-sigs/kueue/v0.20.6/hack/make/test.mk ; https://raw.githubusercontent.com/kubernetes-sigs/kueue/v0.20.6/go.mod | All three read at the v0.20.6 tag. README: "Kubernetes 1.34 or newer is recommended; older versions may work but aren't tested." `E2E_K8S_VERSIONS ?= 1.34.11 1.35.8 1.36.4 1.37.0`. go.mod: `k8s.io/api v0.37.1`. |
