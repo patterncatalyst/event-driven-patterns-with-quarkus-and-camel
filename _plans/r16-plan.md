@@ -16,9 +16,9 @@ Planned 2026-11-18 (Opus planner, lgtm-relay). Approved by the owner 2026-11-18 
 | Step | State |
 |---|---|
 | 0 preflight, branch, plan | done 2026-11-18 |
-| 1A sources and pins | |
-| 1B substrate | |
-| G0 spike | |
+| 1A sources and pins | done |
+| 1B substrate | done |
+| G0 spike | done 2026-11-18 |
 | 2A Java | |
 | 2B manifests, verify.sh, README | |
 | 2C prose, example page, figures | |
@@ -78,7 +78,7 @@ Rejected: Camel-only batch (no per-step pods, quota or per-index retry); Kafka-d
 ## Kueue objects
 
 - `ResourceFlavor default-flavor` (no node labels).
-- `ClusterQueue reconciliation`: `namespaceSelector` for `edp`; cpu and memory on `default-flavor`, nominal cpu `1750m`, memory `2Gi` (G0 freezes); `queueingStrategy: BestEffortFIFO`; no cohort; `preemption: {withinClusterQueue: LowerPriority, reclaimWithinCohort: Never}`.
+- `ClusterQueue reconciliation`: `namespaceSelector` for `edp`; cpu and memory on `default-flavor`, nominal cpu `1750m`, memory `3Gi` (G0); `queueingStrategy: BestEffortFIFO`; no cohort; `preemption: {withinClusterQueue: LowerPriority, reclaimWithinCohort: Never}`.
 - `LocalQueue reconciliation` in `edp`.
 - `WorkloadPriorityClass batch-low` (100) and `batch-high` (1000). Runs without a priority label keep priority 0.
 
@@ -180,6 +180,23 @@ G0 questions: Q1 install time, webhook readiness, teardown leaves nothing (twice
 | Banned domain word | validate.py | "reconciliation" only |
 | `XREF_RE` `[A-I]` flags existing text such as "part I" | validate.py in 1B | fix any hit at once |
 
-## G0 decisions
+## G0 decisions (spike 2026-11-18, Kueue v0.20.6 on Kubernetes v1.37.2; evidence kept in the session scratchpad)
 
-(appended after the spike)
+Confirmed as planned: per-index retry (index 1 gets 2 pods, `job-index-failure-count` 0 then 1, downward API works); exit 42 FailIndex (`failedIndexes "1"`, `completedIndexes "0,2"`, one pod, other indexes finish; Workload `Finished=True` reason `Failed`, quota released); BestEffortFIFO lets a 250m Job pass; token + `insecure_skip_verify` scrape (`up{job="kueue"}=1`); `enableClusterQueueResources` produces usage and nominal quota series; preemption keeps `completedIndexes` and Completed pods and starts only the missing index on re-admission; dry-run probe returns `suspend: true` with or without a LocalQueue.
+
+Amendments to the frozen contract and checks:
+
+- `completedIndexes` prints a list for two indexes ("0,1", not "0-1"); three contiguous print "0-2". Check 24 uses "0,1".
+- Pending Workload: `QuotaReserved=False` reason `WaitingForQuota`, message "couldn't assign flavors to pod set main: insufficient unused quota for cpu in flavor default-flavor, <n> more needed"; `Admitted=False` reason `NoReservation`. Check 20 asserts these.
+- Preempted Workload: `Evicted=True` reason `Preempted`, `Preempted=True` reason `InClusterQueue`, `Requeued=True` reason `Preempted`, `QuotaReserved=False` reason `WaitingForQuota`; after re-admission `Evicted` and `Preempted` flip to False reason `QuotaReserved`. Suspension within 0.09 s of the high submit; high submit to low resumed 15.6 s. Kueue reserves quota for the whole pod set (1500m with one pod left), so preemption triggers regardless. The evicted pod stays Terminating for its grace period and overlaps the high Job's pods: check 22's overlap rule must exclude Terminating time or apply only to the R4/R5 window.
+- After preemption `status.failed` 0 and failure count 0 on every pod; the deleted pod had **no** `DisruptionTarget` condition. Prose must not claim the Ignore rule was exercised; it is kept as a guard for evictions and stated as such.
+- Metrics (exact): `kueue_pending_workloads{cluster_queue,status=active|inadmissible}`, `kueue_admitted_active_workloads{cluster_queue}`, `kueue_admitted_workloads_total{cluster_queue}`, `kueue_admission_wait_time_seconds_{bucket,sum,count}{cluster_queue}`, `kueue_cluster_queue_resource_usage{cluster_queue,flavor,resource}`, `kueue_cluster_queue_nominal_quota{cluster_queue,flavor,resource}` (cpu in cores, memory in bytes), `kueue_preempted_workloads_total{preempting_cluster_queue,reason="InClusterQueue"}` (no `cluster_queue` label), `kueue_evicted_workloads_total{cluster_queue,priority_class,reason="Preempted"}`. Preempted and evicted series do not exist before the first event. Series lag one 10 s scrape; Kueue series appear about 45 s after the lgtm pod starts (verify.sh waits for `up{job="kueue"}=1` before check 21).
+- Offsets by time: first offset with timestamp >= T (T equal to a record's timestamp returns it). A partition whose last timestamp is below T is omitted by `kafka-get-offsets.sh --time` and `offsetsForTimes` returns null: the worker falls back to the end offset; check 7 handles the omitted partition the same way.
+- Resources: ClusterQueue memory quota **3Gi** (cpu stays 1750m). Requests: reconcile pods 500m / 384Mi (limit 512Mi), plan and aggregate 250m / 256Mi. JVM sizing unconfirmed (spike used busybox): 2A sets `-XX:MaxRAMPercentage` and confirms in the window.
+- Scheduler sees host allocatable, not the profile size; only the 10 GiB memory cgroup is enforced. Quota, not node capacity, is what limits the batch.
+- Every batch Job carries `edp.batch/run` (an unlabelled Job leaves a Workload and breaks the teardown wait).
+- Teardown: the APIService blocks namespace deletion when the controller goes first (Workload finalizer plus `NamespaceDeletionDiscoveryFailure`); order stays content first, controller last. `kueue_teardown` now skips `delete -k` when nothing is installed (1 s no-op instead of 17 s).
+- Collector: a second ConfigMap with a `prometheus/kueue` receiver and `metrics/kueue` pipeline; the lgtm Deployment's `OTELCOL_EXTRA_ARGS` holds two `--config=file:...` flags (the collector merges them); the env patch by name replaces the monitoring component's value; apply from one overlay to avoid field-manager conflicts. Dashboard: ConfigMap plus a provider file mounted at `dashboards/edp-batch.yaml` (subPath) with path `/prov/batch`; `/api/dashboards/uid/edp-batch` returns 200.
+- Kueue controller `imagePullPolicy: Always` kept (digest check 0.56 s).
+- Timings: `k8s_fresh` 115 s cold, `kueue_fresh` 13 to 31 s, `k8s_teardown` 35 s.
+- Not measured in G0, settled in 2A tests and the window: Q5 Camel `kubernetes-job` in-cluster and RBAC, Q6 `TRACEPARENT` and OTLP flush from a command-mode pod, P5 worker termination and rollback, P6 runner QUEUED mapping on re-suspend.

@@ -425,7 +425,9 @@ kueue_teardown() { # Jobs, Workloads, queues, priority classes, flavors, then th
                 || { echo "kueue_teardown: $kind did not delete in time (stuck finalizer?)" >&2; return 1; }
         done
     fi
-    if [[ -f "$KUEUE_DIR/$(basename "$KUEUE_FILE")" ]]; then
+    # kubectl throttles itself to 5 requests/s, so a delete -k of the whole manifest costs about 17 s even when nothing
+    # is installed: skip it when no Kueue namespace, CRD, webhook or APIService exists.
+    if [[ -f "$KUEUE_DIR/$(basename "$KUEUE_FILE")" ]] && { _have ns "$KUEUE_NS" || [[ -n "$(_kueue_leftovers)" ]]; }; then
         kc delete -k "$KUEUE_DIR" --ignore-not-found --wait --timeout=180s >/dev/null \
             || { echo "kueue_teardown: the Kueue manifest did not delete in time" >&2; return 1; }
     fi
