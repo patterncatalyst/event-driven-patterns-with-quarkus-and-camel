@@ -33,15 +33,19 @@ Pick a pattern by the symptom:
 | Two facts on two topics must meet | Stream-stream join | 20 |
 | A step failed after others committed | Saga, Orchestrated saga | 22, 23 |
 | Every service is healthy and orders wait | Measure the flow | 26 |
+| A nightly batch overruns the cluster or starves other work | Admission control with Kueue | Appendix I |
+| One part of a batch failed and the rest is done | Replay failed steps only | Appendix I |
 
 ## Glossary
 
 | Term | Meaning | Chapter |
 |---|---|---|
 | Acknowledgement | The producer setting that says how many replicas must hold a record before the send succeeds; in a share group, the per-record answer from a worker | 5, 7 |
+| Admission | Kueue's decision to reserve quota for a suspended Job's Workload and let its pods start | Appendix I |
 | Aggregate | One object, reached through its root, that owns every rule about one entity and rebuilds from its own events | 14 |
 | Backlog | Changes in the replication slot that the connector has not yet confirmed | 26 |
 | Claim check | A reference to a large payload kept in a store outside the message | 3 |
+| ClusterQueue | A Kueue resource that holds quota per resource flavor and admits Workloads in order | Appendix I |
 | Compaction | Topic cleanup that keeps the newest record for each key | 9, 19 |
 | Compensation | A new event or command that undoes the business effect of an earlier committed step | 22 |
 | Connector | A Kafka Connect task that moves records between Kafka and another system | 9, 10 |
@@ -55,8 +59,10 @@ Pick a pattern by the symptom:
 | Grace period | How long a window stays open for late records after its end | 21 |
 | Idempotent | Applying it twice has the effect of applying it once | 11 |
 | Inbox | The table of applied event ids, written in the same transaction as the effect | 11 |
+| Indexed Job | A Kubernetes Job whose pods each get a completion index, retried and failed per index | Appendix I |
 | KRaft | Kafka's own controller quorum, which replaces ZooKeeper | 28 |
 | Lag | The distance between a group's committed offset and the end of a partition | 26 |
+| LocalQueue | A namespaced Kueue resource that Jobs name in a label and that points to a ClusterQueue | Appendix I |
 | LRA | Long Running Action: a saga held by a coordinator that calls each participant's registered compensation | 23 |
 | Node pool | A set of Kafka nodes with one role, controller or broker, that Strimzi runs together | 28 |
 | Offset | A record's position in a partition; a connector's offset is its position in the database log | 6, 10 |
@@ -64,12 +70,15 @@ Pick a pattern by the symptom:
 | Outbox | A table whose rows are events, written in the same transaction as the state change | 8 |
 | Partition | One ordered log of a topic; the only unit in which Kafka orders records | 4 |
 | Poison record | A record that fails every time it is processed | 13 |
+| Preemption | Evicting an admitted Workload of lower priority to admit one of higher priority | Appendix I |
+| Process Manager | A component that holds the state of a multi-step process and decides the next step | Appendix I |
 | Projection | A read model built by folding the history and kept current by applying each new event once | 16, 17 |
 | Read committed | The consumer isolation level that hides records of open and aborted transactions | 12 |
 | Reconcile | An operator's loop that moves the cluster toward the declared resource | 28, 29 |
 | Record key | The value that selects a record's partition | 4 |
 | Replica identity | What PostgreSQL writes to the log about a row before an update or delete | 9 |
 | Replication slot | The database's record of how far a log reader has confirmed | 9, 10 |
+| ResourceFlavor | A Kueue resource that names a kind of node capacity a ClusterQueue can hand out | Appendix I |
 | Share group | Consumers that take any record and acknowledge it one at a time | 7 |
 | Snapshot | Aggregate state stored at one version; also a connector's initial copy of a table | 9, 15 |
 | Stream time | The newest event time seen, which advances only when a record arrives | 21 |
@@ -77,6 +86,7 @@ Pick a pattern by the symptom:
 | Trace context | The trace and span ids carried in a message so the next hop can continue or link the trace | 25 |
 | Upcast | Convert a stored event to the current shape when it is read | 18 |
 | Watermark | A bound on lateness: records older than it no longer join an open window | Appendix C |
+| Workload | Kueue's record of a Job's resource request, admitted or waiting | Appendix I |
 
 ## EIP Camel by pattern and event
 
@@ -103,6 +113,7 @@ EIP Camel teaches the patterns in Camel on one runtime; this book repeats those 
 | Trace context, metrics | 25, 26 | [17 Observability](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/17-observability/) | extends |
 | Correlation identifier | 27 | [8 Message Metadata](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/08-message-metadata/) | extends |
 | Running on Kubernetes | 28 to 35 | [Appendix T: Deploying Camel to Kubernetes](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/38-appendix-kubernetes-deploy/) | extends |
+| Process Manager, Splitter, Aggregator over batch steps | Appendix I | [10 Composed Routing](https://patterncatalyst.github.io/enterprise-integration-patterns-with-camel/docs/10-composed-routing/) | extends |
 
 Event sourcing, CQRS and schema evolution (chapters 14 to 18) and the claim check have no chapter of their own in EIP Camel.
 
