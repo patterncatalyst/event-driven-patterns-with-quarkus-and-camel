@@ -30,7 +30,7 @@ docker compose down -v
 
 ## Tests and checks in detail
 
-The Maven build runs eleven tests against PostgreSQL started by Dev Services, with `orders` and `order_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, places an order and moves it from PLACED to DELIVERED, then prints `19/19 checks passed`: the row, the stream, the replayed document and the history agree, and an illegal move, a duplicate order, an `UPDATE`, a `DELETE` and a `TRUNCATE` on the stream are all refused, and Tempo holds a trace for the service. Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to see the request traces.
+The Maven build runs eleven tests against PostgreSQL started by Dev Services, with `orders` and `order_event` created by a Flyway migration. `verify.sh` starts PostgreSQL, the LGTM stack and the application with Docker Compose, places an order and moves it from PLACED to DELIVERED. It prints `19/19 checks passed`: the row, the stream, the replayed document and the history agree. An illegal move, a duplicate order, an `UPDATE`, a `DELETE` and a `TRUNCATE` on the stream are all refused, and Tempo holds a trace for the service. Run `KEEP=1 ./verify.sh` and open Grafana at `http://localhost:3000` to see the request traces.
 
 ## Experiments
 
