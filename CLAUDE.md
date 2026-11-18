@@ -252,6 +252,14 @@ PRD §14, decided:
 - `text/` is the reviewable copy; CI rebuilds the deck and fails on drift (`deck_text.py --check --pptx`). `validate.py check_decks` enforces the stand-alone rule on slide text and notes (no chapter, appendix, part or example pointers, no positional or indirect pointers, no self-reference, the site only on the last slide), notes floors, no dashes, identifier case, `PatternCatalyst` metadata and host_ids rules over the pptx XML. Figure SVG text may not point at another chapter (`ad-*` exempt).
 - QR codes (segno 1.6.6) are decoded by zxing-cpp 3.1.1 to the exact site and hub URLs at render time.
 
+2026-11-18 (r16, Appendix I batch processing with Kueue):
+
+- Appendix I (`ai-*`) follows H; files match `a[a-i]` and cross-reference letters `[A-I]` in `validate.py`. `_docs/ai-*` has no word cap (owner: "as long as necessary").
+- Kueue v0.20.6 (manifest sha256 and controller image digest pinned in `versions.env`) appears only in Appendix I; its `verify.sh` installs it on a fresh profile (`kueue_fresh`) and removes it (`kueue_teardown`, which deletes the namespace before the APIService). No other example depends on it.
+- The runner creates every worker Job suspended with `kueue.x-k8s.io/queue-name`; Kueue unsuspends on admission. Database credentials reach Jobs only via `secretKeyRef` to `edp-pg-app`, never as plain env values.
+- Kueue metrics are scraped over HTTPS :8443 with the service-account token and `insecure_skip_verify` (owner decision); no cert-manager.
+- Step state lives in CloudNativePG (`run`, `step`, `step_job`, `run_partition`, `partition_result`, `carrier_total`); replay reruns only failed indexes, guarded by the recorded result.
+
 ## Skills
 
 lgtm-relay (Opus plans, owner reviews, Sonnet builds, Opus validates), lgtm-tutorial, lgtm-jekyll, lgtm-quarkus, lgtm-camel, lgtm-docker-stack, lgtm-minikube-stack, lgtm-crc, lgtm-professional-voice, lgtm-idiomatic-review, lgtm-diagram-generator, lgtm-presentation, lgtm-host-scrub, lgtm-github.

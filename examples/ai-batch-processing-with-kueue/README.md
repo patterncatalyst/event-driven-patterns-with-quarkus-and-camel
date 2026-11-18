@@ -77,7 +77,7 @@ Checks 1 to 4 and 24 are preconditions and stop the run when they fail.
 | 25 | run 6's Workload is Evicted (`Preempted`) and Preempted (`InClusterQueue`), its Job suspended with no active pod, its step QUEUED not FAILED |
 | 26 | run 7 (`batch-high`) reconcile admitted while run 6 was suspended, finished before run 6's resumed pod started |
 | 27 | `kueue_preempted_workloads_total` and `kueue_evicted_workloads_total` at least 1, runner `batch_step_preemptions_total{step="reconcile"}` 1 |
-| 28 | after the resume `completedIndexes` kept, only index 2 got a new pod, partitions 0 and 1 not read again, no failure counted |
+| 28 | after the resume `completedIndexes` kept, the pods of indexes 0 and 1 untouched, one new pod for index 2 whose interrupted attempt counts (2 attempts), partitions 0 and 1 not read again, no failure counted |
 | 29 | runs 6 and 7 DONE, right totals, 2 output records each |
 | 30 | Tempo: one trace of run 1 with spans of both services and 3 reconcile spans |
 | 31 | Loki: the exit 42 line of run 3 with its trace id |
@@ -96,7 +96,7 @@ Demo code, set on the runner Deployment by `verify.sh`; each run starts fresh.
 | `PRIORITY=off ./verify.sh` | run 7 carries no priority class and waits instead of preempting | 25, 26, 27, 28 |
 | `FAIL_POLICY=off ./verify.sh` | the Job has no `FailIndex` rule, so exit 42 is retried | 15 |
 
-The failing sets are frozen after the live window.
+The failing sets are the ones measured in the live window; each run starts fresh and ends with the same teardown.
 
 ## Teardown
 

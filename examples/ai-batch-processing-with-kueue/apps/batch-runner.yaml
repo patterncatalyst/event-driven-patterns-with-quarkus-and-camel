@@ -25,7 +25,6 @@ spec:
           env:
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
-            - {name: CAMEL_COMPONENT_KAFKA_BROKERS, value: "edp-kafka-bootstrap.edp-kafka.svc:9092"}
             - {name: KAFKA_BOOTSTRAP_SERVERS, value: "edp-kafka-bootstrap.edp-kafka.svc:9092"}
             - {name: QUARKUS_DATASOURCE_JDBC_URL, value: "jdbc:postgresql://edp-pg-rw.edp.svc:5432/edp"}
             - name: QUARKUS_DATASOURCE_USERNAME

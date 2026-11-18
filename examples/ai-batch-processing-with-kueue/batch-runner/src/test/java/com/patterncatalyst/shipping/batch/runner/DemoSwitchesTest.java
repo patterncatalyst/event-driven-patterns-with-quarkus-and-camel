@@ -39,5 +39,6 @@ class DemoSwitchesTest extends CamelQuarkusTestSupport {
         assertFalse(labels.containsKey("kueue.x-k8s.io/queue-name"));
         assertFalse(labels.containsKey("kueue.x-k8s.io/priority-class"));
         assertEquals(id, labels.get("edp.batch/run"));
+        assertFalse(CLUSTER.job("rec-" + id + "-plan-a1").getSpec().getSuspend());
     }
 }

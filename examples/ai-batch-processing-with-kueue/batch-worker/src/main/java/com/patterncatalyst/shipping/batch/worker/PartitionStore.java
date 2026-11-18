@@ -19,6 +19,7 @@ public class PartitionStore {
     public record Window(Instant from, Instant to) {
     }
 
+    @Transactional
     public Window window(String runId) {
         Run run = Run.findById(runId);
         if (run == null) {

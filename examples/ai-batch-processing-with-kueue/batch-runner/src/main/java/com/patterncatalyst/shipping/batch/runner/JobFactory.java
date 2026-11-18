@@ -77,6 +77,9 @@ public class JobFactory {
     JobSpec spec(StepRef ref) {
         JobSpec base = Serialization.clone(template).getSpec();
         var builder = new JobSpecBuilder(base);
+        if (!config.on(config.queue())) {
+            builder.withSuspend(false);   // no queue label: Kueue never sees the Job, so nothing would ever start a suspended one
+        }
         boolean reconcile = StepRef.RECONCILE.equals(ref.name());
         if (reconcile) {
             builder.withCompletionMode("Indexed").withCompletions(PARTITIONS).withParallelism(PARTITIONS)

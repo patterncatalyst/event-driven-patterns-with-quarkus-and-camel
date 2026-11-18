@@ -296,6 +296,8 @@ r6_mid() {
 }
 precondition "run 6 (batch-low) holds the quota with partitions 0 and 1 done and index 2 running" poll 300 r6_mid
 SNAP6="$(sql "SELECT \"partition\"||'|'||attempts||'|'||completed_at FROM $R.run_partition WHERE run_id='$R6' AND \"partition\" IN (0,1) ORDER BY 1")"
+pods6() { kc -n "$NS_APPS" get pods -l "job-name=$J6" -o jsonpath='{range .items[*]}{.metadata.labels.batch\.kubernetes\.io/job-completion-index}{"="}{.metadata.name}{"\n"}{end}' | sort; }
+PODS6="$(pods6)"   # one pod per index before the preemption; the pod of index 2 is the one that gets evicted
 faults_clear
 post_run W7 batch-high; R7="$LAST_ID"
 J7="$(job "$R7" reconcile 1)"
@@ -319,12 +321,15 @@ preempt_metrics() {
 }
 check "kueue_preempted_workloads_total and kueue_evicted_workloads_total count the preemption, and the runner counts 1 reconcile preemption" preempt_metrics
 poll 600 runs_over "$R6" "$R7" || echo "WARN: runs 6 and 7 did not finish" >&2
-resume_ok() {
-    job_complete "$J6" && [[ "$(idx_pods "$J6")" == "0:1 1:1 2:2" ]] \
+resume_ok() { # the evicted pod of index 2 is gone, indexes 0 and 1 keep their pods, index 2 got one new pod, and its interrupted attempt counts
+    local now; now="$(pods6)"
+    job_complete "$J6" && [[ "$(idx_pods "$J6")" == "0:1 1:1 2:1" ]] \
+        && [[ "$(grep -E '^[01]=' <<<"$now")" == "$(grep -E '^[01]=' <<<"$PODS6")" ]] \
+        && [[ "$(grep -E '^2=' <<<"$now")" != "$(grep -E '^2=' <<<"$PODS6")" ]] \
         && [[ "$(jobf "$J6" '{.status.completedIndexes}')" == "0-2" && "$(jobf "$J6" '{.status.failed}')" =~ ^0?$ ]] \
-        && [[ "$(attempts "$R6")" == "0:1 1:1 2:1" ]] \
+        && [[ "$(attempts "$R6")" == "0:1 1:1 2:2" ]] \
         && [[ "$(sql "SELECT \"partition\"||'|'||attempts||'|'||completed_at FROM $R.run_partition WHERE run_id='$R6' AND \"partition\" IN (0,1) ORDER BY 1")" == "$SNAP6" ]] \
-        && [[ "$(kc -n "$NS_APPS" get pods -l "job-name=$J6,batch.kubernetes.io/job-completion-index=2" -o jsonpath='{range .items[*]}{.metadata.annotations.batch\.kubernetes\.io/job-index-failure-count}{" "}{end}')" == "0 0 " ]]
+        && [[ "$(kc -n "$NS_APPS" get pods -l "job-name=$J6" -o jsonpath='{range .items[*]}{.metadata.annotations.batch\.kubernetes\.io/job-index-failure-count}{" "}{end}')" == "0 0 0 " ]]
 }
 check "after the resume completedIndexes was kept, only index 2 got a new pod, partitions 0 and 1 were not read again, and no pod failure was counted" resume_ok
 both_done() { run_in "$R6" DONE && run_in "$R7" DONE && totals_ok "$R6" W6 && totals_ok "$R7" W7 && output_ok "$R6" W6 && output_ok "$R7" W7; }

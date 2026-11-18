@@ -12,7 +12,7 @@ RUN mvn -B -ntp -q -f domain-model/pom.xml install -DskipTests \
 
 FROM registry.access.redhat.com/ubi10/openjdk-25-runtime:1.24-20
 ENV JAVA_APP_JAR=/deployments/quarkus-run.jar \
-    JAVA_OPTS_APPEND="-XX:MaxRAMPercentage=60 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xshare:auto -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+    JAVA_OPTS_APPEND="-XX:MaxRAMPercentage=60 -XX:TieredStopAtLevel=1 -Xshare:auto -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 COPY --from=build --chown=185 /build/ai-batch-processing-with-kueue/batch-worker/target/quarkus-app/lib/ /deployments/lib/
 COPY --from=build --chown=185 /build/ai-batch-processing-with-kueue/batch-worker/target/quarkus-app/*.jar /deployments/
 COPY --from=build --chown=185 /build/ai-batch-processing-with-kueue/batch-worker/target/quarkus-app/app/ /deployments/app/

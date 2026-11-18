@@ -16,6 +16,8 @@ spec:
         - name: worker
           image: localhost/edp/ai-batch-worker:local
           imagePullPolicy: Never
+          # The image's default command is run-java.sh; a Job's args replace it, so the entrypoint is named and the args reach the Picocli application.
+          command: ["/opt/jboss/container/java/run/run-java.sh"]
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
