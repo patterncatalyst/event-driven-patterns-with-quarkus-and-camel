@@ -29,6 +29,11 @@ from collections import defaultdict
 from datetime import datetime
 
 
+def emit(value) -> None:
+    """One result line on stdout, read by verify.sh."""
+    sys.stdout.write(f"{value}\n")
+
+
 def read_dataset(path):
     rows = []
     with open(path, encoding="utf-8") as f:
@@ -60,18 +65,18 @@ def cmd_expect(ds, w):
         t[carrier][1] += 1 if delivered else 0
     for carrier in sorted(t):
         s, d = t[carrier]
-        print(f"{carrier}|{s}|{d}|{s - d}")
+        emit(f"{carrier}|{s}|{d}|{s - d}")
     return 0
 
 
 def cmd_records(ds, w):
     rows = window_rows(read_dataset(ds), w)
-    print(len(rows) + sum(1 for r in rows if r[3]))
+    emit(len(rows) + sum(1 for r in rows if r[3]))
     return 0
 
 
 def cmd_markers(ds):
-    print(sum(1 for r in read_dataset(ds) if r[0].startswith("M")))
+    emit(sum(1 for r in read_dataset(ds) if r[0].startswith("M")))
     return 0
 
 
@@ -108,7 +113,7 @@ def cmd_partition_records(ds, w, sched, deliv):
     for _, order, _, delivered in rows:
         count[part[order]] += 2 if delivered else 1
     for p in range(3):
-        print(f"{p}|{count[p]}")
+        emit(f"{p}|{count[p]}")
     return 0
 
 
@@ -122,7 +127,7 @@ def cmd_output(path, run):
             v = json.loads(value)
             lines.append(f"{key.split(':', 1)[1]}|{v['scheduled']}|{v['delivered']}|{v['open']}")
     for line in sorted(lines):
-        print(line)
+        emit(line)
     return 0
 
 
@@ -211,7 +216,7 @@ def cmd_waiting(a, b):
         elif adm.get("status") == "True":
             admitted.append(run)
     if len(waiting) == 1 and len(admitted) == 1:
-        print(waiting[0], admitted[0])
+        emit(f"{waiting[0]} {admitted[0]}")
         return 0
     return 1
 
@@ -240,7 +245,7 @@ def cmd_overlap(a, b):
     for _, start, m in events:
         cur += m if start else -m
         top = max(top, cur)
-    print(f"max={top} demand={demand}")
+    emit(f"max={top} demand={demand}")
     return 0
 
 
