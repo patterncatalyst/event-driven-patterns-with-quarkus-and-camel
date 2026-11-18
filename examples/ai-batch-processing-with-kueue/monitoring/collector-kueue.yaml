@@ -1,0 +1,22 @@
+# Second collector configuration for otel-lgtm, merged with the monitoring component's by two --config flags.
+# Kueue serves metrics over HTTPS on :8443 with a self-signed certificate and requires a bearer token; the scrape
+# sends the lgtm ServiceAccount's token and skips certificate verification, as the upstream ServiceMonitor does.
+receivers:
+  prometheus/kueue:
+    config:
+      scrape_configs:
+        - job_name: kueue
+          scrape_interval: 10s
+          scheme: https
+          authorization:
+            credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          tls_config:
+            insecure_skip_verify: true
+          static_configs:
+            - targets: ["kueue-controller-manager-metrics-service.kueue-system.svc:8443"]
+service:
+  pipelines:
+    metrics/kueue:
+      receivers: [prometheus/kueue]
+      processors: [batch]
+      exporters: [otlp_http/metrics]

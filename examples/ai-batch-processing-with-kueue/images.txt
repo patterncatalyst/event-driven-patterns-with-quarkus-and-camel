@@ -1,0 +1,2 @@
+ai-batch-processing-with-kueue batch-runner
+ai-batch-processing-with-kueue batch-worker

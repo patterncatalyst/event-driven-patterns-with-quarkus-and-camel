@@ -1,0 +1,19 @@
+# Both collector configurations (the flags are split on spaces and the collector merges them), and the dashboard.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lgtm, namespace: edp-lgtm}
+spec:
+  template:
+    spec:
+      containers:
+        - name: lgtm
+          env:
+            - {name: OTELCOL_EXTRA_ARGS, value: "--config=file:/otel-lgtm/extra/collector-extra.yaml --config=file:/otel-lgtm/extra-kueue/collector-kueue.yaml"}
+          volumeMounts:
+            - {name: extra-kueue, mountPath: /otel-lgtm/extra-kueue, readOnly: true}
+            - {name: batch-dashboards, mountPath: /prov/batch, readOnly: true}
+            - {name: batch-dashboard-provider, mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/edp-batch.yaml, subPath: dashboards.yaml, readOnly: true}
+      volumes:
+        - {name: extra-kueue, configMap: {name: collector-kueue}}
+        - {name: batch-dashboards, configMap: {name: edp-batch-dashboards}}
+        - {name: batch-dashboard-provider, configMap: {name: edp-batch-dashboard-provider}}

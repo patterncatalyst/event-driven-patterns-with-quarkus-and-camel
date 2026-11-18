@@ -1,0 +1,30 @@
+# The two input topics of the catalog (three partitions, keyed by order id) and the example's own output topic.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.shipping.scheduled
+  labels: {strimzi.io/cluster: edp}
+spec:
+  partitions: 3
+  replicas: 1
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.shipping.delivered
+  labels: {strimzi.io/cluster: edp}
+spec:
+  partitions: 3
+  replicas: 1
+---
+# One record per run and carrier, key <runId>:<carrier>; a replayed run overwrites its own keys.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: edp.shipping.reconciliations
+  labels: {strimzi.io/cluster: edp}
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    cleanup.policy: compact
