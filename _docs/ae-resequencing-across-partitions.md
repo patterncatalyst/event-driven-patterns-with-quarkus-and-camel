@@ -9,7 +9,7 @@ description: "A per-order buffer in PostgreSQL works because an order's events s
 duration: "50 minutes"
 ---
 
-An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. A per-order buffer in PostgreSQL, which keeps held events as rows and applies them in the transaction that releases them, puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics, the only ordering fact is a number that a single sequencer stamped on every event, and the service must apply them in that order and publish them, keyed by order id, to `edp.shipping.shipments`.
+An order's three shipment events arrive from two producers on three topics, each keyed to scatter across partitions. A per-order buffer in PostgreSQL, which keeps held events as rows and applies them in the transaction that releases them, puts events back in order, but it needs every event of an order to reach one table with its own number. Here the events of many orders interleave on several topics. The only ordering fact is a number that a single sequencer stamped on every event. The service must apply the events in that order and publish them to `edp.shipping.shipments`, keyed by order id.
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
