@@ -1,6 +1,6 @@
 # Event-Driven-Patterns-with-Quarkus-and-Camel
 
-Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 123 slides
+Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 124 slides
 
 ## [001] PATTERN CATALYST · Event-Driven Patterns with Quarkus and Camel
 
@@ -1390,9 +1390,17 @@ batch-runner and batch-worker: a replay Job whose finished indexes exit at once
 
 > In the first attempt indexes 0 and 2 finish and index 1 exits with code 42, a poison partition. A pod failure policy turns that code into FailIndex, so the index fails at once without a retry and the other two carry on. The run is FAILED and its offsets are already fixed, so a replay does not plan again. It creates a new reconcile Job, a new attempt. A Job cannot be told to run only index 1, so all three indexes start, and the worker checks the partition row first. A row that is already DONE means exit 0 without reading Kafka. Index 1 reads its partition and becomes DONE, and aggregate then runs once on three DONE partitions. The totals are an upsert keyed by run, partition and carrier, so the guard avoids the read and the upsert keeps the result correct. A replay costs few Kafka reads and the full quota, because the Job still asks for all three pods, 1500m.
 
-## [120] BATCH PROCESSING · Admission and quota with Kueue
+## [120] BATCH PROCESSING · The Kueue objects behind one queue
 
 p. 120
+
+queues.yaml: a ResourceFlavor, a ClusterQueue, a LocalQueue and two WorkloadPriorityClasses
+
+> Kueue splits a queue into objects with different owners. The cluster-scoped objects belong to the platform team: a ResourceFlavor names the kind of capacity, here a single default flavor; the ClusterQueue holds the quota on that flavor, 1750m of CPU and 3Gi of memory, with BestEffortFIFO queueing and preemption of lower priorities inside the queue; and two WorkloadPriorityClasses, batch-low at 100 and batch-high at 1000, rank the work. The namespaced LocalQueue is the name a team writes on its Jobs, and it feeds the ClusterQueue. The runner creates each Job suspended, with a queue-name label and a priority-class label. Kueue creates a Workload for it, one pod set whose quota covers all its pods, and unsuspends the Job only when that Workload is admitted.
+
+## [121] BATCH PROCESSING · Admission and quota with Kueue
+
+p. 121
 
 - Suspended Jobs. The runner creates every Job with the queue-name label, and Kueue admits it only when the whole pod set fits the quota. Until then the step is QUEUED.
 - ClusterQueue. The quota is 1750m of CPU and 3Gi of memory. Three reconcile pods of 500m fill most of it, so a second reconcile Job waits.
@@ -1402,9 +1410,9 @@ p. 120
 
 > Kubernetes starts a Job when it is created, so two batches submitted together both start and ask for more than a team's share. Kueue adds the missing queue. The runner labels each Job with the LocalQueue, the webhook suspends it, and a Workload is created that is admitted against the ClusterQueue only when its whole request fits. Quota is reserved for the whole pod set, so a reconcile Job holds 1500m even when one pod is left. With BestEffortFIFO, an older Workload that does not fit does not block a newer one that does. A higher-priority run preempted the lower one's running index, and the interrupted attempt counted, so that index ended with two attempts, only the missing index got a new pod, and the finished indexes kept their results. The runner counts a preemption separately from a failure, because a queued step only waits.
 
-## [121] CHOOSING A PATTERN · Choosing a pattern
+## [122] CHOOSING A PATTERN · Choosing a pattern
 
-p. 121
+p. 122
 
 Problem | Pattern
 
@@ -1436,9 +1444,9 @@ A stuck flow shows no error | Trace context, flow metrics, correlation ids
 
 > If a consumer can ask the source for details, a notification is enough and the payload stays small. If it cannot call back, the event carries the state and the consumer keeps its own copy. If a service must change a database and publish, the outbox makes both one commit and a log reader publishes. Duplicate delivery is met with an idempotent consumer, and a failure that will not clear is moved aside with a dead letter. Every pattern here has a cost in operations or latency, and each has a case where it is the wrong choice.
 
-## [122] CREDITS · Works these patterns draw on
+## [123] CREDITS · Works these patterns draw on
 
-p. 122
+p. 123
 
 Author | Work
 
@@ -1470,9 +1478,9 @@ W3C | Trace Context
 
 > The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. The Azure Architecture Center's pattern pages describe the materialized view and the saga's step kinds. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.
 
-## [123] SCAN TO EXPLORE · Take it with you
+## [124] SCAN TO EXPLORE · Take it with you
 
-p. 123
+p. 124
 
 The site
 

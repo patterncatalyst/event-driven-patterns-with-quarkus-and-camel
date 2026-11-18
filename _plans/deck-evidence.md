@@ -116,8 +116,10 @@ Internal map from each slide number (as in `lgtm-presentation/text/`) to the cla
 | 118, 119 | replay reruns only indexes not DONE; a DONE row exits 0 without a Kafka read; aggregate runs once on three DONE partitions | verify.sh check 18 (guard); _docs/ai-batch-processing-with-kueue.md replay section |
 | 119 | a replay Job still asks for all three pods, 1500m (3 x 500m) | examples/ai-batch-processing-with-kueue/kueue/queues.yaml comment; _docs/ai Kueue section |
 | 119 | totals are an upsert keyed by run, partition and carrier | PartitionStore upsert; verify.sh check 18; REPLAY_GUARD=off witness fails 18 only (S/r16-window/results.md) |
-| 120 | quota 1750m CPU and 3Gi; batch-low 100, batch-high 1000; BestEffortFIFO; 3 x 500m | examples/ai-batch-processing-with-kueue/kueue/queues.yaml |
-| 120 | Job with no priority label has priority 0 | _docs/ai Kueue section (Kueue WorkloadPriorityClass default) |
-| 120 | preemption: higher-priority run evicted the lower run's running index; interrupted attempt counts (index 2 attempts 2); indexes 0 and 1 attempts 1, completed_at unchanged; only index 2 got a new pod | S/r16-window/results.md "Preempted run 6" and bug 5; verify.sh check 28 |
-| 120 | eviction is not a failure: step returns to QUEUED, preemptions counter (batch_step_preemptions_total) | results.md metrics line; verify.sh checks 25 to 28 |
-| 118 to 120 | Process Manager is Hohpe and Woolf's pattern (credit, no number) | hub books.yml EIP |
+| 121 | quota 1750m CPU and 3Gi; batch-low 100, batch-high 1000; BestEffortFIFO; 3 x 500m | examples/ai-batch-processing-with-kueue/kueue/queues.yaml |
+| 121 | Job with no priority label has priority 0 | _docs/ai Kueue section (Kueue WorkloadPriorityClass default) |
+| 121 | preemption: higher-priority run evicted the lower run's running index; interrupted attempt counts (index 2 attempts 2); indexes 0 and 1 attempts 1, completed_at unchanged; only index 2 got a new pod | S/r16-window/results.md "Preempted run 6" and bug 5; verify.sh check 28 |
+| 121 | eviction is not a failure: step returns to QUEUED, preemptions counter (batch_step_preemptions_total) | results.md metrics line; verify.sh checks 25 to 28 |
+| 118 to 121 | Process Manager is Hohpe and Woolf's pattern (credit, no number) | hub books.yml EIP |
+| 120 (r16.1) | ResourceFlavor default-flavor; ClusterQueue 1750m CPU, 3Gi memory, BestEffortFIFO, preemption LowerPriority within the ClusterQueue; batch-low 100, batch-high 1000; LocalQueue feeds the ClusterQueue | examples/ai-batch-processing-with-kueue/kueue/queues.yaml:3-37 |
+| 120 (r16.1) | Job created suspended with queue-name and priority-class labels; Kueue creates a Workload with one pod set whose quota covers all its pods and unsuspends on admission | job-template.yaml:6; JobFactory.labels 64-75; G0 (quota reserved for the whole pod set); verify.sh checks 20 to 23 |
