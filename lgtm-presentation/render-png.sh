@@ -37,7 +37,7 @@ figs=(
   28-kraft-roles 29-one-direction 30-field-managers 31-admission 32-metrics-path
   33-scale-and-move 34-two-clusters 35-build-and-run
   aa-bite-cycle ab-same-config-two-targets ac-three-ways ae-stream-vs-batch
-  af-roll-mid af-bg-cutover ag-write-forward-path ah-build-and-copy ai-replay-failed-index
+  af-roll-mid af-bg-cutover ag-write-forward-path ah-build-and-copy ai-replay-failed-index ai-kueue-objects
 )
 
 check=0
