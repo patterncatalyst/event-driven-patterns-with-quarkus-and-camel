@@ -89,7 +89,7 @@ from(ENDPOINT)
 
 A duplicate order id fails at commit with a unique violation. That surfaces as a `RollbackException` caused by Hibernate's `ConstraintViolationException`, and an exception mapper turns it into a 409. The whole transaction rolls back, so the refused request leaves no order row and no outbox row, and no event.
 
-What the guarantee covers is the hand-off from the database to the log. Everything after it is Connect's: the connector stores its position in Kafka and in the slot, and after a restart it may deliver the last records again. The outbox gives at-least-once delivery, which is why the row id travels as a header. The request itself never waits for Kafka: with the broker down the outbox answers 201 in about 10 ms and the event arrives when the broker returns, while the commit-first route fails with a 500 after the producer's 60 second blocking timeout and publishes no event.
+What the guarantee covers is the hand-off from the database to the log. Everything after it is Connect's: the connector stores its position in Kafka and in the slot, and after a restart it may deliver the last records again. The outbox gives at-least-once delivery, which is why the row id travels as a header. The request itself never waits for Kafka. With the broker down the outbox answers 201 in about 10 ms, and the event arrives when the broker returns. The commit-first route instead fails with a 500 after the producer's 60 second blocking timeout, and publishes no event.
 
 ## Build, run, observe
 
