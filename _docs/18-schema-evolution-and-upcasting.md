@@ -15,9 +15,9 @@ Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPr
 
 ### The problem
 
-The event store is append-only. A trigger refuses `UPDATE` and `DELETE`, because an event is a fact that happened and the history is only worth keeping while nobody edits it. A new field is then a problem with no obvious place to fix it.
+The event store is append-only. A trigger refuses `UPDATE` and `DELETE`. An event is a fact that happened, and the history is worth keeping only while nobody edits it. A new field is then a problem with no obvious place to fix it.
 
-Each way out gives something up. Rewriting the old rows with a migration breaks the rule that made the store trustworthy, and it cannot be undone. Teaching the aggregate every shape, one branch per version in every decision, spreads the history of the schema through code that should only know the order. Making every field optional and defaulting it where it is used scatters the same default across the code base. Chapter titles in Young's *Versioning in an Event Sourced System* include "Basic Type Based Versioning", "Weak Schema" and "Copy and Replace".
+Each way out gives something up. Rewriting the old rows with a migration, Young's "Copy and Replace", breaks the rule that made the store trustworthy, and it cannot be undone. Teaching the aggregate every shape, one branch per version in every decision, his "Basic Type Based Versioning", spreads the history of the schema through code that should only know the order. Making every field optional and defaulting it where it is used, his "Weak Schema", scatters the same default across the code base.
 
 ### The solution
 
@@ -171,7 +171,7 @@ Skip the work where nothing is read back. A snapshot holds derived state and is 
 A registry is one more service to run and to keep up. When producer and consumers always deploy together and nothing replays a topic, a compatibility check in the build can do the same job with less.
 
 > **🤖 Explore with your agent**
-> "In examples/18-schema-evolution-and-upcasting, load O-1801 and O-1803 and find where Upcasters, OrderPlacedPublisher and order-placed.avsc decide what each reader sees. Set REGISTRY_RULE to BACKWARD and state which schema version is then accepted and which reader fails on which record."
+> "In examples/18-schema-evolution-and-upcasting, load O-1801 (placed by the previous release, before shippingPriority existed) and O-1803 (placed by the current release) and find where Upcasters, OrderPlacedPublisher and order-placed.avsc decide what each reader sees. Set REGISTRY_RULE to BACKWARD and state which schema version is then accepted and which reader fails on which record."
 > Check: stored events are upcast on read and never rewritten, published events change only in ways the registry accepts against every earlier version, and a field added later always has a default.
 
 ## References

@@ -17,7 +17,7 @@ A plain event table with a unique version settles a race between two writers, bu
 
 Three callers change an order. A REST request cancels it, a `PaymentProcessed` record marks it paid and a `ShipmentScheduled` record ships it. If each reads the status, checks the move and writes the result, the rules live in three places and drift apart. Two callers that act on the same status at the same moment also both pass their own check: a cancellation that read PAID and a shipment that read PAID are each correct against what they saw, and together they leave CANCELLED after SHIPPED.
 
-Fowler describes an aggregate as a cluster of domain objects treated as one unit and reached through a single root, which keeps the whole consistent, and says a transaction should not cross its boundary. Vernon gives aggregates a chapter of their own, "Aggregates". With event sourcing the cluster is a stream: the state of an order is the fold of its events, and the only way to change it is to append.
+Fowler describes an aggregate as a cluster of domain objects treated as one unit and reached through a single root, which keeps the whole consistent, and says a transaction should not cross its boundary. With event sourcing the cluster is a stream: the state of an order is the fold of its events, and the only way to change it is to append.
 
 ### The solution
 
