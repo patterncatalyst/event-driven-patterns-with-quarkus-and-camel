@@ -1,0 +1,65 @@
+# Kueue v0.20.6 (Appendix I only). Installed and removed by that example's verify.sh through kueue_fresh and
+# kueue_teardown in ../../lib.sh; cluster.sh up never applies it. Fetch the sha256-checked manifest first:
+#   examples/_k8s/cluster.sh kueue-manifest
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - kueue-v0.20.6-manifests.yaml
+images:
+  # Index digest of registry.k8s.io/kueue/kueue:v0.20.6 (KUEUE_IMAGE in ../../versions.env keeps the same pin).
+  - name: registry.k8s.io/kueue/kueue
+    digest: sha256:20465f0e56a4eed90ec07fa7838866a90f7b6890c0adc84be86aaee307a6744a
+# Upstream sets imagePullPolicy: Always on the controller. It is kept as upstream ships it.
+patches:
+  # The upstream controller configuration, key for key, with one addition: metrics.enableClusterQueueResources,
+  # which publishes kueue_cluster_queue_resource_usage and kueue_cluster_queue_nominal_quota.
+  - target:
+      kind: ConfigMap
+      name: kueue-manager-config
+      namespace: kueue-system
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: kueue-manager-config
+        namespace: kueue-system
+      data:
+        controller_manager_config.yaml: |
+          apiVersion: config.kueue.x-k8s.io/v1beta2
+          kind: Configuration
+          health:
+            healthProbeBindAddress: :8081
+          metrics:
+            bindAddress: :8443
+            enableClusterQueueResources: true
+          webhook:
+            port: 9443
+          leaderElection:
+            leaderElect: true
+            resourceName: c1f6bfd2.kueue.x-k8s.io
+          controller:
+            groupKindConcurrency:
+              Job.batch: 5
+              Pod: 5
+              Workload.kueue.x-k8s.io: 10
+              LocalQueue.kueue.x-k8s.io: 5
+              Cohort.kueue.x-k8s.io: 1
+              ClusterQueue.kueue.x-k8s.io: 5
+              ResourceFlavor.kueue.x-k8s.io: 1
+          clientConnection:
+            qps: 300
+            burst: 500
+          integrations:
+            frameworks:
+            - "batch/job"
+            - "kubeflow.org/mpijob"
+            - "ray.io/rayjob"
+            - "ray.io/raycluster"
+            - "ray.io/rayservice"
+            - "jobset.x-k8s.io/jobset"
+            - "workload.codeflare.dev/appwrapper"
+            - "trainer.kubeflow.org/trainjob"
+            - "pod"
+            - "deployment"
+            - "statefulset"
+            - "leaderworkerset.x-k8s.io/leaderworkerset"

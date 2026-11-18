@@ -4,6 +4,7 @@
 #           vendor manifests (sha256 checked), CloudNativePG operator. Idempotent.
 #   down    minikube delete -p edp
 #   status  profile, ports, namespaces
+#   kueue-manifest  download the sha256-checked Kueue manifest next to platform/kueue/ (no cluster needed)
 set -euo pipefail
 K8S_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$K8S_DIR/../.." && pwd)"
@@ -128,5 +129,6 @@ case "${1:-}" in
     up) cmd_up ;;
     down) cmd_down ;;
     status) cmd_status ;;
-    *) echo "usage: cluster.sh up|down|status" >&2; exit 2 ;;
+    kueue-manifest) fetch_manifest "$KUEUE_MANIFEST_URL" "$KUEUE_MANIFEST_SHA256" "$KUEUE_FILE" ;;
+    *) echo "usage: cluster.sh up|down|status|kueue-manifest" >&2; exit 2 ;;
 esac

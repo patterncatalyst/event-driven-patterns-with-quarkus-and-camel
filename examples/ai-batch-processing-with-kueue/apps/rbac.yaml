@@ -1,0 +1,21 @@
+# The runner creates, reads and deletes the Jobs of a run and reads their pods. It never reads Kueue objects.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: batch-runner}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: batch-runner}
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, get, list, delete, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: batch-runner}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: batch-runner}
+subjects: [{kind: ServiceAccount, name: batch-runner}]

@@ -1155,3 +1155,72 @@ Appendix H (OpenShift Local). The docs half of step b1: no cluster was running a
 ### r13b licence and entitlement audit (step b1, 2026-11-16)
 
 CloudNativePG (Apache-2.0; on CRC the `cloudnative-pg` package sits in certified-operators, published by EDB with the upstream images, not EDB's commercial distribution), Strimzi community operator (Apache-2.0, fallback), CRC (Apache-2.0 source; the Red Hat build needs a no-cost Red Hat account for the pull secret), buildah, skopeo and podman (Apache-2.0, LICENSE files at main). **Streams for Apache Kafka (AMQ Streams) is subscription software**: "Streams for Apache Kafka is provided through a software subscription." (Streams for Apache Kafka on OpenShift Overview, Appendix A). This conflicts with the house rule "nothing needing a licence key, subscription or fee" unless the owner accepts a no-cost Red Hat Developer account as sufficient. The recommendation recorded for the owner is plan decision 22's alternative: the Strimzi community operator 1.3.1 from community-operators (Kafka 4.3.2, the same pin as Part 6), with AMQ Streams named in the appendix as the supported downstream. **Owner decision 2026-11-16: Strimzi community operator; AMQ Streams is not installed.**
+
+## r16 sources (step 1A, fetched 2026-11-18)
+
+Appendix I (batch processing with Kueue). Each page was fetched with curl and its HTML title read; HTTP 200 unless noted. Dates are not shown on these pages. The Kueue docs are the unversioned "latest" site (v0.20 line at fetch time).
+
+### Kueue
+
+| Topic | URL | Title as fetched |
+|---|---|---|
+| Overview | https://kueue.sigs.k8s.io/docs/overview/ | Overview \| Kueue |
+| ResourceFlavor | https://kueue.sigs.k8s.io/docs/concepts/resource_flavor/ | Resource Flavor \| Kueue |
+| ClusterQueue (cohort field, preemption) | https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/ | Cluster Queue \| Kueue |
+| LocalQueue | https://kueue.sigs.k8s.io/docs/concepts/local_queue/ | Local Queue \| Kueue |
+| Workload | https://kueue.sigs.k8s.io/docs/concepts/workload/ | Workload \| Kueue |
+| Admission Check | https://kueue.sigs.k8s.io/docs/concepts/admission_check/ | Admission Check \| Kueue |
+| Preemption | https://kueue.sigs.k8s.io/docs/concepts/preemption/ | Preemption \| Kueue |
+| WorkloadPriorityClass | https://kueue.sigs.k8s.io/docs/concepts/workload_priority_class/ | Workload Priority Class \| Kueue |
+| Cohort | https://kueue.sigs.k8s.io/docs/concepts/cohort/ | Cohort \| Kueue |
+| Run a Kubernetes Job (includes the "Partial admission" section) | https://kueue.sigs.k8s.io/docs/tasks/run/jobs/ | Run A Kubernetes Job \| Kueue |
+| Run a job with WorkloadPriority | https://kueue.sigs.k8s.io/docs/tasks/manage/run_job_with_workload_priority/ | Run job with WorkloadPriority \| Kueue |
+| Metrics reference | https://kueue.sigs.k8s.io/docs/reference/metrics/ | Prometheus Metrics \| Kueue |
+| Metrics access control | https://kueue.sigs.k8s.io/v0.20/docs/tasks/manage/observability/metrics_access_control/ | Scrape metrics from a sidecar \| Kueue (URL path says metrics_access_control; text: "Kueue serves metrics over HTTPS. By default, requests need a bearer token accepted by Kubernetes TokenReview and SubjectAccessReview.") |
+| Prometheus with TLS | https://kueue.sigs.k8s.io/docs/tasks/manage/productization/prometheus/ | Configure Prometheus with TLS \| Kueue (text mentions `insecureSkipVerify`) |
+| Installation | https://kueue.sigs.k8s.io/docs/getting-started/installation/ | Installation \| Kueue (the old /docs/installation/ path redirects here) |
+| MultiKueue | https://kueue.sigs.k8s.io/docs/concepts/multikueue/ | MultiKueue \| Kueue |
+| Run a JobSet | https://kueue.sigs.k8s.io/docs/tasks/run/jobsets/ | Run A JobSet \| Kueue |
+
+### Kubernetes, KEP, JobSet
+
+| Topic | URL | Title as fetched |
+|---|---|---|
+| Jobs (Indexed completion mode, backoff limit per index, pod failure policy, suspending a Job) | https://kubernetes.io/docs/concepts/workloads/controllers/job/ | Jobs \| Kubernetes (anchors `backoff-limit-per-index`, "Suspending a Job" present) |
+| Indexed Job tutorial | https://kubernetes.io/docs/tasks/job/indexed-parallel-processing-static/ | Indexed Job for Parallel Processing with Static Work Assignment \| Kubernetes |
+| Pod failure policy tutorial | https://kubernetes.io/docs/tasks/job/pod-failure-policy/ | Handling retriable and non-retriable pod failures with Pod failure policy \| Kubernetes |
+| Blog, 2025-05-13 | https://kubernetes.io/blog/2025/05/13/kubernetes-v1-33-jobs-backoff-limit-per-index-goes-ga/ | Kubernetes v1.33: Job's Backoff Limit Per Index Goes GA |
+| Blog, 2024-08-19 | https://kubernetes.io/blog/2024/08/19/kubernetes-1-31-pod-failure-policy-for-jobs-goes-ga/ | Kubernetes 1.31: Pod Failure Policy for Jobs Goes GA |
+| KEP-3850 | https://github.com/kubernetes/enhancements/tree/master/keps/sig-apps/3850-backoff-limits-per-index-for-indexed-jobs | kep.yaml: "Backoff Limits Per Index For Indexed Jobs", kep-number 3850, owning-sig sig-apps, status implemented, created 2023-04-26 |
+| JobSet | https://jobset.sigs.k8s.io/docs/ | Documentation \| Jobset |
+
+### Camel, Quarkus, OpenTelemetry
+
+| Topic | URL | Title as fetched |
+|---|---|---|
+| Camel Kubernetes Job component | https://camel.apache.org/components/next/kubernetes-job-component.html | Kubernetes Job :: Apache Camel |
+| Quarkus command mode | https://quarkus.io/version/3.40/guides/command-mode-reference | Command mode applications - 3.40 - Quarkus |
+| Quarkus Picocli | https://quarkus.io/version/3.40/guides/picocli | Command mode with Picocli - 3.40 - Quarkus |
+| Quarkus Kafka | https://quarkus.io/version/3.40/guides/kafka | Apache Kafka reference guide - 3.40 - Quarkus |
+| OTel environment-variable carriers | https://opentelemetry.io/docs/specs/otel/context/env-carriers/ | Environment Variables as Context Propagation Carriers \| OpenTelemetry |
+
+### Batch specifications and references
+
+| Topic | URL | Title as fetched |
+|---|---|---|
+| Jakarta Batch | https://jakarta.ee/specifications/batch/2.1/ | Jakarta Batch 2.1 \| Jakarta EE \| The Eclipse Foundation |
+| Spring Batch reference | https://docs.spring.io/spring-batch/reference/ | Overview :: Spring Batch Reference |
+| Spring Batch step | https://docs.spring.io/spring-batch/reference/step.html | Configuring a Step :: Spring Batch Reference |
+| Spring Batch partitioning | https://docs.spring.io/spring-batch/reference/scalability.html | Scaling and Parallel Processing :: Spring Batch Reference |
+| Spring Batch restart | https://docs.spring.io/spring-batch/reference/step/chunk-oriented-processing/restart.html | Configuring a Step for Restart :: Spring Batch Reference |
+| EIP Splitter | https://www.enterpriseintegrationpatterns.com/patterns/messaging/Sequencer.html | Splitter - Enterprise Integration Patterns (the site serves Splitter at Sequencer.html) |
+| EIP Aggregator, Process Manager | https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html ; https://www.enterpriseintegrationpatterns.com/patterns/messaging/ProcessManager.html | already in bibliography.md, reused |
+
+### r16 facts that did not confirm
+
+1. No `.../tasks/manage/setup_wlc_priority/` page exists (404); the WorkloadPriority task is `run_job_with_workload_priority`.
+2. The unversioned `.../docs/tasks/manage/observability/metrics_access_control/` is 404; only the versioned v0.17 to v0.20 paths exist, and the v0.20 page is titled "Scrape metrics from a sidecar". It states the TokenReview and SubjectAccessReview rule but does not name the ClusterRole `kueue-metrics-reader` (that name comes from the manifest, not a docs page).
+3. No separate Kubernetes task page for backoff limit per index (`job-backoff-limit-per-index-example/` is 404); it is covered by the Jobs concept page and the 1.33 blog.
+4. No Kueue page on its own is titled "partial admission"; it is a section of "Run A Kubernetes Job". Whether Kueue handles per-index backoff and FailIndex is not documented in any page fetched (G0 Q2).
+5. Hub `books.yml` has no batch, Jakarta or Spring Batch book entry; only the Hohpe and Woolf EIP book (already cited). No new books were added.
+6. The Jakarta Batch page shows no release date in the fetched text.

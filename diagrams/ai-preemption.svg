@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
+<rect x="20" y="60" width="300" height="320" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="80" font-size="12" font-weight="700" fill="#888">Low-priority run, batch-low</text>
+<rect x="350" y="60" width="300" height="320" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="362" y="80" font-size="12" font-weight="700" fill="#888">High-priority run, batch-high, submitted</text>
+<rect x="680" y="60" width="300" height="320" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="692" y="80" font-size="12" font-weight="700" fill="#888">High run done, low run admitted again</text>
+<rect x="40" y="100" width="260" height="50" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="170.0" y="130.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 0 done</text>
+<rect x="40" y="170" width="260" height="50" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="170.0" y="200.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 1 done</text>
+<rect x="40" y="240" width="260" height="60" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="170.0" y="268.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">index 2 running</text>
+<text x="170.0" y="285.0" font-size="11.5" fill="#555555" text-anchor="middle">slow partition</text>
+<rect x="370" y="100" width="260" height="60" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="500.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Low run Workload evicted</text>
+<text x="500.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">reason Preempted</text>
+<rect x="370" y="180" width="260" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="500.0" y="208.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Low run Job suspended</text>
+<text x="500.0" y="225.0" font-size="11.5" fill="#555555" text-anchor="middle">completedIndexes 0,1 kept</text>
+<rect x="370" y="260" width="260" height="60" rx="9" fill="#eef4fb" stroke="#2f6db5" stroke-width="2"/>
+<text x="500.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">High run reconcile admitted</text>
+<text x="500.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">3 pods run</text>
+<rect x="700" y="100" width="260" height="60" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="830.0" y="128.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">High run reconcile complete</text>
+<text x="830.0" y="145.0" font-size="11.5" fill="#555555" text-anchor="middle">quota released</text>
+<rect x="700" y="180" width="260" height="60" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+<text x="830.0" y="208.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Low run admitted again</text>
+<text x="830.0" y="225.0" font-size="11.5" fill="#555555" text-anchor="middle">the step was QUEUED, not FAILED</text>
+<rect x="700" y="260" width="260" height="60" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
+<text x="830.0" y="288.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">one new pod, index 2</text>
+<text x="830.0" y="305.0" font-size="11.5" fill="#555555" text-anchor="middle">indexes 0 and 1 not run again</text>
+<rect x="40" y="395" width="920" height="35" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5"/>
+<text x="500.0" y="418.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">The evicted pod&#x27;s failure count stays 0: an eviction is not a failed attempt</text>
+<path d="M320,200 L350,200" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<path d="M650,200 L680,200" fill="none" stroke="#b8650a" stroke-width="2" marker-end="url(#am)"/>
+<text x="500" y="30" font-size="15" fill="#444444" text-anchor="middle" font-weight="700">Preemption suspends the Job; it does not fail it</text>
+</svg>

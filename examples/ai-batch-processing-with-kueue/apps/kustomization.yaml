@@ -1,0 +1,7 @@
+# The batch-runner (Process Manager). The batch-worker has no Deployment: the runner creates its Jobs.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: edp
+resources:
+  - rbac.yaml
+  - batch-runner.yaml

@@ -62,12 +62,12 @@ TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]
 # Owner rule 2026-11-16: every page stands alone. No reference to another chapter, appendix or part of this
 # book in prose (back or forward); related pages are linked only under `## References`. Appendix D (the
 # pattern map and cross-reference) is exempt. Chapter numbers of other books, cited as sources, are allowed.
-XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-H])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
+XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-I])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
 # Cross-references written in words: "the previous chapter", "the outbox chapter", "earlier chapters", "Part three".
 XREF_WORD_RE = re.compile(
     r"\b(?:the\s+)?(?:previous|preceding|prior|next|following|earlier|later|last|first)\s+(?:chapters?|appendix|appendices|parts?)\b"
     r"|\bthe\s+(?!same\b)[\w-]+(?:\s+[\w-]+)?\s+(?:chapter|appendix)\b"
-    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-H]|one|two|three|four|five|six|seven|eight)\b"
+    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-I]|one|two|three|four|five|six|seven|eight)\b"
     r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b"
     # "examples 02 and 03", "these examples", "the earlier examples" point at other chapters' examples
     r"|\bexamples?\s+\d{2}\b|\b(?:these|those|the\s+earlier|the\s+other)\s+examples\b", re.I)
@@ -468,7 +468,8 @@ def check_chapters(rep: Report):
             if d and XREF_RE.search(d.group(1)) and not XREF_SOURCE_RE.search(d.group(1)):
                 rep.err(p, None, f"cross-reference '{XREF_RE.search(d.group(1)).group(0)}' in the description")
         n = chapter_words(body)
-        if n > MAX_WORDS:
+        # Appendix I has no word cap (owner decision 2026-11-18); its Build, run, observe soft cap still applies.
+        if n > MAX_WORDS and not p.name.startswith("ai-"):
             rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
         plines = prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S))
         check_bro(rep, p, plines, off)
@@ -522,7 +523,7 @@ def check_callout_shape(rep: Report, p: Path, lines: list[str], at: int, off: in
         rep.err(p, ln, "callout must not contain a nested quote")
 
 
-VENDOR_RE = re.compile(r"/vendor/|/platform/cnpg/cnpg-[^/]*\.yaml$|/strimzi/strimzi-cluster-operator-[^/]*\.yaml$")
+VENDOR_RE = re.compile(r"/vendor/|/platform/cnpg/cnpg-[^/]*\.yaml$|/strimzi/strimzi-cluster-operator-[^/]*\.yaml$|/platform/kueue/kueue-[^/]*\.yaml$")
 
 
 def is_vendor(p: Path) -> bool:
@@ -530,8 +531,8 @@ def is_vendor(p: Path) -> bool:
     return bool(VENDOR_RE.search(p.as_posix()))
 
 
-# Chapter examples NN-slug and appendix examples aX-slug (Appendix A to H).
-EXAMPLE_DIR_RE = re.compile(r"(\d+|a[a-h])-")
+# Chapter examples NN-slug and appendix examples aX-slug (Appendix A to I).
+EXAMPLE_DIR_RE = re.compile(r"(\d+|a[a-i])-")
 
 
 def check_examples(rep: Report):
@@ -565,6 +566,12 @@ def check_examples(rep: Report):
                         and re.search(r"--force-recreate --renew-anon-volumes", body)):
                     rep.err(v, None, "Appendix B verify.sh needs both fresh halves: compose `down -v --remove-orphans` "
                                      "and `--force-recreate --renew-anon-volumes`, and k8s_fresh / k8s_teardown")
+            elif d.name.startswith("ai-"):
+                # Appendix I: Kueue on the shared minikube profile; installed after k8s_fresh, removed before k8s_teardown.
+                if not (k8s_ok and re.search(r"^\s*kueue_fresh\b", body, re.M)
+                        and re.search(r"\bkueue_teardown\b", body)):
+                    rep.err(v, None, "Appendix I verify.sh must source ../_k8s/lib.sh and call k8s_fresh, k8s_teardown, "
+                                     "kueue_fresh and kueue_teardown")
             elif d.name.startswith("ah-"):
                 # Appendix H: CRC, started by the orchestrator; fresh state comes from install.sh after teardown.sh.
                 if not (re.search(r"^\s*source\s+\S*stack-guard\.sh\s+--crc\b", body, re.M)
@@ -584,7 +591,7 @@ def check_examples(rep: Report):
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
     for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml",
-                     "examples/a[a-h]-*/**/*.yaml"):
+                     "examples/a[a-i]-*/**/*.yaml"):
         if "compose" in m_.name or is_vendor(m_):
             continue
         lines = m_.read_text(encoding="utf-8").split("\n")
@@ -594,7 +601,7 @@ def check_examples(rep: Report):
                 if not near or not all("localhost/edp/" in x for x in near):
                     rep.err(m_, n + 1, "imagePullPolicy: Never only for localhost/edp/ images")
     for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml",
-                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml", "examples/a[a-h]-*/**/*.yaml"):
+                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml", "examples/a[a-i]-*/**/*.yaml"):
         if is_vendor(c) or "/target/" in c.as_posix():
             continue
         text = c.read_text(encoding="utf-8")
@@ -912,6 +919,15 @@ def self_test() -> int:
         e = run(r).errors
         results.append(("second callout caught", any("exactly one" in x for x in e), e))
 
+        r = build("wordcap")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\n" + " ".join(["word"] * 2600) + "\n")
+        e = run(r).errors
+        results.append(("chapter over the word cap caught", any("prose words, limit" in x for x in e), e))
+        (r / "_docs/01-demo.md").write_text(good_doc)
+        (r / "_docs/ai-demo.md").write_text(good_doc.replace("01-demo", "ai-demo") + "\n" + " ".join(["word"] * 2600) + "\n")
+        e = run(r).errors
+        results.append(("Appendix I exempt from the word cap", not any("prose words, limit" in x for x in e), e))
+
         r = build("bro")
         long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 251) + "\n"
         (r / "_docs/01-demo.md").write_text(good_doc + long_bro)
@@ -1025,6 +1041,27 @@ def self_test() -> int:
         (ah / "verify.sh").chmod(0o755)
         (ah / "kafkaconnect.yaml").write_text("  build:\n    output:\n      type: imagestream\n      image: edp-connect:35\n")
         e = run(r).errors
+        ai = r / "examples/ai-demo"
+        ai.mkdir(parents=True)
+        (ai / "README.md").write_text("x")
+        (ai / "kustomization.yaml").write_text("resources: []\n")
+        (ai / "verify.sh").write_text("#!/bin/bash\nsource ../_k8s/lib.sh\nk8s_fresh .\ntrap k8s_teardown EXIT\n")
+        (ai / "verify.sh").chmod(0o755)
+        e = run(r).errors
+        results.append(("Appendix I verify.sh without kueue_fresh and kueue_teardown caught",
+                        any("Appendix I" in x for x in e), e))
+        (ai / "verify.sh").write_text("#!/bin/bash\nsource ../_k8s/lib.sh\ntrap 'kueue_teardown; k8s_teardown' EXIT\n"
+                                      "k8s_fresh .\nkueue_fresh\n")
+        e = run(r).errors
+        results.append(("Appendix I verify.sh with all four calls passes", not any("Appendix I" in x for x in e), e))
+        (ai / "app.yaml").write_text("      - image: quay.io/x/y:1.0\n        imagePullPolicy: Never\n")
+        e = run(r).errors
+        results.append(("appendix I manifest Never on upstream image caught", any("imagePullPolicy" in x for x in e), e))
+        (ai / "app.yaml").unlink()
+        (r / "examples/_k8s/platform/kueue").mkdir(parents=True)
+        (r / "examples/_k8s/platform/kueue/kueue-v1-manifests.yaml").write_text("      - image: quay.io/x/y:latest\n")
+        e = run(r).errors
+        results.append(("Kueue vendor manifest skipped by the image checks", not any("kueue-v1" in x for x in e), e))
         results.append(("Appendix H verify.sh without the CRC guard caught", any("Appendix H" in x for x in e), e))
         results.append(("imagestream output tag not taken for an image",
                         not any("edp-connect:35" in x for x in e), e))

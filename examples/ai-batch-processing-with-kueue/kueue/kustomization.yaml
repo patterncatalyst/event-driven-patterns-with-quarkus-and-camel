@@ -1,0 +1,5 @@
+# Applied by verify.sh with kubectl apply --server-side -k after kueue_fresh; kueue_teardown deletes these objects.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - queues.yaml

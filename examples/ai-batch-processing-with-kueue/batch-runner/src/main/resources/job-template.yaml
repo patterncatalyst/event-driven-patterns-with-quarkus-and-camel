@@ -1,0 +1,35 @@
+# The part every step's Job shares. The runner adds the name, labels, the step's arguments, resources and completion
+# settings, and creates the Job suspended so that Kueue decides when it starts.
+apiVersion: batch/v1
+kind: Job
+spec:
+  suspend: true
+  template:
+    spec:
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: localhost/edp/ai-batch-worker:local
+          imagePullPolicy: Never
+          # The image's default command is run-java.sh; a Job's args replace it, so the entrypoint is named and the args reach the Picocli application.
+          command: ["/opt/jboss/container/java/run/run-java.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: QUARKUS_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef: {name: edp-pg-app, key: username}
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: edp-pg-app, key: password}
+            - name: JOB_INDEX_FAILURE_COUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.annotations['batch.kubernetes.io/job-index-failure-count']

@@ -1,0 +1,34 @@
+# The ai-batch-processing-with-kueue example: the shared platform (Strimzi Kafka, CloudNativePG, otel-lgtm with its monitoring component), the batch-runner,
+# the example's topics and a second collector configuration that scrapes Kueue. Kueue itself and the objects in kueue/ are
+# installed and applied by verify.sh (the Kueue pod webhook is cluster-wide, so it never belongs to the substrate).
+# No top-level namespace: the monitoring component names its own namespaces.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../_k8s/namespaces
+  - ../_k8s/strimzi
+  - ../_k8s/kafka
+  - ../_k8s/postgres
+  - ../_k8s/lgtm
+  - apps
+  - topics
+  - monitoring/rbac.yaml
+components:
+  - ../_k8s/monitoring
+patches:
+  - path: topics/kafka-patch.yaml
+  - path: monitoring/lgtm-kueue-patch.yaml
+    target: {kind: Deployment, name: lgtm}
+configMapGenerator:
+  - name: collector-kueue
+    namespace: edp-lgtm
+    files: [monitoring/collector-kueue.yaml]
+    options: {disableNameSuffixHash: true}
+  - name: edp-batch-dashboards
+    namespace: edp-lgtm
+    files: [monitoring/dashboards/edp-batch.json]
+    options: {disableNameSuffixHash: true}
+  - name: edp-batch-dashboard-provider
+    namespace: edp-lgtm
+    files: [dashboards.yaml=monitoring/dashboards.yaml]
+    options: {disableNameSuffixHash: true}

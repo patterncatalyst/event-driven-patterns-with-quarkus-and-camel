@@ -1,0 +1,10 @@
+# The Topic Operator is on so that the KafkaTopics below are created with their configuration, and so that
+# verify.sh can wait for them to be Ready before the producer Job writes.
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: edp
+spec:
+  entityOperator:
+    topicOperator:
+      reconciliationIntervalMs: 15000

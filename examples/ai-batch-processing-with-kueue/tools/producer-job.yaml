@@ -1,0 +1,56 @@
+# The input of the example: ShipmentScheduled and ShipmentDelivered records keyed by order id, one line of
+# dataset.txt per order, produced in real time (CreateTime is the producer's clock). A window marker sits two seconds
+# outside each window boundary, and the Job logs "WINDOW <W> FROM|TO <epoch ms>" with the boundaries it chose, which
+# verify.sh uses as the window of each run. dataset.txt reaches the pod as the ConfigMap ai-dataset.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-producer
+  namespace: edp
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: producer
+          image: quay.io/strimzi/kafka:1.3.1-kafka-4.3.2
+          env:
+            - {name: LC_ALL, value: C}
+            - {name: TZ, value: UTC}
+          volumeMounts:
+            - {name: dataset, mountPath: /data, readOnly: true}
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -eu
+              now() { echo $(( ${EPOCHREALTIME/./} / 1000 )); }
+              payload() { # payload <order> <carrier> <status>
+                local n="${1#O-}"
+                printf '{"shipment":{"id":"SH-%s","orderId":"%s","carrier":"%s","trackingNumber":"TRK-%s","status":"%s"},"occurredAt":"%(%Y-%m-%dT%H:%M:%SZ)T"}\n' "$n" "$1" "$2" "$n" "$3" -1
+              }
+              producer() { # producer <topic>: reads "key|json" lines until end of input
+                /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server edp-kafka-bootstrap.edp-kafka.svc:9092 \
+                  --topic "$1" --property parse.key=true --property key.separator='|' --producer-property linger.ms=0
+              }
+              mkfifo /tmp/scheduled /tmp/delivered
+              producer edp.shipping.scheduled </tmp/scheduled &
+              producer edp.shipping.delivered </tmp/delivered &
+              exec 3>/tmp/scheduled 4>/tmp/delivered
+              prev=""
+              while read -r tag order carrier delivered; do
+                case "$tag" in ''|'#'*) continue ;; esac
+                if [[ "$tag" != "$prev" ]]; then
+                  if [[ "$prev" == W* ]]; then sleep 2; echo "WINDOW $prev TO $(now)"; sleep 2; fi
+                  if [[ "$tag" == W* ]]; then sleep 2; echo "WINDOW $tag FROM $(now)"; sleep 2; fi
+                  prev="$tag"
+                fi
+                echo "$order|$(payload "$order" "$carrier" SCHEDULED)" >&3
+                if [[ "$delivered" == 1 ]]; then echo "$order|$(payload "$order" "$carrier" DELIVERED)" >&4; fi
+              done < /data/dataset.txt
+              exec 3>&- 4>&-
+              wait
+              echo "produced"
+      volumes:
+        - name: dataset
+          configMap: {name: ai-dataset}

@@ -28,7 +28,7 @@ jobs:
         run: |
           shopt -s nullglob
           all=()
-          for d in examples/domain-model examples/[0-9][0-9]-* examples/a[a-h]-*; do
+          for d in examples/domain-model examples/[0-9][0-9]-* examples/a[a-i]-*; do
             [[ -f "$d/pom.xml" ]] && all+=("$d")
           done
           if [[ "$EVENT" == pull_request ]]; then ref="$BASE"; else ref="$BEFORE"; fi

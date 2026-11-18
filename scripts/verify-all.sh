@@ -7,7 +7,7 @@
 # Groups (default: compose):
 #   compose       examples 00 to 27 (docker compose; each verify.sh starts with `down -v` and ends torn down)
 #   k8s           examples 28 to 35 on the minikube profile from examples/_k8s/cluster.sh (start it first)
-#   k8s-appendix  Appendix B's minikube half, then Appendix F (same profile)
+#   k8s-appendix  Appendix B's minikube half, then Appendix F, then Appendix I (Kueue; same profile)
 #   appendix      Appendices A, B (compose half), C, E, G, then B's compare (no stack)
 # Appendix H (OpenShift Local) runs on its own: examples/ah-openshift-local/README.md.
 #
@@ -76,7 +76,8 @@ entries=()
 case "$group" in
     compose) for d in examples/[0-2][0-9]-*/; do d="${d%/}"; d="${d#examples/}"; [[ "$d" < "28" ]] && entries+=("$d"); done ;;
     k8s) for d in examples/2[8-9]-*/ examples/3[0-9]-*/; do d="${d%/}"; entries+=("${d#examples/}"); done ;;
-    k8s-appendix) entries=(ab-compose-to-kubernetes:k8s af-deploying-event-driven-services) ;;
+    k8s-appendix) entries=(ab-compose-to-kubernetes:k8s af-deploying-event-driven-services
+                  ai-batch-processing-with-kueue) ;;
     appendix) entries=(aa-testing-event-driven-code ab-compose-to-kubernetes:compose ac-querying-streams-without-ksqldb
                        ae-resequencing-across-partitions ag-write-forward-cache ab-compose-to-kubernetes:compare) ;;
 esac

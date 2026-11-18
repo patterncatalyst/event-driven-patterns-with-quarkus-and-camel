@@ -17,6 +17,7 @@ Every pin lives in `versions.env`; `tools.sh` checks the binaries on `PATH` agai
 | kube-state-metrics | v2.20.0 (index digest pinned), with our own `CustomResourceStateMetrics` configuration |
 | In-cluster registry | CNCF Distribution `registry:3.1.2` (index digest pinned) |
 | Buildah image (Strimzi KafkaConnect builds) | `quay.io/strimzi/buildah:1.3.1`, set by the 1.3.1 operator, recorded in `versions.env` |
+| Kueue | v0.20.6, sha256-checked manifest, controller image pinned by index digest (Appendix I only; see below) |
 | Debezium PostgreSQL plugin | `3.7.1.Final` archive from Maven Central, sha512 in `versions.env` |
 
 CloudNativePG 1.30.1 lists Kubernetes 1.37 as "Tested, but not supported". Its operator and cluster ran without problems on it here, so the pin stays.
@@ -27,6 +28,7 @@ CloudNativePG 1.30.1 lists Kubernetes 1.37 as "Tested, but not supported". Its o
 examples/_k8s/cluster.sh up      # profile, loopback ports, vendor manifests, CloudNativePG operator
 examples/_k8s/cluster.sh status  # profile, ports, namespaces
 examples/_k8s/cluster.sh down    # minikube delete -p edp
+examples/_k8s/cluster.sh kueue-manifest  # download the sha256-checked Kueue manifest (needs no cluster)
 ```
 
 `up` is idempotent. It refuses to run while a compose project, another minikube profile or CRC is running (`scripts/stack-guard.sh --minikube edp`). When the profile does not exist yet, it checks with `ss -ltnH` that every NodePort below is free on the host, then creates the profile with 6 CPUs, 10 GiB of memory, a 30 GB disk and `--insecure-registry=10.96.100.50:5000`, and asserts with `docker port edp` that every published port is bound to 127.0.0.1 only. It downloads the Strimzi and CloudNativePG release manifests next to their kustomizations (`strimzi/strimzi-cluster-operator-1.3.1.yaml`, `platform/cnpg/cnpg-1.30.1.yaml`; both gitignored), refuses a file whose sha256 differs from `versions.env`, applies the CloudNativePG platform with `--server-side` and waits for the operator.
@@ -34,6 +36,19 @@ examples/_k8s/cluster.sh down    # minikube delete -p edp
 The in-cluster registry (`registry/`) speaks plain HTTP at a fixed ClusterIP, `10.96.100.50:5000`. `minikube start --insecure-registry=10.96.100.50:5000` makes minikube write `/etc/containerd/certs.d/10.96.100.50:5000/hosts.toml` in the node, so containerd pulls from it over HTTP. A CIDR as the flag value (`10.96.0.0/12`) does not work: containerd looks up the registry host and port, so the file lands under a directory named after the CIDR and never matches. `cluster.sh up` checks for the host-and-port file on every run and, when a profile was created without the flag, writes the same `hosts.toml` into the node. Both are settings of the profile, not of the host.
 
 Nothing is forwarded, by any command. Services are reached through the NodePorts published at profile creation, or with `kubectl exec`.
+
+## Kueue
+
+Kueue is not part of `cluster.sh up` or `k8s_fresh`: its pod webhook covers every namespace except `kube-system` and `kueue-system` and fails closed, so installing it would change the substrate of every other example. `cluster.sh kueue-manifest` downloads `manifests.yaml` of the pinned release to `platform/kueue/kueue-v0.20.6-manifests.yaml` (gitignored), refuses a file whose sha256 differs from `versions.env`, and needs no cluster. `platform/kueue/kustomization.yaml` renders that file with the controller image pinned by digest and the controller configuration of upstream plus `metrics.enableClusterQueueResources: true`. `imagePullPolicy` stays `Always`, as upstream ships it.
+
+Two functions in `lib.sh` serve the one example that uses Kueue:
+
+| Function | Does |
+|---|---|
+| `kueue_fresh` | runs `kueue_teardown`, fetches the manifest, applies `platform/kueue` with `--server-side`, waits for the controller Deployment to be Available, then waits until the webhook answers: a server-side dry-run Job in `edp` with the label `kueue.x-k8s.io/queue-name` must come back with `spec.suspend: true` |
+| `kueue_teardown` | deletes the Jobs labelled `edp.batch/run`, waits until their Workloads are gone, deletes LocalQueues, ClusterQueues, WorkloadPriorityClasses and ResourceFlavors, then `kubectl delete -k` of the platform directory; then fails loudly if a Kueue CRD, a Kueue webhook configuration, the APIService `v1beta2.visibility.kueue.x-k8s.io` or the namespace `kueue-system` remains. With `--final` it also deletes the cluster-scoped ClusterRoleBinding `edp-lgtm-kueue-metrics` and fails if it remains; `kueue_fresh` calls it without the flag. Finalizers are never stripped |
+
+The example's `verify.sh` calls `kueue_fresh` after `k8s_fresh` and `kueue_teardown` before `k8s_teardown`.
 
 ## NodePorts
 
