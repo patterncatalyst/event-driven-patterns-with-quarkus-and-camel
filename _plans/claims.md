@@ -1992,3 +1992,75 @@ Runs cited: b2 final (S/r13b-b2/final-*.log), b3 runs 1 and 2 (S/r13b-b3), valid
 | AH-48 | H | deploy 10 to 12 s, verify 43 to 45 s | deploy 11, 11, 11, 12, 10 (walls 12, 12, 12, 12, 10); r2 9 s (10 wall); verify 43 to 45; r2 44 | README:105-106 | verified (r2 deploy 9 s script time) |
 | AH-49 | H | CRC 2.64.0, OpenShift 4.22.14, held | node v1.35.6 / crc status (validator r1); decision 21 | README:60 | verified |
 | AH-50 | H | Docker untouched; ollama volume not involved | scripts call docker only through stack-guard | README:95 | verified |
+
+## r16 (Appendix I, 2026-11-18)
+
+Runs cited: window run A (13m06s, 34/34), final run on a recreated profile (13m05s, 34/34), four witnesses (S/r16-window/results.md); G0 spike (_plans/r16-plan.md, G0 decisions). "check N" is the verify.sh check number in the example README.
+
+| id | chapter | claim | evidence (test, run or source) | ref | status |
+|---|---|---|---|---|---|
+| AI-01 | I | Both topics have 3 partitions, keyed by order id, so an order sits in partition i of both | check 4; README check 4 | _docs/ai:20 | verified |
+| AI-02 | I | POST /runs answers 202 with a run id; the same window again answers 409; replay answers 202 only for a FAILED run | checks 5 and 17; unique partial index run_window_live in V1__reconciliation.sql | _docs/ai:34 | verified |
+| AI-03 | I | Each run has three steps plan, reconcile, aggregate; a step is a row with a state | check 6; V1 step table; RunnerStateMachineTest | _docs/ai:34 | verified |
+| AI-04 | I | A Camel route on a 2 s timer reads RUNNING and QUEUED steps, reads the Job and routes with choice() | ReconcileTickRoute:14 (reconcile.tick=2000), PollStepRoute:40-53; checks 6, 8 | _docs/ai:38 | verified |
+| AI-05 | I | The Camel Kubernetes Job component creates, reads and deletes Jobs and has no consumer | https://camel.apache.org/components/next/kubernetes-job-component.html (producer operations only; listed in sources) | _docs/ai:38 | verified |
+| AI-06 | I | The Job is created with suspend: true; a started Job that is suspended again returns the step to QUEUED and counts a preemption | job-template.yaml:6; StepService.preempted; checks 2, 25, 27 (P6 passes) | _docs/ai:78 | verified |
+| AI-07 | I | Flyway migrations are owned by the runner; the worker uses Panache and validates the schema | V1__reconciliation.sql header; worker application.properties | _docs/ai:102 | verified |
+| AI-08 | I | The runner is a Deployment and is never admitted by Kueue | apps/batch-runner.yaml (no queue label); check 8 counts only step Jobs | _docs/ai:121 | verified |
+| AI-09 | I | Plan stores per-partition offset ranges in run_partition; an absent offsetsForTimes answer falls back to the end offset | check 7 (offsets equal kafka-get-offsets.sh); KafkaReader:59-63; G0 Q7 | _docs/ai:135 | verified |
+| AI-10 | I | W1 partitions hold 6, 4 and 9 records, 19 in all; 8 marker orders outside every window are never read | results.md Measured; checks 4, 9, 10; partition records 19 per run | _docs/ai:200 | verified |
+| AI-11 | I | reconcile is Indexed, 3 completions, parallelism 3, index = partition | check 9; JobFactory:85-86 | _docs/ai:163 | verified |
+| AI-12 | I | The worker reads a fixed range with the plain Kafka consumer (assign, seek) | KafkaReader; SmallRye and Camel Kafka cannot stop at an offset (Quarkus Kafka guide, listed in sources) | _docs/ai:174 | verified |
+| AI-13 | I | Counts are written in the transaction that marks the partition DONE; records outside the window are never read | PartitionStore.complete:66-86; checks 10, 11 | _docs/ai:174 | verified |
+| AI-14 | I | Reconcile pods request 500m, three together 1500m | JobFactory:cpu 500m; check 22 (3000m for two reconcile steps) | _docs/ai:202 | verified |
+| AI-15 | I | The Camel Aggregator counts messages, so a replayed partition would break it | design statement, not measured; the aggregate step reads stored rows (check 19) | _docs/ai:216 | verified (design) |
+| AI-16 | I | aggregate is created after reconcile is Complete, upserts carrier_total and publishes one record per carrier keyed run:carrier to a compacted topic | checks 6, 11, 12; PublishRoute; topics/kafkatopics.yaml cleanup.policy compact | _docs/ai:218 | verified |
+| AI-17 | I | FASTLINE 7 scheduled, 4 delivered, 3 open; AIRCO 5, 3, 2 in W1 | results.md Measured; check 11 | _docs/ai:232 | verified |
+| AI-18 | I | Running aggregate twice writes the same totals | upsert in PartitionStore.totals; check 19 (aggregate after replay, totals right) | _docs/ai:232 | verified |
+| AI-19 | I | Exit codes 0, 1, 42; backoffLimitPerIndex 1; FailIndex on 42; maxFailedIndexes 3 | ReconcileCommand:19-21; JobFactory:85-93; checks 13, 15 | _docs/ai:246 | verified |
+| AI-20 | I | Each pod receives its failure count through the downward API annotation job-index-failure-count | job-template.yaml:32-35; G0 Q2a; check 14 | _docs/ai:264 | verified |
+| AI-21 | I | Transient fault: failing index has two pods, others one, Job Complete; reconcile took 28 s against 10 to 12 s | checks 13, 14; results.md Measured (28 s with one retried index) | _docs/ai:266 | verified |
+| AI-22 | I | Exit 42: failedIndexes 1, completedIndexes 0,2, one pod on index 1; Workload Finished reason Failed, quota released | checks 15, 16; G0 Q2b | _docs/ai:266 | verified |
+| AI-23 | I | Replay creates a new reconcile Job whose name carries the attempt; no new plan Job | check 17; step_job table | _docs/ai:268 | verified |
+| AI-24 | I | A replayed index with a DONE row exits 0 without reading Kafka; partitions 0 and 2 unchanged | PartitionStore.begin:52-63; check 18; REPLAY_GUARD=off fails 18 only | _docs/ai:272 | verified |
+| AI-25 | I | The replay waits for 1500m although one index has work | G0 P1 (Kueue reserves quota for the whole pod set) | _docs/ai:290 | verified (G0) |
+| AI-26 | I | Totals stay right without the guard because counts are an upsert | REPLAY_GUARD=off witness: 33/34, only check 18 fails (totals check 19 passes) | _docs/ai:292 | verified |
+| AI-27 | I | Kueue is a controller; the Job carries the queue label and the webhook does the rest | check 2; https://kueue.sigs.k8s.io/docs/tasks/run/jobs/ fetched 2026-11-18 | _docs/ai:310 | verified |
+| AI-28 | I | Runner sets the queue label and, when a run has a priority, the priority-class label; QUEUE=off drops the queue label | JobFactory:64-75; DemoSwitchesTest; check 8 | _docs/ai:310 | verified |
+| AI-29 | I | ResourceFlavor default-flavor; ClusterQueue 1750m cpu, 3Gi, BestEffortFIFO, LowerPriority, reclaimWithinCohort Never; LocalQueue in edp; batch-low 100, batch-high 1000; no label means priority 0 | kueue/queues.yaml; check 3; https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/ fetched 2026-11-18 | _docs/ai:330 | verified |
+| AI-30 | I | The webhook sets suspend: true on a Job carrying the queue label | check 2; G0 Q1; https://kueue.sigs.k8s.io/docs/tasks/run/jobs/ | _docs/ai:368 | verified |
+| AI-31 | I | On an empty quota admission takes about 2 s; plan and aggregate run about 10 s; the contended step waited 52 s and ran 52 s | results.md Measured (step admission wait and step run time) | _docs/ai:368 | verified |
+| AI-32 | I | A pending Workload has QuotaReserved False reason WaitingForQuota, Admitted False reason NoReservation, a suspended Job with no pods | check 20; G0 Q3 | _docs/ai:370 | verified |
+| AI-33 | I | BestEffortFIFO lets a newer fitting Workload pass an older blocked one; StrictFIFO blocks | G0 Q3 (250m Job passed a 3-pod Job); https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/ fetched 2026-11-18 | _docs/ai:372 | verified |
+| AI-34 | I | Quota is a ledger, not capacity; one reconcile Job runs at a time under 1750m | G0 Q8; checks 20, 22 | _docs/ai:374 | verified |
+| AI-35 | I | With QUEUE=off both Jobs start together, 3000m requested, and the Jobs start unsuspended and unqueued | QUEUE=off witness: fails 8, 20, 21, 22, 23; JobFactory:80-82; DemoSwitchesTest | _docs/ai:378 | verified |
+| AI-36 | I | withinClusterQueue values Never, LowerPriority, LowerOrNewerEqualPriority | https://kueue.sigs.k8s.io/docs/concepts/preemption/ (listed in sources) | _docs/ai:390 | verified (source) |
+| AI-37 | I | Low run: indexes 0 and 1 done, index 2 running when the high run is submitted | check 24; SLOW_PARTITION | _docs/ai:392 | verified |
+| AI-38 | I | Eviction within 0.09 s; conditions Evicted Preempted, Preempted InClusterQueue, Requeued; step QUEUED not FAILED; high admitted in the same second | check 25; G0 P3, P4 | _docs/ai:396 | verified |
+| AI-39 | I | Low run readmitted 15.6 s after the high run was submitted | G0 P4 only (_plans/r16-plan.md G0 decisions); not re-measured in the window | _docs/ai:396 | verified (G0 only) |
+| AI-40 | I | Kueue reserves quota for the whole pod set, so the single-pod low run is evicted | G0 P1 | _docs/ai:398 | verified (G0) |
+| AI-41 | I | After resume: completedIndexes 0,1, pods of 0 and 1 unchanged, evicted pod deleted and one new pod for index 2, attempts 1,1,2, completed_at unchanged, failure counts 0 | check 28 (fixed in window, bug 5); run 6 in results.md | _docs/ai:400 | verified |
+| AI-42 | I | status.failed stays 0 after the eviction | check 28; G0 P2 | _docs/ai:400 | verified |
+| AI-43 | I | The evicted pod stayed Terminating and overlapped the high run's pods | G0 P1 decisions (check 22 excludes the overlap window) | _docs/ai:402 | verified (G0) |
+| AI-44 | I | The DisruptionTarget Ignore rule was not exercised; the deleted pod had no DisruptionTarget condition | G0 P2; results.md (evicted pod had no condition) | _docs/ai:404 | verified |
+| AI-45 | I | podFailurePolicy Ignore on DisruptionTarget is meant for node drains and evictions | https://kubernetes.io/docs/concepts/workloads/controllers/job/ (pod failure policy; listed in sources) | _docs/ai:404 | verified (source) |
+| AI-46 | I | Cohort borrowing, nominal quota may be zero, borrowingLimit, lendingLimit, reclaimWithinCohort and borrowWithinCohort values | https://kueue.sigs.k8s.io/docs/concepts/cohort/ and cluster_queue page, fetched 2026-11-18 | _docs/ai:410 | verified (source) |
+| AI-47 | I | Partial admission: job-min-parallelism, only after borrowing and preemption, completions unchanged | https://kueue.sigs.k8s.io/docs/tasks/run/jobs/ fetched 2026-11-18 | _docs/ai:412 | verified (source) |
+| AI-48 | I | JobSet admits all or none; MultiKueue dispatches across clusters | https://jobset.sigs.k8s.io/docs/ and https://kueue.sigs.k8s.io/docs/concepts/multikueue/ (listed in sources) | _docs/ai:414 | verified (source) |
+| AI-49 | I | TRACEPARENT is stored with the run, passed as an env var and read with the W3C propagator over the environment; one trace holds the step and index spans | JobFactory:124-126; StepSpan:53; check 30; https://opentelemetry.io/docs/specs/otel/context/env-carriers/ | _docs/ai:422 | verified |
+| AI-50 | I | Pods push spans and logs at exit; the exit 42 log line carries the trace id | check 31 (Loki); check 30 (Tempo) | _docs/ai:436 | verified |
+| AI-51 | I | Runner meters are exported as batch_step_duration_seconds, batch_step_queue_wait_seconds, batch_step_failures_total{step}, batch_step_replays_total, batch_step_preemptions_total{step}, batch_partition_records_total | results.md Measured (names as exported); checks 27, 32 | _docs/ai:438 | verified |
+| AI-52 | I | Kueue metrics over HTTPS 8443 with a bearer token (TokenReview, SubjectAccessReview) | https://kueue.sigs.k8s.io/v0.20/docs/tasks/manage/observability/metrics_access_control/ (listed in sources); G0 Q4 | _docs/ai:440 | verified (source) |
+| AI-53 | I | The collector uses the observability pod's service-account token bound to kueue-metrics-reader, with insecure_skip_verify; upstream does the same | monitoring/collector-kueue.yaml, monitoring/rbac.yaml; G0 Q4; Kueue Configure Prometheus with TLS page (listed in sources) | _docs/ai:440 | verified |
+| AI-54 | I | enableClusterQueueResources adds quota series; the listed Kueue series exist; preempted and evicted appear only after the first event; about 45 s after the observability pod starts | G0 Q4 and P3; checks 21, 27, 33 | _docs/ai:442 | verified |
+| AI-55 | I | The edp-batch dashboard exists | check 34; monitoring/dashboards/edp-batch.json | _docs/ai:444 | verified |
+| AI-56 | I | Kueue v0.20.6; cluster v1.37.2; applied server-side; manifest checked against a recorded sha256; kustomization sets image digest and metrics | versions.env pins; check 1; kueue/kustomization.yaml | _docs/ai:448 | verified |
+| AI-57 | I | Kubernetes 1.34 or newer is recommended by the project | https://kueue.sigs.k8s.io/docs/getting-started/installation/ (listed in sources) | _docs/ai:455 | verified (source) |
+| AI-58 | I | The pod webhook covers every namespace except kube-system and kueue-system, failurePolicy Fail; APIService v1beta2.visibility.kueue.x-k8s.io | G0 Q1; kueue_teardown asserts none remain | _docs/ai:457 | verified |
+| AI-59 | I | Teardown order; Workload finalizer; recovery about a minute after the controller returned; teardown fails loudly if a CRD, webhook or APIService remains | G0 Q1; verify.sh kueue_teardown; results.md (0 Kueue CRDs left, both runs) | _docs/ai:459 | verified |
+| AI-60 | I | Kueue install 15 to 36 s, removal 1 to 25 s | results.md Measured (not stated in prose; recorded in the verification log) | _plans/verification-log.md r16 | verified |
+| AI-61 | I | Every batch Job carries edp.batch/run; a Job without it leaves a Workload the teardown waits on | JobFactory RUN_LABEL; check 8; G0 decisions | _docs/ai:461 | verified |
+| AI-62 | I | Kueue is installed and removed by the example's verify.sh, not the shared cluster setup | verify.sh kueue_fresh/kueue_teardown; decisions log 2026-11-18 | _docs/ai:457 | verified |
+| AI-63 | I | Eleven CRDs; controller asks 500m CPU and 512Mi | plan Kueue survey (v0.20 manifest: 11 CRDs, controller requests); no CRD left after teardown, results.md | _docs/ai:485 | verified |
+| AI-64 | I | Argo Workflows has a larger footprint; Jakarta Batch and a scheduled route suit one JVM | design statement; Jakarta Batch 2.1 and Argo named in sources | _docs/ai:481 | verified (design) |
+| AI-65 | I | verify.sh ends with 34/34 checks passed; QUEUE=off and REPLAY_GUARD=off effects; the faults ConfigMap | runs 13m06s and 13m05s; witnesses (QUEUE=off 18/23, REPLAY_GUARD=off 33/34); lib.sh summary line | _docs/ai:471 | verified |

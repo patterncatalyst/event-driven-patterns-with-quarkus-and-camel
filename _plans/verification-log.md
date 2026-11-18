@@ -876,3 +876,34 @@ Window walls: W2+W3 6198 s (compose 00 to 27), W4 2251 s (plus profile create an
 Appendix F check 30 failed in W5 (29/30): `published_for_failed=2`. The check asserted that a request the client saw fail leaves no event, but the order-service publishes before it answers, so a request whose connection fails after the publish has left its event (2 of 11 failed requests). Fix (after F): `tools/http.py retry` posts every failed order id again; check 30 asserts each retry is answered 201 or 409 and every order then has exactly one event (`missing=0 duplicate=0 unresolved=0`); prose, Figure F.7, README rows 29, 30 and the measured paragraph updated; AF-12 cut and restated, AF-13 widened to 0.2 to 0.5 percent over seven runs. W5b on a fresh profile: 30/30, 6 failed requests, all 6 retries answered 201.
 
 Validation: R1 (Opus) FIX, documents only; repair round 1 (Sonnet). R2 (Opus) FIX, documents only: the Appendix F README had the r14 stop-and-restart values (160, 0) in the rolling-update list (corrected to 66 and 35 from the W5 and W5b logs); run counts recounted (each pre-r14 count plus the two r14 runs); 50-odd claims refs re-pointed by term match and by hand; chapter numbers in the 28 to 35 comments and check descriptions renamed to example numbers (description text only, `bash -n` and offline `kubectl kustomize` clean). Orchestrator applied the R2 fixes; the two-round cap is reached.
+
+## r16 Appendix I, batch processing with Kueue (2026-11-18)
+
+Orchestrator, example `examples/ai-batch-processing-with-kueue`, minikube profile `edp` (docker driver, containerd, Kubernetes v1.37.2), Kueue v0.20.6 installed and removed by `verify.sh`. Logs are scrubbed and kept in the scratchpad (`r16-window/`).
+
+| Run | Checks | Wall | Teardown |
+|---|---|---|---|
+| Run A, existing profile, after fixes 1 to 5 and 7 | 34/34 | 13m06s | clean, no Kueue CRD left |
+| Final run on a recreated profile (delete, then fresh; includes profile create, image build and load) | 34/34 | 13m05s | clean, 0 Kueue CRDs, namespaces deleted, profile deleted |
+| Earlier run, before fix 5 | 33/34 (check 28 only) | 12m00s | clean |
+
+Witnesses, each run fresh and torn down after; every failing set equals the README set:
+
+| Switch | Failing checks | Result |
+|---|---|---|
+| `QUEUE=off` | 8, 20, 21, 22, 23 | 18/23, the run stops after check 23 |
+| `REPLAY_GUARD=off` | 18 | 33/34 |
+| `PRIORITY=off` | 25, 26, 27, 28 | 30/34 |
+| `FAIL_POLICY=off` | 15 | 33/34 |
+
+Defects found in the window and fixed (7):
+
+1. The runner crash-looped with "cannot find component with name kafka": `CAMEL_COMPONENT_KAFKA_BROKERS` was set on a runner that has no Kafka component. The env was removed; the runner passes `KAFKA_BOOTSTRAP_SERVERS` to the worker Jobs only.
+2. Worker pods failed with StartError, exec "plan" not found: a container `args` replaces the image CMD. The template now names `command: ["/opt/jboss/container/java/run/run-java.sh"]`.
+3. "Multiple garbage collectors selected": `-XX:+UseSerialGC` in `JAVA_OPTS_APPEND` clashed with the ParallelGC that `run-java.sh` selects. The option was removed.
+4. `PartitionStore.window` raised ContextNotActiveException, the one read outside a transaction (Dev Services tests ran with a request context). It is now `@Transactional`.
+5. Check 28 asserted the wrong observable. The evicted pod is deleted, so pods per index end as 0:1 1:1 2:1, and the interrupted attempt counts, so attempts for the preempted index is 2. The check compares the pod names of indexes 0 and 1 with a snapshot taken at the precondition, requires a new pod name for index 2, attempts `0:1 1:1 2:2` and failure counts `0 0 0`. README row 28 updated.
+6. `QUEUE=off` left the Jobs suspended from the template, so nothing started them and the run hung. `JobFactory` now sets `suspend: false` when the queue label is off; `DemoSwitchesTest` asserts it. The first witness attempt (log `w-queue-invalid-suspended.log`) was discarded.
+7. The worker properties carried an unrecognized `quarkus.http.host-enabled` (removed) and Camel Main printed usage for the Picocli step name; `quarkus.camel.main.arguments.on-unknown=ignore` was added.
+
+Measured: Kueue install 15 to 36 s, removal 1 to 25 s, k8s teardown 36 s, whole `verify.sh` 13 minutes. Dataset window 1: partitions read 6, 4 and 9 records (19 in all, 8 marker orders outside every window); FASTLINE 7 scheduled, 4 delivered, 3 open; AIRCO 5, 3, 2. Step admission wait on an empty quota about 2.0 s (the runner tick); plan and aggregate about 10 s; reconcile 10 to 12 s with no fault, 28 s with one retried index, 50 s with a 40 s slow partition; the contended step waited 52 s and ran 52 s. Preempted run 6 (`SLOW_SECONDS` 120): index 2 attempts 2, indexes 0 and 1 attempts 1 and `completed_at` unchanged; run 7 (`batch-high`) reconcile 12 s. Runner metrics as exported: `batch_step_duration_seconds`, `batch_step_queue_wait_seconds`, `batch_step_failures_total{step}`, `batch_step_replays_total`, `batch_step_preemptions_total{step}`, `batch_partition_records_total`; after run 1e: 7 durations per step, failures 1, replays 1, preemptions{reconcile} 1, partition records 119. JVM pods fit 384Mi/512Mi (reconcile) and 256Mi/384Mi (plan, aggregate) with no OOMKill. The runner restarts once or twice at first start while the database is not yet accepting connections. The Kafka client WARN "Not updating high watermark" from `offsetsForTimes` is noise. The preempt-to-resume time of 15.6 s is from the G0 spike only. The `DisruptionTarget` Ignore rule was not exercised: the evicted pod carried no such condition.

@@ -107,3 +107,17 @@ Internal map from each slide number (as in `lgtm-presentation/text/`) to the cla
 - Sections 09, 11, 12, 13 rows now cite claims ids and the page lines instead of the page alone.
 - Slide 106 (80 to 100 s, was "about a minute and a half") and slide 116 (491 to 496 ms, was "about 490") now state the recorded ranges.
 - No number was cut.
+
+## r16 (slides 118 to 120, Appendix I batch processing; slides 118 onward moved up by 3)
+
+| slide | claim (number or behaviour) | claims id or file:line |
+|---|---|---|
+| 118 | worker exit code 42 is poison and FailIndex fails only that index; index i reads partition i of both topics | examples/ai-batch-processing-with-kueue/batch-runner/src/main/resources/job-template.yaml (podFailurePolicy); verify.sh checks 15 to 18 |
+| 118, 119 | replay reruns only indexes not DONE; a DONE row exits 0 without a Kafka read; aggregate runs once on three DONE partitions | verify.sh check 18 (guard); _docs/ai-batch-processing-with-kueue.md replay section |
+| 119 | a replay Job still asks for all three pods, 1500m (3 x 500m) | examples/ai-batch-processing-with-kueue/kueue/queues.yaml comment; _docs/ai Kueue section |
+| 119 | totals are an upsert keyed by run, partition and carrier | PartitionStore upsert; verify.sh check 18; REPLAY_GUARD=off witness fails 18 only (S/r16-window/results.md) |
+| 120 | quota 1750m CPU and 3Gi; batch-low 100, batch-high 1000; BestEffortFIFO; 3 x 500m | examples/ai-batch-processing-with-kueue/kueue/queues.yaml |
+| 120 | Job with no priority label has priority 0 | _docs/ai Kueue section (Kueue WorkloadPriorityClass default) |
+| 120 | preemption: higher-priority run evicted the lower run's running index; interrupted attempt counts (index 2 attempts 2); indexes 0 and 1 attempts 1, completed_at unchanged; only index 2 got a new pod | S/r16-window/results.md "Preempted run 6" and bug 5; verify.sh check 28 |
+| 120 | eviction is not a failure: step returns to QUEUED, preemptions counter (batch_step_preemptions_total) | results.md metrics line; verify.sh checks 25 to 28 |
+| 118 to 120 | Process Manager is Hohpe and Woolf's pattern (credit, no number) | hub books.yml EIP |

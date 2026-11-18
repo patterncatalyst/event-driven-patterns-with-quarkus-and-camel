@@ -37,9 +37,86 @@ The runner accepts `POST /runs` with a window and an optional priority and answe
 
 A Camel route on a two-second timer drives the runs. It reads the steps that are RUNNING or QUEUED from PostgreSQL, reads each step's Job through the Camel Kubernetes Job component, and routes on what it finds with `choice()`: a completed Job marks the step DONE and creates the next step's Job, a failed Job marks the step and the run FAILED, and a Job that is still going changes nothing. The component can create, read and delete Jobs but has no consumer that is notified of a change, so polling on a timer is the way a controller is written with it.
 
-The Job is created with `suspend: true`. The step is QUEUED until Kueue admits it and RUNNING after that. A Job that was running and is suspended again is not a failure: the step goes back to QUEUED, and a counter on the runner records the preemption. The distinction matters because a failed step stops the run and a queued one only waits.
+{% raw %}
+```java
+from("scheduler:reconcile?delay={{reconcile.tick}}&initialDelay=2000").routeId("reconcile-tick")
+        .bean("stepService", "workQueue")
+        .split(body()).to("direct:poll-step");
+```
+{% endraw %}
 
-The state lives in PostgreSQL on CloudNativePG, with Flyway migrations owned by the runner. The worker reads and writes the same tables through Hibernate ORM with Panache and validates the schema instead of migrating it, so two services share a schema without both owning it.
+Each step found goes to `poll-step`, which reads its Job and routes on the state it finds:
+
+```java
+.setBody(variable("step"))
+.choice()
+    .when(variable("jobState").isEqualTo(JobState.MISSING))
+        .to("direct:create-job")
+    .when(variable("jobState").isEqualTo(JobState.LOST))
+        .bean("stepService", "failed(${body}, 'the Job is gone')")
+    .when(variable("jobState").isEqualTo(JobState.SUSPENDED))
+        .bean("stepService", "preempted")
+    .when(variable("jobState").isEqualTo(JobState.ACTIVE))
+        .bean("stepService", "admitted")
+    .when(variable("jobState").isEqualTo(JobState.COMPLETE))
+        .bean("stepService", "completed")
+    .when(variable("jobState").isEqualTo(JobState.FAILED))
+        .bean("stepService", "failed(${body}, 'the Job failed')")
+.end();
+```
+
+A missing Job goes to `create-job`, which marks the step QUEUED and creates the Job through the same component:
+
+```java
+from("direct:create-job").routeId("create-job")
+        .bean("stepService", "markQueued")
+        .setVariable("step", body())
+        .process(jobs::prepare)
+        .to("kubernetes-job:local?operation=createJob")
+```
+
+The Job is created with `suspend: true`, which the template sets for every step:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+spec:
+  suspend: true
+```
+
+The step is QUEUED until Kueue admits it and RUNNING after that. A Job that was running and is suspended again is not a failure: the step goes back to QUEUED, and a counter on the runner records the preemption. The distinction matters because a failed step stops the run and a queued one only waits.
+
+```java
+/** A started Job that is suspended again was preempted. The step waits again; it did not fail. */
+@Transactional
+public void preempted(StepRef ref) {
+    Step step = step(ref);
+    if (Step.RUNNING.equals(step.status)) {
+        step.status = Step.QUEUED;
+        metrics.preemption(step.name);
+        LOG.warnf("step %s of run %s preempted, queued again (%s)", step.name, step.runId, ref.jobName());
+    }
+}
+```
+
+The state lives in PostgreSQL on CloudNativePG, with Flyway migrations owned by the runner. A step is one row, keyed by run and name:
+
+```sql
+CREATE TABLE step (
+    run_id       text    NOT NULL REFERENCES run (id),
+    name         text    NOT NULL,
+    ordinal      integer NOT NULL,
+    status       text    NOT NULL,
+    attempt      integer NOT NULL,
+    job_name     text,
+    created_at   timestamptz,
+    admitted_at  timestamptz,
+    finished_at  timestamptz,
+    PRIMARY KEY (run_id, name)
+);
+```
+
+The worker reads and writes the same tables through Hibernate ORM with Panache and validates the schema instead of migrating it, so two services share a schema without both owning it.
 
 The runner is a long-lived Deployment and is never admitted by Kueue. A controller that waited in the queue for its own quota would be unable to create the Jobs that free it.
 
@@ -55,15 +132,72 @@ A bounded input is often larger than one process should read, and the work on ea
 
 ### How Quarkus and Camel model it
 
-The `plan` step reads the two topics and fixes, per partition, the offset range for the window: the first offset at or after the window start and the first offset at or after the window end. It stores them in `run_partition`, one row per partition, so the range is decided once and every attempt reads the same records. Offsets come from Kafka's offsets-for-times lookup. A partition whose records all precede the window start has no answer for that time, so the worker uses the end offset for it.
+The `plan` step reads the two topics and fixes, per partition, the offset range for the window: the first offset at or after the window start and the first offset at or after the window end. It stores them in `run_partition`, one row per partition, so the range is decided once and every attempt reads the same records. The table holds the range and the progress of each partition:
+
+```sql
+CREATE TABLE run_partition (
+    run_id          text    NOT NULL REFERENCES run (id),
+    partition       integer NOT NULL,
+    scheduled_from  bigint  NOT NULL,
+    scheduled_to    bigint  NOT NULL,
+    delivered_from  bigint  NOT NULL,
+    delivered_to    bigint  NOT NULL,
+    status          text    NOT NULL,
+    attempts        integer NOT NULL DEFAULT 0,
+    records_read    bigint  NOT NULL DEFAULT 0,
+    completed_at    timestamptz,
+    PRIMARY KEY (run_id, partition)
+);
+```
+
+Offsets come from Kafka's offsets-for-times lookup. A partition whose records all precede the window start has no answer for that time, so the worker uses the end offset for it:
+
+```java
+var found = c.offsetsForTimes(query);
+for (TopicPartition tp : partitions) {
+    var at = found.get(tp);
+    out.get(tp.partition())[i] = at == null ? ends.get(tp) : at.offset();
+}
+```
 
 The `reconcile` step is one Kubernetes Job in Indexed completion mode with three completions and a parallelism of three. Kubernetes gives each pod an index, available as `JOB_COMPLETION_INDEX`, and the worker treats the index as the partition number.
+
+```java
+builder.withCompletionMode("Indexed").withCompletions(PARTITIONS).withParallelism(PARTITIONS)
+        .withBackoffLimitPerIndex(1).withMaxFailedIndexes(PARTITIONS);
+```
 
 {% include excalidraw.html file="ai-co-partitioned-fan-out" alt="Partitions 0, 1 and 2 of the scheduled and delivered topics, keyed by order id, feed index 0, 1 and 2 of one Indexed Job, and each index writes one run_partition row" caption="Figure I.3: Because both topics are keyed by order id, index i can count an order's two events without help" %}
 
 Co-partitioning is what makes the fan-out free of coordination. An order's scheduled event and its delivered event share a key and therefore a partition, so one pod sees both and can decide whether the shipment is delivered or still open. If the topics were keyed differently, the pods would need to exchange records, and the Job would become a distributed join.
 
 The worker reads a fixed range with the plain Kafka consumer from Quarkus: assign the partition, seek to the start offset and read to the end offset. SmallRye Reactive Messaging and the Camel Kafka consumer are built to follow a topic and cannot be told to stop at an offset, so they are the wrong tools here. The pod writes its counts per carrier into `partition_result` in the same transaction that marks its `run_partition` row DONE. Records outside the window are never read.
+
+```java
+@Transactional
+public void complete(String runId, int partition, Tally tally) {
+    for (var e : tally.counts().entrySet()) {
+        PartitionResult.Key key = new PartitionResult.Key(runId, partition, e.getKey().name());
+        PartitionResult row = PartitionResult.findById(key);
+        if (row == null) {
+            row = new PartitionResult();
+            row.runId = runId;
+            row.partition = partition;
+            row.carrier = e.getKey().name();
+        }
+        row.scheduled = e.getValue().scheduled();
+        row.delivered = e.getValue().delivered();
+        row.open = e.getValue().open();
+        row.persist();
+    }
+    RunPartition partitionRow = RunPartition.findById(new RunPartition.Key(runId, partition));
+    partitionRow.status = RunPartition.DONE;
+    partitionRow.recordsRead = tally.records;
+    partitionRow.completedAt = Instant.now();
+}
+```
+
+In the example's first window the three partitions hold 6, 4 and 9 records, 19 in all, and the eight marker orders that lie outside every window are never read.
 
 Each pod asks for 500 millicores of CPU. Three of them ask for 1500m together, a fact that matters once there is a queue.
 
@@ -83,7 +217,19 @@ The Camel Aggregator is the familiar answer in a stream: collect messages by cor
 
 So the `aggregate` step is another Job. The runner creates it when the `reconcile` Job is Complete, not before. It reads `partition_result`, sums per carrier, upserts `carrier_total` and publishes one record per carrier to `edp.shipping.reconciliations` with the key `<run id>:<carrier>`. The topic is compacted, so the latest record per key is what remains. The publish is a Camel route: `split(body())` over the totals, one message each.
 
-Summing stored rows makes the step safe to run twice. It reads the same rows and writes the same totals, and the compacted topic holds one value per key regardless.
+```java
+from("direct:publish-reconciliations").routeId("publish-reconciliations")
+        .split(body())
+            .process(e -> {
+                var r = e.getMessage().getBody(CarrierReconciliation.class);
+                e.getMessage().setHeader(KafkaConstants.KEY, r.runId() + ":" + r.carrier());
+            })
+            .marshal().json(JsonLibrary.Jackson)
+            .to("kafka:edp.shipping.reconciliations")
+        .end();
+```
+
+Summing stored rows makes the step safe to run twice. It reads the same rows and writes the same totals, and the compacted topic holds one value per key regardless. For the first window the totals are FASTLINE 7 scheduled, 4 delivered and 3 open, and AIRCO 5 scheduled, 3 delivered and 2 open.
 
 ## Pattern: Replay failed steps only
 
@@ -99,15 +245,47 @@ Some failures are transient and some are not. A partition that cannot be read be
 
 The worker's exit code carries the verdict: 0 is success, 1 is transient, 42 is poison. The `reconcile` Job maps them to Kubernetes policy. `backoffLimitPerIndex: 1` lets each index be retried once, in its own pod, while the other indexes carry on. A `podFailurePolicy` rule turns exit code 42 into `FailIndex`, which fails that index immediately and without a retry. `maxFailedIndexes` lets the remaining indexes run to completion before the Job is marked Failed.
 
+```java
+static final int OK = 0;
+static final int TRANSIENT = 1;
+static final int POISON = 42;
+```
+
+```java
+if (config.on(config.failPolicy())) {
+    builder.withPodFailurePolicy(new PodFailurePolicyBuilder()
+            .addNewRule().withAction("FailIndex").withNewOnExitCodes().withContainerName("worker")
+            .withOperator("In").withValues(POISON).endOnExitCodes().endRule()
+            .addNewRule().withAction("Ignore").addNewOnPodCondition().withType("DisruptionTarget")
+            .withStatus("True").endOnPodCondition().endRule().build());
+}
+```
+
 Each pod receives its own failure count through the downward API from the annotation `batch.kubernetes.io/job-index-failure-count`, so a pod can tell its first attempt from its retry.
 
-When a transient fault was injected on one partition, that index had two pods, one that failed and one that completed, while the other two had one each, and the Job was Complete. When a poison fault was injected on partition 1, the Job ended Failed with `failedIndexes` of `1` and `completedIndexes` of `0,2`; index 1 had a single pod, and the other two finished. Kueue's Workload for that Job ended `Finished` with the reason `Failed`, and its quota was released.
+When a transient fault was injected on one partition, that index had two pods, one that failed and one that completed, while the other two had one each, and the Job was Complete. That run's `reconcile` step took 28 seconds, against 10 to 12 seconds with no fault. When a poison fault was injected on partition 1, the Job ended Failed with `failedIndexes` of `1` and `completedIndexes` of `0,2`; index 1 had a single pod, and the other two finished. Kueue's Workload for that Job ended `Finished` with the reason `Failed`, and its quota was released.
 
 A failed run is replayed with `POST /runs/{id}/replay`, which answers 202 only for a run that is FAILED. The runner does not create a plan Job again, because the offsets are already fixed. It creates a new `reconcile` Job, a new attempt, whose name carries the attempt number.
 
 {% include excalidraw.html file="ai-replay-failed-index" alt="Attempt 1 has index 0 and 2 done and index 1 failed with exit 42; the replay Job's index 0 and 2 see their run_partition rows DONE and exit 0 without reading Kafka, index 1 reads partition 1 and becomes DONE, and aggregate then runs once" caption="Figure I.4: A replay Job runs all indexes, and the finished ones exit at once" %}
 
-The replay rule is a guard in the worker: an index whose `run_partition` row is already DONE exits 0 without reading Kafka. A Job cannot be told to run only index 1. A new Job runs every index, so the guard makes the finished ones free in time, and the aggregate step then runs once on three DONE partitions.
+The replay rule is a guard in the worker: an index whose `run_partition` row is already DONE exits 0 without reading Kafka.
+
+```java
+@Transactional
+public RunPartition begin(String runId, int partition, boolean guard) {
+    RunPartition row = RunPartition.findById(new RunPartition.Key(runId, partition));
+    if (row == null) {
+        throw new IllegalStateException("run " + runId + " has no partition " + partition + ", plan has not run");
+    }
+    if (guard && RunPartition.DONE.equals(row.status)) {
+        return null;
+    }
+    row.attempts++;
+    return row;
+}
+```
+ A Job cannot be told to run only index 1. A new Job runs every index, so the guard makes the finished ones free in time, and the aggregate step then runs once on three DONE partitions.
 
 The replay costs something the guard cannot remove. Kueue reserves quota for the whole pod set, three pods at 500m, so the replay Job waits for 1500m even though only one index has work to do. A replay is cheap in Kafka reads and not cheap in quota.
 
@@ -129,17 +307,65 @@ Kubernetes starts a Job as soon as it is created and lets the scheduler place it
 
 ### How Quarkus and Camel model it
 
-Kueue is a Kubernetes controller that does exactly this. The batch code does not call it. It creates a Job, labelled with the queue, and Kueue's webhook and controller do the rest.
+Kueue is a Kubernetes controller that does exactly this. The batch code does not call it. It creates a Job, labelled with the queue, and Kueue's webhook and controller do the rest. The runner adds two labels to the Job it creates, the queue and, when the run has one, the priority class:
+
+```java
+Map<String, String> labels(StepRef ref) {
+    Map<String, String> labels = new LinkedHashMap<>();
+    labels.put(RUN_LABEL, ref.runId());
+    labels.put(STEP_LABEL, ref.name());
+    if (config.on(config.queue())) {
+        labels.put(QUEUE_LABEL, config.queueName());
+    }
+    if (ref.priority() != null && config.on(config.priority())) {
+        labels.put(PRIORITY_LABEL, ref.priority());
+    }
+    return labels;
+}
+```
 
 {% include excalidraw.html file="ai-kueue-objects" alt="A ResourceFlavor and a WorkloadPriorityClass are cluster scoped; the ClusterQueue holds cpu 1750m and memory 3Gi, BestEffortFIFO and a preemption policy; a LocalQueue in the edp namespace feeds it; the runner's Job carries the queue-name and priority-class labels and Kueue creates a Workload that is admitted against the ClusterQueue" caption="Figure I.5: The Kueue objects behind one queue" %}
 
 - A **ResourceFlavor** names a kind of capacity. Here there is one, `default-flavor`, with no node labels.
 - A **ClusterQueue** holds the quota: 1750 millicores of CPU and 3Gi of memory on that flavor. It also holds the policies that decide order and preemption.
+
+```yaml
+# 1750m admits one reconcile step (3 x 500m) plus one plan or aggregate step (250m), and never two reconcile steps.
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata: {name: reconciliation}
+spec:
+  namespaceSelector:
+    matchLabels: {kubernetes.io/metadata.name: edp}
+  queueingStrategy: BestEffortFIFO
+  preemption:
+    withinClusterQueue: LowerPriority
+    reclaimWithinCohort: Never
+  resourceGroups:
+    - coveredResources: [cpu, memory]
+      flavors:
+        - name: default-flavor
+          resources:
+            - {name: cpu, nominalQuota: 1750m}
+            - {name: memory, nominalQuota: 3Gi}
+```
 - A **LocalQueue** is the namespaced door to a ClusterQueue. Jobs in `edp` name it with the label `kueue.x-k8s.io/queue-name`.
 - A **Workload** is what Kueue creates for each Job. It is the unit that is admitted. Its pod set carries the resource request of all the pods of the Job.
 - A **WorkloadPriorityClass** gives a Workload a priority without touching the priority of its pods. Here there are `batch-low` at 100 and `batch-high` at 1000, chosen by a second label on the Job. A Job with no priority label has priority 0.
 
-Kueue's webhook sets `suspend: true` on a Job that carries the queue label, so the runner creates the Job suspended and the webhook would do it regardless. The step is QUEUED. Kueue admits the Workload when the quota has room, unsuspends the Job, and the pods are created. When the Job finishes, the quota is released.
+```yaml
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata: {name: batch-low}
+value: 100
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata: {name: batch-high}
+value: 1000
+```
+
+Kueue's webhook sets `suspend: true` on a Job that carries the queue label, so the runner creates the Job suspended and the webhook would do it regardless. The step is QUEUED. Kueue admits the Workload when the quota has room, unsuspends the Job, and the pods are created. When the Job finishes, the quota is released. On an empty quota a step is admitted about two seconds after the runner creates its Job, which is the runner's tick; the step itself then runs about 10 seconds for `plan` and `aggregate`, which is mostly JVM start. A step that waited for quota in the contention run waited 52 seconds and then ran 52 seconds.
 
 A Workload that does not fit stays pending. Its `QuotaReserved` condition is False with the reason `WaitingForQuota`, and the message says what is missing, for example insufficient unused quota for cpu in the flavor and how much more is needed. `Admitted` is False with the reason `NoReservation`. The Job is suspended and has no pods.
 
@@ -149,7 +375,15 @@ Quota is a ledger and not a capacity. The scheduler sees the node's allocatable 
 
 {% include excalidraw.html file="ai-queueing-timeline" alt="Two runs against a quota of 1750m: the first reconcile Job runs with 3 pods at 1500m, the second waits suspended with reason WaitingForQuota and is admitted when the first completes; without the queue label both run at once and request 3000m" caption="Figure I.6: Two runs, one quota: the second reconcile Job waits" %}
 
-With the queue label removed, both Jobs start together and ask for 3000m against a queue that never saw them. What the queue did is visible in what it prevented: the Workload that waited, the pending-workloads metric, and the overlap of pod requests.
+With the queue label removed, both Jobs start together and ask for 3000m against a queue that never saw them. The runner then creates the Jobs unsuspended, because with no label Kueue never sees them and nothing would start a suspended one:
+
+```java
+if (!config.on(config.queue())) {
+    builder.withSuspend(false);   // no queue label: Kueue never sees the Job, so nothing would ever start a suspended one
+}
+```
+
+Without the label there is no Workload and no admission wait. What the queue did is visible in what it prevented: the Workload that waited, the pending-workloads metric, and the overlap of pod requests.
 
 ### Priority and preemption
 
@@ -159,13 +393,13 @@ A low-priority run was admitted and two of its three partitions finished. The th
 
 {% include excalidraw.html file="ai-preemption" alt="The low-priority run has index 0 and 1 done and index 2 running; when the high-priority run is submitted the low run's Workload is evicted with reason Preempted and its Job is suspended with completedIndexes 0,1 kept; the high run is admitted and completes; the low run is admitted again and starts one pod for index 2 only" caption="Figure I.7: Preemption suspends a Job and keeps what it finished" %}
 
-Kueue evicted the low-priority Workload within a tenth of a second. Its conditions were `Evicted` True with the reason `Preempted`, `Preempted` True with the reason `InClusterQueue`, and `Requeued` True. The Job was suspended again, and the runner moved the step to QUEUED, never to FAILED. The high-priority run was admitted in the same second.
+Kueue evicted the low-priority Workload within a tenth of a second. Its conditions were `Evicted` True with the reason `Preempted`, `Preempted` True with the reason `InClusterQueue`, and `Requeued` True. The Job was suspended again, and the runner moved the step to QUEUED, never to FAILED. The high-priority run was admitted in the same second, and in the spike run the low run was admitted again 15.6 seconds after the high run was submitted.
 
 Kueue evicted a run that had only one pod left because it reserves quota for the whole pod set: the low run still held 1500m with a single active pod, so the high run did not fit without evicting it.
 
-When the high run completed, the low run was admitted again. `completedIndexes` still read `0,1`, the completed pods were kept, and the Job started one new pod, for index 2. Partitions 0 and 1 were not read again. `status.failed` stayed at 0 and the failure count of the new pod was 0, because an eviction does not count as a failed attempt.
+When the high run completed, the low run was admitted again. `completedIndexes` still read `0,1`, the pods of indexes 0 and 1 were the same pods as before, and the evicted pod of index 2 was deleted and replaced by one new pod, the only one created. Partitions 0 and 1 were not read again: their `attempts` stayed at 1 and their `completed_at` did not change. Index 2 shows 2 attempts, because the interrupted attempt had already counted when the worker began it. `status.failed` stayed at 0 and the failure count of every index was 0, because an eviction does not count as a failed attempt.
 
-The pod that was running when the Job was suspended stayed Terminating for its grace period and overlapped with the high run's pods, so the sum of pod requests can briefly exceed the quota. The quota governs admission, not the time a pod takes to leave.
+In the spike run the pod that was running when the Job was suspended stayed Terminating for its grace period and overlapped with the high run's pods, so the sum of pod requests can briefly exceed the quota. The quota governs admission, not the time a pod takes to leave.
 
 The `podFailurePolicy` also has a rule that ignores pod failures with the condition `DisruptionTarget`. It is a guard for disruptions such as node drains and evictions, so that they do not spend the per-index retry. The preemption above did not exercise it: the deleted pod carried no `DisruptionTarget` condition, which is why the failure count stayed at 0 without it.
 
@@ -185,9 +419,23 @@ A batch run is hard to observe for two reasons: its pods live for seconds, and t
 
 {% include excalidraw.html file="ai-observability-path" alt="Worker pods push traces and logs by OTLP when they exit, the runner pushes spans and step metrics, and the collector scrapes the Kueue controller over HTTPS with a bearer token; Tempo, Loki and Prometheus metrics feed the Grafana dashboard edp-batch" caption="Figure I.8: Pods push at exit, the runner reports for them, and the collector scrapes Kueue" %}
 
-**One trace per run.** The runner opens a span for the run and stores its `traceparent` in PostgreSQL with the run. When it creates a Job it passes the value to the pod as the environment variable `TRACEPARENT`. The worker reads it with the OpenTelemetry `TextMapPropagator` over the process environment, which is how the OpenTelemetry specification propagates context to a process that cannot receive headers (OpenTelemetry, Environment Variables as Context Propagation Carriers). The spans of the three steps and the index pods land in one trace. A pod that lives seconds pushes its spans and logs over OTLP as it exits, and the logs carry the trace id.
+**One trace per run.** The runner opens a span for the run and stores its `traceparent` in PostgreSQL with the run. When it creates a Job it passes the value to the pod as the environment variable `TRACEPARENT`. The runner sets it in the Job's environment:
 
-**Metrics from the runner, not the pods.** A Prometheus scrape every ten seconds mostly misses a pod that lives five. The long-lived runner counts instead: step duration, time in the queue, failures, replays, preemptions and records read, all as Micrometer meters.
+```java
+if (ref.traceparent() != null) {
+    env.add(new EnvVarBuilder().withName("TRACEPARENT").withValue(ref.traceparent()).build());
+}
+```
+
+The worker reads it with the W3C trace-context propagator over the process environment:
+
+```java
+Context parent = W3CTraceContextPropagator.getInstance().extract(Context.root(), env.all(), ENV);
+```
+
+This is how the OpenTelemetry specification propagates context to a process that cannot receive headers (OpenTelemetry, Environment Variables as Context Propagation Carriers). The spans of the three steps and the index pods land in one trace. A pod that lives seconds pushes its spans and logs over OTLP as it exits, and the logs carry the trace id.
+
+**Metrics from the runner, not the pods.** A Prometheus scrape every ten seconds mostly misses a pod that lives five. The long-lived runner counts instead: step duration, time in the queue, failures, replays, preemptions and records read, all as Micrometer meters. Prometheus receives them as `batch_step_duration_seconds`, `batch_step_queue_wait_seconds`, `batch_step_failures_total{step}`, `batch_step_replays_total`, `batch_step_preemptions_total{step}` and `batch_partition_records_total`.
 
 **Metrics from Kueue.** The Kueue controller serves metrics over HTTPS on port 8443 and requires a bearer token that Kubernetes accepts through TokenReview and SubjectAccessReview (Kueue, metrics access). A second scrape job in the collector uses the service account token of the observability pod, bound to the `kueue-metrics-reader` ClusterRole. The controller's certificate is self-signed and regenerated at start, with no CA to verify against, so the job sets `insecure_skip_verify`. That is also what upstream's own Prometheus configuration does (Kueue, Configure Prometheus with TLS). It means the token authenticates the reader but the reader does not authenticate the server, which is acceptable for a controller inside the same cluster and a local demo, and should not be copied to a scrape across a network.
 
@@ -220,11 +468,11 @@ cd examples/ai-batch-processing-with-kueue
 ./verify.sh
 ```
 
-`verify.sh` installs Kueue, runs a reconciliation, injects a transient and a poison fault, replays the failed run, submits two runs against one quota, preempts a low-priority run, and removes Kueue again. Watch the Workloads, the `run_partition` rows and the `edp-batch` dashboard. It ends with `34 of 34 checks passed`.
+`verify.sh` installs Kueue, runs a reconciliation, injects a transient and a poison fault, replays the failed run, submits two runs against one quota, preempts a low-priority run, and removes Kueue again. Watch the Workloads, the `run_partition` rows and the `edp-batch` dashboard. It ends with `34/34 checks passed`.
 
 Try one change and rerun:
 
-- `QUEUE=off ./verify.sh` (demo code): the Jobs carry no queue label, both runs start together and the queue checks fail.
+- `QUEUE=off ./verify.sh` (demo code): the Jobs start unsuspended and unqueued, both runs start together and the queue checks fail.
 - `REPLAY_GUARD=off ./verify.sh` (demo code): the replay reads every partition again, and the totals still come out right because the counts are upserted.
 - Put `FAULT_PARTITION` and `FAULT_MODE` in the `ai-demo-faults` ConfigMap: that partition fails once or for good, and the Job's `completedIndexes` and `failedIndexes` change with it.
 

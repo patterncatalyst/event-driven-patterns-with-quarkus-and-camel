@@ -1,6 +1,6 @@
 # Event-Driven-Patterns-with-Quarkus-and-Camel
 
-Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 120 slides
+Source: Event-Driven-Patterns-with-Quarkus-and-Camel.pptx · 123 slides
 
 ## [001] PATTERN CATALYST · Event-Driven Patterns with Quarkus and Camel
 
@@ -1370,9 +1370,41 @@ buildah build, skopeo copy by digest into a private registry on an on-premises K
 
 > The same images that run on compose and on minikube also run on an on-premises Kubernetes distribution, and nothing in the code changes. What differs is how the image arrives. A source build inside the cluster would produce a different image, so the unchanged Containerfile is built on the host with buildah, rootless and with no daemon, and copied into the registry the cluster already runs with skopeo. On a first copy into an empty registry a plain copy changes the digest, because skopeo compresses layers that buildah stored uncompressed. Preserving digests keeps the manifest as it is, or fails, and the Deployment then names the image by digest. TLS is verified against the cluster's published CA on every call, and the registry token is short-lived and held in one shell variable for one call.
 
-## [118] CHOOSING A PATTERN · Choosing a pattern
+## [118] BATCH PROCESSING · A Process Manager over batch steps
 
 p. 118
+
+- Problem. A reconciliation reads two co-partitioned topics. It needs a plan of steps, a fan-out with one unit of work per partition, an aggregate, and a replay of only the failed partitions.
+- State between steps. Something has to remember which steps exist, which one runs and what each decided. A single long program cannot be resumed at 90 percent.
+- Solution. A long-lived runner is the Process Manager of Hohpe and Woolf: it creates one Job per step and routes on what each Job did.
+- Fan-out. The reconcile step is a Kubernetes Indexed Job, and index i reads partition i of both topics. Exit code 42 marks a poison partition and fails only that index.
+- Memory. Step, partition and result rows live in PostgreSQL, so a replay reruns only the indexes that are not DONE.
+
+> A reconciliation compares what was scheduled with what was delivered, per carrier, over a window. The two topics are keyed by order id and share a partition count, so partition i of one lines up with partition i of the other and the work splits cleanly by partition. What the split does not give is memory. A program that does it all in one run can be started and can finish, and when it fails near the end the only recovery is to start over and read every partition again. The runner solves that as a Process Manager: it holds the plan of three steps, plan, reconcile and aggregate, creates a Kubernetes Job for each, and records the state of every step and every partition in PostgreSQL. The reconcile step is an Indexed Job with one pod per partition. A transient fault retries one index. A poison partition fails that index alone, and a replay reruns only what is not done.
+
+## [119] BATCH PROCESSING · Replay runs only the failed index
+
+p. 119
+
+batch-runner and batch-worker: a replay Job whose finished indexes exit at once
+
+> In the first attempt indexes 0 and 2 finish and index 1 exits with code 42, a poison partition. A pod failure policy turns that code into FailIndex, so the index fails at once without a retry and the other two carry on. The run is FAILED and its offsets are already fixed, so a replay does not plan again. It creates a new reconcile Job, a new attempt. A Job cannot be told to run only index 1, so all three indexes start, and the worker checks the partition row first. A row that is already DONE means exit 0 without reading Kafka. Index 1 reads its partition and becomes DONE, and aggregate then runs once on three DONE partitions. The totals are an upsert keyed by run, partition and carrier, so the guard saves the read and the upsert protects the result. A replay is cheap in Kafka reads and not in quota, because the Job still asks for all three pods, 1500m.
+
+## [120] BATCH PROCESSING · Admission and quota with Kueue
+
+p. 120
+
+- Suspended Jobs. The runner creates every Job with the queue-name label, and Kueue admits it only when the whole pod set fits the quota. Until then the step is QUEUED.
+- ClusterQueue. The quota is 1750m of CPU and 3Gi of memory. Three reconcile pods of 500m fill most of it, so a second reconcile Job waits.
+- Ledger, not capacity. Kueue never checks the node. The queue limits what the batch may ask for and the node limits what exists.
+- WorkloadPriorityClass. batch-low is 100 and batch-high is 1000, chosen by a second label on the Job. A Job without the label has priority 0.
+- Eviction. A suspended-again Job is not a failure. The step returns to QUEUED, and only a failed Job stops the run.
+
+> Kubernetes starts a Job when it is created, so two batches submitted together both start and ask for more than a team's share. Kueue adds the missing queue. The runner labels each Job with the LocalQueue, the webhook suspends it, and a Workload is created that is admitted against the ClusterQueue only when its whole request fits. Quota is reserved for the whole pod set, so a reconcile Job holds 1500m even when one pod is left. With BestEffortFIFO, an older Workload that does not fit does not block a newer one that does. A higher-priority run preempted the lower one's running index, and the interrupted attempt counted, so that index ended with two attempts, only the missing index got a new pod, and the finished indexes kept their results. The runner counts a preemption separately from a failure, because a queued step only waits.
+
+## [121] CHOOSING A PATTERN · Choosing a pattern
+
+p. 121
 
 Problem | Pattern
 
@@ -1404,9 +1436,9 @@ A stuck flow shows no error | Trace context, flow metrics, correlation ids
 
 > If a consumer can ask the source for details, a notification is enough and the payload stays small. If it cannot call back, the event carries the state and the consumer keeps its own copy. If a service must change a database and publish, the outbox makes both one commit and a log reader publishes. Duplicate delivery is met with an idempotent consumer, and a failure that will not clear is moved aside with a dead letter. Every pattern here has a cost in operations or latency, and each has a case where it is the wrong choice.
 
-## [119] CREDITS · Works these patterns draw on
+## [122] CREDITS · Works these patterns draw on
 
-p. 119
+p. 122
 
 Author | Work
 
@@ -1438,9 +1470,9 @@ W3C | Trace Context
 
 > The pattern names come mostly from Hohpe and Woolf, and the outbox, log tailing and saga descriptions from Richardson. Fowler names event notification, event-carried state transfer and event sourcing, and Young supplies the event store operations and versioning topics. Danilo Sato's Parallel Change gives the expand and contract sequence used for schema changes. DeMillo, Lipton and Sayward proposed mutation testing, the idea behind the bite cycle. The Azure Architecture Center's pattern pages describe the materialized view and the saga's step kinds. Garcia-Molina and Salem introduced sagas, and the W3C specification defines the trace context. None of the text or code of these works is reproduced here.
 
-## [120] SCAN TO EXPLORE · Take it with you
+## [123] SCAN TO EXPLORE · Take it with you
 
-p. 120
+p. 123
 
 The site
 
