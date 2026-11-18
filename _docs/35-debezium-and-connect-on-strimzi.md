@@ -155,7 +155,7 @@ The annotation is gone within seconds of a list. A list right after the connecto
 
 {% include excalidraw.html file="35-offset-change-by-resource" alt="A running connector is stopped by setting state stopped; while stopped the annotation list writes offsets.json to a ConfigMap and the annotation alter reads new offsets from a ConfigMap, and the operator removes the annotation each time; state running resumes it; an alter while running makes the operator log a warning, keeps the annotation and changes nothing" caption="Figure 35.2: An offset operation is an annotation on the resource, and it needs the connector stopped" %}
 
-An alter is refused while the connector runs. The operator logs a warning for the connector, `Connector is not in STOPPED state`, and writes no Kubernetes event for it. It leaves the annotation on the resource with the offsets unchanged. The annotation stays, and it fires later against the stopped connector with whatever the ConfigMap holds then, so the stale one is removed before the next step.
+An alter is refused while the connector runs. The operator logs a warning for the connector, `Connector is not in STOPPED state`, and writes no Kubernetes event for it. It leaves the annotation on the resource with the offsets unchanged. Left in place, it would fire later against the stopped connector with whatever the ConfigMap then holds, so the stale annotation is removed before the next step.
 
 ```bash
 kubectl -n edp-kafka patch kafkaconnector inventory-cdc --type=merge -p '{"spec":{"state":"stopped"}}'
