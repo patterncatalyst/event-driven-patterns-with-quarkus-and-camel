@@ -378,6 +378,7 @@ remove_set() { # remove_set <kustomize-dir>: delete an app set and wait until it
 # The appendix's verify.sh installs it after k8s_fresh and removes it before k8s_teardown.
 
 KUEUE_NS=kueue-system
+KUEUE_METRICS_BINDING=edp-lgtm-kueue-metrics # cluster-scoped, applied by the batch example's monitoring component
 KUEUE_DIR="$_LIB_DIR/platform/kueue"
 
 _kueue_webhook_suspends() { # a server-side dry-run Job with the queue label comes back suspended
@@ -401,15 +402,20 @@ JOB
     [[ "$out" == "true" ]]
 }
 
-_kueue_leftovers() { # print what a finished kueue_teardown must not leave behind; empty output means clean
+_kueue_leftovers() { # print what a finished kueue_teardown must not leave behind; empty output means clean. With --final it
+    # also lists the cluster-scoped metrics binding
     kc get crd -o name 2>/dev/null | grep 'kueue\.x-k8s\.io' || true
     kc get mutatingwebhookconfiguration,validatingwebhookconfiguration -o name 2>/dev/null | grep -i kueue || true
     kc get apiservice v1beta2.visibility.kueue.x-k8s.io -o name 2>/dev/null || true
     kc get ns "$KUEUE_NS" -o name 2>/dev/null || true
+    if [[ "${1:-}" == "--final" ]]; then
+        kc get clusterrolebinding "$KUEUE_METRICS_BINDING" -o name 2>/dev/null || true
+    fi
 }
 
-kueue_teardown() { # Jobs, Workloads, queues, priority classes, flavors, then the manifest; fails loudly on a leftover
-    local t0=$SECONDS
+kueue_teardown() { # Jobs, Workloads, queues, priority classes, flavors, then the manifest; fails loudly on a leftover.
+    # --final (the end of a run, not the reinstall in kueue_fresh) also deletes the metrics binding the substrate applied.
+    local t0=$SECONDS final="${1:-}"
     if _have crd workloads.kueue.x-k8s.io; then
         if _have ns "$NS_APPS"; then
             kc -n "$NS_APPS" delete job -l edp.batch/run --ignore-not-found --wait --timeout=120s >/dev/null \
@@ -425,14 +431,20 @@ kueue_teardown() { # Jobs, Workloads, queues, priority classes, flavors, then th
                 || { echo "kueue_teardown: $kind did not delete in time (stuck finalizer?)" >&2; return 1; }
         done
     fi
+    # Deleting the namespaces never removes a cluster-scoped object: the binding that lets the lgtm ServiceAccount read
+    # Kueue's metrics (applied by the example's monitoring component) is deleted here.
+    if [[ "$final" == "--final" ]]; then
+        kc delete clusterrolebinding "$KUEUE_METRICS_BINDING" --ignore-not-found >/dev/null \
+            || { echo "kueue_teardown: the ClusterRoleBinding $KUEUE_METRICS_BINDING did not delete" >&2; return 1; }
+    fi
     # kubectl throttles itself to 5 requests/s, so a delete -k of the whole manifest costs about 17 s even when nothing
     # is installed: skip it when no Kueue namespace, CRD, webhook or APIService exists.
     if [[ -f "$KUEUE_DIR/$(basename "$KUEUE_FILE")" ]] && { _have ns "$KUEUE_NS" || [[ -n "$(_kueue_leftovers)" ]]; }; then
         kc delete -k "$KUEUE_DIR" --ignore-not-found --wait --timeout=180s >/dev/null \
             || { echo "kueue_teardown: the Kueue manifest did not delete in time" >&2; return 1; }
     fi
-    _kueue_gone() { [[ -z "$(_kueue_leftovers)" ]]; }
-    poll 120 _kueue_gone || { echo "kueue_teardown: FAILED, left behind:" >&2; _kueue_leftovers >&2; return 1; }
+    _kueue_gone() { [[ -z "$(_kueue_leftovers "$final")" ]]; }
+    poll 120 _kueue_gone || { echo "kueue_teardown: FAILED, left behind:" >&2; _kueue_leftovers "$final" >&2; return 1; }
     echo "measured: Kueue removed in $((SECONDS - t0)) s"
 }
 

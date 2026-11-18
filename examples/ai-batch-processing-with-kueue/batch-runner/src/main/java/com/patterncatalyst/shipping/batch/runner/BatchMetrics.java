@@ -3,8 +3,8 @@ package com.patterncatalyst.shipping.batch.runner;
 import java.time.Duration;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /** The step metrics, exported from the long-lived runner because the worker pods live seconds. */
@@ -42,8 +42,9 @@ public class BatchMetrics {
     }
 
     private void seconds(String name, String step, String description, Duration d) {
-        DistributionSummary.builder(name).baseUnit("s").description(description).tag("step", step)
-                .serviceLevelObjectives(1, 5, 15, 30, 60, 120, 300).register(registry)
-                .record(Math.max(0, d.toMillis()) / 1000.0);
+        Timer.builder(name).description(description).tag("step", step)
+                .serviceLevelObjectives(Duration.ofSeconds(1), Duration.ofSeconds(5), Duration.ofSeconds(15),
+                        Duration.ofSeconds(30), Duration.ofSeconds(60), Duration.ofSeconds(120), Duration.ofSeconds(300))
+                .register(registry).record(d.isNegative() ? Duration.ZERO : d);
     }
 }

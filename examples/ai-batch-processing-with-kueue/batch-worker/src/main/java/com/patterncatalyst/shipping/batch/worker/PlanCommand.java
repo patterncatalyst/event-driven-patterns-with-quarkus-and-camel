@@ -27,7 +27,7 @@ public class PlanCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        String runId = env.require("RUN_ID");
+        String runId = env.requireRunId();
         try {
             return span.run("batch.plan", Map.of("edp.batch.run", runId), () -> plan(runId));
         } finally {

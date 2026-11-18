@@ -430,15 +430,16 @@ if (ref.traceparent() != null) {
 }
 ```
 
-The worker reads it with the W3C trace-context propagator over the process environment:
+The worker reads `TRACEPARENT` through its config mapping and hands it to the W3C trace-context propagator as the carrier:
 
 ```java
-Context parent = W3CTraceContextPropagator.getInstance().extract(Context.root(), env.all(), ENV);
+Map<String, String> carrier = env.traceparent().map(value -> Map.of("traceparent", value)).orElse(Map.of());
+Context parent = W3CTraceContextPropagator.getInstance().extract(Context.root(), carrier, CARRIER);
 ```
 
 This is how the OpenTelemetry specification propagates context to a process that cannot receive headers (OpenTelemetry, Environment Variables as Context Propagation Carriers). The spans of the three steps and the index pods land in one trace. A pod that lives seconds pushes its spans and logs over OTLP as it exits, and the logs carry the trace id.
 
-**Metrics from the runner, not the pods.** A Prometheus scrape every ten seconds mostly misses a pod that lives five. The long-lived runner counts instead: step duration, time in the queue, failures, replays, preemptions and records read, all as Micrometer meters. Prometheus receives them as `batch_step_duration_seconds`, `batch_step_queue_wait_seconds`, `batch_step_failures_total{step}`, `batch_step_replays_total`, `batch_step_preemptions_total{step}` and `batch_partition_records_total`.
+**Metrics from the runner, not the pods.** A Prometheus scrape every ten seconds mostly misses a pod that lives five. The long-lived runner counts instead: step duration, time in the queue, failures, replays, preemptions and records read, all as Micrometer meters. Prometheus receives them as `batch_step_duration_milliseconds`, `batch_step_queue_wait_milliseconds`, `batch_step_failures_total{step}`, `batch_step_replays_total`, `batch_step_preemptions_total{step}` and `batch_partition_records_total`.
 
 **Metrics from Kueue.** The Kueue controller serves metrics over HTTPS on port 8443 and requires a bearer token that Kubernetes accepts through TokenReview and SubjectAccessReview (Kueue, metrics access). A second scrape job in the collector uses the service account token of the observability pod, bound to the `kueue-metrics-reader` ClusterRole. The controller's certificate is self-signed and regenerated at start, with no CA to verify against, so the job sets `insecure_skip_verify`. That is also what upstream's own Prometheus configuration does (Kueue, Configure Prometheus with TLS). It means the token authenticates the reader but the reader does not authenticate the server, which is acceptable for a controller inside the same cluster and a local demo, and should not be copied to a scrape across a network.
 

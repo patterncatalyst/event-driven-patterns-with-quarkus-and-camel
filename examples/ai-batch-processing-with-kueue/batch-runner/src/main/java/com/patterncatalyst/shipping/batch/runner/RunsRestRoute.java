@@ -11,14 +11,16 @@ public class RunsRestRoute extends RouteBuilder {
 
     @Override
     public void configure() {
-        restConfiguration().bindingMode(RestBindingMode.off);
+        restConfiguration().bindingMode(RestBindingMode.json)
+                .dataFormatProperty("autoDiscoverObjectMapper", "true"); // the application ObjectMapper knows java.time
 
         rest("/runs")
-                .post().id("rest-create-run").consumes("application/json").produces("application/json")
+                .post().id("rest-create-run").consumes("application/json").produces("application/json").type(RunRequest.class)
+                .outType(RunService.Accepted.class)
                 .to("direct:create-run")
-                .post("/{id}/replay").id("rest-replay-run").produces("application/json")
+                .post("/{id}/replay").id("rest-replay-run").produces("application/json").outType(RunService.Replayed.class)
                 .to("direct:replay-run")
-                .get("/{id}").id("rest-get-run").produces("application/json")
+                .get("/{id}").id("rest-get-run").produces("application/json").outType(RunService.RunView.class)
                 .to("direct:get-run");
     }
 }

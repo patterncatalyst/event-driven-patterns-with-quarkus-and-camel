@@ -100,4 +100,4 @@ The failing sets are the ones measured in the live window; each run starts fresh
 
 ## Teardown
 
-`verify.sh` ends with `kueue_teardown` (Jobs, Workloads, queues, priority classes, flavor, then the Kueue manifest) and `k8s_teardown`, and fails loudly when a Kueue CRD, webhook configuration, APIService or `kueue-system` remains. Finalizers are never stripped. `examples/_k8s/cluster.sh down` deletes the profile.
+`verify.sh` ends with `kueue_teardown` (Jobs, Workloads, queues, priority classes, flavor, then the Kueue manifest) and `k8s_teardown`, and fails loudly when a Kueue CRD, webhook configuration, APIService or `kueue-system` remains. It also deletes the cluster-scoped ClusterRoleBinding `edp-lgtm-kueue-metrics` (a namespace deletion never removes it) and fails if it remains. Finalizers are never stripped. `examples/_k8s/cluster.sh down` deletes the profile.

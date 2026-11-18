@@ -1,5 +1,5 @@
 # The lgtm ServiceAccount may read Kueue's metrics endpoint (TokenReview and SubjectAccessReview on the controller).
-# The ClusterRole kueue-metrics-reader comes with the Kueue manifest; verify.sh removes this binding with the namespaces.
+# The ClusterRole kueue-metrics-reader comes with the Kueue manifest; a namespace deletion never removes a cluster-scoped object, so kueue_teardown (lib.sh) deletes this binding.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata: {name: edp-lgtm-kueue-metrics}

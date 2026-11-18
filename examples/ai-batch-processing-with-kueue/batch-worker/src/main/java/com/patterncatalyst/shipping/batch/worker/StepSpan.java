@@ -25,16 +25,15 @@ public class StepSpan {
 
     private static final Logger LOG = Logger.getLogger(StepSpan.class);
 
-    /** Environment names are the upper-case form of the header name, with underscores for hyphens. */
-    private static final TextMapGetter<Map<String, String>> ENV = new TextMapGetter<>() {
+    private static final TextMapGetter<Map<String, String>> CARRIER = new TextMapGetter<>() {
         @Override
-        public Iterable<String> keys(Map<String, String> env) {
-            return env.keySet();
+        public Iterable<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
         }
 
         @Override
-        public String get(Map<String, String> env, String key) {
-            return env == null ? null : env.get(key.toUpperCase().replace('-', '_'));
+        public String get(Map<String, String> carrier, String key) {
+            return carrier == null ? null : carrier.get(key);
         }
     };
 
@@ -50,7 +49,8 @@ public class StepSpan {
 
     /** Runs the body inside the span and returns its exit code. An exception is exit code 1. */
     public int run(String name, Map<String, String> attributes, IntSupplier body) {
-        Context parent = W3CTraceContextPropagator.getInstance().extract(Context.root(), env.all(), ENV);
+        Map<String, String> carrier = env.traceparent().map(value -> Map.of("traceparent", value)).orElse(Map.of());
+        Context parent = W3CTraceContextPropagator.getInstance().extract(Context.root(), carrier, CARRIER);
         var builder = tracer.spanBuilder(name).setParent(parent);
         attributes.forEach(builder::setAttribute);
         Span span = builder.startSpan();

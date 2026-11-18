@@ -31,8 +31,8 @@ public class ReconcileCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        String runId = env.require("RUN_ID");
-        int partition = Integer.parseInt(env.require("JOB_COMPLETION_INDEX"));
+        String runId = env.requireRunId();
+        int partition = env.requirePartition();
         try {
             return span.run("batch.reconcile", Map.of("edp.batch.run", runId, "edp.batch.partition", String.valueOf(partition)),
                     () -> reconcile(runId, partition));
@@ -42,7 +42,7 @@ public class ReconcileCommand implements Callable<Integer> {
     }
 
     int reconcile(String runId, int partition) {
-        boolean guard = !"off".equalsIgnoreCase(env.get("REPLAY_GUARD"));
+        boolean guard = !"off".equalsIgnoreCase(env.replayGuard().orElse(null));
         RunPartition row = store.begin(runId, partition, guard);
         if (row == null) {
             LOG.infof("run %s partition %d skipped: already DONE", runId, partition);
@@ -68,16 +68,15 @@ public class ReconcileCommand implements Callable<Integer> {
 
     /** The demo faults: once fails the first pod of the index, always fails it for good. */
     private int fault(String runId, int partition) {
-        String target = env.get("FAULT_PARTITION");
-        if (target == null || target.isBlank() || Integer.parseInt(target.trim()) != partition) {
+        if (env.faultPartition().filter(target -> target == partition).isEmpty()) {
             return OK;
         }
-        String mode = env.get("FAULT_MODE");
+        String mode = env.faultMode().orElse("");
         if ("always".equals(mode)) {
             LOG.errorf("run %s partition %d fails for good, exit %d", runId, partition, POISON);
             return POISON;
         }
-        if ("once".equals(mode) && "0".equals(env.get("JOB_INDEX_FAILURE_COUNT"))) {
+        if ("once".equals(mode) && env.indexFailureCount().filter(count -> count == 0).isPresent()) {
             LOG.warnf("run %s partition %d fails once, exit %d", runId, partition, TRANSIENT);
             return TRANSIENT;
         }
@@ -85,12 +84,11 @@ public class ReconcileCommand implements Callable<Integer> {
     }
 
     private void slow(int partition) {
-        String target = env.get("SLOW_PARTITION");
-        String seconds = env.get("SLOW_SECONDS");
-        if (target != null && !target.isBlank() && seconds != null && Integer.parseInt(target.trim()) == partition) {
-            LOG.infof("partition %d slowed by %s s", partition, seconds);
+        if (env.slowPartition().filter(target -> target == partition).isPresent() && env.slowSeconds().isPresent()) {
+            long seconds = env.slowSeconds().get();
+            LOG.infof("partition %d slowed by %d s", partition, seconds);
             try {
-                Thread.sleep(Long.parseLong(seconds.trim()) * 1000);
+                Thread.sleep(seconds * 1000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

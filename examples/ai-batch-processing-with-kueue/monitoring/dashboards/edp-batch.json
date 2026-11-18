@@ -184,7 +184,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (step) (rate(batch_step_duration_seconds_sum[5m])) / sum by (step) (rate(batch_step_duration_seconds_count[5m]))",
+     "expr": "sum by (step) (rate(batch_step_duration_milliseconds_sum[5m])) / sum by (step) (rate(batch_step_duration_milliseconds_count[5m]))",
      "legendFormat": "{{step}}",
      "datasource": {
       "type": "prometheus",
@@ -194,7 +194,7 @@
    ],
    "fieldConfig": {
     "defaults": {
-     "unit": "s"
+     "unit": "ms"
     },
     "overrides": []
    }

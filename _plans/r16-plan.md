@@ -28,7 +28,7 @@ Planned 2026-11-18 (Opus planner, lgtm-relay). Approved by the owner 2026-11-18 
 | 5 deck | done: slides 118 to 120, 123 total |
 | 6 final fresh run, gates | done: gates clean; repair-round live run 1 |
 | 7 Opus validation | done: 0 blocking, repair round 1 |
-| 8 ship, Notion |  |
+| 8 ship, Notion | |
 
 ## Approach
 
@@ -72,7 +72,7 @@ Rejected: Camel-only batch (no per-step pods, quota or per-index retry); Kafka-d
 - Topics (KafkaTopic): `edp.shipping.scheduled`, `edp.shipping.delivered` (3 partitions each, catalog), `edp.shipping.reconciliations` (new, example-local, key `<runId>:<carrier>`, `cleanup.policy=compact`). Order ids `O-44xx`; out-of-window markers `O-449x`.
 - Replay guard: a reconcile index whose `run_partition` row is DONE exits 0 without reading Kafka. Demo switch `REPLAY_GUARD=off` disables it.
 - Step mapping: a started Job that turns back to `suspend: true` returns the step to QUEUED (not FAILED) and counts `batch_step_preemptions_total{step}`.
-- Runner metrics: `batch_step_duration_seconds{step}`, `batch_step_queue_wait_seconds{step}`, `batch_step_failures_total`, `batch_step_replays_total`, `batch_step_preemptions_total{step}`, `batch_partition_records_total`.
+- Runner metrics: `batch_step_duration_milliseconds{step}`, `batch_step_queue_wait_milliseconds{step}`, `batch_step_failures_total`, `batch_step_replays_total`, `batch_step_preemptions_total{step}`, `batch_partition_records_total`.
 - Demo switches on verify.sh (env, passed to the runner as config): `QUEUE=off` (no queue label), `REPLAY_GUARD=off`, `PRIORITY=off` (no priority label); optional `FAIL_POLICY=off`.
 
 ## Kueue objects

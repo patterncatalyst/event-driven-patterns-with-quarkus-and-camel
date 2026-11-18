@@ -1,4 +1,4 @@
-# Appendix I: the shared platform (Strimzi Kafka, CloudNativePG, otel-lgtm with its monitoring component), the batch-runner,
+# The ai-batch-processing-with-kueue example: the shared platform (Strimzi Kafka, CloudNativePG, otel-lgtm with its monitoring component), the batch-runner,
 # the example's topics and a second collector configuration that scrapes Kueue. Kueue itself and the objects in kueue/ are
 # installed and applied by verify.sh (the Kueue pod webhook is cluster-wide, so it never belongs to the substrate).
 # No top-level namespace: the monitoring component names its own namespaces.

@@ -2,7 +2,6 @@ package com.patterncatalyst.shipping.batch.runner;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,8 +40,14 @@ public class RunService {
             Instant finishedAt, List<StepView> steps, List<PartitionView> partitions) {
     }
 
+    public record Accepted(String id) {
+    }
+
+    public record Replayed(String id, String step, String attempt) {
+    }
+
     @Transactional
-    public Map<String, String> create(RunRequest request) {
+    public Accepted create(RunRequest request) {
         if (request == null || request.from() == null || request.to() == null) {
             throw new BatchException(400, "from and to are required ISO-8601 instants");
         }
@@ -80,12 +85,12 @@ public class RunService {
             step.persist();
         }
         LOG.infof("run %s accepted for [%s, %s) priority %s", run.id, run.windowFrom, run.windowTo, priority);
-        return Map.of("id", run.id);
+        return new Accepted(run.id);
     }
 
     /** Creates the next attempt of the failed step. The steps that are DONE are not touched. */
     @Transactional
-    public Map<String, String> replay(String id) {
+    public Replayed replay(String id) {
         Run run = Run.findById(id);
         if (run == null) {
             throw new BatchException(404, "no run " + id);
@@ -114,7 +119,7 @@ public class RunService {
         }
         metrics.replay();
         LOG.infof("run %s replays step %s as attempt %d", id, failed.name, failed.attempt);
-        return Map.of("id", id, "step", failed.name, "attempt", String.valueOf(failed.attempt));
+        return new Replayed(id, failed.name, String.valueOf(failed.attempt));
     }
 
     @Transactional

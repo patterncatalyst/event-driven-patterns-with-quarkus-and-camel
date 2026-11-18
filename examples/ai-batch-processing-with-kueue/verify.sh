@@ -21,7 +21,7 @@ teardown() {
         # No runner may create a Job while Kueue is being removed
         kc -n "$NS_APPS" scale deploy/batch-runner --replicas=0 >/dev/null 2>&1 || true
         kc -n "$NS_APPS" wait --for=delete pod -l app=batch-runner --timeout=90s >/dev/null 2>&1 || true
-        kueue_teardown || echo "teardown: Kueue was not removed cleanly" >&2
+        kueue_teardown --final || echo "teardown: Kueue was not removed cleanly" >&2
     fi
     k8s_teardown
 }
@@ -349,7 +349,7 @@ poison_logged() {
 check "Loki holds the exit 42 line of run 3 with its trace id" poll 120 poison_logged
 runner_metrics() {
     local s
-    for s in plan reconcile aggregate; do metric_ge "sum(batch_step_duration_seconds_count{step=\"$s\"})" 1 || return 1; done
+    for s in plan reconcile aggregate; do metric_ge "sum(batch_step_duration_milliseconds_count{step=\"$s\"})" 1 || return 1; done
     metric_ge 'sum(batch_step_failures_total)' 1 && metric_eq 'sum(batch_step_replays_total)' 1
 }
 check "the runner reports a duration for plan, reconcile and aggregate, at least 1 failure and exactly 1 replay" poll 120 runner_metrics

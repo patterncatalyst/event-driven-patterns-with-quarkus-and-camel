@@ -9,8 +9,7 @@ images:
   # Index digest of registry.k8s.io/kueue/kueue:v0.20.6 (KUEUE_IMAGE in ../../versions.env keeps the same pin).
   - name: registry.k8s.io/kueue/kueue
     digest: sha256:20465f0e56a4eed90ec07fa7838866a90f7b6890c0adc84be86aaee307a6744a
-# Upstream sets imagePullPolicy: Always on the controller. It is left as upstream ships it; the G0 spike decides
-# whether a patch to IfNotPresent is worth carrying.
+# Upstream sets imagePullPolicy: Always on the controller. It is kept as upstream ships it.
 patches:
   # The upstream controller configuration, key for key, with one addition: metrics.enableClusterQueueResources,
   # which publishes kueue_cluster_queue_resource_usage and kueue_cluster_queue_nominal_quota.
