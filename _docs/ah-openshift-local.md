@@ -15,16 +15,16 @@ What differs is everything around the code. Operators arrive from catalogs inste
 
 {% include excalidraw.html file="ah-crc-layout" alt="Two Subscriptions in the namespace edp-operators install Strimzi and CloudNativePG and watch the namespace edp, which holds Kafka, a PostgreSQL Cluster, Connect with an ImageStream, a connector and order-service behind a Route that curl reaches over verified HTTPS" caption="Figure H.1: Operators in one namespace, the workload in another" %}
 
-## Why this matters
-
-A shared cluster is easy to leave worse than it was found: operators install cluster-wide CRDs and ClusterRoles that outlive a namespace deletion, and an automatic upgrade can land a different Kafka or PostgreSQL version than the one examples were built against. Skip certificate verification on a Route or a registry push, and a credential or a payload is exposed to interception for convenience. Pin every operator to a named version with manual approval, and remove every cluster-scoped object afterward, to keep the cluster usable for the next run.
-
 ## Learning objectives
 
 - Install an operator at a pinned version with manual approval instead of the channel's latest
 - Verify every TLS call against the cluster's own certificate authority rather than disabling the check
 - Copy an image into the cluster's registry by digest so the deployed image matches the local build
 - Remove every cluster-scoped object an operator leaves behind so a shared cluster stays reusable
+
+## Why this matters
+
+A shared cluster is easy to leave worse than it was found: operators install cluster-wide CRDs and ClusterRoles that outlive a namespace deletion, and an automatic upgrade can land a different Kafka or PostgreSQL version than the one examples were built against. Skip certificate verification on a Route or a registry push, and a credential or a payload is exposed to interception for convenience. Pin every operator to a named version with manual approval, and remove every cluster-scoped object afterward, to keep the cluster usable for the next run.
 
 ## What changes from minikube
 

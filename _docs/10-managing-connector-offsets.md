@@ -11,10 +11,6 @@ A connector tails the `inventory_item` table of a legacy database and publishes 
 
 {% include excalidraw.html file="10-offset-lifecycle" alt="A running connector is stopped with PUT stop; while stopped its offsets can be altered with PATCH or reset with DELETE, and PUT resume starts it again; PATCH or DELETE while running is refused with HTTP 400" caption="Figure 10.1: Offsets change only while the connector is stopped" %}
 
-## Why this matters
-
-When a connector is stopped, a neighbouring table is loaded, or a bad batch of updates is fixed, the same question comes up: where does the connector resume, and does that choice skip changes, repeat them, or rebuild from scratch. Pick the wrong recovery, and every downstream reader is left with a gap or an unexpected flood of snapshot rows. A lost replication slot can also leave the connector reporting RUNNING with no task, so when a monitor watches only for a failed state, it can miss that nothing is being delivered at all.
-
 ## Learning objectives
 
 - Read and alter a connector's offset through the Connect REST API.
@@ -22,6 +18,10 @@ When a connector is stopped, a neighbouring table is loaded, or a bad batch of u
 - Explain why an offset behind the slot's position cannot rewind streaming.
 - Recognize a lost slot from a connector reporting RUNNING with no task.
 - Recover a lost or dropped slot by stopping, dropping and deleting offsets.
+
+## Why this matters
+
+When a connector is stopped, a neighbouring table is loaded, or a bad batch of updates is fixed, the same question comes up: where does the connector resume, and does that choice skip changes, repeat them, or rebuild from scratch. Pick the wrong recovery, and every downstream reader is left with a gap or an unexpected flood of snapshot rows. A lost replication slot can also leave the connector reporting RUNNING with no task, so when a monitor watches only for a failed state, it can miss that nothing is being delivered at all.
 
 ## Where a source connector keeps its place
 

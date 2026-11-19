@@ -11,16 +11,16 @@ Operations asks a question nobody planned for: how many orders FASTLINE and AIRC
 
 {% include excalidraw.html file="17-replay-vs-projection" alt="Commands append events to orders.events; a replay reads every stream at the time of the question, folds each aggregate and counts the shipped ones; a projection reads the same events before the question through a projector with a checkpoint and keeps carrier_daily_shipments, which a query scans" caption="Figure 17.1: Two read paths over one store" %}
 
-## Why this matters
-
-When operations asks how many orders each carrier shipped per day, the write model can only answer by paying the full cost of the event store on every request, and that cost grows as the business succeeds. Building a second model instead introduces a new way to get a wrong or stale answer: a bug repeated into every row, or a checkpoint that skips a committed order with no error to show for it. The choice is a bet on how often the question gets asked against how much staleness and complexity the business can tolerate.
-
 ## Learning objectives
 
 - Fold every aggregate in the store to answer a question the write model was not built for
 - Keep a projection current with a checkpointed poller instead of a read-time replay
 - Order a checkpoint by commit visibility instead of insertion position
 - Judge when a replay's cost against the budget justifies building a projection instead
+
+## Why this matters
+
+When operations asks how many orders each carrier shipped per day, the write model can only answer by paying the full cost of the event store on every request, and that cost grows as the business succeeds. Building a second model instead introduces a new way to get a wrong or stale answer: a bug repeated into every row, or a checkpoint that skips a committed order with no error to show for it. The choice is a bet on how often the question gets asked against how much staleness and complexity the business can tolerate.
 
 ## Pattern: Projection rebuilt from history
 

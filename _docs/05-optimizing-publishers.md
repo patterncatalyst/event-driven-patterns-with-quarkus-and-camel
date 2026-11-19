@@ -15,10 +15,6 @@ The producer has four settings that change the answer: how long it waits to fill
 
 {% include excalidraw.html file="05-batch-fill" alt="Records from many callers go into one open batch per partition; a request carries every batch that is ready" caption="Figure 5.1: One open batch per partition, one request for every ready batch" %}
 
-## Why this matters
-
-When a publisher is tuned by guesswork, it wastes broker capacity and caller time, because batching, compression, and acknowledgement settings trade off against each other, and a setting picked without measurement can slow a release under load. When a flash sale places twenty thousand orders in seconds, an untuned producer becomes the bottleneck that the broker and every caller pay for. A conflicting acks and idempotence setting can even keep the service from starting at all, so a wrong assumption surfaces before the sale begins rather than during it.
-
 ## Learning objectives
 
 - Explain how linger.ms and batch.size fill a producer batch.
@@ -26,6 +22,10 @@ When a publisher is tuned by guesswork, it wastes broker capacity and caller tim
 - Read records per request and bytes per record from producer metrics.
 - Compare compression codecs by throughput and size trade-offs.
 - Recognize when caller concurrency limits batching regardless of settings.
+
+## Why this matters
+
+When a publisher is tuned by guesswork, it wastes broker capacity and caller time, because batching, compression, and acknowledgement settings trade off against each other, and a setting picked without measurement can slow a release under load. When a flash sale places twenty thousand orders in seconds, an untuned producer becomes the bottleneck that the broker and every caller pay for. A conflicting acks and idempotence setting can even keep the service from starting at all, so a wrong assumption surfaces before the sale begins rather than during it.
 
 ## How the producer sends
 

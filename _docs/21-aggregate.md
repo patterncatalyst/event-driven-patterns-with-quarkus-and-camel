@@ -13,16 +13,16 @@ Two forms run side by side in the one service, on the same input, each writing i
 
 {% include excalidraw.html file="21-window-vs-batch" alt="The same arrivals for FASTLINE grouped two ways; Kafka Streams gives the slot 09:00 list with F1 to F7 and F9, an open list for slot 09:15 holding F8, and drops L1; the Camel Aggregator gives four batches in arrival order closed by size or timeout, including L1 alone" caption="Figure 21.1: The same arrivals grouped by slot of event time and by size and quiet time at arrival" %}
 
-## Why this matters
-
-When a pickup list leaves before its slot closes, or long after, the warehouse gets the wrong parcel count, and a carrier arrives to find fewer or more than promised. How a stream decides a group is finished determines whether a late record lands in a grace period, gets dropped, or joins whatever batch is open, and that choice stays invisible until a shipment goes missing. Get the completion rule wrong and it costs a late list or a lost parcel, with no second chance once a window has closed.
-
 ## Learning objectives
 
 - Group events into tumbling windows of event time with a grace period for disorder
 - Suppress partial results so only one final list leaves per window
 - Batch events by size and quiet time with a Camel Aggregator instead of a clock
 - Trace a dropped late record to the window's grace period and its metric
+
+## Why this matters
+
+When a pickup list leaves before its slot closes, or long after, the warehouse gets the wrong parcel count, and a carrier arrives to find fewer or more than promised. How a stream decides a group is finished determines whether a late record lands in a grace period, gets dropped, or joins whatever batch is open, and that choice stays invisible until a shipment goes missing. Get the completion rule wrong and it costs a late list or a lost parcel, with no second chance once a window has closed.
 
 ## Pattern: Windowed aggregation
 

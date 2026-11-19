@@ -11,16 +11,16 @@ An event-sourced `Order` aggregate answers one question: may this command happen
 
 {% include excalidraw.html file="16-command-query-split" alt="Order, payment and shipping services publish to six public topics; the projector in the query side applies each event to the order_view table with a guarded upsert, and the two query endpoints read only that table; the lag window sits between the topics and the view" caption="Figure 16.1: Writers publish, the projector applies, readers query only the view" %}
 
-## Why this matters
-
-When a customer asks where their orders stand, the write model was never built to answer that question, and forcing it to do so couples every reader to a private schema or makes the answer only as fast and as available as the slowest of three services. When a projection is not held to forward-only updates, it can show an order back in transit after it already showed delivered, misleading a customer checking on their shipment. Get the guard or the freshness signal wrong, and a read model turns from a convenience into a source of confusion.
-
 ## Learning objectives
 
 - Separate a read model from the write model it is projected from
 - Write each column from only the one event that owns its fact
 - Guard an upsert so a late event cannot move a status backwards
 - Report how current an answer is alongside the answer itself
+
+## Why this matters
+
+When a customer asks where their orders stand, the write model was never built to answer that question, and forcing it to do so couples every reader to a private schema or makes the answer only as fast and as available as the slowest of three services. When a projection is not held to forward-only updates, it can show an order back in transit after it already showed delivered, misleading a customer checking on their shipment. Get the guard or the freshness signal wrong, and a read model turns from a convenience into a source of confusion.
 
 ## Pattern: CQRS
 

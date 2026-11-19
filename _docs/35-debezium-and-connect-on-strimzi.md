@@ -13,16 +13,16 @@ On Kubernetes the operator that runs Kafka can run Connect too, and it can hold 
 
 {% include excalidraw.html file="35-build-and-run" alt="A KafkaConnect resource with a build section starts a build pod that downloads the plugin archive and checks its sha512, pushes the image to a registry with a fixed ClusterIP inside the cluster, and the Connect pod pulls it by digest; a checksum that does not match fails the build and no Connect pod starts" caption="Figure 35.1: The Connect image is built from the resource and stays in the cluster" %}
 
-## Why this matters
-
-When a connector exists only as a JSON document PUTed to a REST API, there is no record of what should be running, and the cluster drifts once someone edits it by hand. When an offset is changed through that API, there is no trace of who changed it, and repairing one reader's offset can create a gap in other readers. A downloaded plugin is only as trustworthy as the checksum that verifies it. Declare the image, connectors and offsets as resources, and all three stay reviewable before they run.
-
 ## Learning objectives
 
 - Build the Connect worker image from a declared resource instead of a published image
 - Declare each connector and verify its plugin against a checksum before it runs
 - Change a connector's offsets through an annotation instead of a REST call
 - Separate two connectors in one worker with distinct topic prefixes
+
+## Why this matters
+
+When a connector exists only as a JSON document PUTed to a REST API, there is no record of what should be running, and the cluster drifts once someone edits it by hand. When an offset is changed through that API, there is no trace of who changed it, and repairing one reader's offset can create a gap in other readers. A downloaded plugin is only as trustworthy as the checksum that verifies it. Declare the image, connectors and offsets as resources, and all three stay reviewable before they run.
 
 ## Pattern: Connectors as declared resources
 

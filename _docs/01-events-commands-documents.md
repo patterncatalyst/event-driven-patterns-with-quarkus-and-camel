@@ -11,10 +11,6 @@ An order from the running example moves from PLACED to PAID. One message says so
 
 {% include excalidraw.html file="01-row-update-vs-event-append" alt="The same ChangeOrderStatus command applied to an orders row, which overwrites the status, and to the order_event table, which gains a new version" caption="Figure 1.1: One command, two storage outcomes" %}
 
-## Why this matters
-
-When a service confuses an event with a command, it can treat a notification as authorization for a refund it was never asked to issue. When a document stands in for history, a dispute becomes impossible to settle, because the only record left is the current row and every prior state is already overwritten. Choosing between an updated row and an appended event decides whether a customer complaint can be verified later, and retrofitting that history after a row-only system ships is impossible: every past change is already gone.
-
 ## Learning objectives
 
 - Distinguish an event, a command and a document by who decides and who acts.
@@ -22,6 +18,10 @@ When a service confuses an event with a command, it can treat a notification as 
 - Validate a command against current state before accepting it.
 - Replay an event stream into the same document a row produces.
 - Weigh a row update against an appended history for a given question.
+
+## Why this matters
+
+When a service confuses an event with a command, it can treat a notification as authorization for a refund it was never asked to issue. When a document stands in for history, a dispute becomes impossible to settle, because the only record left is the current row and every prior state is already overwritten. Choosing between an updated row and an appended event decides whether a customer complaint can be verified later, and retrofitting that history after a row-only system ships is impossible: every past change is already gone.
 
 ## Pattern: Event Message
 

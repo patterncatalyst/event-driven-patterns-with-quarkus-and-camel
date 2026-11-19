@@ -11,10 +11,6 @@ duration: "55 minutes"
 
 {% include excalidraw.html file="20-join-window" alt="A reservation at time T opens a 30 minute window with 5 minutes of grace; a payment at T plus 2 minutes inside the window gives ReadyToShip, a payment at T plus 90 minutes does not match, and the unmatched reservation leaves as PaymentOverdue only when a later record moves stream time past T plus 35 minutes" caption="Figure 20.1: A reservation opens a window in event time, and only later records close it" %}
 
-## Why this matters
-
-When a carrier is booked before the payment has cleared, the business ships goods it was never paid for. When a payment is confirmed but no carrier is ever booked, a paying customer's order sits with no visible owner until someone complains. The two facts arrive from separate services with no shared order between them, so correlation logic can go wrong in either direction, and two different approaches can disagree about the same order as it crosses between them.
-
 ## Learning objectives
 
 - Pair two events sharing a key within a bounded time window.
@@ -22,6 +18,10 @@ When a carrier is booked before the payment has cleared, the business ships good
 - Distinguish a join by event time from one by arrival time.
 - Explain why the two forms can reach opposite answers for the same pair.
 - Recover open join state after a restart without losing an in-flight pair.
+
+## Why this matters
+
+When a carrier is booked before the payment has cleared, the business ships goods it was never paid for. When a payment is confirmed but no carrier is ever booked, a paying customer's order sits with no visible owner until someone complains. The two facts arrive from separate services with no shared order between them, so correlation logic can go wrong in either direction, and two different approaches can disagree about the same order as it crosses between them.
 
 ## Pattern: Stream-stream join
 

@@ -11,10 +11,6 @@ An order is placed. The notification service has to tell the customer, and it kn
 
 {% include excalidraw.html file="02-fetch-back" alt="order-service commits the order and publishes OrderPlaced with the order id; notification-service consumes it, fetches the order from order-service and stores a Notification" caption="Figure 2.1: The event names the order, the consumer fetches the facts" %}
 
-## Why this matters
-
-An Event Notification keeps the order service free of every consumer it does not know about, but that freedom moves a cost onto each one. When a fetch cannot reach the source, the customer is left untold, and when a consumer reads only current state, it can report an order as cancelled when the event announced it only as placed. A gap between the commit and the publish lets an order exist that no consumer ever hears about, visible only in a trace across both services.
-
 ## Learning objectives
 
 - Publish an event only after the transaction that creates it commits.
@@ -22,6 +18,10 @@ An Event Notification keeps the order service free of every consumer it does not
 - Retry a failed fetch instead of skipping the record that triggered it.
 - Propagate one trace across a publish, a consume and a fetch.
 - Recognize when current state differs from the state at event time.
+
+## Why this matters
+
+An Event Notification keeps the order service free of every consumer it does not know about, but that freedom moves a cost onto each one. When a fetch cannot reach the source, the customer is left untold, and when a consumer reads only current state, it can report an order as cancelled when the event announced it only as placed. A gap between the commit and the publish lets an order exist that no consumer ever hears about, visible only in a trace across both services.
 
 ## Pattern: Event Notification
 

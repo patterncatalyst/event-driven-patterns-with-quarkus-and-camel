@@ -13,16 +13,16 @@ The list of topics a system needs is part of the system. Kubernetes already keep
 
 {% include excalidraw.html file="29-one-direction" alt="A KafkaTopic resource is read by the Topic Operator, which creates, alters and deletes the Kafka topic; an edit made in Kafka with kafka-configs.sh is reverted on the next pass, and a status written back to the resource reports Ready or NotSupported" caption="Figure 29.1: Changes go from the resource to Kafka; an edit made in Kafka is put back" %}
 
-## Why this matters
-
-When a topic is created by a typo or a one-off command, there is no record of what the system needs, so a consumer waits for events a misspelled name never delivers, and nobody notices until someone asks why. When partition counts and retention are set by whoever last ran a command, they drift between environments, and a partition count can never be lowered back. Declare every topic as a reviewable resource, and that gap becomes an error the first time a producer sends to a name nobody declared.
-
 ## Learning objectives
 
 - Declare topics as versioned resources instead of letting the broker create them on demand
 - Explain why a reconciliation interval sets the delay before a manual Kafka edit reverts
 - Identify the one case where the operator cannot undo a change made directly in Kafka
 - Mark a topic unmanaged before handing its ownership outside the resource
+
+## Why this matters
+
+When a topic is created by a typo or a one-off command, there is no record of what the system needs, so a consumer waits for events a misspelled name never delivers, and nobody notices until someone asks why. When partition counts and retention are set by whoever last ran a command, they drift between environments, and a partition count can never be lowered back. Declare every topic as a reviewable resource, and that gap becomes an error the first time a producer sends to a name nobody declared.
 
 ## Pattern: Topics as declared resources
 

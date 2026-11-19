@@ -19,16 +19,16 @@ The patterns here run on minikube. A small Quarkus and Camel service, the `batch
 
 The input is two topics, `edp.shipping.scheduled` and `edp.shipping.delivered`, with three partitions each. Both are keyed by order id, so the same order sits in partition `i` of both. That fact decides the shape of the whole run.
 
-## Why this matters
-
-When a batch fails partway through, it restarts everything, repeating work that already succeeded, or leaves an operator guessing which part is done. Without admission control, a shared cluster lets two batches ask for more capacity than it has, and the loser can be a service with nothing to do with either batch. Persist step state, replay by partition, and queue for resources, and a failed or contended run stays recoverable, so a reconciliation total stays trustworthy and one low-priority batch does not starve everything running beside it.
-
 ## Learning objectives
 
 - Persist the state of every step so a failed run can be diagnosed and resumed instead of restarted from the beginning
 - Partition a bounded input by key so one worker owns everything that belongs together with no coordination
 - Separate a transient failure from a poison one and replay only the partitions that did not finish
 - Size a resource queue so one batch cannot starve a cluster shared with other workloads
+
+## Why this matters
+
+When a batch fails partway through, it restarts everything, repeating work that already succeeded, or leaves an operator guessing which part is done. Without admission control, a shared cluster lets two batches ask for more capacity than it has, and the loser can be a service with nothing to do with either batch. Persist step state, replay by partition, and queue for resources, and a failed or contended run stays recoverable, so a reconciliation total stays trustworthy and one low-priority batch does not starve everything running beside it.
 
 ## Pattern: Step-wise batch with persisted step state
 

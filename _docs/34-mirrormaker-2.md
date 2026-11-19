@@ -13,16 +13,16 @@ A consumer's position is a committed offset, stored per group in the cluster it 
 
 {% include excalidraw.html file="34-two-clusters" alt="The cluster edp holds the topic edp.orders.placed, the group notification-service and the offset-syncs topic; MirrorMaker 2 workers run a source connector that copies records and a checkpoint connector that translates group offsets; the cluster edp-dr receives the topic under the same name, the group and the checkpoints topic" caption="Figure 34.1: One direction, edp to edp-dr, with the same topic names on both sides" %}
 
-## Why this matters
-
-A Kafka cluster in only one place is a single point of failure for every order: lose it, and every service loses its place to publish or read. Copy the topics to a second cluster and that answers only half the problem: when a consumer resumes at the wrong offset, it reprocesses records or skips them. When a failover needs a rewritten topic name, group or consumer, it happens slowly and under pressure. Translate offsets into the second cluster, and a consumer can fail over by changing one address.
-
 ## Learning objectives
 
 - Keep topic names identical across clusters with an identity replication policy
 - Translate a consumer group's committed offsets into the second cluster's own log
 - Fail a consumer over by changing only its bootstrap address
 - Tolerate a duplicated record after a failover instead of assuming exactly-once delivery
+
+## Why this matters
+
+A Kafka cluster in only one place is a single point of failure for every order: lose it, and every service loses its place to publish or read. Copy the topics to a second cluster and that answers only half the problem: when a consumer resumes at the wrong offset, it reprocesses records or skips them. When a failover needs a rewritten topic name, group or consumer, it happens slowly and under pressure. Translate offsets into the second cluster, and a consumer can fail over by changing one address.
 
 ## Pattern: A replicated cluster for failover
 

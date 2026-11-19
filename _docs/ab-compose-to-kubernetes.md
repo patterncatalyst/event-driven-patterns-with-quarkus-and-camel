@@ -15,16 +15,16 @@ Reading the two files side by side finds the lines that were copied. It does not
 
 {% include excalidraw.html file="ab-same-config-two-targets" alt="Two columns. Compose: a kafka container with broker and controller roles, the KAFKA environment, a postgres container run by start.sh and its command line flags, named volumes. Kubernetes: a Kafka resource with two node pools, the spec.kafka.config block, a CloudNativePG Cluster, no postgresql parameters, persistent-claim storage" caption="Figure B.1: Each compose setting has a place in a Kubernetes resource, or a default that replaces it" %}
 
-## Why this matters
-
-A migration can look complete while a setting a service depends on, such as automatic topic creation or a free replication slot, never appears in either the compose file or the Kubernetes resource, because an operator's own default fills the gap. A team that only diffs the two files can ship that migration and then lose a connector's replication slot, or break a share group that needed more replicas than one broker could provide. Comparing the running systems' effective settings catches a lost default before it reaches production.
-
 ## Learning objectives
 
 - Compare a compose file against a Kubernetes resource for what each line maps to
 - Identify settings an operator's own default supplies with no line in either file
 - Read effective configuration from a running system instead of trusting the files that built it
 - Recognize when a migration needs an explicit value to replace a single-broker override
+
+## Why this matters
+
+A migration can look complete while a setting a service depends on, such as automatic topic creation or a free replication slot, never appears in either the compose file or the Kubernetes resource, because an operator's own default fills the gap. A team that only diffs the two files can ship that migration and then lose a connector's replication slot, or break a share group that needed more replicas than one broker could provide. Comparing the running systems' effective settings catches a lost default before it reaches production.
 
 ## Kafka: one container, then a Kafka resource and two node pools
 

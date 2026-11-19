@@ -15,16 +15,16 @@ Streaming SQL engines exist for this question, and ksqlDB is the best known for 
 
 {% include excalidraw.html file="ac-three-ways" alt="One input topic edp.shipping.delivered feeds three engines: Kafka Streams in the service with a window store asked through GET /counts, a Flink SQL job whose closed windows land on an upsert-kafka topic, and RisingWave views asked with psql" caption="Figure C.1: One topic, three engines, three places for the state and three ways to ask" %}
 
-## Why this matters
-
-When three event-time engines have to agree on one number, deliveries per carrier per minute, they can disagree anyway unless their lateness bounds match exactly. A dropped late record leaves no trace, so an undercount can look like a correct answer until someone checks a raw log. When you pick the wrong engine, build a service endpoint for a question other consumers need to read, or stand up a new system for a count one service could already compute, you add an operational cost nobody asked for.
-
 ## Learning objectives
 
 - Pick an engine based on who owns the state and who needs to ask the question
 - Set a matching lateness bound across engines that each advance event time differently
 - Recognize that a late record for a closed window is dropped with no signal in the answer
 - Check a window store's retention setting before trusting a query for older windows
+
+## Why this matters
+
+When three event-time engines have to agree on one number, deliveries per carrier per minute, they can disagree anyway unless their lateness bounds match exactly. A dropped late record leaves no trace, so an undercount can look like a correct answer until someone checks a raw log. When you pick the wrong engine, build a service endpoint for a question other consumers need to read, or stand up a new system for a count one service could already compute, you add an operational cost nobody asked for.
 
 ## One question
 

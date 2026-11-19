@@ -11,10 +11,6 @@ The notification service sends an email for every order placed. The email provid
 
 {% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 acquires only the slow job and another worker takes the later jobs of the same partition one at a time" caption="Figure 7.1: Who waits behind one slow job" %}
 
-## Why this matters
-
-When one job in a consumer group runs slow, every later job in its partition waits behind it, even while other workers sit idle, because one partition has exactly one owner. That head-of-line block can turn one slow customer into a stalled queue for every other customer behind it in the same partition. A share group fixes the blocking but drops per-partition ordering and the simple offset commit, so when work cannot tolerate a duplicate delivery, it needs its own idempotence.
-
 ## Learning objectives
 
 - Explain why one slow job blocks later jobs sharing its partition.
@@ -22,6 +18,10 @@ When one job in a consumer group runs slow, every later job in its partition wai
 - Recognize when at-least-once delivery requires an idempotent receiver.
 - Compare share-group and consumer-group throughput for independent versus ordered jobs.
 - Pick share.acquire.mode to control how many jobs one worker locks at once.
+
+## Why this matters
+
+When one job in a consumer group runs slow, every later job in its partition waits behind it, even while other workers sit idle, because one partition has exactly one owner. That head-of-line block can turn one slow customer into a stalled queue for every other customer behind it in the same partition. A share group fixes the blocking but drops per-partition ordering and the simple offset commit, so when work cannot tolerate a duplicate delivery, it needs its own idempotence.
 
 ## Pattern: Competing Consumers
 

@@ -13,16 +13,16 @@ Three habits close the gap. The order id is set on every span and in the log con
 
 {% include excalidraw.html file="27-one-order-many-signals" alt="order-service, Connect, inventory-service and payment-service in a row inside one trace, each service marked with order.id and orderId, with arrows to Tempo, queried by span.order.id, and to Loki, queried by orderId, where every line holds the trace id" caption="Figure 27.1: A business id on every span and in every handler's log line, a trace id on every log line" %}
 
-## Why this matters
-
-A support call comes in with an order id. When the operator has no way to connect it to a trace id, the call turns into reading logs across separate services by hand instead of running one search. When a saga crosses a payment timeout, it starts a second trace that looks unrelated to the first unless something ties them together, turning one incident into two investigations. The cost lands on whoever is on call when the order id is all they have.
-
 ## Learning objectives
 
 - Set a business identifier on every span and in the log context of every handler
 - Put the trace id on every log line so a line can be found from its trace
 - Link a timer-started trace back to the trace it continues
 - Query Tempo and Loki by one business id to pull every trace and log line for an order
+
+## Why this matters
+
+A support call comes in with an order id. When the operator has no way to connect it to a trace id, the call turns into reading logs across separate services by hand instead of running one search. When a saga crosses a payment timeout, it starts a second trace that looks unrelated to the first unless something ties them together, turning one incident into two investigations. The cost lands on whoever is on call when the order id is all they have.
 
 ## Pattern: Correlation identifier across signals
 

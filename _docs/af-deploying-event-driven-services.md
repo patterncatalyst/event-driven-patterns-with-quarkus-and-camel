@@ -13,16 +13,16 @@ A consumer in a group owns partitions. Stopping it hands them to another member 
 
 The strategies below run on a minikube cluster with two existing images, unchanged: a notification-service, whose group, protocol and client id come from the environment, and an order-service that answers `POST /orders`. A producer Job sends numbered records (`O-41000` and up) at a fixed rate, so a record that is missing, repeated or read by two groups is found by its id.
 
-## Why this matters
-
-The deployment strategy decides whether a release delays, repeats, or drops records, and skipping expand, migrate, and contract for a schema change can lose rows while logging only one error line. When a dashboard watches consumer lag alone, it can report healthy while an insert fails on a renamed field, because the offset commits and the lag reads zero. Match the strategy to whether a service owns a consumer group or sits behind a load balancer, and a routine release stops losing data a customer finds before anyone else does.
-
 ## Learning objectives
 
 - Predict whether a deployment strategy delays, repeats, or drops records for a given service shape
 - Apply the expand, migrate, and contract sequence to a schema change the old and new code cannot both read
 - Read a cut-over's offset export and import to judge what a blue-green rollback resumes from
 - Recognize why consumer lag alone cannot reveal a broken insert on a renamed field
+
+## Why this matters
+
+The deployment strategy decides whether a release delays, repeats, or drops records, and skipping expand, migrate, and contract for a schema change can lose rows while logging only one error line. When a dashboard watches consumer lag alone, it can report healthy while an insert fails on a renamed field, because the offset commits and the lag reads zero. Match the strategy to whether a service owns a consumer group or sits behind a load balancer, and a routine release stops losing data a customer finds before anyone else does.
 
 ## Stop and restart
 

@@ -15,10 +15,6 @@ The consumer has a handful of settings that answer those questions. Each one bel
 
 {% include excalidraw.html file="06-fetch-poll-process" alt="A fetch request fills a client buffer, poll returns at most max.poll.records of it, and a batch that takes longer than max.poll.interval.ms to process gets the member removed" caption="Figure 6.1: A fetch fills a buffer; poll hands out a bounded slice" %}
 
-## Why this matters
-
-When a consumer is tuned by guesswork, it can drain a backlog too slowly or get evicted mid-batch, and eviction costs more than time: the broker reassigns the partition and redelivers every record from the uncommitted batch, so a render and a database write both happen twice. When a replica joins an untuned group under the classic protocol, it can stop every other replica at once, even the ones whose partitions never move. Let max.poll.records and max.poll.interval.ms fall out of balance, and ordinary processing turns into duplicate work.
-
 ## Learning objectives
 
 - Explain how fetch.min.bytes and fetch.max.wait.ms trade request count for latency.
@@ -26,6 +22,10 @@ When a consumer is tuned by guesswork, it can drain a backlog too slowly or get 
 - Explain why consumer parallelism stops at the partition count.
 - Compare the classic and KIP-848 rebalance protocols by what they revoke.
 - Read fetch and consumer metrics exported through KafkaClientMetricsFactory.
+
+## Why this matters
+
+When a consumer is tuned by guesswork, it can drain a backlog too slowly or get evicted mid-batch, and eviction costs more than time: the broker reassigns the partition and redelivers every record from the uncommitted batch, so a render and a database write both happen twice. When a replica joins an untuned group under the classic protocol, it can stop every other replica at once, even the ones whose partitions never move. Let max.poll.records and max.poll.interval.ms fall out of balance, and ordinary processing turns into duplicate work.
 
 ## How the consumer reads
 

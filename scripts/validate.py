@@ -457,8 +457,8 @@ def check_pedagogy(rep: Report, p: Path, plines, off: int):
             ok = False
     if ok:
         iw, io, ip = heads.index(WHY_HEAD), heads.index(OBJ_HEAD), heads.index(PITFALLS_HEAD)
-        if not (iw < io < ip):
-            rep.err(p, None, f"order must be '{WHY_HEAD}', then '{OBJ_HEAD}', then '{PITFALLS_HEAD}' (near the end)")
+        if not (io < iw < ip):
+            rep.err(p, None, f"order must be '{OBJ_HEAD}', then '{WHY_HEAD}', then '{PITFALLS_HEAD}' (near the end)")
         if WNTU_HEAD in heads and heads.index(WNTU_HEAD) > ip:
             rep.err(p, None, f"'{PITFALLS_HEAD}' must come after '{WNTU_HEAD}'")
         if REFS_HEAD in heads and heads.index(REFS_HEAD) < ip:
@@ -850,8 +850,8 @@ def self_test() -> int:
     good_doc = (
         '---\ntitle: "Demo"\norder: 1\npart: demo\n---\n\nIntro text.\n\n'
         '{% include excalidraw.html file="01-demo" alt="Demo" %}\n\n'
-        '## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n'
         '## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n'
+        '## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n'
         '## Pattern: Demo\n\n'
         '> **\U0001F916 Explore with your agent**\n> "Open the demo and check the rule."\n> Check: it holds.\n\n'
         '## When not to use it\n\nWhen there is nothing to demo.\n\n'
@@ -901,8 +901,8 @@ def self_test() -> int:
 
         r = build("pedagogy-order")
         swapped = good_doc.replace(
-            "## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n",
-            "## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n")
+            "## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n",
+            "## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n")
         (r / "_docs/01-demo.md").write_text(swapped)
         e = run(r).errors
         results.append(("wrong pedagogy order caught", any("order must be" in x for x in e), e))

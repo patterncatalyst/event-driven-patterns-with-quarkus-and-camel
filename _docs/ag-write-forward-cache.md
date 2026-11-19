@@ -13,16 +13,16 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="ag-write-forward-path" alt="POST /orders writes the order row and the outbox row in one transaction; Debezium and the EventRouter publish the full state to edp.orders.placed and edp.orders.cancelled; a Camel route applies it to a Redis hash behind a version guard; GET /orders/{id} reads Redis only" caption="Figure G.1: The request writes PostgreSQL, the events write Redis, the read endpoint reads Redis" %}
 
-## Why this matters
-
-Skip the shared transaction between a database and a cache, and a dual write can fail either way: writing the cache first can show an order a failed commit never created, and writing it second can leave a crash with stale state and no fix. Couple the cache to the request path, and one outage becomes an outage for every write the service accepts. Write the cache only from committed events instead, trading staleness for a guarantee that what it shows was committed.
-
 ## Learning objectives
 
 - Explain why a dual write to a database and a cache fails regardless of write order
 - Apply a version guard so a replayed or out-of-order event cannot regress the cache
 - State what a write-forward cache can and cannot guarantee about read-after-write freshness
 - Rebuild a lost cache by replaying its source topics from the earliest offset
+
+## Why this matters
+
+Skip the shared transaction between a database and a cache, and a dual write can fail either way: writing the cache first can show an order a failed commit never created, and writing it second can leave a crash with stale state and no fix. Couple the cache to the request path, and one outage becomes an outage for every write the service accepts. Write the cache only from committed events instead, trading staleness for a guarantee that what it shows was committed.
 
 ## Pattern: Write-forward cache
 

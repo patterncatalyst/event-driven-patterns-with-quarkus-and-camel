@@ -13,16 +13,16 @@ One trace follows an order from the request to the stock reservation, through th
 
 {% include excalidraw.html file="25-context-carriers" alt="Five boxes in a row: the POST /orders server span, the outbox row with its outbox-write span, the log and Connect with db-log-write and debezium-read, the Kafka record on edp.orders.placed, and the consumer span in inventory-service; under each the place the trace context is written: the traceparent HTTP header, the tracingspancontext column, a span started from the log entry, the traceparent record header, and a child of the span in the header" caption="Figure 25.1: The context rides in a different place at every hop, and each relay has to copy it" %}
 
-## Why this matters
-
-When an order stalls between a commit and a consumer, an operator watching only per-service dashboards sees that nothing happened at all. A support call about a missing stock reservation then turns into a manual trawl through logs in separate processes, instead of one search in a trace viewer. Without a carried trace context, every async hop is a dead end, and the cost falls on whoever is paged to explain where the order went.
-
 ## Learning objectives
 
 - Carry a W3C traceparent through an outbox row, a Debezium relay, and a Kafka record header
 - Decide between a child span and a linked span when a consumer reads a published event
 - Configure the OpenTelemetry Java agent on Kafka Connect without flooding Tempo with unrelated spans
 - Read a trace waterfall to separate time inside services from time spent in the relay
+
+## Why this matters
+
+When an order stalls between a commit and a consumer, an operator watching only per-service dashboards sees that nothing happened at all. A support call about a missing stock reservation then turns into a manual trawl through logs in separate processes, instead of one search in a trace viewer. Without a carried trace context, every async hop is a dead end, and the cost falls on whoever is paged to explain where the order went.
 
 ## Pattern: Trace context in the message
 
