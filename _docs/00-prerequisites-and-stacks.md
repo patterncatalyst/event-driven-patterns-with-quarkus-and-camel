@@ -11,6 +11,18 @@ Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL 
 
 {% include excalidraw.html file="00-compose-stack" alt="The compose stack: curl posts to the stack-check service, which publishes to and consumes from Kafka; Connect links Kafka and PostgreSQL; the service sends telemetry to LGTM" caption="Figure 0.1: The stack every example runs on" %}
 
+## Why this matters
+
+When a prerequisite is missed or a second stack is left running, the failure shows up as a port conflict or a missing container instead of a clear error, and chasing that confusion costs more time than the setup itself would have. The chapters that follow all depend on one working stack, so skipping a clean baseline wastes hours on symptoms that have nothing to do with the pattern under study. A shared host running two stacks also starves every service on it of memory.
+
+## Learning objectives
+
+- Install the pinned JDK, Maven and Docker Engine toolchain.
+- Start the shared compose stack and confirm every service is healthy.
+- Send a valid Order through the stack-check service onto Kafka.
+- Locate the trace, metric and log for one request in Grafana.
+- Tear down the stack and recognize when a second stack cannot start.
+
 ## What you need
 
 A Fedora or RHEL host with Docker Engine and the `docker compose` plugin, JDK 25, Maven, git and curl. The compose examples never need more than that. Install Docker Engine from [Docker's repository for your distribution](https://docs.docker.com/engine/install/) and add your user to the `docker` group so no command needs `sudo`.
@@ -194,6 +206,13 @@ Try one change and rerun:
 ## Kubernetes
 
 The compose stack runs every example except the Kubernetes ones. Those move the same patterns to minikube with Strimzi for Kafka, CloudNativePG for PostgreSQL and the same LGTM image, with their own setup, tool versions and commands. No cluster is needed for the compose examples. Stop the compose stack before you start a cluster.
+
+## Common pitfalls
+
+- Skipping the docker group step forces every compose command through sudo, which changes file ownership in mounted volumes and breaks later runs.
+- Starting a second stack, or a minikube node, while the compose stack is still up fails to bind the fixed host ports, because stack-guard.sh refuses to start rather than letting anything crash.
+- Forgetting to pull the local model before running its example leaves the service with no volume to mount, because the example never downloads it itself.
+- Letting every container claim its full memory limit at once leaves too little headroom for Grafana and Kafka, so health checks fail even though every image pulled and started.
 
 ## References
 

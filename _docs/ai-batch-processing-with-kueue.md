@@ -19,6 +19,17 @@ The patterns here run on minikube. A small Quarkus and Camel service, the `batch
 
 The input is two topics, `edp.shipping.scheduled` and `edp.shipping.delivered`, with three partitions each. Both are keyed by order id, so the same order sits in partition `i` of both. That fact decides the shape of the whole run.
 
+## Why this matters
+
+When a batch fails partway through, it restarts everything, repeating work that already succeeded, or leaves an operator guessing which part is done. Without admission control, a shared cluster lets two batches ask for more capacity than it has, and the loser can be a service with nothing to do with either batch. Persist step state, replay by partition, and queue for resources, and a failed or contended run stays recoverable, so a reconciliation total stays trustworthy and one low-priority batch does not starve everything running beside it.
+
+## Learning objectives
+
+- Persist the state of every step so a failed run can be diagnosed and resumed instead of restarted from the beginning
+- Partition a bounded input by key so one worker owns everything that belongs together with no coordination
+- Separate a transient failure from a poison one and replay only the partitions that did not finish
+- Size a resource queue so one batch cannot starve a cluster shared with other workloads
+
 ## Pattern: Step-wise batch with persisted step state
 
 ### The problem
@@ -487,6 +498,13 @@ A stream that never ends has no "done", so it does not fit a Job: a consumer gro
 Kueue earns its cost when several batches share a cluster and one of them must not starve the others. For a single batch on a cluster of its own, the Job's `parallelism` is enough. When the steps must start together or not at all, a JobSet is a closer fit. When the real need is a graph of steps with a UI, Argo Workflows is the established answer, with a larger footprint. When the work must be spread across clusters, that is MultiKueue.
 
 The pod webhook is cluster-wide and fails closed, and the install adds eleven CRDs and a controller that asks for 500m of CPU and 512Mi of memory. That is a platform decision and not a per-example one.
+
+## Common pitfalls
+
+- Removing the queue label from a batch Job to skip the wait: without it the admission controller never sees the Job, so nothing throttles two batches that together ask for more than the cluster's quota.
+- Replaying a failed run without the per-partition guard: every index reads Kafka again, and although the totals still come out right because of the upsert, the replay pays the full quota for work that is mostly already done.
+- Tearing down the queue controller before the Jobs and Workloads that depend on it: a Workload's finalizer is removed only by the controller, so a namespace delete hangs until the controller returns.
+- Assuming a preempted or evicted run frees its quota right away: quota is reserved for a Workload's whole pod set until every pod of it has actually terminated, so a replacement run can still wait out a pod in its grace period.
 
 ## References
 

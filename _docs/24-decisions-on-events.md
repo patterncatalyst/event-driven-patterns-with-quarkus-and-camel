@@ -13,6 +13,17 @@ Two stages split the work. A model reads the sentence and returns one reason fro
 
 {% include excalidraw.html file="24-analyse-then-decide" alt="A carrier note on delivery-exceptions goes through the AI service to exception-analyses, then through the rule unit to exception-decisions; a replay reads exception-analyses from offset 0 and runs the same rule unit, publishing nothing" caption="Figure 24.1: The model analyses once per note; the rules decide, and decide again from the record" %}
 
+## Why this matters
+
+When a model that answers differently depending on its prompt or version decides a refund, nobody can explain it to a customer who asks why, or defend it in an audit months later. Let it sit on the decision path and it is exposed to manipulation: an injected note talked it into the same wrong answer every time, leading straight to a refund with nobody involved. Keep what the model reads separate from what the rules decide, and the money decision stays repeatable and changeable by whoever owns the policy.
+
+## Learning objectives
+
+- Split free-text classification from policy decisions into separate, independently testable stages
+- Record a model's answer along with the model, prompt version, and digest that produced it
+- Encode a decision table as mutually exclusive rules that throw instead of guessing
+- Replay a decision from its recorded analysis with zero further model calls
+
 ## Pattern: Analyse, then decide
 
 ### The problem
@@ -154,6 +165,12 @@ When a wrong analysis is expensive or irreversible, a recorded value does not ma
 A hosted model brings a network call, a cost per note and the note's text leaving the building. A local model keeps the text in and costs CPU time. Neither is free, and a model that cannot run where the service runs rules out the pattern.
 
 Rules suit decisions that are a table. A decision that needs a search over many options, a score or a learned weighting belongs elsewhere, and a hundred interacting rules are harder to read than the code they replaced.
+
+## Common pitfalls
+
+- Switching replay to re-ask the model (`REPLAY_MODE=reanalyse`) turns a half-second rules-only replay into one that calls the model again per note, risking a different answer on a different day.
+- Trusting a recorded enum value at face value treats a manipulated note the same as a true one: an injected note that told the model to answer REFUSED here triggered an automatic refund with no review.
+- Writing overlapping or incomplete rules for the decision table leaves more than one rule firing or none at all; the engine throws rather than guess, so a gap stops the service instead of deciding wrong.
 
 > **🤖 Explore with your agent**
 > "In examples/24-decisions-on-events, publish the delivery-exception notes in fixtures/corpus.jsonl to edp.shipping.delivery-exceptions, read the DeliveryExceptionAnalysed records, then call POST /demo/replay and compare the decisions with edp.shipping.exception-decisions. Run it again with REPLAY_MODE=reanalyse and state what changes."

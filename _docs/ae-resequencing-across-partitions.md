@@ -13,6 +13,17 @@ An order's three shipment events arrive from two producers on three topics, each
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
+## Why this matters
+
+A per-order sequence number only has to collide across orders once: the resequencer discards every collision as a duplicate with no logged warning, so most of an order's history can vanish. A restart carries the same risk: the consumer has already committed offsets for records the resequencer still holds, so a shutdown drops them with nothing recorded. The pattern depends on one process stamping a gapless global sequence, so a hole in that sequence, or a restart going wrong, costs a timeout on every event waiting behind it.
+
+## Learning objectives
+
+- Distinguish a global gapless sequence from a per-order number that collides in the stream form
+- State what rejectOld decides when a late event for an already-passed gap arrives
+- Size the timeout between the slowest producer's delay and a latency a user can see
+- Recognize which held records a restart loses because offsets commit ahead of release
+
 ## Pattern: Resequencer across partitions
 
 ### The problem
@@ -98,6 +109,13 @@ Try one change and rerun:
 Keying by the entity id needs no resequencer at all, and a database buffer holds out-of-order events when the key cannot change. Use the Camel Resequencer when order must be restored across keys, the sequence is global and gapless, and losing a held event at a restart is a loss someone can repair.
 
 A global sequencer is a bottleneck and a single point of failure. If events cannot be stamped by one process, resolve ordering where the state lives, with a version checked at the write, and accept that an older event is refused.
+
+## Common pitfalls
+
+- Driving the stream form with a per-order sequence number instead of a single global one: the resequencer treats equal numbers from different orders as duplicates and drops most of them with nothing logged.
+- Sizing the gap timeout too short: events that are correct but slightly delayed get applied out of order before the number they are waiting for ever arrives.
+- Sizing the gap timeout too long: events wait behind one missing number for longer than a user watching the result can tolerate.
+- Assuming a restart is safe for held records: offsets commit on a timer ahead of release, so a stopped service loses whatever the resequencer was still holding.
 
 > **🤖 Explore with your agent**
 > "In examples/ae-resequencing-across-partitions, send twelve ShipmentEvent records for four orders to edp.shipping.scheduled, edp.shipping.in-transit and edp.shipping.delivered with scattered keys, run the stream form with SEQUENCE_BY=global and then SEQUENCE_BY=order, and compare the rows of resequencing.shipment_applied. State when the stream form can be used and what happens to a missing event."

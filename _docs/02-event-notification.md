@@ -11,6 +11,18 @@ An order is placed. The notification service has to tell the customer, and it kn
 
 {% include excalidraw.html file="02-fetch-back" alt="order-service commits the order and publishes OrderPlaced with the order id; notification-service consumes it, fetches the order from order-service and stores a Notification" caption="Figure 2.1: The event names the order, the consumer fetches the facts" %}
 
+## Why this matters
+
+An Event Notification keeps the order service free of every consumer it does not know about, but that freedom moves a cost onto each one. When a fetch cannot reach the source, the customer is left untold, and when a consumer reads only current state, it can report an order as cancelled when the event announced it only as placed. A gap between the commit and the publish lets an order exist that no consumer ever hears about, visible only in a trace across both services.
+
+## Learning objectives
+
+- Publish an event only after the transaction that creates it commits.
+- Fetch the details a notification needs instead of carrying them in the event.
+- Retry a failed fetch instead of skipping the record that triggered it.
+- Propagate one trace across a publish, a consume and a fetch.
+- Recognize when current state differs from the state at event time.
+
 ## Pattern: Event Notification
 
 ### The problem
@@ -103,6 +115,12 @@ Every consumer that fetches adds one request to order-service for each event it 
 A consumer reads current state, not the state at event time. A notification built after the order was cancelled says CANCELLED, which is right for a customer and wrong for an auditor who wants to know what the order looked like when it was placed. When consumers need the state as it was at event time, or the source cannot take the read load or answer reliably, carry the state in the event instead.
 
 Publishing after the commit leaves a window: if the process stops between the commit and the publish, the order exists and the event does not. If the publish itself fails, the order can still be read from order-service and nothing reaches the topic, and nothing publishes the event later.
+
+## Common pitfalls
+
+- Enabling breakOnFirstError without also handling a permanently failing record lets that record retry endlessly and stalls every later record in its partition.
+- Leaving out breakOnFirstError lets the consumer move past a record it could not fetch, so that notification never gets recorded and nothing retries it later.
+- Forgetting to set the Kafka key from the order id scatters one order's records across partitions, breaking anything that depends on reading them in order.
 
 > **🤖 Explore with your agent**
 > "In examples/02-event-notification, stop notification-service, place an Order with order-service, cancel it, then start notification-service. Read the Notification from GET /notifications and compare its orderStatus with the status the OrderPlaced event announced. State the rule that says when a consumer may fetch current state and when the event must carry the state, and name one Order field each case needs."

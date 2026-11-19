@@ -11,6 +11,18 @@ An order from the running example moves from PLACED to PAID. One message says so
 
 {% include excalidraw.html file="01-row-update-vs-event-append" alt="The same ChangeOrderStatus command applied to an orders row, which overwrites the status, and to the order_event table, which gains a new version" caption="Figure 1.1: One command, two storage outcomes" %}
 
+## Why this matters
+
+When a service confuses an event with a command, it can treat a notification as authorization for a refund it was never asked to issue. When a document stands in for history, a dispute becomes impossible to settle, because the only record left is the current row and every prior state is already overwritten. Choosing between an updated row and an appended event decides whether a customer complaint can be verified later, and retrofitting that history after a row-only system ships is impossible: every past change is already gone.
+
+## Learning objectives
+
+- Distinguish an event, a command and a document by who decides and who acts.
+- Model an immutable event store with a unique stream and version constraint.
+- Validate a command against current state before accepting it.
+- Replay an event stream into the same document a row produces.
+- Weigh a row update against an appended history for a given question.
+
 ## Pattern: Event Message
 
 ### The problem
@@ -105,6 +117,12 @@ Try one change and rerun:
 Event sourcing costs more than a row. Every reader of the current state either replays a stream or maintains a second, derived copy that can lag. Long streams need snapshots. Events are permanent contracts: a payload shape written today must still be readable after the code changes, and every consumer depends on it. Corrections are new events, never edits, so a wrong fact needs a compensating one. And the unique constraint settles only concurrent writers on one stream; it does not make a status change in another system atomic with this one.
 
 Prefer a document over an event when the receiver needs the whole current state rather than one change. Keep the row when nobody asks about the past, when the data is reference data, or when an audit table beside the row answers the questions that get asked.
+
+## Common pitfalls
+
+- Skipping the transition check before accepting a command lets an illegal status change through with no error, and the only sign is a row that no longer matches a valid order lifecycle.
+- Relying on application code alone to protect the append-only table leaves a path open for an UPDATE or DELETE to rewrite history, so the triggers are what actually make the guarantee hold.
+- Updating the row without appending the matching event leaves the row and the replayed document disagreeing, and nothing points at which one is now wrong.
 
 > **🤖 Explore with your agent**
 > "In examples/01-crud-vs-events, apply ChangeOrderStatus to a new Order through both models, then answer three questions: what was its OrderStatus before the last change, can you answer it from the OrderRow, and can you answer it from the OrderEvent stream? State the rule that says when a row is enough and when the history is the requirement, and name one order question from the shipping domain that falls on each side."

@@ -11,6 +11,18 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="12-read-process-write" alt="PaymentProcessor reads a batch from edp.inventory.reserved; the output records and the consumer offsets are written inside one Kafka transaction and a commit marker on both partitions makes them take effect" caption="Figure 12.1: Output records and input offsets in one transaction" %}
 
+## Why this matters
+
+When a read-process-write loop crashes between writing its output and committing its offset, it either loses the output or duplicates it on restart, and neither failure announces itself. A duplicate payment record means a customer is charged or credited twice for the same order, a financial loss that lands directly on the business or the customer. Deduplicating by hand only moves the problem into application code that must stay correct under every crash, which is harder to get right than relying on the guarantee the broker already provides.
+
+## Learning objectives
+
+- State why retries and idempotent producers alone cannot prevent a duplicate write
+- Wire a transactional producer to commit offsets and output records together
+- Set isolation.level so a reader skips an open transaction
+- Compare SmallRye batch transactions against a Camel transacted producer
+- Recognize when at-least-once delivery already gives the right answer
+
 ## Pattern: Transactional Client
 
 ### The problem
@@ -106,6 +118,13 @@ A transaction costs throughput; the Strimzi write-up says the effect can be sign
 A record that always fails the batch also stalls the loop. The transaction aborts, the position goes back to the last committed offset, and the same batch is read again, every time. A good record behind the bad one is never processed. Something has to keep the bad record out of the batch before it reaches the transaction, because the transaction cannot decide that.
 
 If the outputs are keyed state that a later write simply overwrites, at-least-once delivery already yields the right result, and a transaction adds cost for nothing. If the output is a database row or an HTTP call, the transaction does not reach it. If the loop is a stream topology, Kafka Streams wraps this same consume-transform-produce cycle behind one setting, and writing it by hand is only worth it when the processing is not a topology.
+
+## Common pitfalls
+
+- Committing the output record without its consumer offset in the same transaction, as the Camel producer does, leaves the offset to commit on a timer and produces duplicate outputs after a restart.
+- Letting one record in a batch fail on every attempt stalls the whole partition, since the transaction aborts and the same batch is read again from the start.
+- Reusing the same transactional.id across two running instances fences one producer off and aborts its open transaction, since Kafka allows only one producer per id.
+- Treating the guarantee as covering a database or HTTP call it never touches leaves that side of the effect with no protection at all.
 
 > **🤖 Explore with your agent**
 > "In examples/12-exactly-once-with-kafka-transactions, set CRASH_MID_BATCH_AT to O-5108, produce O-5101 to O-5110 in one burst, then restart payment-service without the switch. Compare what a read_committed and a read_uncommitted consumer return from edp.payments.processed for PaymentProcessor, and run the same crash through CamelTransactedPaymentRoute. State the rule that makes the first one exactly-once."

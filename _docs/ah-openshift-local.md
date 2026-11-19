@@ -15,6 +15,17 @@ What differs is everything around the code. Operators arrive from catalogs inste
 
 {% include excalidraw.html file="ah-crc-layout" alt="Two Subscriptions in the namespace edp-operators install Strimzi and CloudNativePG and watch the namespace edp, which holds Kafka, a PostgreSQL Cluster, Connect with an ImageStream, a connector and order-service behind a Route that curl reaches over verified HTTPS" caption="Figure H.1: Operators in one namespace, the workload in another" %}
 
+## Why this matters
+
+A shared cluster is easy to leave worse than it was found: operators install cluster-wide CRDs and ClusterRoles that outlive a namespace deletion, and an automatic upgrade can land a different Kafka or PostgreSQL version than the one examples were built against. Skip certificate verification on a Route or a registry push, and a credential or a payload is exposed to interception for convenience. Pin every operator to a named version with manual approval, and remove every cluster-scoped object afterward, to keep the cluster usable for the next run.
+
+## Learning objectives
+
+- Install an operator at a pinned version with manual approval instead of the channel's latest
+- Verify every TLS call against the cluster's own certificate authority rather than disabling the check
+- Copy an image into the cluster's registry by digest so the deployed image matches the local build
+- Remove every cluster-scoped object an operator leaves behind so a shared cluster stays reusable
+
 ## What changes from minikube
 
 | | minikube | OpenShift Local |
@@ -135,6 +146,13 @@ Try one change and rerun:
 CRC is one ephemeral node for learning how the code behaves on OpenShift, not a place to keep data. Its registry, volumes and operators are meant to be thrown away.
 
 The pinned, manually approved Subscription trades upgrades for repeatability: a security fix in an operator waits for a person. Copying an image from outside the cluster suits a demonstration where the image must be the one built elsewhere; a team that builds in the cluster pays less and gets a different image than the one built elsewhere.
+
+## Common pitfalls
+
+- Approving every pending install plan instead of only the one naming the pinned version: automatic approval installs each newer release in the channel as it appears.
+- Copying an image without preserving its digest: a first copy into an empty registry can compress the layers and change the manifest digest, so the deployed image is not the one built locally.
+- Disabling certificate verification on a Route or registry call to work around a trust error: that leaves every later call just as exposed as the one that failed.
+- Deleting only the namespaces at teardown: cluster-wide CRDs, ClusterRoles, and retained volumes survive a namespace delete and are left behind for the next run.
 
 > **🤖 Explore with your agent**
 > "In examples/ah-openshift-local, run build-and-copy.sh with and without --preserve-digests and compare skopeo inspect of containers-storage:localhost/edp/08-order-service:crc with oc get istag order-service:08 -n edp -o jsonpath='{.image.metadata.name}'. Then state which value the Deployment in deploy/ must reference and why the tag 08 is not enough."

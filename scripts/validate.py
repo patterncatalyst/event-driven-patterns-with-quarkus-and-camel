@@ -33,6 +33,16 @@ MAX_BRO_BULLETS = 3
 BRO_HEAD = "## Build, run, observe"
 CHECKNUM_RE = re.compile(r"\bchecks? \d+|\b\d+ of \d+ runs\b|\bin \d+ runs\b", re.I)
 CALLOUT = "Explore with your agent"
+# Pedagogical sections required on every page except the pattern map/glossary (owner 2026-11-18, r18).
+WHY_HEAD = "## Why this matters"
+OBJ_HEAD = "## Learning objectives"
+PITFALLS_HEAD = "## Common pitfalls"
+PEDAGOGY_HEADS = (WHY_HEAD, OBJ_HEAD, PITFALLS_HEAD)
+WNTU_HEAD = "## When not to use it"
+REFS_HEAD = "## References"
+MAX_WHY_WORDS = 90        # soft cap (warning)
+MAX_OBJ_WORDS = 60        # soft cap (warning)
+MAX_PITFALLS_WORDS = 110  # soft cap (warning)
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 RAW_RE = re.compile(r"\{%-?\s*(raw|endraw)\s*-?%\}")
 INCLUDE_RE = re.compile(r"\{%-?\s*include\s+excalidraw\.html\s+(.*?)-?%\}", re.S)
@@ -417,6 +427,48 @@ def chapter_words(body: str) -> int:
     return len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(t for _, t in prose_lines(body))))
 
 
+def section_words(plines, head: str) -> int:
+    """Prose word count of the section introduced by `head`, up to the next `## ` heading."""
+    sec, start = [], False
+    for _, t in plines:
+        if t.strip() == head:
+            start = True
+            continue
+        if start:
+            if t.startswith("## "):
+                break
+            sec.append(t)
+    return len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(sec)))
+
+
+def check_pedagogy(rep: Report, p: Path, plines, off: int):
+    """Every page except the pattern map/glossary carries exactly one Why this matters,
+    Learning objectives (both near the top, before Common pitfalls) and Common pitfalls
+    (near the end: after When not to use it where present, before References). Placement is
+    deliberately lenient so the varied chapter and appendix layouts all pass."""
+    if p.name.startswith("ad-"):
+        return
+    heads = [t.strip() for _, t in plines if t.strip().startswith("## ")]
+    ok = True
+    for h in PEDAGOGY_HEADS:
+        c = heads.count(h)
+        if c != 1:
+            rep.err(p, None, f"needs exactly one '{h}' section, found {c}")
+            ok = False
+    if ok:
+        iw, io, ip = heads.index(WHY_HEAD), heads.index(OBJ_HEAD), heads.index(PITFALLS_HEAD)
+        if not (iw < io < ip):
+            rep.err(p, None, f"order must be '{WHY_HEAD}', then '{OBJ_HEAD}', then '{PITFALLS_HEAD}' (near the end)")
+        if WNTU_HEAD in heads and heads.index(WNTU_HEAD) > ip:
+            rep.err(p, None, f"'{PITFALLS_HEAD}' must come after '{WNTU_HEAD}'")
+        if REFS_HEAD in heads and heads.index(REFS_HEAD) < ip:
+            rep.err(p, None, f"'{PITFALLS_HEAD}' must come before '{REFS_HEAD}'")
+        for head, cap in ((WHY_HEAD, MAX_WHY_WORDS), (OBJ_HEAD, MAX_OBJ_WORDS), (PITFALLS_HEAD, MAX_PITFALLS_WORDS)):
+            w = section_words(plines, head)
+            if w > cap:
+                rep.warn(f"{p.relative_to(rep.root)}: '{head}' has {w} prose words, soft cap {cap}")
+
+
 def check_bro(rep: Report, p: Path, plines, off: int):
     """Build, run, observe stays EIP-Camel short: commands, what to watch, at most three Try bullets."""
     sec, start = [], None
@@ -468,11 +520,13 @@ def check_chapters(rep: Report):
             if d and XREF_RE.search(d.group(1)) and not XREF_SOURCE_RE.search(d.group(1)):
                 rep.err(p, None, f"cross-reference '{XREF_RE.search(d.group(1)).group(0)}' in the description")
         n = chapter_words(body)
-        # Appendix I has no word cap (owner decision 2026-11-18); its Build, run, observe soft cap still applies.
+        # No hard word cap or floor (owner decision 2026-11-18): about 2,000 words is a target,
+        # never a limit. Warn, do not fail, when a page runs well past it. Appendix I is exempt.
         if n > MAX_WORDS and not p.name.startswith("ai-"):
-            rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
+            rep.warn(f"{p.relative_to(rep.root)}: {n} prose words, soft cap {MAX_WORDS} (target ~2000, no hard cap)")
         plines = prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S))
         check_bro(rep, p, plines, off)
+        check_pedagogy(rep, p, plines, off)
         has_pattern = any(re.match(r"##\s+Pattern:", t) for _, t in plines)
         callouts = [i for i, t in plines if CALLOUT in t]
         if has_pattern and len(callouts) != 1:
@@ -795,8 +849,13 @@ def run(root: Path) -> Report:
 def self_test() -> int:
     good_doc = (
         '---\ntitle: "Demo"\norder: 1\npart: demo\n---\n\nIntro text.\n\n'
-        '{% include excalidraw.html file="01-demo" alt="Demo" %}\n\n## Pattern: Demo\n\n'
-        '> **\U0001F916 Explore with your agent**\n> "Open the demo and check the rule."\n> Check: it holds.\n'
+        '{% include excalidraw.html file="01-demo" alt="Demo" %}\n\n'
+        '## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n'
+        '## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n'
+        '## Pattern: Demo\n\n'
+        '> **\U0001F916 Explore with your agent**\n> "Open the demo and check the rule."\n> Check: it holds.\n\n'
+        '## When not to use it\n\nWhen there is nothing to demo.\n\n'
+        '## Common pitfalls\n\n- Skipping the setup step leaves the demo empty.\n'
     )
     results = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -828,6 +887,31 @@ def self_test() -> int:
         (r / "_docs/01-demo.md").write_text(good_doc + "\nIn this chapter we cover it.\n")
         e = run(r).errors
         results.append(("self-reference caught", any("self-reference" in x for x in e), e))
+
+        # Pedagogical sections (r18).
+        r = build("pedagogy-missing")
+        (r / "_docs/01-demo.md").write_text(good_doc.replace("## Common pitfalls\n\n- Skipping the setup step leaves the demo empty.\n", ""))
+        e = run(r).errors
+        results.append(("missing Common pitfalls caught", any("exactly one '## Common pitfalls'" in x for x in e), e))
+
+        r = build("pedagogy-dup")
+        (r / "_docs/01-demo.md").write_text(good_doc + "\n## Why this matters\n\nTwice.\n")
+        e = run(r).errors
+        results.append(("duplicated Why this matters caught", any("exactly one '## Why this matters'" in x and "found 2" in x for x in e), e))
+
+        r = build("pedagogy-order")
+        swapped = good_doc.replace(
+            "## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n",
+            "## Learning objectives\n\n- Run the demo.\n- Read the result.\n\n## Why this matters\n\nWhen the demo breaks, orders stall and someone gets paged.\n\n")
+        (r / "_docs/01-demo.md").write_text(swapped)
+        e = run(r).errors
+        results.append(("wrong pedagogy order caught", any("order must be" in x for x in e), e))
+
+        r = build("pedagogy-ad-exempt")
+        (r / "_docs/ad-demo.md").write_text(
+            '---\ntitle: "Map"\norder: 2\npart: demo\n---\n\nIntro.\n\n## A heading\n\nText.\n')
+        e = run(r).errors
+        results.append(("ad- exempt from pedagogy sections", not any("Why this matters" in x or "Common pitfalls" in x for x in e), e))
 
         r = build("forward")
         (r / "_docs/01-demo.md").write_text(good_doc + "\nRun kubectl port-forward svc/x 8080.\n")
@@ -920,13 +1004,16 @@ def self_test() -> int:
         results.append(("second callout caught", any("exactly one" in x for x in e), e))
 
         r = build("wordcap")
-        (r / "_docs/01-demo.md").write_text(good_doc + "\n" + " ".join(["word"] * 2600) + "\n")
-        e = run(r).errors
-        results.append(("chapter over the word cap caught", any("prose words, limit" in x for x in e), e))
+        (r / "_docs/01-demo.md").write_text(good_doc + "\n## Extra\n\n" + " ".join(["word"] * 2600) + "\n")
+        rr = run(r)
+        results.append(("chapter well over target warns, does not fail",
+                        any("prose words, soft cap 2500" in x for x in rr.warnings) and not any("prose words" in x for x in rr.errors),
+                        rr.warnings + rr.errors))
         (r / "_docs/01-demo.md").write_text(good_doc)
-        (r / "_docs/ai-demo.md").write_text(good_doc.replace("01-demo", "ai-demo") + "\n" + " ".join(["word"] * 2600) + "\n")
-        e = run(r).errors
-        results.append(("Appendix I exempt from the word cap", not any("prose words, limit" in x for x in e), e))
+        (r / "_docs/ai-demo.md").write_text(good_doc.replace("01-demo", "ai-demo") + "\n## Extra\n\n" + " ".join(["word"] * 2600) + "\n")
+        rr = run(r)
+        results.append(("Appendix I exempt from the chapter word soft cap",
+                        not any("soft cap 2500" in x and "ai-demo" in x for x in rr.warnings), rr.warnings))
 
         r = build("bro")
         long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 251) + "\n"

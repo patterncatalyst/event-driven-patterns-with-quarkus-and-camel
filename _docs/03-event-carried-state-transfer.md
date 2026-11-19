@@ -11,6 +11,18 @@ A customer asks the notification service about order O-1001. The service needs t
 
 {% include excalidraw.html file="03-notification-vs-state-transfer" alt="Event notification carries only the order id and the consumer fetches the current state; event-carried state transfer carries the whole Order and the consumer reads its local copy" caption="Figure 3.1: What the consumer has to do after the event" %}
 
+## Why this matters
+
+When a notification service has to call back for every detail, it can answer nothing while the order service is down, leaving a support rep with no order to read a waiting customer. An order with a large attachment can also fail to reach the topic without warning, so a team that depends on knowing about it never finds out. Both failures stay hidden until someone notices a missing answer or a missing order, often during an outage that has already become an incident.
+
+## Learning objectives
+
+- Carry the state a consumer needs inside the event instead of a reference.
+- Guard an upsert against events that arrive out of order.
+- Keep a large or optional payload out of the event with a claim check.
+- Fetch content on demand instead of embedding it in every message.
+- Explain why Kafka's size limits force a claim check for unbounded payloads.
+
 ## Pattern: Event-Carried State Transfer
 
 ### The problem
@@ -128,6 +140,13 @@ Try one change and rerun:
 Do not copy state that must be current. A balance, a stock level or a payment status that decides something right now belongs with its owner, and event notification with a fetch keeps one answer. Do not copy state into many consumers that must each keep it correct: every copy has to apply every change, and one that misses an event answers with old data. Do not carry state whose shape you cannot hold stable: consumers read the event's fields, so renaming or removing one breaks them.
 
 Do not use a claim check for small payloads. A reference costs a second store, a second call and a lifecycle for the stored content, and a claim kept after its order is gone still takes space, and no service is responsible for deleting it. If every consumer reads the attachment, put it in the event and raise the limits, or store it once and let them all fetch it. And a claim check does not make the publish atomic with the commit: the order can commit and the event can still fail.
+
+## Common pitfalls
+
+- Skipping the status guard in the upsert lets a late event move a copy backwards, undoing a more recent cancellation.
+- An event that fails validation because it carries no order state is logged and skipped rather than retried, so a malformed producer can leave a copy permanently missing with no alarm raised.
+- Inlining a large attachment instead of keeping it behind a claim trips the producer's request-size limit after the order has already committed, so the order exists with no event to announce it.
+- Leaving claim records with no expiry policy lets stored content accumulate with nothing responsible for removing it.
 
 > **🤖 Explore with your agent**
 > "In examples/03-event-carried-state-transfer, place one Order with no attachment and one with a 100 KB attachment, then read both events from edp.orders.placed. For each, say whether the OrderCopy that OrderStateEvent builds can answer GET /order-copies/{id} with order-service stopped, and whether the Claim holds the attachment size, and apply the rule: carry state the consumer reads on every use, keep a large optional part behind a claim, and fetch current data from the owner when staleness is not acceptable."

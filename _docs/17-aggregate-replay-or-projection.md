@@ -11,6 +11,17 @@ Operations asks a question nobody planned for: how many orders FASTLINE and AIRC
 
 {% include excalidraw.html file="17-replay-vs-projection" alt="Commands append events to orders.events; a replay reads every stream at the time of the question, folds each aggregate and counts the shipped ones; a projection reads the same events before the question through a projector with a checkpoint and keeps carrier_daily_shipments, which a query scans" caption="Figure 17.1: Two read paths over one store" %}
 
+## Why this matters
+
+When operations asks how many orders each carrier shipped per day, the write model can only answer by paying the full cost of the event store on every request, and that cost grows as the business succeeds. Building a second model instead introduces a new way to get a wrong or stale answer: a bug repeated into every row, or a checkpoint that skips a committed order with no error to show for it. The choice is a bet on how often the question gets asked against how much staleness and complexity the business can tolerate.
+
+## Learning objectives
+
+- Fold every aggregate in the store to answer a question the write model was not built for
+- Keep a projection current with a checkpointed poller instead of a read-time replay
+- Order a checkpoint by commit visibility instead of insertion position
+- Judge when a replay's cost against the budget justifies building a projection instead
+
 ## Pattern: Projection rebuilt from history
 
 ### The problem
@@ -135,6 +146,13 @@ When the question is rare or the history is small, replay. A report that runs on
 A projection serves the questions it was built for. A new question needs a new fold and a rebuild from the first event, so the store must keep that history for as long as such questions can arrive. A bug in the fold is repeated into the rows until the rebuild. The Azure Architecture Center advises serving the last complete view while a new one is built; this projection undercounts for the length of the rebuild.
 
 When a command must see its own write, read the aggregate: a projection is eventually consistent, and the gap is a tick plus a batch. A read model fed from Kafka topics has other problems: lag, and the order between topics. A projector that reads the event store itself has commit order inside one database.
+
+## Common pitfalls
+
+- Checkpointing by position instead of by commit visibility skips a row from a transaction that committed after a later one, with no error to mark the gap.
+- Treating a projection as current the moment it is built ignores the rebuild time a new question needs before its counts can be trusted.
+- Expecting a command's own write to show up in a projection immediately ignores the tick and batch delay built into every read.
+- Holding a long-running transaction open stalls every projection batch behind it, since no row past an open transaction can be read yet.
 
 > **🤖 Explore with your agent**
 > "In examples/17-aggregate-replay-or-projection, ask for shipments per carrier through ReplayReport and through CarrierDailyProjector, then find where projection_checkpoint and the tx_id watermark decide which events a batch reads. Set PROJECTION_WATERMARK=off, hold ShipOrder O-1701 open while O-1702 ships, and state which order the projection never counts and why."

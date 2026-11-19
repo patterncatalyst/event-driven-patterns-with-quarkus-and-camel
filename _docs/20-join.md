@@ -11,6 +11,18 @@ duration: "55 minutes"
 
 {% include excalidraw.html file="20-join-window" alt="A reservation at time T opens a 30 minute window with 5 minutes of grace; a payment at T plus 2 minutes inside the window gives ReadyToShip, a payment at T plus 90 minutes does not match, and the unmatched reservation leaves as PaymentOverdue only when a later record moves stream time past T plus 35 minutes" caption="Figure 20.1: A reservation opens a window in event time, and only later records close it" %}
 
+## Why this matters
+
+When a carrier is booked before the payment has cleared, the business ships goods it was never paid for. When a payment is confirmed but no carrier is ever booked, a paying customer's order sits with no visible owner until someone complains. The two facts arrive from separate services with no shared order between them, so correlation logic can go wrong in either direction, and two different approaches can disagree about the same order as it crosses between them.
+
+## Learning objectives
+
+- Pair two events sharing a key within a bounded time window.
+- Emit an unmatched side once its window closes instead of waiting forever.
+- Distinguish a join by event time from one by arrival time.
+- Explain why the two forms can reach opposite answers for the same pair.
+- Recover open join state after a restart without losing an in-flight pair.
+
 ## Pattern: Stream-stream join
 
 ### The problem
@@ -131,6 +143,12 @@ Try one change and rerun:
 A window is for facts that happen close together. If the second fact can come a week later, a window either grows into a large store or drops the pair. A fact that changes slowly and is looked up (a slowly changing reference such as carrier data) is a table, and the lookup is a table join without a window.
 
 If the two facts already sit in one database, a SQL join answers the question with no state to keep. If the correlation is short, live and low in volume, and arrival time is close enough to event time, the Camel aggregator is the lighter choice: no local store, no changelog, no partition rule. A Streams join also keeps both sides for longer than the window itself, so a long window on a busy topic is a large store.
+
+## Common pitfalls
+
+- Relying on Kafka Streams to fail loudly on a partition mismatch is a mistake: with unequal partition counts it still starts and reports RUNNING, matching only orders whose records share a partition number.
+- Treating a Camel completion timeout as a stand-in for the event-time window is a mistake: the timeout measures only the service's own clock, so it disagrees with the business rule on late or replayed records.
+- Using the in-memory aggregation repository instead of the PostgreSQL-backed one loses every open group on a restart, since the consumer has already committed the offset that would have replayed it.
 
 > **🤖 Explore with your agent**
 > "In examples/20-join, ReadinessTopology and ReadinessRoute join InventoryReserved and PaymentProcessed by order id. Produce one pair whose events are two minutes apart but whose records are produced further apart than the route's completion timeout (O-2003), and one whose events are 90 minutes apart but are produced back to back (O-2004). From PayloadTimestampExtractor and completionTimeout, state which clock each output used and why the two disagree, then recreate the service with a reservation open and say where each form found it again."

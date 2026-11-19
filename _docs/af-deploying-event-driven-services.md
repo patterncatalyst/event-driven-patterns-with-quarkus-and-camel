@@ -13,6 +13,17 @@ A consumer in a group owns partitions. Stopping it hands them to another member 
 
 The strategies below run on a minikube cluster with two existing images, unchanged: a notification-service, whose group, protocol and client id come from the environment, and an order-service that answers `POST /orders`. A producer Job sends numbered records (`O-41000` and up) at a fixed rate, so a record that is missing, repeated or read by two groups is found by its id.
 
+## Why this matters
+
+The deployment strategy decides whether a release delays, repeats, or drops records, and skipping expand, migrate, and contract for a schema change can lose rows while logging only one error line. When a dashboard watches consumer lag alone, it can report healthy while an insert fails on a renamed field, because the offset commits and the lag reads zero. Match the strategy to whether a service owns a consumer group or sits behind a load balancer, and a routine release stops losing data a customer finds before anyone else does.
+
+## Learning objectives
+
+- Predict whether a deployment strategy delays, repeats, or drops records for a given service shape
+- Apply the expand, migrate, and contract sequence to a schema change the old and new code cannot both read
+- Read a cut-over's offset export and import to judge what a blue-green rollback resumes from
+- Recognize why consumer lag alone cannot reveal a broken insert on a renamed field
+
 ## Stop and restart
 
 The Deployment strategy `Recreate` kills every existing pod before it creates new ones (Kubernetes, Deployments). For a consumer group it has the fewest moving parts: one membership ends, another begins, and Kafka keeps the records in between.
@@ -130,6 +141,13 @@ Every strategy here delivers at least once. A consumer that cannot tolerate a re
 Blue-green consumers pay for two groups, a copy step and a stop between them. When the old and the new version can read the same topic together, which is true of every compatible change, a rolling update does the same work with no copy. When a consumer is stateless and a delay of one pod start is acceptable, the stop and restart is the least to operate.
 
 A client of a rolling service has to expect failed requests, because a connection open to a pod that is removed can be reset. It retries, and the service needs a way to tell a retry from a new request.
+
+## Common pitfalls
+
+- Trusting consumer lag as the only deployment health signal: a renamed field can make every insert fail while the offset still commits and lag reads zero.
+- Running a breaking schema change in one step instead of expand, migrate, and contract: the old consumer's insert fails on the field it no longer finds, and the row is lost with no trace in a lag dashboard.
+- Skipping the offset export before a blue-green cut-over or rollback: the target group then replays the topic from the start or resumes from a stale position, reading everything since the switch again.
+- Assuming a rolling update needs no retry handling at the client: a pod being removed can reset a connection in flight, and a request that already published its event before the reset looks identical to one that never did.
 
 > **🤖 Explore with your agent**
 > "In examples/af-deploying-event-driven-services, run verify.sh with OFFSET_COPY=off, then query notifications.notification for the groups notify-blue and notify-green in the id range O-51000 to O-54999. List the ids both groups hold and say why green re-read them. Then read group_offsets_copy in examples/_k8s/lib.sh and state what it exports from the source group, what it imports into the target, and why the source group must have no members."

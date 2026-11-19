@@ -11,6 +11,18 @@ The shipping service tells the world three things about an order, in this sequen
 
 {% include excalidraw.html file="04-keys-to-partitions" alt="Three key strategies: the order id puts all of an order's events in one partition, the event type splits an order across two partitions, and the carrier uses only two of three partitions" caption="Figure 4.1: The key picks the partition" %}
 
+## Why this matters
+
+When the wrong partition key is picked for a sequence of events, nothing goes wrong at publish time. The cost shows up later, when a reader applies the events out of order: an order can regress from DELIVERED back to SHIPPED with no error anywhere, because Kafka orders records only within one partition and nothing checks that order across partitions. For an online shop, that status is what the customer sees, so an undetected reordering can report a delivered package as still on the road until a buffer or a sequence check catches it.
+
+## Learning objectives
+
+- Key every event of an entity into one partition.
+- Explain why Kafka orders records within a partition and not across partitions.
+- Choose a resequencer only when the key cannot carry all events.
+- Lock and buffer out-of-sequence events per entity without blocking other entities.
+- Check a keying choice against order under a paused consumer.
+
 ## Pattern: Partitioned ordering
 
 ### The problem
@@ -114,6 +126,12 @@ Try one change and rerun:
 ## When not to use it
 
 Keying by entity id does not order events across entities, and it leaves the partition count as the limit on parallelism. A buffer holds an event until every earlier event of its order arrives, and it costs a database row for everything it holds and a row lock per event. If the events can share a key, use the key. If order only matters for the final state, a version or sequence number checked at the write can reject an older event with no buffer at all.
+
+## Common pitfalls
+
+- Keying shipment events by event type instead of order id spreads one order across partitions, so a paused consumer can apply ShipmentDelivered before ShipmentScheduled and nothing flags the regression.
+- Running the resequencer buffer with no timeout on a missing event leaves that order's later events held indefinitely, because nothing here gives up on a gap on its own.
+- Choosing a low-cardinality key like the carrier keeps one order's events together but leaves a partition idle while the others carry all the load.
 
 > **🤖 Explore with your agent**
 > "In examples/04-ordering-and-partitioning, publish one order through PartitionKeyStrategy ORDER_ID and then EVENT_TYPE (SHIPPING_PARTITION_KEY), pause the order replica that owns the ShipmentScheduled partition each time, and compare the OrderStatus and the order_status_history rows. State which key keeps ShipmentDelivered after ShipmentScheduled, and how ShipmentBuffer puts them back using the sequence number."

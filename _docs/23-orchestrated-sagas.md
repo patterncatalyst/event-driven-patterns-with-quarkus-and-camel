@@ -11,6 +11,17 @@ In the choreographed saga nobody holds the whole sequence. Each service knows it
 
 `order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them.
 
+## Why this matters
+
+When nobody holds the whole sequence, answering where an order is means reading three codebases, and a change to the flow touches every service that reacts to it. An orchestrator fixes that, but it becomes a single point that can lose a saga: when it restarts with one saga in flight, that saga is lost in most trials, leaving stock reserved and an order stuck past its deadline. The choice between a coordinator and a workflow engine decides whether a late participant is refused outright or charged and then refunded.
+
+## Learning objectives
+
+- Centralize a saga's sequence and state in one orchestrator instead of scattering it across participants
+- Register a compensation with an LRA coordinator and trigger it on a cancelled saga
+- Write an explicit compensation task list for a workflow engine with no built-in undo
+- Give every saga step and wait its own time limit, owned by the orchestrator
+
 ## Pattern: Orchestrated saga
 
 ### The problem
@@ -190,6 +201,13 @@ A workflow engine is as durable as its restore. If the flow waits for days, find
 Neither form gives isolation. While the saga runs the order is PLACED and the stock is reserved, and a reader sees both. A countermeasure, such as marking the order pending, belongs in the data, not in the orchestrator.
 
 A step that cannot be undone has no compensation. Shipping is the usual one: it comes after the pivot step, and the saga should end before it.
+
+## Common pitfalls
+
+- Keeping a participant out of the saga (`PAYMENT_JOIN=off`) means the coordinator has nothing registered to refuse, so a late payment for an already cancelled order goes through.
+- Skipping a workflow's compensation tasks (`FLOW_COMPENSATION=off`) cancels the order but leaves the payment taken and the stock reserved, with nothing left to notice the mismatch.
+- Leaving a saga at the default `AUTO` completion mode closes it once the starting route ends, before any participant replies, so a later failure finds nothing to compensate.
+- Recreating `order-service` while a workflow instance waits does not resume it: the instance stays stuck past its deadline until something else cancels it.
 
 > **🤖 Explore with your agent**
 > "In examples/23-orchestrated-sagas, stop payment-service, place one order with POST /orders/camel and one with POST /orders/flow, and follow each until it is CANCELLED: read CamelOrderSagaRoute and the Long-Running-Action header on edp.payments.commands for the first, OrderSagaWorkflow and the flowinstanceid header for the second. Then start payment-service and compare what each form did with the late TakePayment."

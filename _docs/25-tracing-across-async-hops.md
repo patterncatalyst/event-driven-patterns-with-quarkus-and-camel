@@ -13,6 +13,17 @@ One trace follows an order from the request to the stock reservation, through th
 
 {% include excalidraw.html file="25-context-carriers" alt="Five boxes in a row: the POST /orders server span, the outbox row with its outbox-write span, the log and Connect with db-log-write and debezium-read, the Kafka record on edp.orders.placed, and the consumer span in inventory-service; under each the place the trace context is written: the traceparent HTTP header, the tracingspancontext column, a span started from the log entry, the traceparent record header, and a child of the span in the header" caption="Figure 25.1: The context rides in a different place at every hop, and each relay has to copy it" %}
 
+## Why this matters
+
+When an order stalls between a commit and a consumer, an operator watching only per-service dashboards sees that nothing happened at all. A support call about a missing stock reservation then turns into a manual trawl through logs in separate processes, instead of one search in a trace viewer. Without a carried trace context, every async hop is a dead end, and the cost falls on whoever is paged to explain where the order went.
+
+## Learning objectives
+
+- Carry a W3C traceparent through an outbox row, a Debezium relay, and a Kafka record header
+- Decide between a child span and a linked span when a consumer reads a published event
+- Configure the OpenTelemetry Java agent on Kafka Connect without flooding Tempo with unrelated spans
+- Read a trace waterfall to separate time inside services from time spent in the relay
+
 ## Pattern: Trace context in the message
 
 ### The problem
@@ -165,6 +176,12 @@ The context in a message is a coupling. A producer that sets the header and a co
 A parent that spans a long delay misleads. A consumer that reads the record an hour later shows an hour-long trace whose middle is a queue, and a trace viewer will draw it as work. Link anything that is not a prompt continuation.
 
 Running a Java agent in Connect adds a dependency to the relay, a download at start, and memory: Connect used 752 MiB after one burst of 100 orders, a single sample with no measurement of Connect without the agent. When the relay's own time is of no interest, a producer that copies the `traceparent` into a header itself reaches the same consumer with no change to Connect, and the trace is a single hop with a gap where Connect was.
+
+## Common pitfalls
+
+- Leaving the Java agent's default instrumentation on in Connect replaces the outbox router's traceparent with a new trace named after the topic, flooding Tempo with Connect's own traffic.
+- Skipping the agent in Connect leaves records with no traceparent header, so the consumer starts an unrelated trace and the reservation cannot be found from the request.
+- Using the parent form for work that runs long after the record, such as a retry or a timer, stretches the trace across the delay and a trace viewer draws the wait as work.
 
 > **🤖 Explore with your agent**
 > "In examples/25-tracing-across-async-hops, place O-2501 through OrderResource, read the tracingspancontext column and the traceparent header on edp.orders.placed, then query Tempo for span.order.id = O-2501 and print the span ancestry down to reserve stock. Run it again with CONSUMER_TRACE=link and say which spans moved to a second trace."

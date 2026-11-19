@@ -13,6 +13,17 @@ A process that an attacker takes over inherits all of it. A namespace label turn
 
 {% include excalidraw.html file="31-admission" alt="A namespace labelled enforce restricted sends every pod to Pod Security Admission; a pod with the four fields is admitted and one without is forbidden with the fields named; a Deployment without them is accepted, its ReplicaSet fails to create the pod, and the old pod keeps running" caption="Figure 31.1: The check runs when a pod is created, so a Deployment is accepted and its pods are refused" %}
 
+## Why this matters
+
+Kubernetes admits a well-formed pod whether or not it can run as root, escalate privileges through a setuid binary, or keep unused capabilities. A process an attacker takes over inherits every one of those freedoms. Rely on each team to remember a hardened security context, and it fails the moment one forgets; an operator creating pods on a team's behalf decides their security context regardless of what was asked. Enforce the restricted standard at the namespace, and that gap becomes a refusal at admission instead of an exploit in production.
+
+## Learning objectives
+
+- Enforce the restricted Pod Security Standard at the namespace instead of per pod
+- Set the four required security context fields an application's Deployment owns
+- Select the pod security provider an operator applies to the pods it creates
+- Isolate a workload that cannot meet the standard in a namespace of its own
+
 ## Pattern: Restricted pods by default
 
 ### The problem
@@ -156,6 +167,12 @@ A cluster for one person's laptop experiments gains little from a rule that refu
 The level checks pod specs and nothing else. It does not scan images, limit network paths or constrain what a non-root process may do with the permissions it has. A restricted pod with a database password in its environment is restricted and exposed.
 
 The label is only as good as the version it names. `latest` moves with the cluster, so an upgrade can refuse pods that ran the day before, and a pinned version moves only when someone changes it.
+
+## Common pitfalls
+
+- Labelling a namespace that already runs pods only warns about existing violations and evicts nothing, so the refusal lands later at the next rollout instead of at the label change.
+- Leaving an operator on its default pod security provider lets it create pods that still get refused, so Kafka brokers never become ready while the application's own pods pass fine.
+- Trying to exempt a single pod from a namespace's enforced level does not work, since Pod Security Admission applies per namespace rather than per pod, and an image that cannot comply needs a namespace of its own.
 
 > **🤖 Explore with your agent**
 > "In examples/31-security-context-and-pod-security, run verify.sh with APP_SECURITY=none and read the FailedCreate event on the order-service ReplicaSet. List the four fields it names, then find where components/app-security sets them and why the Deployment is accepted while its pod is not. Run the same with STRIMZI_PSP=baseline and find the refusal in the Strimzi operator log. Say which fields the Restricted provider adds to the Kafka pods."

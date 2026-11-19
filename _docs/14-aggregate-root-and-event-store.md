@@ -11,6 +11,17 @@ A plain event table with a unique version settles a race between two writers, bu
 
 {% include excalidraw.html file="14-aggregate-command-cycle" alt="A command is loaded against the stream, the aggregate is rebuilt, the command is decided and the events are appended at the loaded version plus one in one transaction with an outbox row for OrderPlaced and OrderCancelled; Debezium carries those two to edp.orders.placed and edp.orders.cancelled" caption="Figure 14.1: One command, one transaction, and two public events out" %}
 
+## Why this matters
+
+When three callers each read an order's status and write their own decision, a cancellation and a shipment can both read PAID and each look correct on its own, while together they leave the order cancelled after it already shipped. That kind of conflict corrupts the order's history in a way that is hard to detect and harder to undo, since nothing stops two racing decisions from both landing. When an aggregate decides again from its own freshly loaded state, and a store rejects any stale write, an order's history stays a legal sequence of events.
+
+## Learning objectives
+
+- Rebuild an aggregate's state by folding its own event stream before deciding a command
+- Reject an append whose expected version no longer matches the stream
+- Distinguish a command worth deciding again from one that must be reported to the caller
+- Export only the public events a stream produces, not its internal history
+
 ## Pattern: Aggregate
 
 ### The problem
@@ -193,6 +204,13 @@ Loading replays the whole stream on every command. For four events that is negli
 A server-side retry fits only a command whose intent survives a changed state. And events are permanent: once other services read `OrderPlaced`, a wrong fact is corrected by appending another event, never by editing a row.
 
 Kafka is not an event store: the Azure Architecture Center's Event Sourcing pattern asks of a store that it reject an append when the stream has changed since it was read.
+
+## Common pitfalls
+
+- Re-appending a command's events after losing a version conflict instead of deciding again lets an order end up cancelled after it already shipped.
+- Retrying a conflict whose intent depended on a state the caller already read overrides a decision the caller never actually made.
+- Removing the unique constraint on stream id and version leaves nothing to detect a race, so two writers can both win and corrupt the history.
+- Letting a connector tail the event table directly publishes every internal event, turning the store's own schema into a contract with every consumer.
 
 > **🤖 Explore with your agent**
 > "In examples/14-aggregate-root-and-event-store, pause a Cancel of a paid order between decide and append, append OrderShipped as version 3, and compare what OrderAggregate, OrderTransaction and OrderCommands do with the cancellation against the same cancellation with an If-Match header. State when a conflict is decided again and when it is reported to the caller."

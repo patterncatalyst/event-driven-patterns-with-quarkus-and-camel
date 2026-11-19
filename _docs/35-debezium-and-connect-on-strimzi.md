@@ -13,6 +13,17 @@ On Kubernetes the operator that runs Kafka can run Connect too, and it can hold 
 
 {% include excalidraw.html file="35-build-and-run" alt="A KafkaConnect resource with a build section starts a build pod that downloads the plugin archive and checks its sha512, pushes the image to a registry with a fixed ClusterIP inside the cluster, and the Connect pod pulls it by digest; a checksum that does not match fails the build and no Connect pod starts" caption="Figure 35.1: The Connect image is built from the resource and stays in the cluster" %}
 
+## Why this matters
+
+When a connector exists only as a JSON document PUTed to a REST API, there is no record of what should be running, and the cluster drifts once someone edits it by hand. When an offset is changed through that API, there is no trace of who changed it, and repairing one reader's offset can create a gap in other readers. A downloaded plugin is only as trustworthy as the checksum that verifies it. Declare the image, connectors and offsets as resources, and all three stay reviewable before they run.
+
+## Learning objectives
+
+- Build the Connect worker image from a declared resource instead of a published image
+- Declare each connector and verify its plugin against a checksum before it runs
+- Change a connector's offsets through an annotation instead of a REST call
+- Separate two connectors in one worker with distinct topic prefixes
+
 ## Pattern: Connectors as declared resources
 
 ### The problem
@@ -193,6 +204,13 @@ The registry here is an emptyDir behind a fixed address, and it is gone with its
 The offset operations on a resource are as destructive as the REST calls. Do not alter an offset to repair a consumer: the change goes into the connector for every reader of the topic, and a skipped batch is a gap in every one of them.
 
 A plugin that Strimzi downloads is only as trustworthy as its checksum. The checksum comes from the same place as the archive unless it is copied in from a source that is not, and a pull request that changes both has to be read.
+
+## Common pitfalls
+
+- Sharing one topic prefix between two Debezium connectors in the same worker stops the second one from registering its metrics, and it never takes its snapshot.
+- Creating a captured table through a superuser connection instead of the connector's own role fails a filtered publication, since the table must be owned by that role, not just readable by it.
+- Restarting a failed task with the general restart annotation does nothing, since only the task-specific restart annotation targets the task that actually failed.
+- Leaving a stale offset-alter annotation on a resource after a refused alter risks it firing later against whatever the ConfigMap then holds, since the operator removes the annotation only when the operation succeeds.
 
 > **🤖 Explore with your agent**
 > "In examples/35-debezium-and-connect-on-strimzi, read connect/kafkaconnect.yaml and connectors/inventory-cdc.yaml, run ./verify.sh with KEEP=1, then set the KafkaConnector inventory-cdc to state stopped, update SKU-1 in inventory.inventory_item, alter its offset to the current WAL position through the ConfigMap inventory-cdc-offsets-alter, resume it, and read edp.inventory.item-changes. Then annotate it with the alter while it is running. Say which edits belong in the repository and what the operator leaves behind after the refused alter."

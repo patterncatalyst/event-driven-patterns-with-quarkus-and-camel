@@ -15,6 +15,17 @@ Streaming SQL engines exist for this question, and ksqlDB is the best known for 
 
 {% include excalidraw.html file="ac-three-ways" alt="One input topic edp.shipping.delivered feeds three engines: Kafka Streams in the service with a window store asked through GET /counts, a Flink SQL job whose closed windows land on an upsert-kafka topic, and RisingWave views asked with psql" caption="Figure C.1: One topic, three engines, three places for the state and three ways to ask" %}
 
+## Why this matters
+
+When three event-time engines have to agree on one number, deliveries per carrier per minute, they can disagree anyway unless their lateness bounds match exactly. A dropped late record leaves no trace, so an undercount can look like a correct answer until someone checks a raw log. When you pick the wrong engine, build a service endpoint for a question other consumers need to read, or stand up a new system for a count one service could already compute, you add an operational cost nobody asked for.
+
+## Learning objectives
+
+- Pick an engine based on who owns the state and who needs to ask the question
+- Set a matching lateness bound across engines that each advance event time differently
+- Recognize that a late record for a closed window is dropped with no signal in the answer
+- Check a window store's retention setting before trusting a query for older windows
+
 ## One question
 
 The input is one JSON record per delivery on a single-partition topic:
@@ -160,6 +171,13 @@ A value that changes per key and is read by key is a lookup. A table fed by the 
 Windows need event time the data carries. When the source has no reliable time, or its disorder exceeds any lateness anyone accepts, count by arrival and say so.
 
 State grows with the number of open windows and keys. A count per carrier per minute is small; a count per customer per second is a storage problem that needs a retention decision first.
+
+## Common pitfalls
+
+- Setting a different lateness bound per engine instead of the same number everywhere: a record inside one engine's bound and outside another's makes the three answers disagree.
+- Leaving a window store's retention at its default of window size plus grace period: a query for the day then only reaches the newest two windows and looks like missing history.
+- Trusting that a dropped late record shows up somewhere: none of the three engines surfaces it in the query result, so confirming the count is complete takes a separate lateness check beyond the answer itself.
+- Adding a stream-processing engine for a question one service can already answer from a state store it already runs: that only adds a system to operate for no new capability.
 
 > **🤖 Explore with your agent**
 > "In examples/ac-querying-streams-without-ksqldb, produce the fourteen ShipmentDelivered records from counts.py and read the closed windows from Kafka Streams, from the Flink topic and from RisingWave. Rerun with KS_GRACE_SECONDS=0 and say which window differs, in which engine, and why."

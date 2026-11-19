@@ -11,6 +11,17 @@ An event-sourced `Order` aggregate answers one question: may this command happen
 
 {% include excalidraw.html file="16-command-query-split" alt="Order, payment and shipping services publish to six public topics; the projector in the query side applies each event to the order_view table with a guarded upsert, and the two query endpoints read only that table; the lag window sits between the topics and the view" caption="Figure 16.1: Writers publish, the projector applies, readers query only the view" %}
 
+## Why this matters
+
+When a customer asks where their orders stand, the write model was never built to answer that question, and forcing it to do so couples every reader to a private schema or makes the answer only as fast and as available as the slowest of three services. When a projection is not held to forward-only updates, it can show an order back in transit after it already showed delivered, misleading a customer checking on their shipment. Get the guard or the freshness signal wrong, and a read model turns from a convenience into a source of confusion.
+
+## Learning objectives
+
+- Separate a read model from the write model it is projected from
+- Write each column from only the one event that owns its fact
+- Guard an upsert so a late event cannot move a status backwards
+- Report how current an answer is alongside the answer itself
+
 ## Pattern: CQRS
 
 ### The problem
@@ -142,6 +153,13 @@ A read model is eventually consistent. If a reader must see its own write at onc
 A view that needs events the owner keeps private cannot be built from the public topics. Reading the owner's events means either tailing its store or publishing more events, and that is a decision for the owner. Log tailing with Debezium is one way to do the first.
 
 A rebuild is a replay of the topics, so the topic's retention limits how far back one can go: `retention.ms` is the maximum time a log is kept before old segments are discarded. A view that must be rebuilt from the beginning needs retention that long, or a different source.
+
+## Common pitfalls
+
+- Disabling the forward-only guard lets a late shipment event overwrite a newer status, showing a delivered order as back in transit.
+- Pausing or slowing one channel leaves its slice of the view stale while the rest moves on, and a reader has no way to notice without checking asOf.
+- Expecting read-your-writes from a projection lets a customer who just placed an order fail to see it in the list that reads from the view.
+- Rebuilding a view from the beginning after the source topics have already expired their retention loses the history the rebuild needs.
 
 > **🤖 Explore with your agent**
 > "In examples/16-cqrs-and-projections, pause the delivered channel, produce ShipmentDelivered for an order, and compare what OrderViewResource returns with what OrderViewProjector has applied. Then produce ShipmentInTransit after ShipmentDelivered with and without PROJECTION_GUARD=off, and state which column each of the six events in order_view is allowed to write."

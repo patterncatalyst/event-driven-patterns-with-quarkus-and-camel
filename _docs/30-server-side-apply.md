@@ -13,6 +13,17 @@ With `kubectl apply` as most people first learn it, nothing on the cluster refus
 
 {% include excalidraw.html file="30-field-managers" alt="Two writers, edp-apps with the app manifests and edp-platform with a memory patch, apply to the Deployment order-service; the API server records the owner of every field in managedFields, and limits.memory has one owner at a time" caption="Figure 30.1: The API server records an owner for every field a manager applies" %}
 
+## Why this matters
+
+When two tools apply to the same object with a client-side apply, neither write is refused: whichever applies last wins, with no error and no record of what the other one wanted. A platform team's emergency memory bump gets reverted by the next routine deployment, and the only sign is a pod restarting twice for no apparent reason. A manifest too large for the client-side bookkeeping can fail to install at all. Name an owner for every field, and an unrefused overwrite becomes a reported conflict someone has to resolve.
+
+## Learning objectives
+
+- Apply manifests server-side under a named field manager instead of the client-side default
+- Read field ownership from managedFields to see which manager last set a value
+- Resolve a conflict between two managers instead of forcing it without review
+- Install a CustomResourceDefinition too large for the client-side annotation limit
+
 ## Pattern: Field ownership
 
 ### The problem
@@ -126,6 +137,12 @@ A manifest applied once by one person to a throwaway cluster needs no owner. `ku
 Server-side apply is not a coordination tool. It reports a conflict between managers that apply the same field with different values. It does not say which value is right, and `--force-conflicts` in a pipeline that runs without a person turns the report off. Settle who owns a field before the second manager exists, and keep the force for a decision.
 
 Objects created by a client-side apply carry the manager `kubectl-client-side-apply`. The first `kubectl apply --server-side` under kubectl's default manager name takes over their fields without a conflict, and a different name, such as `edp-apps`, opts out of that transfer and conflicts instead (Kubernetes, Server-Side Apply).
+
+## Common pitfalls
+
+- Mixing client-side and server-side applies on the same object loses track of ownership, since a client-side write takes the field under its own manager and the next server-side apply then conflicts with that manager instead of the one a person expects.
+- Editing a field an operator owns directly on the resource it creates, instead of the resource it reads, gets the edit reverted at the next reconciliation.
+- Assuming client-side apply is safe for every CustomResourceDefinition because it worked for one with a small schema breaks the moment a schema the size of CloudNativePG's is applied the same way and exceeds the annotation limit.
 
 > **🤖 Explore with your agent**
 > "In examples/30-server-side-apply, apply apps as edp-apps, then apply platform as edp-platform without and with --force-conflicts, and read the owners of limits.memory on Deployment order-service from managedFields each time. Then add an annotation to the Service edp-kafka-bootstrap as edp-foreign and change strimzi.io/discovery with and without force. Say which writer owns each field after every step and which apply should never be forced."

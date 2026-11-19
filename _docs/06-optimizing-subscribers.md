@@ -15,6 +15,18 @@ The consumer has a handful of settings that answer those questions. Each one bel
 
 {% include excalidraw.html file="06-fetch-poll-process" alt="A fetch request fills a client buffer, poll returns at most max.poll.records of it, and a batch that takes longer than max.poll.interval.ms to process gets the member removed" caption="Figure 6.1: A fetch fills a buffer; poll hands out a bounded slice" %}
 
+## Why this matters
+
+When a consumer is tuned by guesswork, it can drain a backlog too slowly or get evicted mid-batch, and eviction costs more than time: the broker reassigns the partition and redelivers every record from the uncommitted batch, so a render and a database write both happen twice. When a replica joins an untuned group under the classic protocol, it can stop every other replica at once, even the ones whose partitions never move. Let max.poll.records and max.poll.interval.ms fall out of balance, and ordinary processing turns into duplicate work.
+
+## Learning objectives
+
+- Explain how fetch.min.bytes and fetch.max.wait.ms trade request count for latency.
+- Size max.poll.records against max.poll.interval.ms from the cost of one record.
+- Explain why consumer parallelism stops at the partition count.
+- Compare the classic and KIP-848 rebalance protocols by what they revoke.
+- Read fetch and consumer metrics exported through KafkaClientMetricsFactory.
+
 ## How the consumer reads
 
 A Kafka consumer does three separate things. It sends fetch requests to the brokers that lead its partitions. It keeps what comes back in a buffer. And the application thread calls `poll`, which returns records from that buffer, and processes them. Camel's Kafka consumer runs this loop on its own thread: the thread polls, hands each record to the route, and polls again.
@@ -109,6 +121,13 @@ Try one change and rerun:
 ## When not to tune
 
 The defaults drain a backlog correctly. Tune when a measurement says so: a lag that does not shrink, a log line that says the client left the group, or a fetch rate that costs the broker more than the traffic is worth. A larger `max.poll.records` or a longer `max.poll.interval.ms` delays the eviction of a slow consumer without making it faster, and threads beyond the partition count sit idle. When the work per record is the problem, make it cheaper or move it out of the poll loop, and when the partition count is the ceiling, change the partition count.
+
+## Common pitfalls
+
+- Raising max.poll.records or max.poll.interval.ms without lowering per-record cost only delays an eviction; the batch still times out once records get slow enough.
+- Adding consumer threads beyond the partition count buys nothing: the extra threads own no partition and sit idle while cost and rebalance overhead rise.
+- Leaving fetch.min.bytes at its default on a caught-up consumer keeps sending one small fetch request per record, so the request-rate saving never materializes.
+- Trusting the eager RangeAssignor's default spread can leave later group members with no partitions at all, which looks like a stalled consumer rather than an assignment gap.
 
 > **🤖 Explore with your agent**
 > "In examples/06-optimizing-subscribers, run NotificationConsumeRoute against the seeded backlog with NOTIFY_WORK_MS=50 and MAX_POLL_INTERVAL_MS=5000, once with MAX_POLL_RECORDS=500 and once with 20, and compare the attempts column that NotificationWriter keeps. Then state the largest max.poll.records that stays inside max.poll.interval.ms for a given NOTIFY_WORK_MS."

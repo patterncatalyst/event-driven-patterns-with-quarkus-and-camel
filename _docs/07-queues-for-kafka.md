@@ -11,6 +11,18 @@ The notification service sends an email for every order placed. The email provid
 
 {% include excalidraw.html file="07-head-of-line" alt="In a consumer group worker-1 owns the partition and the later jobs wait behind the slow one; in a share group worker-1 acquires only the slow job and another worker takes the later jobs of the same partition one at a time" caption="Figure 7.1: Who waits behind one slow job" %}
 
+## Why this matters
+
+When one job in a consumer group runs slow, every later job in its partition waits behind it, even while other workers sit idle, because one partition has exactly one owner. That head-of-line block can turn one slow customer into a stalled queue for every other customer behind it in the same partition. A share group fixes the blocking but drops per-partition ordering and the simple offset commit, so when work cannot tolerate a duplicate delivery, it needs its own idempotence.
+
+## Learning objectives
+
+- Explain why one slow job blocks later jobs sharing its partition.
+- Distinguish a share group's acknowledgement types from a consumer group's offset commit.
+- Recognize when at-least-once delivery requires an idempotent receiver.
+- Compare share-group and consumer-group throughput for independent versus ordered jobs.
+- Pick share.acquire.mode to control how many jobs one worker locks at once.
+
 ## Pattern: Competing Consumers
 
 ### The problem
@@ -117,6 +129,13 @@ Use a consumer group when order per key matters. A share group gives no ordering
 A share group also costs time on every job. A worker answers each job before it fetches the next, so in the recorded runs a partition of eight to ten fast jobs took about 2 to 7 seconds through the share group and under 1 second through the consumer group. The partition with the slow job was done in 8 to 9.4 seconds either way; what changed is that most of its jobs no longer waited for the slow one.
 
 The share group gives up the simple offset commit as well: acknowledgement is per record, and every record has a lock, a delivery count and a limit. Work that must run exactly once needs idempotence on top, because a lock that expires produces a second delivery. And if the load is many fast jobs on few slow workers, more partitions in a consumer group may be all you need.
+
+## Common pitfalls
+
+- Running jobs through a consumer group instead of a share group brings back the exact head-of-line blocking a share group exists to remove.
+- Seeding a whole producer batch onto one partition means a single worker acquires it as one unit, so jobs behind a slow one keep waiting on that same worker.
+- Setting the lock duration shorter than the slowest job's runtime risks a second delivery once the lock expires, so a job without an idempotent receiver can run twice.
+- Expecting ordering within a partition from a share group leads to surprises: Kafka gives no such guarantee and reports only an approximate delivery count.
 
 > **🤖 Explore with your agent**
 > "In examples/07-queues-for-kafka, run ShareDeliveryWorker and GroupDeliveryRoute on the same 30 jobs with DELIVERY_MODE share and then group, using EmailGateway's C-SLOW customer. Compare which jobs of the slow job's partition finish before it in each mode, and state when a share group is the right choice and when a consumer group is."

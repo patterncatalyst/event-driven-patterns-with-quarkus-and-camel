@@ -11,6 +11,18 @@ A connector tails the `inventory_item` table of a legacy database and publishes 
 
 {% include excalidraw.html file="10-offset-lifecycle" alt="A running connector is stopped with PUT stop; while stopped its offsets can be altered with PATCH or reset with DELETE, and PUT resume starts it again; PATCH or DELETE while running is refused with HTTP 400" caption="Figure 10.1: Offsets change only while the connector is stopped" %}
 
+## Why this matters
+
+When a connector is stopped, a neighbouring table is loaded, or a bad batch of updates is fixed, the same question comes up: where does the connector resume, and does that choice skip changes, repeat them, or rebuild from scratch. Pick the wrong recovery, and every downstream reader is left with a gap or an unexpected flood of snapshot rows. A lost replication slot can also leave the connector reporting RUNNING with no task, so when a monitor watches only for a failed state, it can miss that nothing is being delivered at all.
+
+## Learning objectives
+
+- Read and alter a connector's offset through the Connect REST API.
+- Distinguish an offset alter from a reset by what each one skips or rebuilds.
+- Explain why an offset behind the slot's position cannot rewind streaming.
+- Recognize a lost slot from a connector reporting RUNNING with no task.
+- Recover a lost or dropped slot by stopping, dropping and deleting offsets.
+
 ## Where a source connector keeps its place
 
 A source connector has no consumer group. Kafka Connect stores its position in an offsets topic, here `edp-connect-offsets`, as one record per source partition. For the PostgreSQL connector the source partition is the logical server name, which is the connector's `topic.prefix`:
@@ -113,6 +125,13 @@ Do not alter an offset to repair a consumer. The change goes into the connector 
 Do not reset to rewind. A reset rebuilds from the table as it is, and it discards the connector's history of the table's changes. A downstream system that expects every intermediate update sees only the latest state.
 
 Do not leave a stopped connector stopped. The retained WAL grows until the disk fills or a cap invalidates the slot, and the cap turns a pause into a snapshot. Set `max_slot_wal_keep_size` knowing that its price is a lost slot, and alert on `wal_status` and the retained bytes rather than on failed tasks.
+
+## Common pitfalls
+
+- Altering an offset to fix one consumer affects every reader of the topic, turning a private fix into a shared gap.
+- Resetting a connector to rewind instead discards its history of intermediate changes and replaces it with a fresh snapshot of current rows.
+- Reading an offset right after a flush interval has not yet elapsed returns a stale position, since Connect writes the offsets topic only on its own timer.
+- Leaving a stopped connector stopped lets retained WAL grow until the disk fills or a size cap invalidates the slot, turning a pause into an unplanned snapshot.
 
 > **🤖 Explore with your agent**
 > "In examples/10-managing-connector-offsets, stop the inventory-cdc connector, update SKU-1 ten times, alter its offset to the current WAL position, resume and read inventory.item_change written by ChangeLogRoute and ItemChange. Then delete the offsets and resume, and compare the rows. State when an alter is the right tool and when a reset is."

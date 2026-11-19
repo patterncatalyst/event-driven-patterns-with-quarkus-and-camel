@@ -13,6 +13,17 @@ Three habits close the gap. The order id is set on every span and in the log con
 
 {% include excalidraw.html file="27-one-order-many-signals" alt="order-service, Connect, inventory-service and payment-service in a row inside one trace, each service marked with order.id and orderId, with arrows to Tempo, queried by span.order.id, and to Loki, queried by orderId, where every line holds the trace id" caption="Figure 27.1: A business id on every span and in every handler's log line, a trace id on every log line" %}
 
+## Why this matters
+
+A support call comes in with an order id. When the operator has no way to connect it to a trace id, the call turns into reading logs across separate services by hand instead of running one search. When a saga crosses a payment timeout, it starts a second trace that looks unrelated to the first unless something ties them together, turning one incident into two investigations. The cost lands on whoever is on call when the order id is all they have.
+
+## Learning objectives
+
+- Set a business identifier on every span and in the log context of every handler
+- Put the trace id on every log line so a line can be found from its trace
+- Link a timer-started trace back to the trace it continues
+- Query Tempo and Loki by one business id to pull every trace and log line for an order
+
 ## Pattern: Correlation identifier across signals
 
 ### The problem
@@ -149,6 +160,13 @@ When the business id is not unique, it finds the wrong things. An order id that 
 When the id is personal data, putting it on every span and in every handler's log line spreads it across Tempo and Loki and every retention rule that applies to them. An opaque order number is fine. An email address is not.
 
 Labels and metric dimensions are different from attributes. The order id as a Loki label or a metric label creates a series per order, which is the failure that structured metadata and span attributes avoid. Keep it out of both.
+
+## Common pitfalls
+
+- Skipping the order id in log output leaves lines with a trace id but no orderId, so a search by order number in Loki returns nothing.
+- Putting a personal identifier such as an email address on spans and log lines spreads that data across Tempo and Loki and every retention rule attached to them.
+- Using the order id as a Loki label or a metric label creates one series per order, the cardinality problem structured metadata and span attributes are meant to avoid.
+- Reusing a business id across unrelated orders returns traces and log lines that have nothing to do with the one being investigated.
 
 > **🤖 Explore with your agent**
 > "In examples/27-correlated-logs-and-traces, place an order with POST /orders that payment-service will not answer, wait for SagaSweeper to cancel it, then find every trace with order.id equal to your order id in Tempo and every line with orderId equal to it in Loki. Show which trace links to which, and what changes when SWEEPER_LINK is off."
