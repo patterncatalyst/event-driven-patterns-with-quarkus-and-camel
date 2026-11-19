@@ -11,6 +11,17 @@ duration: "45 minutes"
 
 {% include excalidraw.html file="08-dual-write-gap" alt="Commit first then publish: a crash between the two leaves an order without an event. Publish first then commit: a failed commit leaves an event without an order" caption="Figure 8.1: The two orders of a dual write and how each one fails" %}
 
+## Why this matters
+
+A shop that saves an order but loses the event never reserves the stock, and the customer waits on an order no other service has heard of. The reverse, an event for an order that rolled back, sends inventory chasing stock for a sale that never happened. Both failures are silent until someone complains, and both grow likelier under load or a crash. Committing the state change and its announcement as one unit keeps every service that reacts in step with the order it reacts to.
+
+## Learning objectives
+
+- Commit a business change and its event in a single database transaction.
+- Relay outbox rows to Kafka from the write-ahead log with Debezium and the Outbox Event Router.
+- Route each row to its destination topic and carry the row id as a header.
+- Explain why delivery is at-least-once and where the atomic guarantee ends.
+
 ## Pattern: Transactional Outbox
 
 ### The problem
@@ -113,6 +124,13 @@ Try one change and rerun:
 An outbox costs a table, a connector and a replication slot to operate. A slot that nobody reads keeps the write-ahead log on disk, so a stopped connector is an alarm and not a harmless state. The event reaches Kafka after the commit, not with it, so a reader of the topic sees it a moment after a reader of the database does.
 
 If a lost or phantom event is acceptable, such as a metric or a cache hint, publishing from the request is simpler. If the service has no database transaction to join, for example because it only forwards messages, there is nothing to make atomic. When the data is already in tables the service cannot change, Transaction Log Tailing reads those tables directly, with no outbox rows. Event sourcing keeps the outbox when only some events are public: the event row is the state change, and the outbox row for a public event commits beside it in the same transaction.
+
+## Common pitfalls
+
+- Publishing from the request instead of the outbox reopens the dual-write gap the pattern closes.
+- Leaving a stopped connector in place: its replication slot pins the write-ahead log and fills the disk, so a halted relay is an alarm, not a safe idle state.
+- Treating delivery as exactly-once: the relay can re-send a row after a restart, so consumers must drop duplicates using the row id header.
+- Expecting the event to arrive with the commit: it reaches Kafka a moment after, so a topic reader can lag a reader of the database.
 
 > **🤖 Explore with your agent**
 > "In examples/08-transactional-outbox, set CRASH_AFTER_COMMIT_FOR for two order ids, place one through OrderService.place and one through DualWriteCommitFirstRoute, restart the service, and compare which of them has an event on edp.orders.placed. State the rule that makes the outbox side safe."

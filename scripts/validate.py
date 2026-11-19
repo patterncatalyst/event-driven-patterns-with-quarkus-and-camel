@@ -468,9 +468,10 @@ def check_chapters(rep: Report):
             if d and XREF_RE.search(d.group(1)) and not XREF_SOURCE_RE.search(d.group(1)):
                 rep.err(p, None, f"cross-reference '{XREF_RE.search(d.group(1)).group(0)}' in the description")
         n = chapter_words(body)
-        # Appendix I has no word cap (owner decision 2026-11-18); its Build, run, observe soft cap still applies.
+        # No hard word cap or floor (owner decision 2026-11-18): about 2,000 words is a target,
+        # never a limit. Warn, do not fail, when a page runs well past it. Appendix I is exempt.
         if n > MAX_WORDS and not p.name.startswith("ai-"):
-            rep.err(p, None, f"{n} prose words, limit {MAX_WORDS}")
+            rep.warn(f"{p.relative_to(rep.root)}: {n} prose words, soft cap {MAX_WORDS} (target ~2000, no hard cap)")
         plines = prose_lines(re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), body, flags=re.S))
         check_bro(rep, p, plines, off)
         has_pattern = any(re.match(r"##\s+Pattern:", t) for _, t in plines)
@@ -921,12 +922,15 @@ def self_test() -> int:
 
         r = build("wordcap")
         (r / "_docs/01-demo.md").write_text(good_doc + "\n" + " ".join(["word"] * 2600) + "\n")
-        e = run(r).errors
-        results.append(("chapter over the word cap caught", any("prose words, limit" in x for x in e), e))
+        rr = run(r)
+        results.append(("chapter well over target warns, does not fail",
+                        any("soft cap" in x for x in rr.warnings) and not any("prose words" in x for x in rr.errors),
+                        rr.warnings + rr.errors))
         (r / "_docs/01-demo.md").write_text(good_doc)
         (r / "_docs/ai-demo.md").write_text(good_doc.replace("01-demo", "ai-demo") + "\n" + " ".join(["word"] * 2600) + "\n")
-        e = run(r).errors
-        results.append(("Appendix I exempt from the word cap", not any("prose words, limit" in x for x in e), e))
+        rr = run(r)
+        results.append(("Appendix I exempt from the word soft cap",
+                        not any("soft cap" in x and "ai-demo" in x for x in rr.warnings), rr.warnings))
 
         r = build("bro")
         long_bro = "\n## Build, run, observe\n\n```bash\n./verify.sh\n```\n\n" + " ".join(["word"] * 251) + "\n"
