@@ -1,36 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 540" font-family="'Red Hat Text', system-ui, sans-serif" role="img">
 <defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker><marker id="am" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8650a"/></marker></defs>
-<rect x="20" y="90" width="920" height="150" rx="12" fill="#fff8ef" stroke="#ddd"/>
-<text x="32" y="110" font-size="12" font-weight="700" fill="#888">Kafka Streams: event-time slots, one final list per carrier per slot</text>
-<rect x="20" y="260" width="920" height="150" rx="12" fill="#fafafa" stroke="#ddd"/>
-<text x="32" y="280" font-size="12" font-weight="700" fill="#888">Camel Aggregator: arrival order, size 5 or 10 s of quiet</text>
-<rect x="20" y="30" width="920" height="44" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
-<text x="480.0" y="57.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrivals for FASTLINE: F1 to F7 (09:01 to 09:07), F8 (09:16), F9 (09:10, late arrival), L1 (09:05, after the slot closed)</text>
-<rect x="50" y="130" width="400" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
-<text x="250.0" y="160.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Slot 09:00 list</text>
-<text x="250.0" y="177.5" font-size="11.5" fill="#555555" text-anchor="middle">F1 to F7 and F9, count 8</text>
-<text x="250.0" y="192.5" font-size="11.5" fill="#555555" text-anchor="middle">closed by the window</text>
-<rect x="480" y="130" width="220" height="80" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
-<text x="590.0" y="168.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Slot 09:15 list</text>
-<text x="590.0" y="185.0" font-size="11.5" fill="#555555" text-anchor="middle">F8, still open</text>
-<rect x="730" y="130" width="180" height="80" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
-<text x="820.0" y="168.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">L1</text>
-<text x="820.0" y="185.0" font-size="11.5" fill="#555555" text-anchor="middle">dropped and counted</text>
-<rect x="50" y="300" width="210" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="155.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Batch 1</text>
-<text x="155.0" y="347.5" font-size="11.5" fill="#555555" text-anchor="middle">F1 to F5</text>
-<text x="155.0" y="362.5" font-size="11.5" fill="#555555" text-anchor="middle">closed by size</text>
-<rect x="280" y="300" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="375.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Batch 2</text>
-<text x="375.0" y="347.5" font-size="11.5" fill="#555555" text-anchor="middle">F6, F7</text>
-<text x="375.0" y="362.5" font-size="11.5" fill="#555555" text-anchor="middle">closed by timeout</text>
-<rect x="490" y="300" width="190" height="80" rx="9" fill="#ffffff" stroke="#111111" stroke-width="2"/>
-<text x="585.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Batch 3</text>
-<text x="585.0" y="347.5" font-size="11.5" fill="#555555" text-anchor="middle">F8, F9</text>
-<text x="585.0" y="362.5" font-size="11.5" fill="#555555" text-anchor="middle">closed by timeout</text>
-<rect x="700" y="300" width="210" height="80" rx="9" fill="#fff8ef" stroke="#e8870c" stroke-width="2"/>
-<text x="805.0" y="330.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Batch 4</text>
-<text x="805.0" y="347.5" font-size="11.5" fill="#555555" text-anchor="middle">L1 alone</text>
-<text x="805.0" y="362.5" font-size="11.5" fill="#555555" text-anchor="middle">closed by timeout</text>
-<text x="480" y="425" font-size="12" fill="#555555" text-anchor="middle">Same input, same output type, different rule for what belongs together</text>
+<rect x="20" y="100" width="940" height="190" rx="12" fill="#fff8ef" stroke="#ddd"/>
+<text x="32" y="120" font-size="12" font-weight="700" fill="#888">Kafka Streams: event-time slots, one final list per carrier per slot</text>
+<rect x="20" y="310" width="940" height="190" rx="12" fill="#fafafa" stroke="#ddd"/>
+<text x="32" y="330" font-size="12" font-weight="700" fill="#888">Camel Aggregator: arrival order, size 5 or 10 s of quiet</text>
+<rect x="20" y="30" width="940" height="48" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+<text x="490.0" y="59.5" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Arrivals for FASTLINE: F1 to F7 (09:01 to 09:07), F8 (09:16), F9 (09:10, late arrival), L1 (09:05, after the slot closed)</text>
+<rect x="400" y="140" width="220" height="100" rx="9" fill="#ffffff" stroke="#999999" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="510.0" y="188.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">Slot 09:15 list</text>
+<text x="510.0" y="205.0" font-size="11.5" fill="#555555" text-anchor="middle">F8, still open</text>
+<rect x="700" y="140" width="180" height="100" rx="9" fill="#f4f4f4" stroke="#888888" stroke-width="1.5"/>
+<text x="790.0" y="188.0" font-size="13.5" font-weight="700" fill="#111111" text-anchor="middle">L1</text>
+<text x="790.0" y="205.0" font-size="11.5" fill="#555555" text-anchor="middle">dropped and counted</text>
+<text x="490" y="525" font-size="12" fill="#555555" text-anchor="middle">Same input, same output type, different rule for what belongs together</text>
+<rect x="117.6" y="153.2" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M130.6,159.7 L254.0,181.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="117.6" y="174.5" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M130.6,181.0 L254.0,181.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="117.6" y="195.8" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M130.6,202.3 L254.0,181.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="254.0" y="174.5" width="13.0" height="13.0" rx="4" fill="#fff8ef" stroke="#555555" stroke-width="2"/>
+<text x="210.0" y="236.0" font-size="11" fill="#555555" text-anchor="middle">Slot 09:00: F1-F7, F9 (count 8), closed by window</text>
+<rect x="56.8" y="363.2" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M69.8,369.7 L187.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="56.8" y="384.5" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M69.8,391.0 L187.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="56.8" y="405.8" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M69.8,412.3 L187.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="187.0" y="384.5" width="13.0" height="13.0" rx="4" fill="#fff8ef" stroke="#555555" stroke-width="2"/>
+<text x="145.0" y="446.0" font-size="11" fill="#555555" text-anchor="middle">Batch 1: F1 to F5, closed by size</text>
+<rect x="286.8" y="363.2" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M299.8,369.7 L417.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="286.8" y="384.5" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M299.8,391.0 L417.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="286.8" y="405.8" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M299.8,412.3 L417.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="417.0" y="384.5" width="13.0" height="13.0" rx="4" fill="#fff8ef" stroke="#555555" stroke-width="2"/>
+<text x="375.0" y="446.0" font-size="11" fill="#555555" text-anchor="middle">Batch 2: F6, F7, closed by timeout</text>
+<rect x="516.8" y="363.2" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M529.8,369.7 L647.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="516.8" y="384.5" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M529.8,391.0 L647.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="516.8" y="405.8" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M529.8,412.3 L647.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="647.0" y="384.5" width="13.0" height="13.0" rx="4" fill="#fff8ef" stroke="#555555" stroke-width="2"/>
+<text x="605.0" y="446.0" font-size="11" fill="#555555" text-anchor="middle">Batch 3: F8, F9, closed by timeout</text>
+<rect x="746.8" y="363.2" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M759.8,369.7 L877.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="746.8" y="384.5" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M759.8,391.0 L877.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="746.8" y="405.8" width="13.0" height="13.0" rx="4" fill="#ffffff" stroke="#555555" stroke-width="2"/>
+<path d="M759.8,412.3 L877.0,391.0" fill="none" stroke="#555555" stroke-width="1.8" marker-end="url(#a)"/>
+<rect x="877.0" y="384.5" width="13.0" height="13.0" rx="4" fill="#fff8ef" stroke="#555555" stroke-width="2"/>
+<text x="835.0" y="446.0" font-size="11" fill="#555555" text-anchor="middle">Batch 4: L1 alone, closed by timeout</text>
 </svg>
