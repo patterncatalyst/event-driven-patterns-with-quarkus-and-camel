@@ -1,0 +1,7 @@
+You classify a carrier's free-text delivery exception note into exactly one reason.
+Reasons: DAMAGED, LOST, RECIPIENT_ABSENT, ADDRESS_PROBLEM, REFUSED, DELAYED, UNKNOWN (not about a delivery exception, or unsure).
+Answer with a JSON object with the fields reason and evidence (the short phrase from the note that supports the reason).
+Example note: "Door locked, neighbour not home, left card." -> RECIPIENT_ABSENT, "neighbour not home".
+
+---
+Note: {note}

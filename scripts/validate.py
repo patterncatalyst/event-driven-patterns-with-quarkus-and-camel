@@ -42,7 +42,7 @@ WNTU_HEAD = "## When not to use it"
 REFS_HEAD = "## References"
 MAX_WHY_WORDS = 90        # soft cap (warning)
 MAX_OBJ_WORDS = 60        # soft cap (warning)
-MAX_PITFALLS_WORDS = 110  # soft cap (warning)
+MAX_PITFALLS_WORDS = 150  # soft cap (warning); 2 to 4 mistake-plus-consequence bullets run this long
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 RAW_RE = re.compile(r"\{%-?\s*(raw|endraw)\s*-?%\}")
 INCLUDE_RE = re.compile(r"\{%-?\s*include\s+excalidraw\.html\s+(.*?)-?%\}", re.S)
@@ -72,12 +72,12 @@ TESTNAME_RE = re.compile(r"@Test\b|\b[A-Z]\w*[a-z0-9](?:Test|IT)\b|\bshould[A-Z]
 # Owner rule 2026-11-16: every page stands alone. No reference to another chapter, appendix or part of this
 # book in prose (back or forward); related pages are linked only under `## References`. Appendix D (the
 # pattern map and cross-reference) is exempt. Chapter numbers of other books, cited as sources, are allowed.
-XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-I])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
+XREF_RE = re.compile(r"\b(chapters?|appendix|appendices|parts?)\s+(\d+|[A-J])\b|\]\(\{\{\s*'/docs/|\]\(/docs/|\]\(\.\./docs/", re.I)
 # Cross-references written in words: "the previous chapter", "the outbox chapter", "earlier chapters", "Part three".
 XREF_WORD_RE = re.compile(
     r"\b(?:the\s+)?(?:previous|preceding|prior|next|following|earlier|later|last|first)\s+(?:chapters?|appendix|appendices|parts?)\b"
     r"|\bthe\s+(?!same\b)[\w-]+(?:\s+[\w-]+)?\s+(?:chapter|appendix)\b"
-    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-I]|one|two|three|four|five|six|seven|eight)\b"
+    r"|\b(?:chapters|parts|appendices)\s+(?:\d+|[A-J]|one|two|three|four|five|six|seven|eight)\b"
     r"|\bparts?\s+(?:one|two|three|four|five|six|seven|eight)\b"
     # "examples 02 and 03", "these examples", "the earlier examples" point at other chapters' examples
     r"|\bexamples?\s+\d{2}\b|\b(?:these|those|the\s+earlier|the\s+other)\s+examples\b", re.I)
@@ -428,7 +428,9 @@ def chapter_words(body: str) -> int:
 
 
 def section_words(plines, head: str) -> int:
-    """Prose word count of the section introduced by `head`, up to the next `## ` heading."""
+    """Prose word count of the section introduced by `head`, up to the next `## ` heading.
+    Blockquote lines (the AI callout, which can follow Common pitfalls before References)
+    are not part of the section's prose and are excluded."""
     sec, start = [], False
     for _, t in plines:
         if t.strip() == head:
@@ -437,6 +439,8 @@ def section_words(plines, head: str) -> int:
         if start:
             if t.startswith("## "):
                 break
+            if t.lstrip().startswith(">"):
+                continue
             sec.append(t)
     return len(re.findall(r"[A-Za-z0-9][\w'’-]*", "\n".join(sec)))
 
@@ -585,8 +589,8 @@ def is_vendor(p: Path) -> bool:
     return bool(VENDOR_RE.search(p.as_posix()))
 
 
-# Chapter examples NN-slug and appendix examples aX-slug (Appendix A to I).
-EXAMPLE_DIR_RE = re.compile(r"(\d+|a[a-i])-")
+# Chapter examples NN-slug and appendix examples aX-slug (Appendix A to J).
+EXAMPLE_DIR_RE = re.compile(r"(\d+|a[a-j])-")
 
 
 def check_examples(rep: Report):
@@ -645,7 +649,7 @@ def check_examples(rep: Report):
         if not (d / "README.md").is_file():
             rep.err(d / "README.md", None, "missing README.md")
     for m_ in files(rep.root, "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml",
-                     "examples/a[a-i]-*/**/*.yaml"):
+                     "examples/a[a-j]-*/**/*.yaml"):
         if "compose" in m_.name or is_vendor(m_):
             continue
         lines = m_.read_text(encoding="utf-8").split("\n")
@@ -655,7 +659,7 @@ def check_examples(rep: Report):
                 if not near or not all("localhost/edp/" in x for x in near):
                     rep.err(m_, n + 1, "imagePullPolicy: Never only for localhost/edp/ images")
     for c in files(rep.root, "examples/**/compose*.yaml", "examples/**/compose*.yml",
-                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml", "examples/a[a-i]-*/**/*.yaml"):
+                   "examples/_k8s/**/*.yaml", "examples/[0-9]*/**/*.yaml", "examples/a[a-j]-*/**/*.yaml"):
         if is_vendor(c) or "/target/" in c.as_posix():
             continue
         text = c.read_text(encoding="utf-8")

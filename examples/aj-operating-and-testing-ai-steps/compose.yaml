@@ -1,0 +1,76 @@
+name: edp-aj
+
+include:
+  - path: ../_infra/compose-kafka.yaml
+  - path: ../_infra/compose-postgres.yaml
+  - path: ../_infra/compose-lgtm.yaml
+  - path: ../_infra/compose-ollama.yaml
+
+x-app-env: &app-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9094
+  CAMEL_COMPONENT_KAFKA_BROKERS: kafka:9094
+  QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+  QUARKUS_LANGCHAIN4J_OLLAMA_BASE_URL: http://ollama:11434
+  QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/edp
+  QUARKUS_DATASOURCE_USERNAME: edp
+  QUARKUS_DATASOURCE_PASSWORD: edp
+
+services:
+  # Creates the two topics with one partition each, then exits.
+  topics-init:
+    image: docker.io/apache/kafka:4.3.2
+    container_name: edp-aj-topics-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        for t in edp.shipping.delivery-exceptions edp.shipping.exception-analyses; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9094 --create --if-not-exists --topic $$t --partitions 1 --replication-factor 1
+        done
+    restart: "no"
+    mem_limit: 512m
+    networks: [edp]
+
+  shipping-service:
+    build:
+      context: ..
+      dockerfile: aj-operating-and-testing-ai-steps/shipping-service/Containerfile
+    container_name: edp-aj-shipping-service
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      <<: *app-env
+      # The model recorded on every analysis. The digest is the one scripts/ollama-model.sh pins.
+      ANALYST_MODEL: qwen3:4b-instruct-2507-q4_K_M
+      ANALYST_MODEL_DIGEST: "0edcdef34593"
+      # Three redeliveries 1 s apart, to shorten the wait for a crash-forced redelivery to settle.
+      ANALYST_REDELIVERY_DELAY_MS: ${ANALYST_REDELIVERY_DELAY_MS:-1000}
+      # Demo code: false leaves the analysis route stopped, so the service runs without a model (used by MODEL=off).
+      ANALYST_ENABLED: ${ANALYST_ENABLED:-true}
+      # Demo code: off removes the keyed lookup, the negative witness (see the README).
+      ANALYSIS_DEDUP: ${ANALYSIS_DEDUP:-true}
+      # Demo code: the exception id that crashes once, after its row commits and before the record publishes.
+      DEMO_CRASH_AFTER_ANALYSIS: ${DEMO_CRASH_AFTER_ANALYSIS:-}
+      # Demo code: reanalyse makes the replay endpoint read the notes again and call the model (the negative witness).
+      REPLAY_MODE: ${REPLAY_MODE:-recorded}
+    depends_on:
+      topics-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      lgtm:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks: [edp]
+
+networks:
+  edp:
+    name: edp
