@@ -7,7 +7,7 @@ description: "Customers can ask for express delivery, and OrderPlaced gains a fi
 duration: "60 minutes"
 ---
 
-Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPriority`. Two kinds of reader already hold the old shape. The aggregate loads `OrderPlaced` rows that were written before the field existed and can never be rewritten. Every consumer of `edp.orders.placed` may replay the topic from its first record, and the first records have no `shippingPriority` either. `O-1801` was placed by the previous release, `O-1803` by the current one, and both have to work.
+Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPriority`. Two kinds of reader already hold the old shape. The aggregate loads `OrderPlaced` rows that were written before the field existed and can never be rewritten. Every consumer of `edp.orders.placed` may replay the topic from its first record, and the first records have no `shippingPriority` either. One order was placed by the previous release, another by the current one, and both have to work.
 
 {% include excalidraw.html file="18-upcast-on-read" alt="Two rows in the append-only events table, one stored at schema_version 1 and one at 2; a load copies the payload, the upcaster chain adds shippingPriority STANDARD to the version 1 copy, and the aggregate sees only the current OrderPlaced record; an UPDATE of a stored row is refused by the trigger" caption="Figure 18.1: A stored event is never rewritten; a copy is upcast on every read" %}
 
@@ -189,7 +189,7 @@ A registry is one more service to run and to keep up. When producer and consumer
 - Treating a changed meaning as a field default invents a fact that was never recorded, when a new event type is the only accurate way to represent it.
 
 > **🤖 Explore with your agent**
-> "In examples/18-schema-evolution-and-upcasting, load O-1801 (placed by the previous release, before shippingPriority existed) and O-1803 (placed by the current release) and find where Upcasters, OrderPlacedPublisher and order-placed.avsc decide what each reader sees. Set REGISTRY_RULE to BACKWARD and state which schema version is then accepted and which reader fails on which record."
+> "In examples/18-schema-evolution-and-upcasting, load an order placed by the previous release, before shippingPriority existed, and one placed by the current release, and find where Upcasters, OrderPlacedPublisher and order-placed.avsc decide what each reader sees. Set REGISTRY_RULE to BACKWARD and state which schema version is then accepted and which reader fails on which record."
 > Check: stored events are upcast on read and never rewritten, published events change only in ways the registry accepts against every earlier version, and a field added later always has a default.
 
 ## References
