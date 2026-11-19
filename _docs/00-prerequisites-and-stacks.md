@@ -11,10 +11,6 @@ Every example in the book runs on one local stack: a Kafka broker, a PostgreSQL 
 
 {% include excalidraw.html file="00-compose-stack" alt="The compose stack: curl posts to the stack-check service, which publishes to and consumes from Kafka; Connect links Kafka and PostgreSQL; the service sends telemetry to LGTM" caption="Figure 0.1: The stack every example runs on" %}
 
-## Why this matters
-
-When a prerequisite is missed or a second stack is left running, the failure shows up as a port conflict or a missing container instead of a clear error, and chasing that confusion costs more time than the setup itself would have. The chapters that follow all depend on one working stack, so skipping a clean baseline wastes hours on symptoms that have nothing to do with the pattern under study. A shared host running two stacks also starves every service on it of memory.
-
 ## Learning objectives
 
 - Install the pinned JDK, Maven and Docker Engine toolchain.
@@ -22,6 +18,10 @@ When a prerequisite is missed or a second stack is left running, the failure sho
 - Send a valid Order through the stack-check service onto Kafka.
 - Locate the trace, metric and log for one request in Grafana.
 - Tear down the stack and recognize when a second stack cannot start.
+
+## Why this matters
+
+When a prerequisite is missed or a second stack is left running, the failure shows up as a port conflict or a missing container instead of a clear error, and chasing that confusion costs more time than the setup itself would have. The chapters that follow all depend on one working stack, so skipping a clean baseline wastes hours on symptoms that have nothing to do with the pattern under study. A shared host running two stacks also starves every service on it of memory.
 
 ## What you need
 

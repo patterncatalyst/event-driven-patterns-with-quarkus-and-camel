@@ -13,16 +13,16 @@ A process that an attacker takes over inherits all of it. A namespace label turn
 
 {% include excalidraw.html file="31-admission" alt="A namespace labelled enforce restricted sends every pod to Pod Security Admission; a pod with the four fields is admitted and one without is forbidden with the fields named; a Deployment without them is accepted, its ReplicaSet fails to create the pod, and the old pod keeps running" caption="Figure 31.1: The check runs when a pod is created, so a Deployment is accepted and its pods are refused" %}
 
-## Why this matters
-
-Kubernetes admits a well-formed pod whether or not it can run as root, escalate privileges through a setuid binary, or keep unused capabilities. A process an attacker takes over inherits every one of those freedoms. Rely on each team to remember a hardened security context, and it fails the moment one forgets; an operator creating pods on a team's behalf decides their security context regardless of what was asked. Enforce the restricted standard at the namespace, and that gap becomes a refusal at admission instead of an exploit in production.
-
 ## Learning objectives
 
 - Enforce the restricted Pod Security Standard at the namespace instead of per pod
 - Set the four required security context fields an application's Deployment owns
 - Select the pod security provider an operator applies to the pods it creates
 - Isolate a workload that cannot meet the standard in a namespace of its own
+
+## Why this matters
+
+Kubernetes admits a well-formed pod whether or not it can run as root, escalate privileges through a setuid binary, or keep unused capabilities. A process an attacker takes over inherits every one of those freedoms. Rely on each team to remember a hardened security context, and it fails the moment one forgets; an operator creating pods on a team's behalf decides their security context regardless of what was asked. Enforce the restricted standard at the namespace, and that gap becomes a refusal at admission instead of an exploit in production.
 
 ## Pattern: Restricted pods by default
 

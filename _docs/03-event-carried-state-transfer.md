@@ -11,10 +11,6 @@ A customer asks the notification service about order O-1001. The service needs t
 
 {% include excalidraw.html file="03-notification-vs-state-transfer" alt="Event notification carries only the order id and the consumer fetches the current state; event-carried state transfer carries the whole Order and the consumer reads its local copy" caption="Figure 3.1: What the consumer has to do after the event" %}
 
-## Why this matters
-
-When a notification service has to call back for every detail, it can answer nothing while the order service is down, leaving a support rep with no order to read a waiting customer. An order with a large attachment can also fail to reach the topic without warning, so a team that depends on knowing about it never finds out. Both failures stay hidden until someone notices a missing answer or a missing order, often during an outage that has already become an incident.
-
 ## Learning objectives
 
 - Carry the state a consumer needs inside the event instead of a reference.
@@ -22,6 +18,10 @@ When a notification service has to call back for every detail, it can answer not
 - Keep a large or optional payload out of the event with a claim check.
 - Fetch content on demand instead of embedding it in every message.
 - Explain why Kafka's size limits force a claim check for unbounded payloads.
+
+## Why this matters
+
+When a notification service has to call back for every detail, it can answer nothing while the order service is down, leaving a support rep with no order to read a waiting customer. An order with a large attachment can also fail to reach the topic without warning, so a team that depends on knowing about it never finds out. Both failures stay hidden until someone notices a missing answer or a missing order, often during an outage that has already become an incident.
 
 ## Pattern: Event-Carried State Transfer
 

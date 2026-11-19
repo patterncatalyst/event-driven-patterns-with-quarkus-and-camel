@@ -33,8 +33,116 @@ _RNG = random.Random()
 def _seed(): return _RNG.randint(1, 2_000_000_000)
 def esc(s): return html.escape(str(s), quote=True)
 
+# ---- EIP stencil (Hohpe & Woolf integration icons) ------------------------
+# A small, house-themed approximation of the Enterprise Integration Patterns
+# visual vocabulary: a message, a channel (pipe), an endpoint, and the pattern
+# glyphs a Camel/event book leans on (router, translator, filter, splitter,
+# aggregator, enricher). Each icon draws a pictogram in the cell (x, y, w, h)
+# with an optional grey label centred underneath, in the same palette as the
+# rest of the generator. Kinds are the EIP pattern names.
+EIP_KINDS = ("message", "channel", "pipe", "endpoint", "router", "translator",
+             "filter", "splitter", "aggregator", "enricher")
+
+
+def _eip_icon(kind, x, y, w, h, label=None):
+    LINE, ACC, WASH = "#555555", "#e8870c", "#fff8ef"
+    o = []
+    lab_h = 18 if label else 0
+    gw, gh = w, h - lab_h
+    cx, cy = x + gw / 2, y + gh / 2
+
+    def box(bx, by, bw, bh, fill="#ffffff", stroke=LINE, sw=2, rx=4):
+        o.append(f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="{bh:.1f}" '
+                 f'rx="{rx}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}"/>')
+
+    def pipe(px, py, pw, ph, fill=WASH):
+        r = ph / 2
+        o.append(f'<rect x="{px:.1f}" y="{py:.1f}" width="{pw:.1f}" height="{ph:.1f}" '
+                 f'rx="{r:.1f}" fill="{fill}" stroke="{LINE}" stroke-width="2"/>')
+        o.append(f'<ellipse cx="{px+pw-r:.1f}" cy="{py+r:.1f}" rx="{r*0.42:.1f}" ry="{r*0.78:.1f}" '
+                 f'fill="none" stroke="{LINE}" stroke-width="1.3" opacity="0.6"/>')
+
+    def arrow(x1, y1, x2, y2, col=LINE):
+        o.append(f'<path d="M{x1:.1f},{y1:.1f} L{x2:.1f},{y2:.1f}" fill="none" '
+                 f'stroke="{col}" stroke-width="1.8" marker-end="url(#a)"/>')
+
+    def dot(dx, dy, r, fill=ACC):
+        o.append(f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="{r:.1f}" fill="{fill}" stroke="{LINE}" stroke-width="1.3"/>')
+
+    if kind == "message":
+        mw, mh = min(gw * 0.62, 48), min(gh * 0.66, 40)
+        mx, my = cx - mw / 2, cy - mh / 2
+        box(mx, my, mw, mh, fill="#ffffff", rx=3)
+        o.append(f'<path d="M{mx:.1f},{my+9:.1f} h{mw:.1f}" stroke="{LINE}" stroke-width="1"/>')
+        o.append(f'<rect x="{mx:.1f}" y="{my:.1f}" width="{mw:.1f}" height="9" rx="3" fill="{ACC}"/>')
+        for i in range(2):
+            o.append(f'<path d="M{mx+6:.1f},{my+20+i*8:.1f} h{mw-12:.1f}" stroke="{LINE}" '
+                     f'stroke-width="1.4" opacity="0.6"/>')
+    elif kind in ("channel", "pipe"):
+        ph = min(gh * 0.5, 30)
+        pipe(cx - gw * 0.4, cy - ph / 2, gw * 0.8, ph)
+    elif kind == "endpoint":
+        ph = min(gh * 0.5, 30)
+        pipe(cx - gw * 0.42, cy - ph / 2, gw * 0.7, ph)
+        dot(cx + gw * 0.30, cy, ph * 0.46)
+    elif kind == "router":
+        ph = min(gh * 0.42, 26)
+        pipe(cx - gw * 0.42, cy - ph / 2, gw * 0.5, ph)
+        hub = cx + gw * 0.06
+        arrow(hub, cy, cx + gw * 0.40, cy - gh * 0.30)
+        arrow(hub, cy, cx + gw * 0.40, cy + gh * 0.30)
+    elif kind == "translator":
+        bw, bh = min(gw * 0.74, 70), min(gh * 0.6, 40)
+        bx, by = cx - bw / 2, cy - bh / 2
+        box(bx, by, bw, bh, fill=WASH)
+        dot(bx + bh * 0.5, cy, bh * 0.28, fill=LINE)
+        arrow(bx + bh * 0.9, cy, bx + bw - bh * 0.9, cy)
+        tx = bx + bw - bh * 0.5
+        o.append(f'<path d="M{tx:.1f},{cy-bh*0.28:.1f} L{tx+bh*0.26:.1f},{cy+bh*0.24:.1f} '
+                 f'L{tx-bh*0.26:.1f},{cy+bh*0.24:.1f} Z" fill="{ACC}" stroke="{LINE}" stroke-width="1.2"/>')
+    elif kind == "filter":
+        ph = min(gh * 0.46, 28)
+        pipe(cx - gw * 0.4, cy - ph / 2, gw * 0.8, ph)
+        fw = ph * 1.2
+        o.append(f'<path d="M{cx-fw/2:.1f},{cy-ph*0.6:.1f} L{cx+fw/2:.1f},{cy-ph*0.6:.1f} '
+                 f'L{cx+fw*0.18:.1f},{cy+ph*0.1:.1f} L{cx+fw*0.18:.1f},{cy+ph*0.6:.1f} '
+                 f'L{cx-fw*0.18:.1f},{cy+ph*0.6:.1f} L{cx-fw*0.18:.1f},{cy+ph*0.1:.1f} Z" '
+                 f'fill="{ACC}" stroke="{LINE}" stroke-width="1.3"/>')
+    elif kind in ("splitter", "aggregator"):
+        s = min(gh * 0.2, 13)
+        many_x = x + gw * (0.12 if kind == "splitter" else 0.0)
+        one_x = x + gw * (0.74 if kind == "splitter" else 0.80)
+        if kind == "aggregator":
+            many_x, one_x = x + gw * 0.08, x + gw * 0.70
+        ys = [cy - gh * 0.26, cy, cy + gh * 0.26]
+        if kind == "splitter":
+            box(many_x, cy - s / 2, s, s, fill=WASH)
+            for yy in ys:
+                box(one_x, yy - s / 2, s, s)
+                arrow(many_x + s, cy, one_x, yy)
+        else:
+            for yy in ys:
+                box(many_x, yy - s / 2, s, s)
+                arrow(many_x + s, yy, one_x, cy)
+            box(one_x, cy - s / 2, s, s, fill=WASH)
+    elif kind == "enricher":
+        ph = min(gh * 0.46, 28)
+        pipe(cx - gw * 0.4, cy - ph / 2, gw * 0.8, ph)
+        r = ph * 0.52
+        dot(cx, cy, r, fill="#ffffff")
+        o.append(f'<path d="M{cx-r*0.55:.1f},{cy:.1f} h{r*1.1:.1f} M{cx:.1f},{cy-r*0.55:.1f} '
+                 f'v{r*1.1:.1f}" stroke="{ACC}" stroke-width="2.2"/>')
+    else:
+        box(x, y, gw, gh)  # unknown kind: plain box, keeps the build valid
+
+    if label:
+        o.append(f'<text x="{cx:.1f}" y="{y+h-4:.1f}" font-size="11" fill="#555555" '
+                 f'text-anchor="middle">{esc(label)}</text>')
+    return o
+
+
 # ---- SVG ------------------------------------------------------------------
-def _svg(width, height, bands, nodes, edges, notes):
+def _svg(width, height, bands, nodes, edges, notes, icons):
     o = []
     o.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
              f'font-family="\'Red Hat Text\', system-ui, sans-serif" role="img">')
@@ -98,11 +206,13 @@ def _svg(width, height, bands, nodes, edges, notes):
         o.append(f'<text x="{t["x"]}" y="{t["y"]}" font-size="{t.get("size",11)}" '
                  f'fill="{t.get("color","#888")}" text-anchor="{anchor}"{bold}>'
                  f'{esc(t["text"])}</text>')
+    for ic in icons:
+        o.extend(_eip_icon(ic["kind"], ic["x"], ic["y"], ic["w"], ic["h"], ic.get("label")))
     o.append('</svg>')
     return "\n".join(o)
 
 # ---- Excalidraw -----------------------------------------------------------
-def _exc(bands, nodes, edges, notes):
+def _exc(bands, nodes, edges, notes, icons):
     els = []
     def rect(x,y,w,h,stroke,bg,dashed=False):
         els.append({"id":f"r{_seed()}","type":"rectangle","x":x,"y":y,"width":w,"height":h,"angle":0,
@@ -145,19 +255,28 @@ def _exc(bands, nodes, edges, notes):
             text((e["x1"]+e["x2"])/2,(e["y1"]+e["y2"])/2-14,e["label"],11,col)
     for t in notes:
         text(t["x"],t["y"]-10,t["text"],t.get("size",11),t.get("color","#888888"))
+    # EIP icons: the SVG carries the true pictogram; the editable companion gets
+    # a labelled accent box so the source stays valid and adjustable.
+    for ic in icons:
+        lab_h = 18 if ic.get("label") else 0
+        rect(ic["x"], ic["y"], ic["w"], ic["h"]-lab_h, "#e8870c", "#fff8ef")
+        text(ic["x"]+6, ic["y"]+ic["h"]-lab_h-22, ic["kind"], 11, "#b8650a")
+        if ic.get("label"):
+            text(ic["x"]+6, ic["y"]+ic["h"]-16, ic["label"], 11, "#555555")
     return {"type":"excalidraw","version":2,"source":"https://excalidraw.com","elements":els,
             "appState":{"viewBackgroundColor":"#ffffff","gridSize":None},"files":{}}
 
-def emit(name, width, height, bands=None, nodes=None, edges=None, notes=None):
+def emit(name, width, height, bands=None, nodes=None, edges=None, notes=None, icons=None):
     bands = bands or []
     nodes = nodes or []
     edges = edges or []
     notes = notes or []
+    icons = icons or []
     _RNG.seed(name)
     svg = Path(OUT) / f"{name}.svg"
     exc = Path(OUT) / f"{name}.excalidraw"
-    svg.write_text(_svg(width, height, bands, nodes, edges, notes), encoding="utf-8")
-    exc.write_text(json.dumps(_exc(bands, nodes, edges, notes), indent=1), encoding="utf-8")
+    svg.write_text(_svg(width, height, bands, nodes, edges, notes, icons), encoding="utf-8")
+    exc.write_text(json.dumps(_exc(bands, nodes, edges, notes, icons), indent=1), encoding="utf-8")
     # validate
     xml.dom.minidom.parseString(svg.read_text(encoding="utf-8"))
     json.loads(exc.read_text(encoding="utf-8"))

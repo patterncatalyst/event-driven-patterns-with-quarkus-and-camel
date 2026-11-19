@@ -11,16 +11,16 @@ duration: "45 minutes"
 
 {% include excalidraw.html file="08-dual-write-gap" alt="Commit first then publish: a crash between the two leaves an order without an event. Publish first then commit: a failed commit leaves an event without an order" caption="Figure 8.1: The two orders of a dual write and how each one fails" %}
 
-## Why this matters
-
-When a shop saves an order but loses the event, the stock is never reserved, and the customer waits on an order no other service has heard of. The reverse failure, an event published for an order that then rolled back, sends inventory chasing stock for a sale that never happened. Both failures go unnoticed until someone complains, and both grow more likely under load or after a crash. Committing the state change and its announcement as one unit keeps every service that reacts in step with the order it reacts to.
-
 ## Learning objectives
 
 - Commit a business change and its event in a single database transaction.
 - Relay outbox rows to Kafka from the write-ahead log with Debezium and the Outbox Event Router.
 - Route each row to its destination topic and carry the row id as a header.
 - Explain why delivery is at-least-once and where the atomic guarantee ends.
+
+## Why this matters
+
+When a shop saves an order but loses the event, the stock is never reserved, and the customer waits on an order no other service has heard of. The reverse failure, an event published for an order that then rolled back, sends inventory chasing stock for a sale that never happened. Both failures go unnoticed until someone complains, and both grow more likely under load or after a crash. Committing the state change and its announcement as one unit keeps every service that reacts in step with the order it reacts to.
 
 ## Pattern: Transactional Outbox
 

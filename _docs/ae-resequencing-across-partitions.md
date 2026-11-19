@@ -13,16 +13,16 @@ An order's three shipment events arrive from two producers on three topics, each
 
 {% include excalidraw.html file="ae-stream-vs-batch" alt="Top: arrivals 6, 9, 3, 5, 1, 2 enter the stream resequencer, which holds them and applies 1, 2, 3, 4 in global order. Bottom: a batch of six is sorted by order and sequence, and event 1 of the first order sits in the second batch, so it is applied after event 2" caption="Figure E.1: The stream form orders everything it sees; the batch form orders only inside a batch" %}
 
-## Why this matters
-
-A per-order sequence number only has to collide across orders once: the resequencer discards every collision as a duplicate with no logged warning, so most of an order's history can vanish. A restart carries the same risk: the consumer has already committed offsets for records the resequencer still holds, so a shutdown drops them with nothing recorded. The pattern depends on one process stamping a gapless global sequence, so a hole in that sequence, or a restart going wrong, costs a timeout on every event waiting behind it.
-
 ## Learning objectives
 
 - Distinguish a global gapless sequence from a per-order number that collides in the stream form
 - State what rejectOld decides when a late event for an already-passed gap arrives
 - Size the timeout between the slowest producer's delay and a latency a user can see
 - Recognize which held records a restart loses because offsets commit ahead of release
+
+## Why this matters
+
+A per-order sequence number only has to collide across orders once: the resequencer discards every collision as a duplicate with no logged warning, so most of an order's history can vanish. A restart carries the same risk: the consumer has already committed offsets for records the resequencer still holds, so a shutdown drops them with nothing recorded. The pattern depends on one process stamping a gapless global sequence, so a hole in that sequence, or a restart going wrong, costs a timeout on every event waiting behind it.
 
 ## Pattern: Resequencer across partitions
 

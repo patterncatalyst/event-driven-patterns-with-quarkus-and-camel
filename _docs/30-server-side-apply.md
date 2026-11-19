@@ -13,16 +13,16 @@ With `kubectl apply` as most people first learn it, nothing on the cluster refus
 
 {% include excalidraw.html file="30-field-managers" alt="Two writers, edp-apps with the app manifests and edp-platform with a memory patch, apply to the Deployment order-service; the API server records the owner of every field in managedFields, and limits.memory has one owner at a time" caption="Figure 30.1: The API server records an owner for every field a manager applies" %}
 
-## Why this matters
-
-When two tools apply to the same object with a client-side apply, neither write is refused: whichever applies last wins, with no error and no record of what the other one wanted. A platform team's emergency memory bump gets reverted by the next routine deployment, and the only sign is a pod restarting twice for no apparent reason. A manifest too large for the client-side bookkeeping can fail to install at all. Name an owner for every field, and an unrefused overwrite becomes a reported conflict someone has to resolve.
-
 ## Learning objectives
 
 - Apply manifests server-side under a named field manager instead of the client-side default
 - Read field ownership from managedFields to see which manager last set a value
 - Resolve a conflict between two managers instead of forcing it without review
 - Install a CustomResourceDefinition too large for the client-side annotation limit
+
+## Why this matters
+
+When two tools apply to the same object with a client-side apply, neither write is refused: whichever applies last wins, with no error and no record of what the other one wanted. A platform team's emergency memory bump gets reverted by the next routine deployment, and the only sign is a pod restarting twice for no apparent reason. A manifest too large for the client-side bookkeeping can fail to install at all. Name an owner for every field, and an unrefused overwrite becomes a reported conflict someone has to resolve.
 
 ## Pattern: Field ownership
 

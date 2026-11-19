@@ -13,16 +13,16 @@ Two stages split the work. A model reads the sentence and returns one reason fro
 
 {% include excalidraw.html file="24-analyse-then-decide" alt="A carrier note on delivery-exceptions goes through the AI service to exception-analyses, then through the rule unit to exception-decisions; a replay reads exception-analyses from offset 0 and runs the same rule unit, publishing nothing" caption="Figure 24.1: The model analyses once per note; the rules decide, and decide again from the record" %}
 
-## Why this matters
-
-When a model that answers differently depending on its prompt or version decides a refund, nobody can explain it to a customer who asks why, or defend it in an audit months later. Let it sit on the decision path and it is exposed to manipulation: an injected note talked it into the same wrong answer every time, leading straight to a refund with nobody involved. Keep what the model reads separate from what the rules decide, and the money decision stays repeatable and changeable by whoever owns the policy.
-
 ## Learning objectives
 
 - Split free-text classification from policy decisions into separate, independently testable stages
 - Record a model's answer along with the model, prompt version, and digest that produced it
 - Encode a decision table as mutually exclusive rules that throw instead of guessing
 - Replay a decision from its recorded analysis with zero further model calls
+
+## Why this matters
+
+When a model that answers differently depending on its prompt or version decides a refund, nobody can explain it to a customer who asks why, or defend it in an audit months later. Let it sit on the decision path and it is exposed to manipulation: an injected note talked it into the same wrong answer every time, leading straight to a refund with nobody involved. Keep what the model reads separate from what the rules decide, and the money decision stays repeatable and changeable by whoever owns the policy.
 
 ## Pattern: Analyse, then decide
 

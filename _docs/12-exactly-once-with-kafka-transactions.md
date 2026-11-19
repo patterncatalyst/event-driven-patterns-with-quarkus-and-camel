@@ -11,10 +11,6 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="12-read-process-write" alt="PaymentProcessor reads a batch from edp.inventory.reserved; the output records and the consumer offsets are written inside one Kafka transaction and a commit marker on both partitions makes them take effect" caption="Figure 12.1: Output records and input offsets in one transaction" %}
 
-## Why this matters
-
-When a read-process-write loop crashes between writing its output and committing its offset, it either loses the output or duplicates it on restart, and neither failure announces itself. A duplicate payment record means a customer is charged or credited twice for the same order, a financial loss that lands directly on the business or the customer. Deduplicating by hand only moves the problem into application code that must stay correct under every crash, which is harder to get right than relying on the guarantee the broker already provides.
-
 ## Learning objectives
 
 - State why retries and idempotent producers alone cannot prevent a duplicate write
@@ -22,6 +18,10 @@ When a read-process-write loop crashes between writing its output and committing
 - Set isolation.level so a reader skips an open transaction
 - Compare SmallRye batch transactions against a Camel transacted producer
 - Recognize when at-least-once delivery already gives the right answer
+
+## Why this matters
+
+When a read-process-write loop crashes between writing its output and committing its offset, it either loses the output or duplicates it on restart, and neither failure announces itself. A duplicate payment record means a customer is charged or credited twice for the same order, a financial loss that lands directly on the business or the customer. Deduplicating by hand only moves the problem into application code that must stay correct under every crash, which is harder to get right than relying on the guarantee the broker already provides.
 
 ## Pattern: Transactional Client
 

@@ -11,16 +11,16 @@ A compose stack starts one Kafka container, and its address is `kafka:9094` beca
 
 The Kubernetes examples run the same event-driven patterns on minikube, with Strimzi running Kafka, CloudNativePG running PostgreSQL and the Grafana LGTM image. The platform below runs the event notification, event-carried state transfer and ordering services on it, one set after another, with no change to their code or images.
 
-## Why this matters
-
-When a Kafka broker loses its node id, its volume or its address after a pod is replaced, a routine restart turns into an outage: orders keep arriving while nothing is notified, and the failure stays invisible until someone asks where a shipment went. Reproduce those identity, storage and quorum rules by hand, and the approach stops scaling past a handful of brokers. Get it wrong and the cluster loses both its data and the addresses every other service depends on.
-
 ## Learning objectives
 
 - Describe how a Kafka broker's node id, volume and address survive a pod replacement under an operator
 - Distinguish the controller quorum's voter role from a broker's observer role in KRaft mode
 - Point application services at Kubernetes Service addresses instead of compose container names
 - Recognize the failure mode of an address left unchanged after a platform move
+
+## Why this matters
+
+When a Kafka broker loses its node id, its volume or its address after a pod is replaced, a routine restart turns into an outage: orders keep arriving while nothing is notified, and the failure stays invisible until someone asks where a shipment went. Reproduce those identity, storage and quorum rules by hand, and the approach stops scaling past a handful of brokers. Get it wrong and the cluster loses both its data and the addresses every other service depends on.
 
 ## Setting up the cluster
 

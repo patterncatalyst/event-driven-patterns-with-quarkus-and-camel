@@ -11,16 +11,16 @@ duration: "60 minutes"
 
 {% include excalidraw.html file="19-enricher-vs-table-join" alt="shipping-service owns the carrier table, serves it over HTTP and feeds the compacted carriers topic; the Camel route calls the endpoint for every shipment, and the Streams topology joins every shipment against a local copy of the topic; each writes its own enriched topic" caption="Figure 19.1: The same merge from two places, the owner's answer now or the owner's last published record" %}
 
-## Why this matters
-
-When a shipment notification links to the wrong tracking page, the customer is stranded on a stale page. When the notification service blocks on every lookup, a reference-data outage becomes a shutdown of customer messaging. Choosing a live lookup over a local copy decides whether a message reflects what the owner knows now or what it last published, and whether one service's downtime stalls another's queue. Get it wrong and stored messages either freeze at values nobody can defend later, or notification delivery depends on the shipping service staying up.
-
 ## Learning objectives
 
 - Merge external reference data into a message via a Content Enricher call
 - Join a stream against a compacted topic's local copy with a GlobalKTable
 - Weigh freshness against availability when choosing a lookup or a local copy
 - Trace a stalled consumer back to a failed enrichment call and its lag
+
+## Why this matters
+
+When a shipment notification links to the wrong tracking page, the customer is stranded on a stale page. When the notification service blocks on every lookup, a reference-data outage becomes a shutdown of customer messaging. Choosing a live lookup over a local copy decides whether a message reflects what the owner knows now or what it last published, and whether one service's downtime stalls another's queue. Get it wrong and stored messages either freeze at values nobody can defend later, or notification delivery depends on the shipping service staying up.
 
 ## Pattern: Content Enricher
 

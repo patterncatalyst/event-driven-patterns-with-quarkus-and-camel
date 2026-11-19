@@ -11,16 +11,16 @@ duration: "45 minutes"
 
 {% include excalidraw.html file="11-crash-before-ack" alt="A record is committed to the database and the JVM halts before the acknowledgement; after the restart the record is delivered again and the inbox insert returns zero rows, so it is skipped" caption="Figure 11.1: A crash between the commit and the acknowledgement becomes a duplicate" %}
 
-## Why this matters
-
-Kafka redelivers a record after any crash between a commit and an acknowledgement, so when a consumer changes state as soon as it receives a record, it eventually applies some events twice. A duplicate decrement overstates how much stock has left the warehouse, understating what is actually on hand and risking a sale against inventory that no longer exists. The business cost lands downstream, long after the duplicate was processed, as oversold orders or a stock count that never reconciles with the ledger.
-
 ## Learning objectives
 
 - Distinguish at-least-once delivery from the duplicates it produces
 - Record an event id and its effect in one transaction
 - Compare an inbox table against Camel's idempotent consumer repositories
 - Recognize when natural idempotence removes the need for a table
+
+## Why this matters
+
+Kafka redelivers a record after any crash between a commit and an acknowledgement, so when a consumer changes state as soon as it receives a record, it eventually applies some events twice. A duplicate decrement overstates how much stock has left the warehouse, understating what is actually on hand and risking a sale against inventory that no longer exists. The business cost lands downstream, long after the duplicate was processed, as oversold orders or a stock count that never reconciles with the ledger.
 
 ## Pattern: Idempotent Consumer
 

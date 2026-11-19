@@ -13,16 +13,16 @@ On Kubernetes the cluster is also a set of resources that an operator keeps true
 
 {% include excalidraw.html file="32-metrics-path" alt="Kafka pods serve the Strimzi Metrics Reporter on port 9404, the cluster operator serves its metrics on port 8080, and kube-state-metrics watches the status of Kafka, KafkaNodePool and KafkaTopic resources; one otel-lgtm collector scrapes all three, adds the consumer group lag it asks the broker for, and sends everything on to Prometheus, which Grafana reads" caption="Figure 32.1: Pods, operator and resources report separately and land in one store" %}
 
-## Why this matters
-
-Consumer lag, event age and relay backlog all say that something is stuck, but not which of three independent layers failed: the brokers, the operator reconciling the cluster, or a custom resource the operator cannot satisfy. When a team reads only the application's own metrics, it chases the wrong layer while a topic sits unready or a controller has gone missing, and none of the brokers ever fail a health check. Scrape each layer's own endpoint, and three hidden failure modes become three questions one dashboard can answer.
-
 ## Learning objectives
 
 - Scrape the broker, controller and operator metrics endpoints with one collector
 - Read a custom resource's status as a gauge through kube-state-metrics
 - Diagnose which of three independent layers stopped reporting
 - Change the Strimzi Metrics Reporter allow list without rolling the Kafka pods
+
+## Why this matters
+
+Consumer lag, event age and relay backlog all say that something is stuck, but not which of three independent layers failed: the brokers, the operator reconciling the cluster, or a custom resource the operator cannot satisfy. When a team reads only the application's own metrics, it chases the wrong layer while a topic sits unready or a controller has gone missing, and none of the brokers ever fail a health check. Scrape each layer's own endpoint, and three hidden failure modes become three questions one dashboard can answer.
 
 ## Pattern: Metrics from the operator's resources
 

@@ -11,16 +11,16 @@ In the choreographed saga nobody holds the whole sequence. Each service knows it
 
 `order-service` hosts two orchestrators for the same flow, order then stock then payment, over the same `inventory-service` and `payment-service`. One is the Camel Saga EIP with an LRA coordinator. The other is a Quarkus Flow workflow. A real service runs one of them.
 
-## Why this matters
-
-When nobody holds the whole sequence, answering where an order is means reading three codebases, and a change to the flow touches every service that reacts to it. An orchestrator fixes that, but it becomes a single point that can lose a saga: when it restarts with one saga in flight, that saga is lost in most trials, leaving stock reserved and an order stuck past its deadline. The choice between a coordinator and a workflow engine decides whether a late participant is refused outright or charged and then refunded.
-
 ## Learning objectives
 
 - Centralize a saga's sequence and state in one orchestrator instead of scattering it across participants
 - Register a compensation with an LRA coordinator and trigger it on a cancelled saga
 - Write an explicit compensation task list for a workflow engine with no built-in undo
 - Give every saga step and wait its own time limit, owned by the orchestrator
+
+## Why this matters
+
+When nobody holds the whole sequence, answering where an order is means reading three codebases, and a change to the flow touches every service that reacts to it. An orchestrator fixes that, but it becomes a single point that can lose a saga: when it restarts with one saga in flight, that saga is lost in most trials, leaving stock reserved and an order stuck past its deadline. The choice between a coordinator and a workflow engine decides whether a late participant is refused outright or charged and then refunded.
 
 ## Pattern: Orchestrated saga
 

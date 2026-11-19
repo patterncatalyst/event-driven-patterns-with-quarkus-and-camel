@@ -11,10 +11,6 @@ The warehouse system keeps its stock in `inventory.inventory_item`, a table anot
 
 {% include excalidraw.html file="09-wal-publication-slot" alt="Writes to the captured table, the uncaptured busy table and the heartbeat table land in the write-ahead log; the publication filters three tables for the connector, and the replication slot records how far it has confirmed" caption="Figure 9.1: The log holds every table's changes; the slot holds the reader's place" %}
 
-## Why this matters
-
-When nothing can modify a legacy table directly, its changes still need to reach other services, and polling misses deletes while collapsing several updates into one. Log tailing solves that without touching the legacy application, but it puts a reader inside the database's own recovery machinery: an unadvanced slot keeps the write-ahead log on disk until it fills, even for tables the reader never asked about. Every consumer of the resulting topic is also coupled to the legacy schema's column names, and the table's owner can change those names without warning.
-
 ## Learning objectives
 
 - Explain why a replication slot retains WAL until its reader confirms a position.
@@ -22,6 +18,10 @@ When nothing can modify a legacy table directly, its changes still need to reach
 - Map insert, update and delete envelopes to documents, including the tombstone case.
 - Compare Kafka Connect and an embedded engine by what each one keeps.
 - Set replica identity to control what a delete's before row contains.
+
+## Why this matters
+
+When nothing can modify a legacy table directly, its changes still need to reach other services, and polling misses deletes while collapsing several updates into one. Log tailing solves that without touching the legacy application, but it puts a reader inside the database's own recovery machinery: an unadvanced slot keeps the write-ahead log on disk until it fills, even for tables the reader never asked about. Every consumer of the resulting topic is also coupled to the legacy schema's column names, and the table's owner can change those names without warning.
 
 ## Pattern: Transaction Log Tailing
 

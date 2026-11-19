@@ -13,10 +13,6 @@ Nothing is wrong inside any one service. The work is stuck between them: in a re
 
 {% include excalidraw.html file="26-where-each-signal-lives" alt="An order passes from order-service through the replication slot, Connect and the topic edp.orders.placed to inventory-service; the backlog is read at the slot, group lag at the topic and event age at the consumer, while the outbox table, always empty, reads zero in a stall" caption="Figure 26.1: Each signal is read where the work waits, not inside the service that is stuck" %}
 
-## Why this matters
-
-When a service reports healthy, it tells an operator nothing about work stuck between services, in a paused relay or a stalled consumer group, so an outage can run for minutes before anyone notices orders have stopped moving. A late reservation costs a customer, and a late alert costs the team that gets paged only after the backlog has already grown. Measure only inside services, and every gap between them stays invisible until someone escalates.
-
 ## Learning objectives
 
 - Read backlog at the replication slot instead of counting outbox table rows
@@ -24,6 +20,10 @@ When a service reports healthy, it tells an operator nothing about work stuck be
 - Configure a heartbeat so a replication slot keeps confirming after the last captured change
 - Distinguish event age from record age when a dead letter is redriven
 - Alert on the signal that grows while a flow stalls
+
+## Why this matters
+
+When a service reports healthy, it tells an operator nothing about work stuck between services, in a paused relay or a stalled consumer group, so an outage can run for minutes before anyone notices orders have stopped moving. A late reservation costs a customer, and a late alert costs the team that gets paged only after the backlog has already grown. Measure only inside services, and every gap between them stays invisible until someone escalates.
 
 ## Pattern: Measure the flow, not the service
 

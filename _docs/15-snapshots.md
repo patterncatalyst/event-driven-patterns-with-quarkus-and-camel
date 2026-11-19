@@ -11,16 +11,16 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="15-snapshot-plus-tail" alt="A stream of events ordered by version; a snapshot holds the fold of versions 1 to s, so a load reads one snapshot row and the events after s, where a load without it reads every event from version 1" caption="Figure 15.1: A load reads the snapshot and the events after it" %}
 
-## Why this matters
-
-When a stream only grows, like a popular SKU's stock ledger, every load gets slower over time, and when a reservation takes over a hundred milliseconds instead of under one, it degrades every checkout that touches it. That growth stays invisible until the hot stream is the one being timed, by which point it is already affecting live latency. A snapshot avoids a second source of truth by remaining a disposable cache that the events can always rebuild, so the team never takes a shortcut in place of the real fix.
-
 ## Learning objectives
 
 - Explain why an aggregate's load cost grows with the length of its event stream
 - Write a snapshot in the same transaction as the command that crosses the threshold
 - Guard a snapshot upsert against an older write overtaking a newer one
 - Compare an inline snapshot against a Camel scheduled snapshotter for bounding the tail
+
+## Why this matters
+
+When a stream only grows, like a popular SKU's stock ledger, every load gets slower over time, and when a reservation takes over a hundred milliseconds instead of under one, it degrades every checkout that touches it. That growth stays invisible until the hot stream is the one being timed, by which point it is already affecting live latency. A snapshot avoids a second source of truth by remaining a disposable cache that the events can always rebuild, so the team never takes a shortcut in place of the real fix.
 
 ## Pattern: Snapshot
 

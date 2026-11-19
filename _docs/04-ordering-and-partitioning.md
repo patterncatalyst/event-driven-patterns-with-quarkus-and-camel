@@ -11,10 +11,6 @@ The shipping service tells the world three things about an order, in this sequen
 
 {% include excalidraw.html file="04-keys-to-partitions" alt="Three key strategies: the order id puts all of an order's events in one partition, the event type splits an order across two partitions, and the carrier uses only two of three partitions" caption="Figure 4.1: The key picks the partition" %}
 
-## Why this matters
-
-When the wrong partition key is picked for a sequence of events, nothing goes wrong at publish time. The cost shows up later, when a reader applies the events out of order: an order can regress from DELIVERED back to SHIPPED with no error anywhere, because Kafka orders records only within one partition and nothing checks that order across partitions. For an online shop, that status is what the customer sees, so an undetected reordering can report a delivered package as still on the road until a buffer or a sequence check catches it.
-
 ## Learning objectives
 
 - Key every event of an entity into one partition.
@@ -22,6 +18,10 @@ When the wrong partition key is picked for a sequence of events, nothing goes wr
 - Choose a resequencer only when the key cannot carry all events.
 - Lock and buffer out-of-sequence events per entity without blocking other entities.
 - Check a keying choice against order under a paused consumer.
+
+## Why this matters
+
+When the wrong partition key is picked for a sequence of events, nothing goes wrong at publish time. The cost shows up later, when a reader applies the events out of order: an order can regress from DELIVERED back to SHIPPED with no error anywhere, because Kafka orders records only within one partition and nothing checks that order across partitions. For an online shop, that status is what the customer sees, so an undetected reordering can report a delivered package as still on the road until a buffer or a sequence check catches it.
 
 ## Pattern: Partitioned ordering
 

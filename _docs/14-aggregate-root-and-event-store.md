@@ -11,16 +11,16 @@ A plain event table with a unique version settles a race between two writers, bu
 
 {% include excalidraw.html file="14-aggregate-command-cycle" alt="A command is loaded against the stream, the aggregate is rebuilt, the command is decided and the events are appended at the loaded version plus one in one transaction with an outbox row for OrderPlaced and OrderCancelled; Debezium carries those two to edp.orders.placed and edp.orders.cancelled" caption="Figure 14.1: One command, one transaction, and two public events out" %}
 
-## Why this matters
-
-When three callers each read an order's status and write their own decision, a cancellation and a shipment can both read PAID and each look correct on its own, while together they leave the order cancelled after it already shipped. That kind of conflict corrupts the order's history in a way that is hard to detect and harder to undo, since nothing stops two racing decisions from both landing. When an aggregate decides again from its own freshly loaded state, and a store rejects any stale write, an order's history stays a legal sequence of events.
-
 ## Learning objectives
 
 - Rebuild an aggregate's state by folding its own event stream before deciding a command
 - Reject an append whose expected version no longer matches the stream
 - Distinguish a command worth deciding again from one that must be reported to the caller
 - Export only the public events a stream produces, not its internal history
+
+## Why this matters
+
+When three callers each read an order's status and write their own decision, a cancellation and a shipment can both read PAID and each look correct on its own, while together they leave the order cancelled after it already shipped. That kind of conflict corrupts the order's history in a way that is hard to detect and harder to undo, since nothing stops two racing decisions from both landing. When an aggregate decides again from its own freshly loaded state, and a store rejects any stale write, an order's history stays a legal sequence of events.
 
 ## Pattern: Aggregate
 

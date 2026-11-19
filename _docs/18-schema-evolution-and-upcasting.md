@@ -11,16 +11,16 @@ Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPr
 
 {% include excalidraw.html file="18-upcast-on-read" alt="Two rows in the append-only events table, one stored at schema_version 1 and one at 2; a load copies the payload, the upcaster chain adds shippingPriority STANDARD to the version 1 copy, and the aggregate sees only the current OrderPlaced record; an UPDATE of a stored row is refused by the trigger" caption="Figure 18.1: A stored event is never rewritten; a copy is upcast on every read" %}
 
-## Why this matters
-
-When a new field is added to an event, the store never rewrites what it already recorded, and some consumers of the public topic may still be running a version deployed weeks or months ago. If the transform is wrong, old records stop being readable at all, breaking the aggregate's own load path and every downstream service still running the previous release. Ship an incompatible schema, and the cost is a failed command and a service that can no longer read its own history or publish an event.
-
 ## Learning objectives
 
 - Transform a stored event into the current shape on read without rewriting what was recorded
 - Give every added field a default that states an explicit business decision
 - Register a schema change against every earlier version the topic can still replay
 - Distinguish a compatible field addition from a change that needs a new event type
+
+## Why this matters
+
+When a new field is added to an event, the store never rewrites what it already recorded, and some consumers of the public topic may still be running a version deployed weeks or months ago. If the transform is wrong, old records stop being readable at all, breaking the aggregate's own load path and every downstream service still running the previous release. Ship an incompatible schema, and the cost is a failed command and a service that can no longer read its own history or publish an event.
 
 ## Pattern: Upcaster
 

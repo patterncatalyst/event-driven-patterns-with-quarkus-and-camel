@@ -15,16 +15,16 @@ Event-driven tests run on a real broker.
 
 {% include excalidraw.html file="aa-bite-cycle" alt="A green suite, a patch that alters one guard on a copy, a run of the broker-backed class, and exactly one named test failing, after which the copy is dropped; a dashed arrow notes that a test that stays green is not guarding what it names" caption="Figure A.1: A check is proved by breaking the code it guards" %}
 
-## Why this matters
-
-When a service fails by omission, a notification never sent, a duplicate record, an event applied out of order, it raises no exception and no stack trace. A test suite that only waits for the first match can stay green while a guard underneath it is deleted, so a team ships that outage and only reconstructs it later from a drop in delivered notifications nobody flagged at the time. Mutation testing and draining topic assertions turn that absence into something a build can fail on, before a release reaches customers.
-
 ## Learning objectives
 
 - Prove a guard by removing it and watching the one test that should fail
 - Tell a first-match assertion apart from a drain that waits out the window
 - Write ordering tests whose oracle does not depend on the code under test
 - Separate an AdviceWith route test from a broker-backed consumer-group test
+
+## Why this matters
+
+When a service fails by omission, a notification never sent, a duplicate record, an event applied out of order, it raises no exception and no stack trace. A test suite that only waits for the first match can stay green while a guard underneath it is deleted, so a team ships that outage and only reconstructs it later from a drop in delivered notifications nobody flagged at the time. Mutation testing and draining topic assertions turn that absence into something a build can fail on, before a release reaches customers.
 
 ## Real brokers in tests
 

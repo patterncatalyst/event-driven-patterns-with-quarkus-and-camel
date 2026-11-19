@@ -11,16 +11,16 @@ duration: "45 minutes"
 
 {% include excalidraw.html file="13-failure-classes" alt="Three failure classes: an unparseable or invalid record is tried once and goes to the dead letter topic; a record that fails on a locked row is retried and then reserved; a record still failing after the last retry goes to the dead letter topic" caption="Figure 13.1: Retry what can succeed later, dead-letter what never will" %}
 
-## Why this matters
-
-When a consumer logs a failure and commits the offset anyway, it discards the record with only a log line as evidence, so the order disappears with nothing to trace it back to. Retrying every failure without classifying it holds up good records behind a bad one on the same partition, and one order stuck on a lock delays every order behind it. Get the classification wrong and orders are lost or the pipeline stalls, and when nobody watches a dead letter topic, one failure just turns into a pile no one acts on.
-
 ## Learning objectives
 
 - Classify a failure as retryable or final before deciding how to handle it
 - Bound retries so a stuck record reaches the dead letter topic instead of holding the partition
 - Preserve the original record bytes and key when writing to the dead letter topic
 - Compare SmallRye's dead letter queue against Camel's dead letter channel
+
+## Why this matters
+
+When a consumer logs a failure and commits the offset anyway, it discards the record with only a log line as evidence, so the order disappears with nothing to trace it back to. Retrying every failure without classifying it holds up good records behind a bad one on the same partition, and one order stuck on a lock delays every order behind it. Get the classification wrong and orders are lost or the pipeline stalls, and when nobody watches a dead letter topic, one failure just turns into a pile no one acts on.
 
 ## Pattern: Dead Letter Channel
 
