@@ -282,6 +282,15 @@ else
 fi
 
 echo "Backfill and replay"
+# A stale exception is one a past release analysed at an older prompt version: its note is on the topic, but no row
+# at the current version exists, so backfill reads the note and appends a current row. The live route would analyse
+# any note on the topic at the current version and leave nothing stale, so recreate shipping-service with the route
+# off for this phase. The checks that need the route (reasons, the exactly-once guard) have already run.
+if [[ "$MODEL" != "off" ]]; then
+    ANALYST_ENABLED=false "${COMPOSE[@]}" up -d --no-deps --force-recreate --wait shipping-service >/dev/null 2>&1 \
+        || fail_loudly "could not recreate shipping-service with the analysis route off"
+    poll 60 curl -sf "$SVC/q/health/ready" >/dev/null || fail_loudly "shipping-service did not come back with the route off"
+fi
 if [[ "$MODEL" == "off" ]]; then
     skip "backfill calls the model once, for the exception behind the target prompt version"
 else
@@ -294,12 +303,15 @@ shipment = {"id": "S-BACKFILL-DEMO", "orderId": "O-BACKFILL-DEMO", "carrier": "F
 event = {"exceptionId": exception_id, "shipment": shipment, "attempt": 1,
          "note": "Box crushed at depot, contents leaking through the corner.", "occurredAt": noted_at}
 print("O-BACKFILL-DEMO|%s" % json.dumps(event, separators=(",", ":")))' "$NOTED_AT" "$STALE_ID" | produce "$EXCEPTIONS"
-    CALLS_BEFORE_BACKFILL="$(app_calls)"
     BACKFILL_OUT="$(mktemp)"
     trap 'rm -f "$BACKFILL_OUT"; cleanup' EXIT
     poll 30 reanalyse "$PROMPT_VERSION" "$BACKFILL_OUT"
     backfill_reanalysed_the_stale_exception() {
-        [[ "$(reanalysed_count "$BACKFILL_OUT")" == 1 && "$(app_calls)" == "$((CALLS_BEFORE_BACKFILL + 1))" ]]
+        # The backfill response is the authoritative record: exactly one exception was behind the target version and
+        # was reanalysed, and it is the stale one. reanalyseOne calls the model once per reanalysed exception, so one
+        # reanalysed exception is one model call. (The backfill writes the store and the snapshot, not the output
+        # topic, so it is read from the response, not from analysis_field, which reads that topic.)
+        [[ "$(python3 -I -c 'import json, sys; d = json.load(open(sys.argv[1])); print("%d|%s" % (d["reanalysed"], ",".join(d["reanalysedIds"])))' "$BACKFILL_OUT")" == "1|$STALE_ID" ]]
     }
     check "backfill calls the model once, for the exception behind the target prompt version" backfill_reanalysed_the_stale_exception
 fi
