@@ -155,7 +155,7 @@ When a command must see its own write, read the aggregate: a projection is event
 - Holding a long-running transaction open stalls every projection batch behind it, since no row past an open transaction can be read yet.
 
 > **🤖 Explore with your agent**
-> "In examples/17-aggregate-replay-or-projection, ask for shipments per carrier through ReplayReport and through CarrierDailyProjector, then find where projection_checkpoint and the tx_id watermark decide which events a batch reads. Set PROJECTION_WATERMARK=off, hold ShipOrder O-1701 open while O-1702 ships, and state which order the projection never counts and why."
+> "In examples/17-aggregate-replay-or-projection, ask for shipments per carrier through ReplayReport and through CarrierDailyProjector, then find where projection_checkpoint and the tx_id watermark decide which events a batch reads. Set PROJECTION_WATERMARK=off, hold one order's ShipOrder transaction open while another order ships and commits, and state which of the two the projection never counts and why."
 > Check: with the watermark both orders are counted once the held transaction commits and the projection equals the replay; with it off the projection stays one order short.
 
 ## References
