@@ -88,11 +88,11 @@ Kafka Streams orders by the timestamp its extractor returns. The record timestam
 
 Camel never reads `occurredAt`. The completion timeout is the time a group has been inactive, counted on the clock of the service. **The Camel form approximates the window by arrival time, not event time.** Where records arrive close to when they happened, the two clocks agree and the aggregator is the smaller piece of code. Where they do not, the forms disagree, and two crafted pairs show it in opposite directions.
 
-{% include excalidraw.html file="20-event-vs-arrival-time" alt="O-2003 has event times two minutes apart and arrives more than the 10 second timeout apart, so Kafka Streams matches it and the Camel aggregator, with a 10 second timeout, emits PaymentOverdue first; O-2004 has event times 90 minutes apart and arrives back to back, so Kafka Streams emits PaymentOverdue and the Camel aggregator matches it" caption="Figure 20.2: Two clocks, two answers, in opposite directions" %}
+{% include excalidraw.html file="20-event-vs-arrival-time" alt="The two-minute pair has event times two minutes apart and arrives more than the 10 second timeout apart, so Kafka Streams matches it and the Camel aggregator, with a 10 second timeout, emits PaymentOverdue first; the ninety-minute pair has event times 90 minutes apart and arrives back to back, so Kafka Streams emits PaymentOverdue and the Camel aggregator matches it" caption="Figure 20.2: Two clocks, two answers, in opposite directions" %}
 
-One pair is reserved at 09:10 and paid at 09:12 in event time, two minutes apart, but its two records are produced more than the 10 second timeout apart (`O-2003`). Streams matches it. The Camel group times out first and emits `PaymentOverdue`; the payment then arrives alone and is ignored. The other pair is reserved at 09:20 and paid at 10:50 in event time, 90 minutes apart, but its records are produced back to back (`O-2004`), the payment a replay. Streams sees 90 minutes and emits `PaymentOverdue`. Camel sees both facts together and emits `ReadyToShip`.
+The two-minute pair is reserved at 09:10 and paid at 09:12 in event time, but its two records are produced more than the 10 second timeout apart. Streams matches it. The Camel group times out first and emits `PaymentOverdue`; the payment then arrives alone and is ignored. The ninety-minute pair is reserved at 09:20 and paid at 10:50 in event time, but its records are produced back to back, the payment a replay. Streams sees 90 minutes and emits `PaymentOverdue`. Camel sees both facts together and emits `ReadyToShip`.
 
-The question is which clock the business rule means. "Payment within 30 minutes of the reservation" is a statement about when things happened, and only the event-time form can keep it when records are late, replayed or backlogged. "Payment within 10 seconds of the reservation reaching this service" is a statement about the service, and the timeout is the direct form of it. A timeout chosen as a guess at the spread of arrival times is a third thing, and it moves the answer: a longer timeout makes `O-2003` match on the Camel path as well.
+The question is which clock the business rule means. "Payment within 30 minutes of the reservation" is a statement about when things happened, and only the event-time form can keep it when records are late, replayed or backlogged. "Payment within 10 seconds of the reservation reaching this service" is a statement about the service, and the timeout is the direct form of it. A timeout chosen as a guess at the spread of arrival times is a third thing, and it moves the answer: a longer timeout makes the two-minute pair match on the Camel path as well.
 
 Event times have to be in the past. The broker refuses a record whose timestamp is more than an hour ahead, and Kafka Streams forwards the event time as the timestamp of its output, so a payload dated in the future puts the instance in ERROR.
 
@@ -102,7 +102,7 @@ The window does not retract. A payment that arrives after `PaymentOverdue` has b
 
 An inner join would leave an order that is never paid with no trace. The left join emits `PaymentOverdue` after the window and the grace have passed, but only when stream time passes them, and stream time advances only with records. An idle stream never closes its windows, so a reservation with no further traffic behind it waits in silence until some record, from any order, arrives with a later event time. A wall clock does not move it.
 
-Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: between 10.05 and 11.07 seconds in 20 runs with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why `O-2004` slips through.
+Camel is the other way round. The timeout is per correlation key and needs only the clock, so an unpaid reservation is reported about one timeout after it arrived: between 10.05 and 11.07 seconds in 20 runs with a 10 second timeout, the checker interval of one second included. What the timeout cannot see is event time, which is why the ninety-minute pair slips through.
 
 A payment that arrives first and alone forms a group with no reservation. By timeout it would be reported as overdue with nothing reserved, so the route filters it: a group without a reservation completes silently and leaves no row behind.
 
@@ -131,12 +131,12 @@ mvn -B verify
 ./verify.sh
 ```
 
-`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. Watch `O-2003` and `O-2004` get opposite answers from the two forms. It prints `24/24 checks passed`.
+`verify.sh` produces the two crafted pairs, an unpaid reservation and a payment that follows a recreate of the service, and reads both output topics side by side. Watch the two-minute and ninety-minute pairs get opposite answers from the two forms. It prints `24/24 checks passed`.
 
 Try one change and rerun:
 
 - `AGGREGATION_REPOSITORY=memory ./verify.sh` (demo code): the reservation open at the recreate is lost on the Camel path and never becomes `ReadyToShip` there.
-- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): `O-2003` is no longer reported overdue on the Camel path, and the unpaid reservation `O-2005` is not reported within 15 seconds of arriving.
+- `READINESS_TIMEOUT_MS=30000 ./verify.sh` (demo code): the two-minute pair is no longer reported overdue on the Camel path, and the unpaid reservation is not reported within 15 seconds of arriving.
 
 ## When not to use it
 
@@ -151,8 +151,8 @@ If the two facts already sit in one database, a SQL join answers the question wi
 - Using the in-memory aggregation repository instead of the PostgreSQL-backed one loses every open group on a restart, since the consumer has already committed the offset that would have replayed it.
 
 > **🤖 Explore with your agent**
-> "In examples/20-join, ReadinessTopology and ReadinessRoute join InventoryReserved and PaymentProcessed by order id. Produce one pair whose events are two minutes apart but whose records are produced further apart than the route's completion timeout (O-2003), and one whose events are 90 minutes apart but are produced back to back (O-2004). From PayloadTimestampExtractor and completionTimeout, state which clock each output used and why the two disagree, then recreate the service with a reservation open and say where each form found it again."
-> Check: O-2003 is ReadyToShip on the Streams output and PaymentOverdue on the Camel output, O-2004 is the opposite, and the reservation open at the recreate is paired afterwards on both outputs.
+> "In examples/20-join, ReadinessTopology and ReadinessRoute join InventoryReserved and PaymentProcessed by order id. Produce two reservation-and-payment pairs: one whose events are two minutes apart but whose records are produced further apart than the route's completion timeout, and one whose events are 90 minutes apart but are produced back to back. From PayloadTimestampExtractor and completionTimeout, state which clock each output used and why the two disagree, then recreate the service with a reservation open and say where each form found it again."
+> Check: the two-minute pair is ReadyToShip on the Streams output and PaymentOverdue on the Camel output, the ninety-minute pair is the opposite, and the reservation open at the recreate is paired afterwards on both outputs.
 
 ## References
 

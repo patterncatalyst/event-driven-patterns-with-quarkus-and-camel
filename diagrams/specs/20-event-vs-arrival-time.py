@@ -7,8 +7,8 @@ emit(
     960,
     470,
     bands=[
-        {"x": 20, "y": 60, "w": 920, "h": 170, "fill": "#fff8ef", "label": "O-2003: 2 minutes apart in event time, more than the 10 second timeout apart in arrival"},
-        {"x": 20, "y": 260, "w": 920, "h": 170, "fill": "#fafafa", "label": "O-2004: payment 90 minutes after the reservation in event time, produced back to back"},
+        {"x": 20, "y": 60, "w": 920, "h": 170, "fill": "#fff8ef", "label": "Two-minute pair: 2 minutes apart in event time, more than the 10 second timeout apart in arrival"},
+        {"x": 20, "y": 260, "w": 920, "h": 170, "fill": "#fafafa", "label": "Ninety-minute pair: payment 90 minutes after the reservation in event time, produced back to back"},
     ],
     nodes=[
         {"x": 40, "y": 105, "w": 200, "h": 80, "style": "box", "lines": ["Event times", "09:10 and 09:12", "2 minutes apart"]},
