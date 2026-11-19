@@ -13,7 +13,7 @@ duration: "55 minutes"
 
 ## Why this matters
 
-Booking a carrier before payment has cleared ships goods the business was never paid for. Confirming a payment but never booking a carrier strands a paying customer's order with no visible owner until someone complains. Because the two facts arrive from separate services with no shared order between them, correlation logic can go wrong in either direction, and the two ways of doing it can disagree on the same order as it crosses between them.
+When a carrier is booked before the payment has cleared, the business ships goods it was never paid for. When a payment is confirmed but no carrier is ever booked, a paying customer's order sits with no visible owner until someone complains. The two facts arrive from separate services with no shared order between them, so correlation logic can go wrong in either direction, and two different approaches can disagree about the same order as it crosses between them.
 
 ## Learning objectives
 

@@ -13,7 +13,7 @@ duration: "45 minutes"
 
 ## Why this matters
 
-A shop that saves an order but loses the event never reserves the stock, and the customer waits on an order no other service has heard of. The reverse, an event for an order that rolled back, sends inventory chasing stock for a sale that never happened. Both failures are silent until someone complains, and both grow likelier under load or a crash. Committing the state change and its announcement as one unit keeps every service that reacts in step with the order it reacts to.
+When a shop saves an order but loses the event, the stock is never reserved, and the customer waits on an order no other service has heard of. The reverse failure, an event published for an order that then rolled back, sends inventory chasing stock for a sale that never happened. Both failures go unnoticed until someone complains, and both grow more likely under load or after a crash. Committing the state change and its announcement as one unit keeps every service that reacts in step with the order it reacts to.
 
 ## Learning objectives
 

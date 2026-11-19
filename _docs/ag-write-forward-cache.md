@@ -13,6 +13,17 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="ag-write-forward-path" alt="POST /orders writes the order row and the outbox row in one transaction; Debezium and the EventRouter publish the full state to edp.orders.placed and edp.orders.cancelled; a Camel route applies it to a Redis hash behind a version guard; GET /orders/{id} reads Redis only" caption="Figure G.1: The request writes PostgreSQL, the events write Redis, the read endpoint reads Redis" %}
 
+## Why this matters
+
+Skip the shared transaction between a database and a cache, and a dual write can fail either way: writing the cache first can show an order a failed commit never created, and writing it second can leave a crash with stale state and no fix. Couple the cache to the request path, and one outage becomes an outage for every write the service accepts. Write the cache only from committed events instead, trading staleness for a guarantee that what it shows was committed.
+
+## Learning objectives
+
+- Explain why a dual write to a database and a cache fails regardless of write order
+- Apply a version guard so a replayed or out-of-order event cannot regress the cache
+- State what a write-forward cache can and cannot guarantee about read-after-write freshness
+- Rebuild a lost cache by replaying its source topics from the earliest offset
+
 ## Pattern: Write-forward cache
 
 ### The problem
@@ -111,6 +122,13 @@ Try one change and rerun:
 The pattern costs an outbox, a connector, a replication slot, a consumer and a second store to run, and it adds a delay that the reader sees. If a reader must see its own write, read the source. If the answer is slow to compute but the order is not, a cache-aside read with a short expiry is the smaller change, and it needs none of this.
 
 A cache that mirrors one table is a projection; when the view joins several owners' events, it needs the projection's guards and not a single version. Where the application can tolerate a lost update, a plain cache-aside is simpler. The full state in every event also makes each event as large as the order: for large documents, hold a reference and read the rest from the source.
+
+## Common pitfalls
+
+- Writing the cache from the request path instead of from committed events: a failed commit after a successful cache write leaves an order visible that the database never holds.
+- Running a replay without the version guard: two topics read by one consumer group have no order between them, and an older event can move a cancelled order back to an earlier state.
+- Expecting a read right after a write to find the cache already warm: the event has to travel through the outbox, the connector, and the topic first, so a read-your-own-write check usually misses.
+- Running the cache store with no persistence and treating a restart as routine: every key is gone, and the only recovery is a full replay bounded by how long the topics retain their records.
 
 > **🤖 Explore with your agent**
 > "In examples/ag-write-forward-cache, run the cache with CACHE_GUARD=off, replay edp.orders.cancelled and then edp.orders.placed into a new CACHE_GROUP, and compare OrderCache.apply with and without the guard for an order that was cancelled. Then state which two writers of the Redis hash exist in each CACHE_WRITE mode."

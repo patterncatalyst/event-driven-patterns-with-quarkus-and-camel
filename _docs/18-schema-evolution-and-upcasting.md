@@ -11,6 +11,17 @@ Customers can now ask for express delivery, so `OrderPlaced` gains a `shippingPr
 
 {% include excalidraw.html file="18-upcast-on-read" alt="Two rows in the append-only events table, one stored at schema_version 1 and one at 2; a load copies the payload, the upcaster chain adds shippingPriority STANDARD to the version 1 copy, and the aggregate sees only the current OrderPlaced record; an UPDATE of a stored row is refused by the trigger" caption="Figure 18.1: A stored event is never rewritten; a copy is upcast on every read" %}
 
+## Why this matters
+
+When a new field is added to an event, the store never rewrites what it already recorded, and some consumers of the public topic may still be running a version deployed weeks or months ago. If the transform is wrong, old records stop being readable at all, breaking the aggregate's own load path and every downstream service still running the previous release. Ship an incompatible schema, and the cost is a failed command and a service that can no longer read its own history or publish an event.
+
+## Learning objectives
+
+- Transform a stored event into the current shape on read without rewriting what was recorded
+- Give every added field a default that states an explicit business decision
+- Register a schema change against every earlier version the topic can still replay
+- Distinguish a compatible field addition from a change that needs a new event type
+
 ## Pattern: Upcaster
 
 ### The problem
@@ -169,6 +180,13 @@ An upcaster cannot invent a fact. When a change alters what an event means, not 
 Skip the work where nothing is read back. A snapshot holds derived state and is discarded and rebuilt when its schema changes, so it needs no upcaster.
 
 A registry is one more service to run and to keep up. When producer and consumers always deploy together and nothing replays a topic, a compatibility check in the build can do the same job with less.
+
+## Common pitfalls
+
+- Skipping the upcaster chain leaves an old stored row without a field the current record requires, failing the load with a missing-field error.
+- Registering a schema under BACKWARD instead of BACKWARD_TRANSITIVE accepts a change that a reader cannot apply to the oldest records once the topic is replayed from the start.
+- Removing a field's default to make it required breaks every consumer that rebuilds from the beginning of the topic, since the earliest records never had a value to give it.
+- Treating a changed meaning as a field default invents a fact that was never recorded, when a new event type is the only accurate way to represent it.
 
 > **🤖 Explore with your agent**
 > "In examples/18-schema-evolution-and-upcasting, load O-1801 (placed by the previous release, before shippingPriority existed) and O-1803 (placed by the current release) and find where Upcasters, OrderPlacedPublisher and order-placed.avsc decide what each reader sees. Set REGISTRY_RULE to BACKWARD and state which schema version is then accepted and which reader fails on which record."

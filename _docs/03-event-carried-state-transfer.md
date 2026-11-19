@@ -13,7 +13,7 @@ A customer asks the notification service about order O-1001. The service needs t
 
 ## Why this matters
 
-A notification service that must call back for every detail answers nothing when the order service is down, leaving a support rep with no order to read a waiting customer. An order with a large attachment can fail to reach the topic without warning, so the team that depends on knowing about it never finds out. Both failures stay hidden until someone notices a missing answer or a missing order, often during an outage, when it has already become an incident.
+When a notification service has to call back for every detail, it can answer nothing while the order service is down, leaving a support rep with no order to read a waiting customer. An order with a large attachment can also fail to reach the topic without warning, so a team that depends on knowing about it never finds out. Both failures stay hidden until someone notices a missing answer or a missing order, often during an outage that has already become an incident.
 
 ## Learning objectives
 

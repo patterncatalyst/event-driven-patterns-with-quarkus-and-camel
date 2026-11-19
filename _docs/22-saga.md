@@ -13,6 +13,17 @@ The three services carry an order from placed to paid by reacting to each other'
 
 {% include excalidraw.html file="22-saga-choreography" alt="order-service, inventory-service and payment-service in a row; orders.placed and inventory.reserved lead forward, payments.processed returns to order-service, and payments.failed, inventory.insufficient and orders.cancelled lead back as the compensation path" caption="Figure 22.1: Each service reacts to the previous event and publishes its own; the dashed arrows are the way back" %}
 
+## Why this matters
+
+When a payment is declined after stock is already reserved, that inventory stays committed in a database nobody rolls back, and the warehouse holds goods for an order that will never be paid. If failure is treated as a rollback instead of a new, idempotent event, a compensation can fire twice and take back stock or money already settled. When a participant comes back from an outage after the saga has given up, it can still charge a customer for cancelled goods unless its own guard checks first.
+
+## Learning objectives
+
+- Model a business transaction as a chain of local transactions compensated by new events, never rollbacks
+- Classify a step as compensatable, pivot, or retriable before writing its compensation
+- Write a compensation that is idempotent and commutative regardless of delivery order
+- Guard a returning participant against acting on a saga that already timed out
+
 ## Pattern: Saga
 
 ### The problem
@@ -163,6 +174,12 @@ Compensations are code to write and test for every step. A step with no real und
 The lack of isolation is the price. Readers see a reserved stock count that a cancellation will correct, and a design that cannot tolerate that needs a different boundary.
 
 Choreography stops scaling at the point where nobody can say what the whole flow is. A flow with branches, parallel steps or many participants needs its sequence written down in one place.
+
+## Common pitfalls
+
+- Disabling the cancellation guard (`PAYMENT_CANCEL_GUARD=off`) lets a participant that returns after the saga timed out take payment on a reservation that was already released.
+- Writing a compensation that is not idempotent and commutative breaks under Kafka's at-least-once delivery: a release or refund applied twice, or applied before the step it undoes, corrupts the state it was meant to repair.
+- Picking a timeout that is too short cancels orders whose payment was about to succeed; picking one too long keeps stock reserved for a customer who never pays.
 
 > **🤖 Explore with your agent**
 > "In examples/22-saga, stop payment-service, place an order, wait for order_saga to reach CANCELLED, start payment-service again and show what PaymentService does with the waiting InventoryReserved. Run it again with PAYMENT_CANCEL_GUARD=off and state what the customer would be charged for."

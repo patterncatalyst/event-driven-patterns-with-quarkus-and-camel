@@ -15,6 +15,18 @@ The producer has four settings that change the answer: how long it waits to fill
 
 {% include excalidraw.html file="05-batch-fill" alt="Records from many callers go into one open batch per partition; a request carries every batch that is ready" caption="Figure 5.1: One open batch per partition, one request for every ready batch" %}
 
+## Why this matters
+
+When a publisher is tuned by guesswork, it wastes broker capacity and caller time, because batching, compression, and acknowledgement settings trade off against each other, and a setting picked without measurement can slow a release under load. When a flash sale places twenty thousand orders in seconds, an untuned producer becomes the bottleneck that the broker and every caller pay for. A conflicting acks and idempotence setting can even keep the service from starting at all, so a wrong assumption surfaces before the sale begins rather than during it.
+
+## Learning objectives
+
+- Explain how linger.ms and batch.size fill a producer batch.
+- Identify acks and idempotence combinations that fail at startup.
+- Read records per request and bytes per record from producer metrics.
+- Compare compression codecs by throughput and size trade-offs.
+- Recognize when caller concurrency limits batching regardless of settings.
+
 ## How the producer sends
 
 `send` does not write to the network. The producer appends the record to an open batch for the record's partition and returns. A background sender thread takes batches that are ready and sends them to the partition leaders. One request to a broker carries the ready batches for every partition that broker leads.
@@ -127,6 +139,13 @@ Try one change and rerun:
 ## When not to tune
 
 A publisher that sends a few records a second is already inside Kafka's defaults, and a 20 millisecond linger adds latency to every record in exchange for batches that never fill. In the measurements above the default settings were the fastest and the tuned route the slowest, because 200 callers each waited for an acknowledgement and the linger set the pace. Tune when measured records per request is close to one while the sends are concurrent, or when bytes on the wire or on disk are the cost, and then raise the linger only as far as the latency budget allows. Compression costs CPU on the producer and cuts the bytes per record by a large factor, as the codec table shows. A caller that waits for each acknowledgement before it sends the next needs more callers, or a different route design, before any producer setting helps.
+
+## Common pitfalls
+
+- Raising linger.ms for a caller that waits for each acknowledgement adds latency without filling batches, because the producer never holds more than one record at a time.
+- Setting acks to a non-default value without also disabling idempotence stops the service from starting, since the Camel Kafka component keeps idempotence enabled by default.
+- Tuning batching for a low-volume publisher trades latency for batches that stay mostly empty, since the defaults already cover that traffic.
+- Comparing throughput or latency across machines instead of ratios within one run hides the structural relations that verify.sh actually checks.
 
 > **🤖 Explore with your agent**
 > "In examples/05-optimizing-publishers, drive `FlashSaleResource` with `POST /flash-sale` for the unbatched, default and tuned profiles with the same number of orders and with concurrency 1 and then 200, and compare `TunedPublishRoute`, `UnbatchedPublishRoute` and `DefaultPublishRoute` by records per request from `kafka_producer_record_send_total` and `kafka_producer_request_total` for each `client_id`. `KafkaClientMetricsFactory` labels the metrics with `client_id`. State which setting changes records per request, and what the single caller shows about `lingerMs`."

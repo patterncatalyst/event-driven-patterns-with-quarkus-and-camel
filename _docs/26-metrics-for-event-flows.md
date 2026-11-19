@@ -13,6 +13,18 @@ Nothing is wrong inside any one service. The work is stuck between them: in a re
 
 {% include excalidraw.html file="26-where-each-signal-lives" alt="An order passes from order-service through the replication slot, Connect and the topic edp.orders.placed to inventory-service; the backlog is read at the slot, group lag at the topic and event age at the consumer, while the outbox table, always empty, reads zero in a stall" caption="Figure 26.1: Each signal is read where the work waits, not inside the service that is stuck" %}
 
+## Why this matters
+
+When a service reports healthy, it tells an operator nothing about work stuck between services, in a paused relay or a stalled consumer group, so an outage can run for minutes before anyone notices orders have stopped moving. A late reservation costs a customer, and a late alert costs the team that gets paged only after the backlog has already grown. Measure only inside services, and every gap between them stays invisible until someone escalates.
+
+## Learning objectives
+
+- Read backlog at the replication slot instead of counting outbox table rows
+- Read group lag at the broker, since a stopped consumer's own metric goes stale
+- Configure a heartbeat so a replication slot keeps confirming after the last captured change
+- Distinguish event age from record age when a dead letter is redriven
+- Alert on the signal that grows while a flow stalls
+
 ## Pattern: Measure the flow, not the service
 
 ### The problem
@@ -183,6 +195,13 @@ A flow with a handful of events an hour has no stall worth a metric. A log line 
 The backlog is a property of the slot, so it reads every change in the database, not only the outbox. A database with heavy unrelated writes raises the floor, and a threshold set at rest in one environment is wrong in another. Measure at rest first, and keep the heartbeat on.
 
 Group lag measures records, not time. A hundred records of lag is nothing for a consumer that drains thousands a second and a long wait for one that handles a few a minute. Where lateness is the contract, alert on age after arrival or on lag divided by the consumption rate.
+
+## Common pitfalls
+
+- Mounting an alert on event age instead of backlog delays the alert until after the stall already ended, because age is recorded only when an event arrives.
+- Skipping the heartbeat lets unrelated database writes outpace the slot's confirmed position, so the backlog gauge stays elevated long after a paused relay resumes.
+- Reading backlog from outbox table rows shows zero throughout a stall, because the extension deletes each row in the same transaction that inserts it.
+- Setting an alert threshold on backlog without measuring the database at rest first produces false positives, since unrelated writes to the same database raise the floor in every environment differently.
 
 > **🤖 Explore with your agent**
 > "In examples/26-metrics-for-event-flows, pause the Debezium connector order-flow-outbox, place twenty orders through order-service, and watch outbox.backlog, the provisioned alert order flow stalled and the group lag of inventory-placed in Prometheus and Grafana. Resume, then add stock for SKU-26-LATE, redrive edp.orders.placed-dlq and compare order.flow.event.age with order.flow.record.age. Say which signal moved first and which one an alert should watch."

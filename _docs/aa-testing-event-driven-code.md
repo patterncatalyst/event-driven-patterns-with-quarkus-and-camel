@@ -15,6 +15,17 @@ Event-driven tests run on a real broker.
 
 {% include excalidraw.html file="aa-bite-cycle" alt="A green suite, a patch that alters one guard on a copy, a run of the broker-backed class, and exactly one named test failing, after which the copy is dropped; a dashed arrow notes that a test that stays green is not guarding what it names" caption="Figure A.1: A check is proved by breaking the code it guards" %}
 
+## Why this matters
+
+When a service fails by omission, a notification never sent, a duplicate record, an event applied out of order, it raises no exception and no stack trace. A test suite that only waits for the first match can stay green while a guard underneath it is deleted, so a team ships that outage and only reconstructs it later from a drop in delivered notifications nobody flagged at the time. Mutation testing and draining topic assertions turn that absence into something a build can fail on, before a release reaches customers.
+
+## Learning objectives
+
+- Prove a guard by removing it and watching the one test that should fail
+- Tell a first-match assertion apart from a drain that waits out the window
+- Write ordering tests whose oracle does not depend on the code under test
+- Separate an AdviceWith route test from a broker-backed consumer-group test
+
 ## Real brokers in tests
 
 A mock of a broker answers the way its author expects, which is the one thing a test of messaging cannot afford. Quarkus Dev Services starts the real dependency for a Quarkus test and wires its address into the configuration, so the tests meet a real Kafka and a real PostgreSQL. The Kafka image is the compose stack's, and PostgreSQL has the stack's version from the stock image:
@@ -167,6 +178,13 @@ Try one change and rerun:
 - Add a fourth patch to `bites/` that drops `breakOnFirstError=true` and name the test you expect to fail.
 - Shorten the drain window to one second and see which negative assertion stops being able to fail.
 - Delete `StubOrderService` from `src/test` and see which tests lose their source.
+
+## Common pitfalls
+
+- Treating a green concurrency test as proof of no race: a run with no failure only shows that round did not fail, and an altered copy with the guard removed has to be run through the same test to confirm it would fail there.
+- Shortening the drain window to save time removes the ability to make a negative assertion; a window shorter than the route's slowest legitimate path lets a second notification slip past undetected.
+- Relying on a first-match assertion to prove a notification was sent exactly once: it stops at the first record and passes on a route that notifies twice.
+- Running the bite harness on every save instead of from the verify script: one run per patch costs about as long as the whole suite and discourages writing enough bites to cover every risky guard.
 
 > **🤖 Explore with your agent**
 > "In examples/aa-testing-event-driven-code, write a bites/ patch that makes OrderPlacedNotificationRoute notify a cancelled order, run only the broker-backed class on the altered copy and name the one test that fails. Then change the drain window and say which assertions a shorter window can no longer make."

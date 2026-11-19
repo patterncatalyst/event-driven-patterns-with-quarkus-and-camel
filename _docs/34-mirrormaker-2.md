@@ -13,6 +13,17 @@ A consumer's position is a committed offset, stored per group in the cluster it 
 
 {% include excalidraw.html file="34-two-clusters" alt="The cluster edp holds the topic edp.orders.placed, the group notification-service and the offset-syncs topic; MirrorMaker 2 workers run a source connector that copies records and a checkpoint connector that translates group offsets; the cluster edp-dr receives the topic under the same name, the group and the checkpoints topic" caption="Figure 34.1: One direction, edp to edp-dr, with the same topic names on both sides" %}
 
+## Why this matters
+
+A Kafka cluster in only one place is a single point of failure for every order: lose it, and every service loses its place to publish or read. Copy the topics to a second cluster and that answers only half the problem: when a consumer resumes at the wrong offset, it reprocesses records or skips them. When a failover needs a rewritten topic name, group or consumer, it happens slowly and under pressure. Translate offsets into the second cluster, and a consumer can fail over by changing one address.
+
+## Learning objectives
+
+- Keep topic names identical across clusters with an identity replication policy
+- Translate a consumer group's committed offsets into the second cluster's own log
+- Fail a consumer over by changing only its bootstrap address
+- Tolerate a duplicated record after a failover instead of assuming exactly-once delivery
+
 ## Pattern: A replicated cluster for failover
 
 ### The problem
@@ -156,6 +167,13 @@ A failover duplicates records. The checkpoint can land before the consumer's rea
 The two clusters here share a namespace, a Kubernetes cluster and one machine. Losing the node loses both, so the setup models the pattern without the protection. A real failover cluster lives in a different failure domain, and the mirror's bandwidth and latency are then a cost.
 
 The identity policy cannot prevent cycles, so a mirror in each direction would copy its own copies. Failing back means replicating from the second cluster to the first with the policy and offsets thought through again, which is a second design.
+
+## Common pitfalls
+
+- Disabling group offset sync leaves a consumer with no translated position after a failover, so it falls back to its reset policy and reprocesses what it already handled.
+- Leaving a consumer active on the source cluster during a failover means the checkpoint connector skips writing its group on the target, since it writes a group only when nothing is active there.
+- Keeping the default replication policy renames a mirrored topic by prepending the source alias, so a consumer configured for the original name finds nothing until it learns the new one too.
+- Leaving offset.lag.max at its default on a short topic lets a target partition trail the source by up to that many offsets, so a failover can land well behind what was actually committed.
 
 > **🤖 Explore with your agent**
 > "In examples/34-mirrormaker-2, read base/mirrormaker2.yaml and run verify.sh with KEEP=1. With kafka-consumer-groups.sh in edp-broker-0 and in edp-dr-dual-0, describe the group notification-service on both clusters. Run it again with OFFSET_SYNC=off and describe the group on edp-dr. Say which connector writes the group on edp-dr, which setting turns that on, and why notification-service has to be stopped before the failover."

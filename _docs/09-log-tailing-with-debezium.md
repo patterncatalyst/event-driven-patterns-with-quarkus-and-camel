@@ -11,6 +11,18 @@ The warehouse system keeps its stock in `inventory.inventory_item`, a table anot
 
 {% include excalidraw.html file="09-wal-publication-slot" alt="Writes to the captured table, the uncaptured busy table and the heartbeat table land in the write-ahead log; the publication filters three tables for the connector, and the replication slot records how far it has confirmed" caption="Figure 9.1: The log holds every table's changes; the slot holds the reader's place" %}
 
+## Why this matters
+
+When nothing can modify a legacy table directly, its changes still need to reach other services, and polling misses deletes while collapsing several updates into one. Log tailing solves that without touching the legacy application, but it puts a reader inside the database's own recovery machinery: an unadvanced slot keeps the write-ahead log on disk until it fills, even for tables the reader never asked about. Every consumer of the resulting topic is also coupled to the legacy schema's column names, and the table's owner can change those names without warning.
+
+## Learning objectives
+
+- Explain why a replication slot retains WAL until its reader confirms a position.
+- Configure a heartbeat to keep a slot advancing on a quiet table.
+- Map insert, update and delete envelopes to documents, including the tombstone case.
+- Compare Kafka Connect and an embedded engine by what each one keeps.
+- Set replica identity to control what a delete's before row contains.
+
 ## Pattern: Transaction Log Tailing
 
 ### The problem
@@ -143,6 +155,13 @@ Try one change and rerun:
 Log tailing publishes what the log contains, which is the legacy schema. Every consumer of the change topic is coupled to column names and types that the table's owner can change without telling anyone. A mapping route limits the coupling to one place, and it still breaks when a column is renamed. When the application can be changed, write an event to an outbox in the same transaction and capture that: the event is then a designed business fact, not a row.
 
 The pattern also puts a reader inside the database's recovery machinery. A slot that stops advancing makes PostgreSQL keep its WAL until the disk fills. Every slot needs an owner who watches `pg_replication_slots`, a heartbeat for a quiet table in a busy database, and a decision for when the reader is gone for good: drop the slot. It is also specific to one database, with different settings and failure modes on MySQL, SQL Server and Oracle. Without access to the log, as on some managed databases, polling or a change table is what remains. A table without a primary key produces no update or delete events unless its replica identity is `FULL`: PostgreSQL rejects an UPDATE or DELETE on such a table once it is in a publication that publishes them.
+
+## Common pitfalls
+
+- Dropping the null-body filter on the change route makes Debezium's own delete tombstone fail unmarshalling instead of being skipped.
+- Leaving replica identity at its default means a delete's before row carries only the primary key, so a consumer that needs the old quantity gets placeholders instead.
+- Removing the heartbeat action query leaves a quiet captured table's slot unconfirmed while a burst on another table grows the retained log regardless of the heartbeat interval.
+- Mapping the legacy envelope into documents in more than one place multiplies the damage when the legacy table's owner renames a column.
 
 > **🤖 Explore with your agent**
 > "In examples/09-log-tailing-with-debezium, trace one update of inventory.inventory_item through ChangeEnvelope and InventoryItemDocumentRoute to the document on edp.inventory.items, then do the same with EmbeddedCdcRoute under CDC_MODE=embedded. Apply the rule that each reader owns one slot and a slot nobody advances keeps WAL forever: list the slots on the database and say what each one retains."

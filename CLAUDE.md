@@ -68,8 +68,11 @@ lgtm-presentation/   the deck (r15): text/, edits/, BUILD.md, QR slide
 Front matter: title, order, part, description, duration. `part` must match a `_parts` file's `part_name`. Quote values that contain colons.
 
 - Write like EIP Camel, Geewax tone: problem before mechanism, show the code, state the trade-off, stop.
-- About 2,000 words is a target, never a floor; 2,500 is the maximum, excluding code. Never pad.
-- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (short, like EIP Camel: one code block with the commands, then one or two sentences on what runs and what to watch, ending with the pass count, then at most three `Try` bullets of one sentence each naming the switch and the visible effect; short prose, 250 words as a soft cap (`validate.py` warns above it and above three bullets); no test lists, no check numbers, no run statistics or failure rates, which belong in the example's README; a measured result that is the chapter's lesson is stated once in the pattern sections, not here), `## When not to use it`, `## References`.
+- About 2,000 words is a target, not a floor and not a hard cap (owner 2026-11-18): aim near 2,000, never pad to reach it and never trim substance under it. `validate.py` warns, never fails, when a page runs well past the target. The three framing sections below are tight and count toward that target.
+- Every chapter and appendix (except Appendix D, the pattern map and glossary) carries three pedagogical sections (owner 2026-11-18, r18), each a `##` peer heading, exactly once per page even in multi-pattern chapters:
+  - `## Why this matters` and `## Learning objectives` near the TOP, after the intro paragraph and lead figure, before the chapter body. `## Why this matters` is one short prose paragraph (the stakes and operational fallout, <= 90 words soft cap, distinct from `### The problem`, which states the mechanism). `## Learning objectives` is 3 to 5 outcome bullets (<= 60 words soft cap); never "this chapter", "this section" or "we will".
+  - `## Common pitfalls` near the END, after `## When not to use it`, before the AI callout and `## References`: 2 to 4 one-sentence mistake-plus-consequence bullets (<= 110 words soft cap) about mistakes applying THIS pattern, distinct from `## When not to use it` (which is about choosing a different pattern).
+- Pattern chapters: `## Pattern: <Name>` with `### The problem`, `### The solution` (one bold one-sentence definition), `### How Quarkus and Camel model it` (or `### How Quarkus models it` in a chapter whose example has no Camel, such as chapter 01); then `## Build, run, observe` (short, like EIP Camel: one code block with the commands, then one or two sentences on what runs and what to watch, ending with the pass count, then at most three `Try` bullets of one sentence each naming the switch and the visible effect; short prose, 250 words as a soft cap (`validate.py` warns above it and above three bullets); no test lists, no check numbers, no run statistics or failure rates, which belong in the example's README; a measured result that is the chapter's lesson is stated once in the pattern sections, not here), `## When not to use it`, `## Common pitfalls`, `## References`.
 - Exactly one AI callout per pattern chapter, in this form, with no HTML wrapper and no nested quote:
   > **🤖 Explore with your agent**
   > "<runnable prompt naming the example's own types and the chapter's decision rule>"
@@ -259,6 +262,12 @@ PRD §14, decided:
 - The runner creates every worker Job suspended with `kueue.x-k8s.io/queue-name`; Kueue unsuspends on admission. Database credentials reach Jobs only via `secretKeyRef` to `edp-pg-app`, never as plain env values.
 - Kueue metrics are scraped over HTTPS :8443 with the service-account token and `insecure_skip_verify` (owner decision); no cert-manager.
 - Step state lives in CloudNativePG (`run`, `step`, `step_job`, `run_partition`, `partition_result`, `carrier_total`); replay reruns only failed indexes, guarded by the recorded result.
+
+2026-11-18 (r18, pedagogical sections and word-cap policy):
+
+- Every chapter and appendix except `ad-` gains three `##` sections: `## Why this matters` and `## Learning objectives` near the top (in that order, before the body), `## Common pitfalls` near the end (after `## When not to use it`, before the AI callout and `## References`). Exactly one of each per page, even in multi-pattern chapters. `validate.py check_pedagogy` enforces presence, count and ordering; placement is lenient to admit the varied layouts (chapters whose first heading is `## The problem`, appendices whose callout is not last, chapter 00 which has no `## When not to use it` or callout).
+- Word count: about 2,000 is a target, with no hard cap and no floor (owner). `validate.py`'s former 2,500 hard cap is now a soft warning; per-section soft caps are Why <= 90, Objectives <= 60, Common pitfalls <= 110 words. Appendix I stays exempt from the chapter-level word warning.
+- Voice: `## Why this matters` paragraphs use the Geewax register (lead with a "When X, ..." clause; no stacked-noun subjects).
 
 ## Skills
 

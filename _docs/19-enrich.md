@@ -11,6 +11,17 @@ duration: "60 minutes"
 
 {% include excalidraw.html file="19-enricher-vs-table-join" alt="shipping-service owns the carrier table, serves it over HTTP and feeds the compacted carriers topic; the Camel route calls the endpoint for every shipment, and the Streams topology joins every shipment against a local copy of the topic; each writes its own enriched topic" caption="Figure 19.1: The same merge from two places, the owner's answer now or the owner's last published record" %}
 
+## Why this matters
+
+When a shipment notification links to the wrong tracking page, the customer is stranded on a stale page. When the notification service blocks on every lookup, a reference-data outage becomes a shutdown of customer messaging. Choosing a live lookup over a local copy decides whether a message reflects what the owner knows now or what it last published, and whether one service's downtime stalls another's queue. Get it wrong and stored messages either freeze at values nobody can defend later, or notification delivery depends on the shipping service staying up.
+
+## Learning objectives
+
+- Merge external reference data into a message via a Content Enricher call
+- Join a stream against a compacted topic's local copy with a GlobalKTable
+- Weigh freshness against availability when choosing a lookup or a local copy
+- Trace a stalled consumer back to a failed enrichment call and its lag
+
 ## Pattern: Content Enricher
 
 ### The problem
@@ -121,6 +132,12 @@ Do not enrich when the receiver can ask for the data at the moment it is needed.
 Do not call out from a consumer whose availability must not depend on another service. A lookup couples the consumer to the owner's uptime and latency, and a stall in one record holds up every record behind it in the partition. Use a local copy, and accept that it is as fresh as the owner's last published change.
 
 Do not hold a copy of data that is large, changes constantly or is private to the owner. A global table is a full copy per instance; for a big reference set a partitioned table joined on a co-partitioned key is the form, and the join key must then be the record key. If the owner publishes no change events, there is nothing to fill the copy from.
+
+## Common pitfalls
+
+- Turning off `breakOnFirstError` (the `CAMEL_BREAK_ON_FIRST_ERROR=false` switch) lets the consumer commit past a failed lookup, so the shipment is never enriched and nothing marks the record as wrong.
+- Using an inner join instead of a left join against the reference table drops every shipment whose carrier has no reference row, with no trace left that the customer was never told the tracking link.
+- Expecting an already-published enriched message to pick up a later reference change: neither form revises what it already wrote, so a stale link in a stored or replayed message outlives the fix made at the owner.
 
 > **🤖 Explore with your agent**
 > "In examples/19-enrich, change FASTLINE's template through PUT /carriers/FASTLINE on shipping-service before publishing it to edp.shipping.carriers, schedule a shipment, and compare ShipmentEnricherRoute's output with ShipmentEnrichmentTopology's. Then stop shipping-service, schedule another, and state when each form should be chosen."

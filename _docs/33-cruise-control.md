@@ -13,6 +13,17 @@ The reverse is worse. A broker that holds replicas cannot simply be deleted, bec
 
 {% include excalidraw.html file="33-rebalance-states" alt="A KafkaRebalance goes from PendingProposal to ProposalReady, where the optimization result is shown and nothing has moved, then on approval to Rebalancing and Ready; a refresh annotation computes a new plan, and an auto-approval annotation or the operator's autoRebalance replaces the manual approval" caption="Figure 33.1: A proposal is a plan, and it waits for approval before anything moves" %}
 
+## Why this matters
+
+When a broker is added to a struggling cluster, it buys nothing until something decides where its share of the load should come from, so an unrebalanced scale-up pays for capacity nobody uses. The reverse costs more: when a broker that still holds replicas is deleted, its copies of the data go with it. A rebalance also moves data over the same disks and network the cluster uses to serve traffic, so an unreviewed plan can trade a capacity problem for a performance one at the worst time.
+
+## Learning objectives
+
+- Request a rebalance proposal before approving any data movement
+- Read numReplicaMovements and dataToMoveMB to judge the cost of a plan
+- Let the operator ask and approve a rebalance when a node pool scales
+- Explain why scaling down a broker holding replicas is refused by default
+
 ## Pattern: Rebalance by proposal
 
 ### The problem
@@ -144,6 +155,13 @@ A cluster that does not grow, shrink or skew has no use for it, and Cruise Contr
 A rebalance copies data. On a loaded cluster the copy competes with producers and consumers for disks and network, so a large `dataToMoveMB` is a reason to read the proposal, not to approve it. Automatic approval trades that review for speed, and it is a fit for clusters where the goals are trusted and the movement is small.
 
 Auto-rebalancing reacts to a changed replica count in an existing pool and to nothing else. A skewed cluster that did not scale needs a manual `full` rebalance.
+
+## Common pitfalls
+
+- Setting the metric sampling interval too low crashes the Cruise Control pod with a configuration error, because the interval must exceed the metadata refresh timeout.
+- Guessing a new broker's node id as the next number in a sequence breaks, since node ids are shared across every pool and the real id comes only from the pool's status.
+- Applying a KafkaRebalance right after a scale, before Cruise Control restarts with the new broker's capacity, leaves it stuck NotReady until refreshed.
+- Scaling a pool down without a remove-brokers template leaves the smaller replica count refused at every reconciliation until someone drains the broker by hand.
 
 > **🤖 Explore with your agent**
 > "In examples/33-cruise-control, read status.nodeIds of the broker KafkaNodePool, scale it by one with kubectl patch, and apply a KafkaRebalance with mode add-brokers for the new id. Compare kafka-topics.sh --describe before and after the approve annotation, and say what the optimizationResult predicted, which resource the operator creates instead when autoRebalance is configured, and why scaling down a broker that holds replicas is refused without it."

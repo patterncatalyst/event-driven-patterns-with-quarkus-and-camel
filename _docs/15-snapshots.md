@@ -11,6 +11,17 @@ duration: "50 minutes"
 
 {% include excalidraw.html file="15-snapshot-plus-tail" alt="A stream of events ordered by version; a snapshot holds the fold of versions 1 to s, so a load reads one snapshot row and the events after s, where a load without it reads every event from version 1" caption="Figure 15.1: A load reads the snapshot and the events after it" %}
 
+## Why this matters
+
+When a stream only grows, like a popular SKU's stock ledger, every load gets slower over time, and when a reservation takes over a hundred milliseconds instead of under one, it degrades every checkout that touches it. That growth stays invisible until the hot stream is the one being timed, by which point it is already affecting live latency. A snapshot avoids a second source of truth by remaining a disposable cache that the events can always rebuild, so the team never takes a shortcut in place of the real fix.
+
+## Learning objectives
+
+- Explain why an aggregate's load cost grows with the length of its event stream
+- Write a snapshot in the same transaction as the command that crosses the threshold
+- Guard a snapshot upsert against an older write overtaking a newer one
+- Compare an inline snapshot against a Camel scheduled snapshotter for bounding the tail
+
 ## Pattern: Snapshot
 
 ### The problem
@@ -154,6 +165,13 @@ Most streams do not need one. A stream of 1,100 events loads in 1.6 ms without o
 A snapshot cannot repair a wrong fold. If the aggregate's logic had a bug, the snapshot repeats it. Fix the logic, raise the schema version, and let the events rebuild every snapshot.
 
 When the read side is hot, a projection is the better cache: a table kept up to date from the events and built for queries. Snapshots serve the load path of the aggregate only.
+
+## Common pitfalls
+
+- Turning off the snapshot makes every load replay the full stream again, returning a hot stream's load time to its uncached cost.
+- Removing the version guard on the snapshot upsert lets a stale write overtake a newer one, moving the stored version backwards.
+- Replaying a long stream as managed entities instead of a projection keeps every row in the persistence context, which can exhaust the heap on a large stream.
+- Choosing a large N to reduce snapshot writes widens the tail a load must replay, trading write cost for read cost on every load.
 
 > **🤖 Explore with your agent**
 > "In examples/15-snapshots, load SKU-1503, the 100,000-event stream, with and without its snapshot, then find where InventoryItemAggregate, StockLedger, SnapshotterRoute and inventory.snapshot.schema decide what a load replays. Set SNAPSHOT_EVERY to 10 and state the most events a load can replay and what it costs in snapshot writes."

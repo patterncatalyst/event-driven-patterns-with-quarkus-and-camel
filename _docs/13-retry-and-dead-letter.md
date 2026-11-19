@@ -11,6 +11,17 @@ duration: "45 minutes"
 
 {% include excalidraw.html file="13-failure-classes" alt="Three failure classes: an unparseable or invalid record is tried once and goes to the dead letter topic; a record that fails on a locked row is retried and then reserved; a record still failing after the last retry goes to the dead letter topic" caption="Figure 13.1: Retry what can succeed later, dead-letter what never will" %}
 
+## Why this matters
+
+When a consumer logs a failure and commits the offset anyway, it discards the record with only a log line as evidence, so the order disappears with nothing to trace it back to. Retrying every failure without classifying it holds up good records behind a bad one on the same partition, and one order stuck on a lock delays every order behind it. Get the classification wrong and orders are lost or the pipeline stalls, and when nobody watches a dead letter topic, one failure just turns into a pile no one acts on.
+
+## Learning objectives
+
+- Classify a failure as retryable or final before deciding how to handle it
+- Bound retries so a stuck record reaches the dead letter topic instead of holding the partition
+- Preserve the original record bytes and key when writing to the dead letter topic
+- Compare SmallRye's dead letter queue against Camel's dead letter channel
+
 ## Pattern: Dead Letter Channel
 
 ### The problem
@@ -137,6 +148,13 @@ A dead letter topic needs an owner. Someone has to watch its depth, read the rea
 Skipping a record is a decision about ordering. The consumer carries on with the records behind it, so they are processed without the one that failed. When a later record depends on an earlier one, as in a ledger, stopping the channel with `fail` and fixing the cause is the correct behaviour, and the readiness probe is how it gets noticed.
 
 Retrying in place suits failures that clear in seconds. A dependency that is down for minutes holds the partition for as long, and a long retry runs into the consumer's poll interval: with a 20 second hold and `max.poll.interval.ms` at 10 seconds, the Camel route's group rebalances and the batch is delivered again. A retry is only safe when the effect can be applied twice, which is the work of an idempotent consumer.
+
+## Common pitfalls
+
+- Setting the failure strategy to fail stops the channel at the first bad record, so no dead letter is written and the partition stays blocked until someone intervenes.
+- Retrying a lock timeout without lowering the lock wait holds the partition for the full wait on the first attempt, so the retry policy never actually runs.
+- Forgetting useOriginalBody on both the onException clause and the error handler in a Camel route hands the dead letter channel an object it cannot serialize, losing the record.
+- Leaving a dead letter topic without an owner lets failed records accumulate with no one reading the reasons or deciding whether to repair and republish them.
 
 > **🤖 Explore with your agent**
 > "In examples/13-retry-and-dead-letter, lock SKU-14 for twelve seconds, produce a truncated record, an order with quantity 0 and a valid order for SKU-14 to edp.orders.placed, and compare what OrderPlacedConsumer and ReservationService do with each against DeadLetterRoute under the camel profile. State which exceptions OrderPlacedConsumer retries and which it dead-letters, and why."

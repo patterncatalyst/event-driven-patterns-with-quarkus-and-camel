@@ -13,6 +13,17 @@ On Kubernetes the cluster is also a set of resources that an operator keeps true
 
 {% include excalidraw.html file="32-metrics-path" alt="Kafka pods serve the Strimzi Metrics Reporter on port 9404, the cluster operator serves its metrics on port 8080, and kube-state-metrics watches the status of Kafka, KafkaNodePool and KafkaTopic resources; one otel-lgtm collector scrapes all three, adds the consumer group lag it asks the broker for, and sends everything on to Prometheus, which Grafana reads" caption="Figure 32.1: Pods, operator and resources report separately and land in one store" %}
 
+## Why this matters
+
+Consumer lag, event age and relay backlog all say that something is stuck, but not which of three independent layers failed: the brokers, the operator reconciling the cluster, or a custom resource the operator cannot satisfy. When a team reads only the application's own metrics, it chases the wrong layer while a topic sits unready or a controller has gone missing, and none of the brokers ever fail a health check. Scrape each layer's own endpoint, and three hidden failure modes become three questions one dashboard can answer.
+
+## Learning objectives
+
+- Scrape the broker, controller and operator metrics endpoints with one collector
+- Read a custom resource's status as a gauge through kube-state-metrics
+- Diagnose which of three independent layers stopped reporting
+- Change the Strimzi Metrics Reporter allow list without rolling the Kafka pods
+
 ## Pattern: Metrics from the operator's resources
 
 ### The problem
@@ -150,6 +161,12 @@ A cluster with one broker and one consumer rarely needs more than lag. The repor
 The names are the reporter's, fixed and few. A narrowed `allowList` hides a signal without any error: take out the controller families and the active-controller panel is empty, which looks the same as a cluster that has no controller.
 
 Kube-state-metrics adds a cluster role that can read every Strimzi resource, and its custom-resource configuration is yours to keep in step with the resources. A field that Strimzi renames leaves a series that quietly stops.
+
+## Common pitfalls
+
+- Leaving the allowList unset relies on a curated default that excludes the controller's own metric families, so the question of whether exactly one controller is active has no series to answer it.
+- Adding or removing the whole metricsConfig block rolls every Kafka pod, unlike a narrower change to the allowList, which changes the scrape endpoint without disturbing a running broker.
+- Reading a dashboard built from a single source misses what only the others catch, since the three sources fail independently and a resource stuck unready reports nowhere in the broker or operator metrics.
 
 > **🤖 Explore with your agent**
 > "In examples/32-monitoring-strimzi, list the Kafka pods in edp-kafka and read the metricsConfig of the Kafka resource edp. Query Prometheus for the up series of job strimzi-kafka and for kafka_controller_kafkacontroller_activecontrollercount, then patch the allowList to jvm_.* and read the endpoint on port 9404 of edp-broker-0 before and after. Raise the partitions of a declared KafkaTopic with kafka-topics.sh and watch edp_kafkatopic_condition for it. Say which of the three sources reports each change and which one stays silent."

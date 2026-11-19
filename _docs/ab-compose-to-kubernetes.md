@@ -15,6 +15,17 @@ Reading the two files side by side finds the lines that were copied. It does not
 
 {% include excalidraw.html file="ab-same-config-two-targets" alt="Two columns. Compose: a kafka container with broker and controller roles, the KAFKA environment, a postgres container run by start.sh and its command line flags, named volumes. Kubernetes: a Kafka resource with two node pools, the spec.kafka.config block, a CloudNativePG Cluster, no postgresql parameters, persistent-claim storage" caption="Figure B.1: Each compose setting has a place in a Kubernetes resource, or a default that replaces it" %}
 
+## Why this matters
+
+A migration can look complete while a setting a service depends on, such as automatic topic creation or a free replication slot, never appears in either the compose file or the Kubernetes resource, because an operator's own default fills the gap. A team that only diffs the two files can ship that migration and then lose a connector's replication slot, or break a share group that needed more replicas than one broker could provide. Comparing the running systems' effective settings catches a lost default before it reaches production.
+
+## Learning objectives
+
+- Compare a compose file against a Kubernetes resource for what each line maps to
+- Identify settings an operator's own default supplies with no line in either file
+- Read effective configuration from a running system instead of trusting the files that built it
+- Recognize when a migration needs an explicit value to replace a single-broker override
+
 ## Kafka: one container, then a Kafka resource and two node pools
 
 The compose broker is one container with both KRaft roles. Everything about it is an environment variable.
@@ -146,6 +157,13 @@ The settings the compose file and the resource each set are also checked against
 A describe for a node id that is not a broker prints nothing and exits successfully. A capture taken with the wrong id would be empty, and an empty file compared with an empty file is equal. The capture check therefore requires every key to be present.
 
 Listeners, advertised addresses, storage and resource limits are not compared. They are the parts that differ because a pod is not a container: names, volumes and memory.
+
+## Common pitfalls
+
+- Reading settings only from the compose file and the Kubernetes resource side by side: a setting an operator's own default supplies has no line in either file and will not turn up this way.
+- Adding a newly discovered difference straight into the allowed-difference list: that hides a real drift instead of fixing the resource or the compose file that caused it.
+- Capturing broker settings against the wrong node id: the describe call prints nothing and exits successfully, and an empty capture compares equal to another empty capture unless every expected key is checked for presence.
+- Assuming a setting that works on one platform can simply be copied into the other's resource: Strimzi refuses a set of broker-config prefixes outright, no matter what the compose file sets.
 
 > **🤖 Explore with your agent**
 > "In examples/ab-compose-to-kubernetes, run verify.sh compose with DRIFT=partitions, then verify.sh k8s and verify.sh compare. Read ALLOWED in configs.py, say which setting differs and whether the allowlist covers it, and name the line of which file would make the two targets agree."
