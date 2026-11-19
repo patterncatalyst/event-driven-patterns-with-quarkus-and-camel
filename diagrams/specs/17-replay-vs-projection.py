@@ -1,4 +1,4 @@
-"""One append-only store, two ways to answer the same question: fold every aggregate on request, or read a table the projector keeps current."""
+"""One append-only store, two ways to answer the same question: replay the channel of events on request, or read a table a translator keeps current."""
 
 from generate_diagram import emit
 
@@ -14,20 +14,22 @@ emit(
     nodes=[
         {"x": 50, "y": 100, "w": 230, "h": 56, "style": "box", "lines": ["OrderCommands", "decide, append at version"]},
         {"x": 410, "y": 100, "w": 300, "h": 56, "style": "ink", "lines": ["orders.events", "one row per event, append only"]},
-        {"x": 50, "y": 265, "w": 390, "h": 66, "style": "box", "lines": ["ReplayReport", "every stream, one OrderAggregate at a time"]},
         {"x": 50, "y": 365, "w": 390, "h": 66, "style": "ghost", "lines": ["fold, count the shipped", "cost grows with the store"]},
         {"x": 50, "y": 455, "w": 390, "h": 56, "style": "accent", "lines": ["carrier, day, shipments", "the answer"]},
-        {"x": 520, "y": 265, "w": 390, "h": 66, "style": "box", "lines": ["CarrierDailyProjector", "tick, batch, checkpoint"]},
         {"x": 520, "y": 365, "w": 390, "h": 66, "style": "ink", "lines": ["carrier_daily_shipments", "27 rows, whatever the store holds"]},
         {"x": 520, "y": 455, "w": 390, "h": 56, "style": "accent", "lines": ["carrier, day, shipments", "one table scan"]},
     ],
+    icons=[
+        {"x": 135, "y": 265, "w": 220, "h": 90, "kind": "channel", "label": "ReplayReport: every stream, one aggregate at a time"},
+        {"x": 605, "y": 265, "w": 220, "h": 90, "kind": "translator", "label": "CarrierDailyProjector: tick, batch, checkpoint"},
+    ],
     edges=[
         {"x1": 280, "y1": 128, "x2": 410, "y2": 128},
-        {"x1": 440, "y1": 156, "x2": 330, "y2": 265, "dashed": True},
-        {"x1": 245, "y1": 331, "x2": 245, "y2": 365, "dashed": True},
+        {"x1": 440, "y1": 156, "x2": 245, "y2": 265, "dashed": True},
+        {"x1": 245, "y1": 355, "x2": 245, "y2": 365, "dashed": True},
         {"x1": 245, "y1": 431, "x2": 245, "y2": 455, "dashed": True},
-        {"x1": 680, "y1": 156, "x2": 800, "y2": 265, "amber": True},
-        {"x1": 715, "y1": 331, "x2": 715, "y2": 365, "amber": True},
+        {"x1": 680, "y1": 156, "x2": 715, "y2": 265, "amber": True},
+        {"x1": 715, "y1": 355, "x2": 715, "y2": 365, "amber": True},
         {"x1": 715, "y1": 431, "x2": 715, "y2": 455, "amber": True},
     ],
     notes=[
