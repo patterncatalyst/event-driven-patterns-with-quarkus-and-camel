@@ -54,7 +54,7 @@ public class OutboxBacklog implements MeterBinder {
 
 A `MeterBinder` bean is bound to the registry at startup, and Prometheus holds the gauge as `outbox_backlog_bytes`. The table is the wrong place to look: with `remove-after-insert` it holds zero rows however many orders wait, and `BACKLOG_SOURCE=table` (demo code) swaps the query to count them, to show a gauge that stays flat through a stall.
 
-The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector confirms a position only when it processes a captured change. Inventory updates and checkpoints land after the last order's event, and a plain heartbeat does not confirm them: without it the gauge stays near 108 KB after the relay resumes and the alert is still not Normal 90 seconds later. The connector's `heartbeat.action.query` writes one row a second to a table the connector captures, so the confirmed position follows the write position, and a Filter transform drops those records before they reach a topic.
+The slot is noisy for reasons unrelated to orders. PostgreSQL writes WAL for every table, and the connector confirms a position only when it processes a captured change. Inventory updates and checkpoints land after the last order's event, and a plain heartbeat does not confirm them. Without it the gauge stays near 108 KB after the relay resumes, and the alert is still not Normal 90 seconds later. The connector's `heartbeat.action.query` writes one row a second to a table the connector captures, so the confirmed position follows the write position, and a Filter transform drops those records before they reach a topic.
 
 ```json
 "heartbeat.interval.ms": "1000",
@@ -87,7 +87,7 @@ service:
       exporters: [otlp_http/metrics]
 ```
 
-The receiver's default interval is one minute; five seconds makes a stop visible in the time an operator is watching. The metrics arrive as `kafka_consumer_group_lag_ratio` per group, topic and partition, and `kafka_partition_current_offset_ratio` per topic and partition: the unit of these metrics is `1`, which the Prometheus conversion turns into a `_ratio` suffix. The receiver and its metrics are still marked beta and in development upstream.
+The receiver's default interval is one minute; five seconds makes a stop visible in the time an operator is watching. The metrics arrive as `kafka_consumer_group_lag_ratio` per group, topic and partition, and `kafka_partition_current_offset_ratio` per topic and partition. The unit of these metrics is `1`, which the Prometheus conversion turns into the `_ratio` suffix. The receiver and its metrics are still marked beta and in development upstream.
 
 With the consumer stopped, the group's lag at the broker equals the orders waiting, and the consumer's own `kafka_consumer_fetch_manager_records_lag_max` has no new sample. "Has no sample in the last 15 seconds" is a query of its own, `absent_over_time`, because the last value would otherwise be served for minutes.
 

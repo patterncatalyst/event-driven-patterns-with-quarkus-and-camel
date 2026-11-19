@@ -7,7 +7,7 @@ description: "An order crosses a commit, a log reader and a topic, and none of t
 duration: "55 minutes"
 ---
 
-A customer's order is placed through `POST /orders`, and an operator wants to see where it went. The request is a span with a trace id. The order then goes through a commit, the database log, Kafka Connect and a topic, and ends in `inventory-service` seconds later, in a different process, with no HTTP call between the two. Unless something carries the trace id along, the consumer starts a trace of its own and the picture ends at the commit.
+A customer's order is placed through `POST /orders`, and an operator wants to see where it went. The request is a span with a trace id. The order then goes through a commit, the database log, Kafka Connect and a topic. It ends in `inventory-service` seconds later, in a different process, with no HTTP call between the two. Unless something carries the trace id along, the consumer starts a trace of its own and the picture ends at the commit.
 
 One trace follows an order from the request to the stock reservation, through the outbox and the Debezium connector, in Tempo. Where the trace ends depends on one choice at the consumer.
 
@@ -19,7 +19,7 @@ One trace follows an order from the request to the stock reservation, through th
 
 An HTTP call carries its trace in a request header, and the server reads it before it starts work. A message has no request to ride on. The producer finishes, the transaction commits, and a relay publishes the event later from another process. By the time a consumer reads it, nothing is waiting for an answer, and nothing ties its work to the request that caused it.
 
-The outbox adds two hops that a plain producer does not have. The event is first a row in a table, written in the order's transaction, and is then read from the database log by Connect and published. A trace context that is only held in memory is gone after the commit. Each of those relays has to receive the context from the one before and pass it on, and one that does not leaves the next hop a new trace with no parent.
+The outbox adds two hops that a plain producer does not have. The event is first a row in a table, written in the order's transaction, and is then read from the database log by Connect and published. A trace context that is only held in memory is gone after the commit. Each of those relays has to receive the context from the one before and pass it on. A relay that does not leaves the next hop with a new trace and no parent.
 
 ### The solution
 

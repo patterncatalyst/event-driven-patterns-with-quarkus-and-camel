@@ -48,7 +48,7 @@ Kafka Connect runs the connector. `inventory-service` does not call Debezium; it
 
 The `signals` and `heartbeats` transforms are the same `RegexRouter` for the two helper tables.
 
-The slot is named for its reader, one slot per reader: a second reader of the same table gets its own slot and position. A `filtered` publication holds only the listed tables. Debezium names a table's topic after the server, schema and table, which leaves the `edp.<domain>.<event>` convention, so a `RegexRouter` renames it to `edp.inventory.item-changes`, and one for each helper table renames `dbz_signal` and `dbz_heartbeat`, whose names carry an underscore, to `edp.inventory.signals` and `edp.inventory.heartbeats`. The values are JSON without schemas, and the key columns are the record key.
+The slot is named for its reader, one slot per reader: a second reader of the same table gets its own slot and position. A `filtered` publication holds only the listed tables. Debezium names a table's topic after the server, schema and table, which leaves the `edp.<domain>.<event>` convention. A `RegexRouter` renames it to `edp.inventory.item-changes`. One `RegexRouter` for each helper table renames `dbz_signal` and `dbz_heartbeat`, whose underscores also leave the convention, to `edp.inventory.signals` and `edp.inventory.heartbeats`. The values are JSON without schemas, and the key columns are the record key.
 
 `InventoryItemDocumentRoute` reads that topic and republishes each row as an `InventoryItem`, the record from the domain model, keyed by SKU on `edp.inventory.items`:
 

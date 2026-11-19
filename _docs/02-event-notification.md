@@ -68,7 +68,7 @@ from("kafka:" + Topics.ORDERS_PLACED + "?groupId=notification-service&breakOnFir
 
 `toD` builds the URI per exchange from the order id. The base URL is a property, set in compose from `ORDER_SERVICE_URL`, so the route names no host. The Notification row holds the customer, the amount and the order's status as order-service reported them at that moment, and Hibernate ORM with Panache stores it in the `notifications` schema, apart from the `orders` schema that order-service owns.
 
-`breakOnFirstError=true` changes what happens to a record whose route fails. Without it, a record whose route fails is skipped: the consumer moves on and the offset moves with it. With it, the consumer stops at the failed record and reads it again. After two retries one second apart the exchange fails, and the consumer polls the same record again. A fetch that cannot succeed because the source is down therefore waits, instead of losing the notification.
+`breakOnFirstError=true` changes what happens to a record whose route fails. Without it, a failed record is skipped: the consumer moves on and the offset moves with it. With it, the consumer stops at that record and reads it again. After two retries one second apart the exchange fails, and the consumer polls the same record again. A fetch that cannot succeed because the source is down therefore waits, instead of losing the notification.
 
 The OpenTelemetry integration for Camel carries the trace context in the Kafka record headers and in the HTTP request, so a single trace covers the request that placed the order, the publish, the consume and the fetch, across both services. Without that propagation the consume starts a trace of its own and the `POST /orders` span is not in it.
 
@@ -94,7 +94,7 @@ Try one change and rerun:
 
 Use Event Notification when consumers need to know that something happened and can tolerate reading the details later. It fits best when the details change and the latest is what matters.
 
-The cost is the call back to the source. While the source is down, the consumer cannot finish. Camel's documentation warns that a record bound to fail every time is read again endlessly with this option, so a record whose order will never exist stalls its partition, and a fetch that returns an error for a permanent reason needs its own handling.
+The cost is the call back to the source. While the source is down, the consumer cannot finish. Camel's documentation warns that with this option a record bound to fail every time is read again endlessly. A record whose order will never exist stalls its partition. A fetch that fails for a permanent reason needs its own handling.
 
 Fowler also warns that a flow made of notifications is not explicit in any program text; a trace that spans both services shows the flow.
 

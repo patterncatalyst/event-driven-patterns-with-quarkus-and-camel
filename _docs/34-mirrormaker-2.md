@@ -159,7 +159,7 @@ The identity policy cannot prevent cycles, so a mirror in each direction would c
 
 > **🤖 Explore with your agent**
 > "In examples/34-mirrormaker-2, read base/mirrormaker2.yaml and run verify.sh with KEEP=1. With kafka-consumer-groups.sh in edp-broker-0 and in edp-dr-dual-0, describe the group notification-service on both clusters. Run it again with OFFSET_SYNC=off and describe the group on edp-dr. Say which connector writes the group on edp-dr, which setting turns that on, and why notification-service has to be stopped before the failover."
-> Check: with the sync on, the committed offsets of the group on edp-dr equal those on edp; with OFFSET_SYNC=off edp-dr has no notification-service group before the failover, and afterwards O-3401 has two notifications.
+> Check: with the sync on, the committed offsets of the group on edp-dr equal those on edp; with OFFSET_SYNC=off edp-dr has no notification-service group before the failover, and afterwards O-3401, one of the five orders placed before the failover, has two notifications.
 
 ## References
 

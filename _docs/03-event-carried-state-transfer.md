@@ -21,7 +21,7 @@ An event that carries only an order id makes every consumer call back for the da
 
 **Event-carried state transfer puts the state a consumer needs into the event, so the consumer keeps its own copy and never calls the source.**
 
-Fowler's "What do you mean by 'Event-Driven'?" gives the pattern its name and sets it beside event notification, event sourcing and CQRS. Lawrence's chapter "Composing Data from Different Sources" is the related reading on combining data that several services own. The copy is the consumer's own table, shaped for its questions and built only from events.
+Fowler's "What do you mean by 'Event-Driven'?" names this pattern and sets it beside event notification: the source stops calling consumers, and each consumer stops calling the source. The copy is the consumer's own table, shaped for its questions and built only from events.
 
 ### How Quarkus and Camel model it
 
@@ -53,7 +53,7 @@ from("kafka:" + topic + "?groupId=notification-order-copy")
         .bean(OrderCopies.class, "apply");
 ```
 
-`OrderStateEvent` lists only the fields this consumer reads and ignores the rest. `OrderCopies.apply` is a Panache upsert into `notifications.order_copy`, keyed by order id. It does two things beyond copying fields. An event with no order state throws `IllegalArgumentException`, which is how the thin event is refused. And an event that would move the status backwards is ignored, using the same `OrderStatus.canMoveTo` rule the lifecycle uses, so a late `OrderPlaced` cannot undo a cancellation that arrived first. The two topics have no order between them, and a copy that applied events in arrival order would regress.
+`OrderStateEvent` lists only the fields this consumer reads and ignores the rest. `OrderCopies.apply` is a Panache upsert into `notifications.order_copy`, keyed by order id. It does two things beyond copying fields. An event with no order state throws `IllegalArgumentException`, which is how the thin event is refused. And it ignores an event that would move the status backwards, using the same `OrderStatus.canMoveTo` rule the lifecycle uses. A late `OrderPlaced` then cannot undo a cancellation that arrived first. The two topics have no order between them, and a copy that applied events in arrival order would regress.
 
 `GET /order-copies/{id}` reads the table through Quarkus REST. The copy needs no HTTP client, no retry and no circuit breaker, because it makes no call.
 

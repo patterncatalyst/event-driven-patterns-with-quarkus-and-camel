@@ -29,7 +29,7 @@ Kafka's documentation states the guarantee as order per partition: any consumer 
 
 `PartitionKeyStrategy` has three values, chosen by `SHIPPING_PARTITION_KEY`:
 
-- `ORDER_ID`, the default, uses the order id. All three events of `O-1001` go to partition 2 in increasing offsets, and different orders spread across the partitions.
+- `ORDER_ID`, the default, uses the order id. All three events of one order (`O-1001` here) go to partition 2 in increasing offsets, and different orders spread across the partitions.
 - `EVENT_TYPE` uses the event name. ShipmentScheduled goes to partition 2, and ShipmentInTransit and ShipmentDelivered go to partition 0, for every order. One order now spans two partitions.
 - `CARRIER` uses FASTLINE or AIRCO. Each order stays in one partition, but two keys can occupy at most two of three partitions, so one partition idles and the others carry the load.
 

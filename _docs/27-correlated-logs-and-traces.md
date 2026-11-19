@@ -19,7 +19,7 @@ Three habits close the gap. The order id is set on every span and in the log con
 
 A trace id is made by the tracing library. It names one request tree, it is meaningless to the business, and nobody outside the system knows it. An order id is the opposite: customers, support and the database know it, and no tracing library does.
 
-Three things break the link. The first is the handler that runs after a message arrives. The trace context travels across the outbox, the relay and the topic, so the consumer continues the trace, but nothing records which order the trace is about unless the code says so. The second is time: an order that waits for a payment and is cancelled by a sweeper later is not one request any more, and the sweeper's work belongs to no trace that anyone started for the order. The third is the log line: one written with no trace id cannot be found from a trace.
+Three things break the link. The first is the handler that runs after a message arrives. The trace context travels across the outbox, the relay and the topic, so the consumer continues the trace, but nothing records which order the trace is about unless the code says so. The second is time: an order that waits for a payment and is cancelled later by a sweeper is not one request any more. The sweeper's work belongs to no trace that anyone started for the order. The third is the log line: one written with no trace id cannot be found from a trace.
 
 ### The solution
 
