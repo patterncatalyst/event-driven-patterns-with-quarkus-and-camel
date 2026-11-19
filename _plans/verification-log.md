@@ -911,3 +911,21 @@ Measured: Kueue install 15 to 36 s, removal 1 to 25 s, k8s teardown 36 s, whole 
 ### 2026-11-18 · Appendix I · validator repair round 1, fresh minikube profile
 
 Code changes after the Opus validation: `WorkerEnv` became a `@ConfigMapping` (no `System.getenv`), `BatchMetrics` uses `Timer.record(Duration)` (the Quarkus OTel bridge exports Timers in milliseconds, so the names became `batch_step_duration_milliseconds_*` and `batch_step_queue_wait_milliseconds_*`; check 32 and `edp-batch.json` updated), the REST DSL binds JSON to `RunRequest` (202, 409 and 400 unchanged), and `kueue_teardown --final` deletes the cluster-scoped ClusterRoleBinding `edp-lgtm-kueue-metrics`, asserted by `_kueue_leftovers --final`. Two intermediate runs failed: one where plain `kueue_teardown` deleted the binding right after `kueue_fresh` applied it (collector could not scrape Kueue), and one on check 32 before the rename. Final run on a recreated profile: 34/34 in 765 s including profile create and image load. After teardown: ClusterRoleBinding NotFound, 0 Kueue CRDs, namespaces gone (Kueue removal 25 s, namespaces 35 s); profile deleted.
+
+### 2026-11-18 · Appendix J · example mvn-verified; live run pending
+
+`examples/aj-operating-and-testing-ai-steps` passes `mvn -B verify` green: 11 surefire
+tests against the mocked analyst on Dev Services (Kafka 4.3.2, PostgreSQL at the CNPG
+operand minor), no Ollama; `StabilityHarnessIT` is excluded by `@Tag("live")`. Ran twice,
+including a clean build, not flaky. Negative witnesses pass under their test profiles:
+`ANALYSIS_DEDUP=off` re-calls the model on a redelivery, `REPLAY_MODE=reanalyse` re-calls
+on replay, and a same-version backfill makes zero model calls. A Camel redelivery-scoping
+fix put the memoized call and the crash in one `.process()` step so a redelivery re-runs
+the lookup and proves the committed row is reused.
+
+The live compose + Ollama `verify.sh` run is PENDING: the shared host was running another
+project's full stack on the same ports, and the `edp-ollama-models` volume (a ~2.5 GB
+model pull) is not yet present. `verify.sh` is shellcheck-clean and `bash -n` valid but has
+not been executed; its psql-seeded backfill/replay section is the least-tested part. Run it
+on a free host, then finalize the chapter's pass count and flip the `aj-*` claims from
+pending to verified.

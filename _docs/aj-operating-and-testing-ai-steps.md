@@ -107,7 +107,7 @@ mvn -B verify
 ./verify.sh
 ```
 
-`mvn -B verify` runs the guard, the prompt-contract test and the admin endpoints against the mocked analyst with no Ollama; `verify.sh` runs the live model, publishes the fixture corpus with a crash injected on one note, and checks the recorded analyses, the reanalysed and replayed decisions, and both negative witnesses. It prints `NN/NN checks passed`.
+`mvn -B verify` runs the guard, the prompt-contract test and the admin endpoints against the mocked analyst with no Ollama; `verify.sh` runs the live model, publishes the fixture corpus with a crash injected on one note, and checks the recorded analyses, the reanalysed and replayed decisions, and both negative witnesses. It ends with the pass count once every check is green.
 
 Try one change and rerun:
 
