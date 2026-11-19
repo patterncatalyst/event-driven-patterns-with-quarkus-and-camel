@@ -929,3 +929,20 @@ model pull) is not yet present. `verify.sh` is shellcheck-clean and `bash -n` va
 not been executed; its psql-seeded backfill/replay section is the least-tested part. Run it
 on a free host, then finalize the chapter's pass count and flip the `aj-*` claims from
 pending to verified.
+
+### 2026-11-19 · Appendix J · live run PASSED 16/16 (r22)
+
+`examples/aj-operating-and-testing-ai-steps/verify.sh` passed 16/16 on the compose stack
+(Kafka 4.3.2, PostgreSQL on the CNPG operand, grafana/otel-lgtm, Ollama with the pinned
+qwen3:4b model from the external edp-ollama-models volume). Covers all three angles: the
+exactly-once guard (PASS 6-8: a duplicate reuses the committed row, no extra model call, the
+crash-configured note reused after a forced redelivery), the live analyses (PASS 3-5: six
+reasons from the closed set at the pinned digest and prompt version, each equal to a reader's,
+the off-topic note UNKNOWN), backfill and replay (PASS 9-13), and observability (PASS 14-16).
+
+Fix found while verifying (verify.sh, not the app): the backfill check raced the live analysis
+route, which analysed the demo note at the current version before the backfill could, leaving
+nothing stale. The backfill and replay phase now recreates shipping-service with
+ANALYST_ENABLED=false so the demo note is not pre-analysed, and the check reads the backfill
+response (reanalysed count and ids) rather than the output topic, which the backfill does not
+publish to. mvn -B verify (11 tests, mocked model) remains green. The aj-* claims are verified.
